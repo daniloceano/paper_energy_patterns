@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+paper_energy_patterns/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data files (large binaries - don't commit to git)
+data/*.parquet
+data/*.csv
+data/*.nc
+data/*.h5
+data/*.hdf5
+
+# Keep data directory structure
+!data/README.md
+!data/.gitkeep
+
+# Results and figures (generated files)
+results/**/*.csv
+results/**/*.txt
+results/**/*.json
+figures/**/*.png
+figures/**/*.jpg
+figures/**/*.pdf
+figures/**/*.svg
+
+# Keep directory structure for results and figures
+!results/README.md
+!results/.gitkeep
+!figures/README.md
+!figures/.gitkeep
+!results/**/.gitkeep
+!figures/**/.gitkeep
+
+# OS
+.DS_Store
+Thumbs.db
+._*
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.bak
+*.log
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/

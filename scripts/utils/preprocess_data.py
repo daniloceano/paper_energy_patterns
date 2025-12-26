@@ -183,6 +183,79 @@ def preprocess_all_data(use_parallel: bool = True, n_workers: int = 4) -> pd.Dat
     return combined
 
 
+def filter_complete_lifecycle_cyclones(df: pd.DataFrame) -> pd.DataFrame:
+    """Filter cyclones that have all 4 main phases in the correct order.
+    
+    A complete lifecycle cyclone must have phases in this exact order:
+    1. incipient
+    2. intensification
+    3. mature
+    4. decay
+    
+    Args:
+        df: DataFrame with 'track_id' and 'phase' columns
+        
+    Returns:
+        DataFrame containing only complete lifecycle cyclones
+    """
+    print()
+    print("=" * 70)
+    print("Filtering complete lifecycle cyclones")
+    print("=" * 70)
+    print(f"Input: {df['track_id'].nunique()} cyclones, {len(df)} records")
+    print()
+    
+    expected_phases = ['incipient', 'intensification', 'mature', 'decay']
+    complete_track_ids = []
+    
+    for track_id in df['track_id'].unique():
+        cyclone_data = df[df['track_id'] == track_id].copy()
+        
+        # Get unique phases in order of first appearance
+        phases_in_order = cyclone_data['phase'].unique().tolist()
+        
+        # Check if all expected phases are present
+        has_all_phases = all(phase in phases_in_order for phase in expected_phases)
+        
+        if not has_all_phases:
+            continue
+        
+        # Check if phases appear in the correct order
+        # Find index of each phase in the appearance order
+        try:
+            phase_indices = [phases_in_order.index(phase) for phase in expected_phases]
+            # Check if indices are strictly increasing (correct order)
+            is_correct_order = all(phase_indices[i] < phase_indices[i+1] 
+                                  for i in range(len(phase_indices)-1))
+            
+            if is_correct_order:
+                complete_track_ids.append(track_id)
+        except ValueError:
+            # Phase not found, skip
+            continue
+    
+    print(f"✓ Found {len(complete_track_ids)} complete lifecycle cyclones")
+    print(f"  ({len(complete_track_ids)/df['track_id'].nunique()*100:.1f}% of total)")
+    print()
+    
+    # Filter dataframe
+    df_complete = df[df['track_id'].isin(complete_track_ids)].copy()
+    
+    # Remove residual and other phases from complete cyclones
+    df_complete = df_complete[df_complete['phase'].isin(expected_phases)].copy()
+    
+    print(f"✓ Filtered dataset: {len(df_complete)} records from {df_complete['track_id'].nunique()} cyclones")
+    print()
+    print("Phase distribution in complete cyclones:")
+    for phase in expected_phases:
+        count = (df_complete['phase'] == phase).sum()
+        print(f"  {phase:20s}: {count:6d} records ({count/len(df_complete)*100:.1f}%)")
+    print("=" * 70)
+    print()
+    
+    return df_complete
+
+
 def save_cache(df: pd.DataFrame, output_path: Path):
     """Save processed data to Parquet format.
     

@@ -32,9 +32,11 @@ check_all_packages() {
         # Extract package name (before >= or ==)
         package=$(echo "$line" | sed 's/[>=<].*//' | xargs)
         
-        # Special case for scikit-learn (imports as sklearn)
+        # Special cases for packages with different import names
         if [ "$package" = "scikit-learn" ]; then
             import_name="sklearn"
+        elif [ "$package" = "lorenz-phase-space" ]; then
+            import_name="LEC"
         else
             import_name="$package"
         fi

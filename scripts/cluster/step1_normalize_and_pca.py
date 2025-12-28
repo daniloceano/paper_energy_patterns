@@ -1,8 +1,14 @@
-"""Step 1: Normalize energy data and apply PCA.
+"""Step 1: Normalize energy data and apply PCA (Wide Matrix Approach).
 
-This script loads the preprocessed energy cache, normalizes the energy variables,
-applies Principal Component Analysis (PCA), and saves the transformed data for
-subsequent clustering analysis.
+This script implements the PCA approach from the exploratory notebook:
+1. Load energy cache and filter complete lifecycle cyclones
+2. Aggregate by (cyclone, phase): mean of energy terms
+3. Pivot to wide format: 1 row per cyclone, columns = term×phase (28 features)
+4. Standardize (StandardScaler)
+5. Apply PCA to capture patterns across all phases simultaneously
+
+This approach captures correlations between phases and energy terms, providing
+a more holistic view of cyclone energetics compared to phase-separated PCAs.
 """
 
 from __future__ import annotations
@@ -31,7 +37,7 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================================
 
-# Energy variables to use for clustering (excluding Ce and RKe)
+# Energy variables to use (7 terms, excluding Ce and RKe)
 ENERGY_VARS = [
     'Ca', 'Ck',            # Conversion terms
     'BAe', 'BKe',          # Boundary terms
@@ -39,36 +45,39 @@ ENERGY_VARS = [
     'Ge'                   # Generation term
 ]
 
+# Phase configuration
+PHASE_ORDER = ['incipient', 'intensification', 'mature', 'decay']
+PHASE_ABBR = {
+    'incipient': 'inc',
+    'intensification': 'int',
+    'mature': 'mat',
+    'decay': 'dec'
+}
+
 # PCA settings
-N_COMPONENTS = None  # None = keep all components, or specify a number (e.g., 5)
-EXPLAINED_VARIANCE_THRESHOLD = 0.95  # Keep components explaining 95% variance
-DO_PCA_BY_PHASE = True  # Perform separate PCA for each phase
+EXPLAINED_VARIANCE_THRESHOLD = 0.90  # Keep PCs explaining 90% variance
+RANDOM_STATE = 42
 
 # Output directories
 RESULTS_DIR = "results/cluster"
-OUTPUT_PREFIX = "pca"  # Prefix for output files
+OUTPUT_PREFIX = "pca"
 
 # ============================================================================
 
 
 def load_and_prepare_data(energy_vars: List[str]) -> pd.DataFrame:
-    """Load energy cache and prepare data for PCA.
+    """Load energy cache and prepare data.
     
-    Only includes cyclones with complete lifecycle (all 4 phases in order).
-    
-    Args:
-        energy_vars: List of energy variable names to use
-        
     Returns:
         DataFrame with energy variables and metadata
     """
     print("=" * 70)
-    print("Loading and preparing data")
+    print("Step 1.1: Loading and preparing data")
     print("=" * 70)
     
     # Load cache
     df = load_cache()
-    print(f"✓ Loaded {len(df)} records from {df['track_id'].nunique()} cyclones")
+    print(f"✓ Loaded {len(df):,} records from {df['track_id'].nunique()} cyclones")
     
     # Filter to complete lifecycle cyclones only
     df = filter_complete_lifecycle_cyclones(df)
@@ -86,267 +95,309 @@ def load_and_prepare_data(energy_vars: List[str]) -> pd.DataFrame:
     df_clean = df.dropna(subset=energy_vars)
     n_dropped = len(df) - len(df_clean)
     if n_dropped > 0:
-        print(f"⚠️  Dropped {n_dropped} rows with missing values ({n_dropped/len(df)*100:.1f}%)")
+        print(f"⚠️  Dropped {n_dropped:,} rows with NaN ({n_dropped/len(df)*100:.1f}%)")
     
-    print(f"✓ Final dataset: {len(df_clean)} records from {df_clean['track_id'].nunique()} cyclones")
+    print(f"✓ Final dataset: {len(df_clean):,} records from {df_clean['track_id'].nunique()} cyclones")
     print()
     
     # Display phase distribution
     phase_counts = df_clean['phase'].value_counts()
     print("Phase distribution:")
-    for phase in ['incipient', 'intensification', 'mature', 'decay']:
+    for phase in PHASE_ORDER:
         count = phase_counts.get(phase, 0)
-        print(f"  {phase:20s}: {count:6d} records ({count/len(df_clean)*100:5.1f}%)")
+        print(f"  {phase:20s}: {count:6,} records ({count/len(df_clean)*100:5.1f}%)")
     print()
     
     return df_clean
 
 
-def normalize_and_pca(df: pd.DataFrame, energy_vars: List[str], 
-                     n_components: int | None = None,
-                     variance_threshold: float = 0.95,
-                     by_phase: bool = True) -> dict:
-    """Normalize data and apply PCA.
+def aggregate_by_cyclone_phase(df: pd.DataFrame, energy_vars: List[str]) -> pd.DataFrame:
+    """Aggregate energy terms by (cyclone, phase).
+    
+    Calculates mean of energy terms for each cyclone-phase combination.
     
     Args:
-        df: DataFrame with energy variables
-        energy_vars: List of variable names to use
-        n_components: Number of components to keep (None = all)
-        variance_threshold: Keep components explaining this fraction of variance
-        by_phase: If True, perform separate PCA for each phase
+        df: DataFrame with raw data (multiple timesteps per cyclone-phase)
+        energy_vars: List of energy variable names
         
     Returns:
-        Dictionary with results for each phase (if by_phase=True) or single result
+        DataFrame with 1 row per (cyclone, phase)
     """
     print("=" * 70)
-    print("Normalizing data and applying PCA")
+    print("Step 1.2: Aggregating by (cyclone, phase)")
     print("=" * 70)
     
-    if by_phase:
-        print("Mode: SEPARATE PCA FOR EACH PHASE")
-        print()
-        
-        phases = ['incipient', 'intensification', 'mature', 'decay']
-        results = {}
-        
-        for phase in phases:
-            print(f"--- Processing phase: {phase.upper()} ---")
-            
-            # Filter to current phase
-            df_phase = df[df['phase'] == phase].copy()
-            print(f"Phase data: {len(df_phase)} samples")
-            
-            # Extract energy variables
-            X = df_phase[energy_vars].values
-            print(f"Input shape: {X.shape[0]} samples × {X.shape[1]} variables")
-            
-            # Standardize
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X)
-            print(f"✓ Data standardized (mean≈0, std≈1)")
-            
-            # Apply PCA
-            if n_components is None:
-                pca = PCA()
-                pca.fit(X_scaled)
-                
-                # Determine number of components
-                cumsum_variance = np.cumsum(pca.explained_variance_ratio_)
-                n_keep = np.argmax(cumsum_variance >= variance_threshold) + 1
-                print(f"✓ Keeping {n_keep} components (explaining {cumsum_variance[n_keep-1]*100:.1f}% variance)")
-                
-                # Refit with selected components
-                pca = PCA(n_components=n_keep)
-                X_pca = pca.fit_transform(X_scaled)
-            else:
-                pca = PCA(n_components=n_components)
-                X_pca = pca.fit_transform(X_scaled)
-                cumsum_variance = np.cumsum(pca.explained_variance_ratio_)
-                print(f"✓ Using {n_components} components (explaining {cumsum_variance[-1]*100:.1f}% variance)")
-            
-            # Create DataFrame with PC scores
-            pc_columns = [f'PC{i+1}' for i in range(X_pca.shape[1])]
-            df_pca = pd.DataFrame(X_pca, columns=pc_columns, index=df_phase.index)
-            
-            # Add metadata (including track_id)
-            metadata_cols = ['track_id', 'period', 'phase', 'vorticity_max']
-            for col in metadata_cols:
-                if col in df_phase.columns:
-                    df_pca[col] = df_phase[col].values
-            
-            # Create full DataFrame
-            df_full = df_phase.copy()
-            for i, var in enumerate(energy_vars):
-                df_full[f'{var}_scaled'] = X_scaled[:, i]
-            for col in pc_columns:
-                df_full[col] = df_pca[col].values
-            
-            # Store results
-            results[phase] = {
-                'df_pca': df_pca,
-                'pca': pca,
-                'scaler': scaler,
-                'df_full': df_full,
-                'pc_columns': pc_columns
-            }
-            
-            print(f"✓ Phase {phase} complete: {len(pc_columns)} PCs")
-            print()
-        
-        print("=" * 70)
-        print("✅ PCA complete for all phases")
-        print("=" * 70)
-        print()
-        
-        return results
+    # Aggregate: mean of energy terms by (track_id, phase)
+    agg = (
+        df
+        .groupby(['track_id', 'phase'])[energy_vars]
+        .mean()
+        .reset_index()
+    )
     
+    print(f"✓ Aggregated to {len(agg):,} rows")
+    print(f"  Expected: {df['track_id'].nunique()} cyclones × 4 phases = {df['track_id'].nunique() * 4}")
+    
+    # Verify all cyclones have 4 phases
+    phase_counts_per_cyclone = agg.groupby('track_id').size()
+    if (phase_counts_per_cyclone == 4).all():
+        print(f"✓ All {len(phase_counts_per_cyclone)} cyclones have exactly 4 phases")
     else:
-        # Single PCA for all data
-        print("Mode: SINGLE PCA FOR ALL DATA")
-        print()
-        
-        X = df[energy_vars].values
-        print(f"Input shape: {X.shape[0]} samples × {X.shape[1]} variables")
-        
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
-        
-        if n_components is None:
-            pca = PCA()
-            pca.fit(X_scaled)
-            cumsum_variance = np.cumsum(pca.explained_variance_ratio_)
-            n_keep = np.argmax(cumsum_variance >= variance_threshold) + 1
-            
-            pca = PCA(n_components=n_keep)
-            X_pca = pca.fit_transform(X_scaled)
-        else:
-            pca = PCA(n_components=n_components)
-            X_pca = pca.fit_transform(X_scaled)
-        
-        pc_columns = [f'PC{i+1}' for i in range(X_pca.shape[1])]
-        df_pca = pd.DataFrame(X_pca, columns=pc_columns, index=df.index)
-        
-        metadata_cols = ['track_id', 'period', 'phase', 'vorticity_max']
-        for col in metadata_cols:
-            if col in df.columns:
-                df_pca[col] = df[col].values
-        
-        df_full = df.copy()
-        for i, var in enumerate(energy_vars):
-            df_full[f'{var}_scaled'] = X_scaled[:, i]
-        for col in pc_columns:
-            df_full[col] = df_pca[col].values
-        
-        return {
-            'all': {
-                'df_pca': df_pca,
-                'pca': pca,
-                'scaler': scaler,
-                'df_full': df_full,
-                'pc_columns': pc_columns
-            }
-        }
+        print(f"⚠️  Some cyclones don't have 4 phases!")
+        print(phase_counts_per_cyclone.value_counts())
+    
+    print()
+    return agg
 
 
-def save_results(results: dict, energy_vars: List[str],
-                output_dir: Path, prefix: str):
-    """Save PCA results to files.
+def pivot_to_wide(agg: pd.DataFrame, energy_vars: List[str], 
+                 phase_order: List[str], phase_abbr: dict) -> pd.DataFrame:
+    """Pivot from long to wide format.
+    
+    Transforms:
+        - Long: 1 row per (cyclone, phase) → n×4 rows
+        - Wide: 1 row per cyclone → n rows, columns = term×phase
     
     Args:
-        results: Dictionary with PCA results (by phase or single 'all' key)
-        energy_vars: List of energy variable names
-        output_dir: Output directory
-        prefix: Prefix for output files
+        agg: Aggregated data in long format
+        energy_vars: List of energy variables
+        phase_order: Ordered list of phases
+        phase_abbr: Dict mapping phase names to abbreviations
+        
+    Returns:
+        Wide DataFrame (n cyclones × 28 features)
     """
     print("=" * 70)
-    print("Saving results")
+    print("Step 1.3: Pivoting to wide format")
     print("=" * 70)
     
-    output_dir.mkdir(parents=True, exist_ok=True)
+    # Pivot: transform phases into columns
+    wide = agg.pivot(index='track_id', columns='phase', values=energy_vars)
     
-    for phase_name, phase_results in results.items():
-        df_pca = phase_results['df_pca']
-        pca = phase_results['pca']
-        scaler = phase_results['scaler']
-        df_full = phase_results['df_full']
-        pc_columns = phase_results['pc_columns']
-        
-        phase_suffix = f"_{phase_name}" if phase_name != 'all' else ""
-        
-        # Save PC scores (for clustering) - INCLUDES track_id
-        pca_scores_file = output_dir / f"{prefix}_scores{phase_suffix}.csv"
-        df_pca.to_csv(pca_scores_file, index=False)
-        print(f"✓ PC scores ({phase_name}) saved to: {pca_scores_file}")
-        
-        # Save full data (for reference) - INCLUDES track_id
-        full_data_file = output_dir / f"{prefix}_full_data{phase_suffix}.csv"
-        df_full.to_csv(full_data_file, index=False)
-        print(f"✓ Full data ({phase_name}) saved to: {full_data_file}")
-        
-        # Save PCA model and scaler (for reproducibility)
-        models_file = output_dir / f"{prefix}_models{phase_suffix}.pkl"
-        with open(models_file, 'wb') as f:
-            pickle.dump({'pca': pca, 'scaler': scaler, 'energy_vars': energy_vars}, f)
-        print(f"✓ Models ({phase_name}) saved to: {models_file}")
-        
-        # Save component loadings
-        loadings = pd.DataFrame(
-            pca.components_.T,
-            columns=pc_columns,
-            index=energy_vars
-        )
-        loadings_file = output_dir / f"{prefix}_loadings{phase_suffix}.csv"
-        loadings.to_csv(loadings_file)
-        print(f"✓ Component loadings ({phase_name}) saved to: {loadings_file}")
-        
-        # Save explained variance
-        variance_df = pd.DataFrame({
-            'PC': pc_columns,
-            'Explained_Variance': pca.explained_variance_,
-            'Explained_Variance_Ratio': pca.explained_variance_ratio_,
-            'Cumulative_Variance_Ratio': np.cumsum(pca.explained_variance_ratio_)
-        })
-        variance_file = output_dir / f"{prefix}_explained_variance{phase_suffix}.csv"
-        variance_df.to_csv(variance_file, index=False)
-        print(f"✓ Explained variance ({phase_name}) saved to: {variance_file}")
-        print()
+    # Ensure consistent order: term × phase
+    full_cols = pd.MultiIndex.from_product([energy_vars, phase_order])
+    wide = wide.reindex(columns=full_cols)
     
-    print("=" * 70)
-    print("✅ Step 1 complete!")
-    print("=" * 70)
+    # Flatten column names: term_phase_abbr (e.g., Ae_inc, Ae_int, ...)
+    wide.columns = [f"{var}_{phase_abbr[phase]}" for var, phase in wide.columns]
+    
+    # Order columns consistently
+    ordered_cols = [f"{var}_{phase_abbr[phase]}" 
+                   for var in energy_vars for phase in phase_order]
+    wide = wide[ordered_cols]
+    
+    print(f"✓ Wide matrix created: {wide.shape[0]} cyclones × {wide.shape[1]} features")
+    print(f"  Features: {len(energy_vars)} terms × {len(phase_order)} phases = {len(ordered_cols)}")
+    
+    # Check for NaNs
+    n_nans = wide.isna().sum().sum()
+    if n_nans > 0:
+        print(f"\n⚠️  {n_nans} NaNs found in wide matrix")
+        print("  Columns with NaNs:")
+        nan_cols = wide.columns[wide.isna().any()]
+        for col in nan_cols:
+            n = wide[col].isna().sum()
+            print(f"    {col}: {n} NaNs")
+        
+        # Remove cyclones with NaNs
+        wide = wide.dropna()
+        print(f"\n✓ Removed cyclones with NaNs. New shape: {wide.shape}")
+    else:
+        print(f"✓ No NaNs in wide matrix")
+    
+    print(f"\nColumn examples:")
+    print(f"  First 4: {list(wide.columns[:4])}")
+    print(f"  Last 4:  {list(wide.columns[-4:])}")
     print()
-    print("Files saved:")
-    for phase_name in results.keys():
-        phase_suffix = f"_{phase_name}" if phase_name != 'all' else ""
-        print(f"  Phase: {phase_name}")
-        print(f"    - pca_scores{phase_suffix}.csv (includes track_id)")
-        print(f"    - pca_full_data{phase_suffix}.csv (includes track_id)")
-        print(f"    - pca_models{phase_suffix}.pkl")
-        print(f"    - pca_loadings{phase_suffix}.csv")
-        print(f"    - pca_explained_variance{phase_suffix}.csv")
+    
+    return wide
+
+
+def normalize_and_apply_pca(wide: pd.DataFrame, variance_threshold: float,
+                            random_state: int) -> tuple:
+    """Standardize data and apply PCA.
+    
+    Args:
+        wide: Wide matrix (n × 28)
+        variance_threshold: Cumulative variance threshold for component selection
+        random_state: Random seed
+        
+    Returns:
+        Tuple of (X_pca, pca_model, scaler, n_components_kept)
+    """
+    print("=" * 70)
+    print("Step 1.4: Standardization and PCA")
+    print("=" * 70)
+    
+    # Extract matrix and feature names
+    X = wide.to_numpy(dtype=float)
+    feature_names = wide.columns.tolist()
+    
+    print(f"Input matrix: {X.shape}")
+    
+    # Standardize
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    
+    print(f"✓ Standardization applied (mean≈0, std≈1)")
+    print(f"  Sample verification (first 3 features):")
+    for i in range(min(3, len(feature_names))):
+        print(f"    {feature_names[i]:12s}: mean={X_scaled[:, i].mean():7.4f}, std={X_scaled[:, i].std():7.4f}")
+    
+    # Apply PCA (full)
+    pca_full = PCA(random_state=random_state)
+    pca_full.fit(X_scaled)
+    
+    explained_var = pca_full.explained_variance_ratio_
+    cumsum_var = np.cumsum(explained_var)
+    
+    print(f"\n✓ PCA applied ({len(explained_var)} total components)")
+    print(f"\nVariance explained by first 10 PCs:")
+    for i in range(min(10, len(explained_var))):
+        print(f"  PC{i+1:2d}: {explained_var[i]*100:5.2f}%  (cumulative: {cumsum_var[i]*100:5.2f}%)")
+    
+    # Determine number of components to keep
+    n_keep = np.argmax(cumsum_var >= variance_threshold) + 1
+    print(f"\n✓ For {variance_threshold*100:.0f}% variance: keeping {n_keep} components")
+    print(f"  Cumulative variance: {cumsum_var[n_keep-1]*100:.2f}%")
+    
+    # Re-apply PCA with selected number of components
+    pca = PCA(n_components=n_keep, random_state=random_state)
+    X_pca = pca.fit_transform(X_scaled)
+    
+    print(f"\n✓ Final PCA:")
+    print(f"  Input:  {X_scaled.shape}")
+    print(f"  Output: {X_pca.shape}")
+    print(f"  Dimensionality reduction: {X_scaled.shape[1]} → {X_pca.shape[1]} ({X_pca.shape[1]/X_scaled.shape[1]*100:.1f}%)")
     print()
-    print("Next steps:")
-    print("  2. Run step2_plot_pca_results.py to visualize PCA results")
-    print("  3. Run step3_optimal_k_analysis.py to determine optimal k")
+    
+    return X_pca, pca, scaler, n_keep
+
+
+def save_results(wide: pd.DataFrame, X_pca: np.ndarray, pca: PCA, 
+                scaler: StandardScaler, energy_vars: List[str],
+                results_dir: Path, prefix: str):
+    """Save PCA results.
+    
+    Args:
+        wide: Wide matrix (original values)
+        X_pca: PCA scores
+        pca: PCA model
+        scaler: StandardScaler model
+        energy_vars: List of energy variables
+        results_dir: Output directory
+        prefix: File prefix
+    """
+    print("=" * 70)
+    print("Step 1.5: Saving results")
+    print("=" * 70)
+    
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    # 1. PCA scores (main output for clustering)
+    pc_columns = [f'PC{i+1}' for i in range(X_pca.shape[1])]
+    df_pca = pd.DataFrame(
+        X_pca,
+        index=wide.index,  # track_id as index
+        columns=pc_columns
+    )
+    
+    scores_file = results_dir / f"{prefix}_scores.csv"
+    df_pca.to_csv(scores_file, index=True)
+    print(f"✓ PCA scores: {scores_file.name}")
+    print(f"  Shape: {df_pca.shape}")
+    
+    # 2. Full data (original + scaled + PCs) - optional
+    df_full = wide.copy()
+    for col in pc_columns:
+        df_full[col] = df_pca[col]
+    
+    full_file = results_dir / f"{prefix}_full_data.csv"
+    df_full.to_csv(full_file, index=True)
+    print(f"✓ Full data (original + PCs): {full_file.name}")
+    
+    # 3. PCA models (for inverse transform and reproducibility)
+    models_file = results_dir / f"{prefix}_models.pkl"
+    with open(models_file, 'wb') as f:
+        pickle.dump({
+            'pca': pca,
+            'scaler': scaler,
+            'energy_vars': energy_vars,
+            'feature_names': wide.columns.tolist(),
+            'n_components': pca.n_components_,
+            'explained_variance_ratio': pca.explained_variance_ratio_,
+            'random_state': pca.random_state
+        }, f)
+    print(f"✓ PCA models: {models_file.name}")
+    
+    # 4. Loadings (feature contributions to each PC)
+    loadings_df = pd.DataFrame(
+        pca.components_,
+        columns=wide.columns,
+        index=pc_columns
+    )
+    
+    loadings_file = results_dir / f"{prefix}_loadings.csv"
+    loadings_df.to_csv(loadings_file, index=True)
+    print(f"✓ Loadings: {loadings_file.name}")
+    print(f"  Shape: {loadings_df.shape} ({len(pc_columns)} PCs × {len(wide.columns)} features)")
+    
+    # 5. Explained variance
+    variance_df = pd.DataFrame({
+        'PC': pc_columns,
+        'explained_variance': pca.explained_variance_,
+        'explained_variance_ratio': pca.explained_variance_ratio_,
+        'cumulative_variance_ratio': np.cumsum(pca.explained_variance_ratio_)
+    })
+    
+    variance_file = results_dir / f"{prefix}_explained_variance.csv"
+    variance_df.to_csv(variance_file, index=False)
+    print(f"✓ Explained variance: {variance_file.name}")
+    
     print()
 
 
 def main():
     """Main execution function."""
+    results_dir = Path(RESULTS_DIR)
+    
+    print("=" * 70)
+    print("STEP 1: Normalize and Apply PCA (Wide Matrix Approach)")
+    print("=" * 70)
+    print(f"Energy variables: {ENERGY_VARS}")
+    print(f"Number of terms: {len(ENERGY_VARS)}")
+    print(f"Number of phases: {len(PHASE_ORDER)}")
+    print(f"Total features: {len(ENERGY_VARS)} × {len(PHASE_ORDER)} = {len(ENERGY_VARS) * len(PHASE_ORDER)}")
+    print(f"Variance threshold: {EXPLAINED_VARIANCE_THRESHOLD*100:.0f}%")
+    print()
+    
     # Load and prepare data
-    df = load_and_prepare_data(ENERGY_VARS)
+    df_clean = load_and_prepare_data(ENERGY_VARS)
+    
+    # Aggregate by (cyclone, phase)
+    agg = aggregate_by_cyclone_phase(df_clean, ENERGY_VARS)
+    
+    # Pivot to wide format
+    wide = pivot_to_wide(agg, ENERGY_VARS, PHASE_ORDER, PHASE_ABBR)
     
     # Normalize and apply PCA
-    results = normalize_and_pca(
-        df, ENERGY_VARS, 
-        n_components=N_COMPONENTS,
-        variance_threshold=EXPLAINED_VARIANCE_THRESHOLD,
-        by_phase=DO_PCA_BY_PHASE
+    X_pca, pca, scaler, n_components = normalize_and_apply_pca(
+        wide, EXPLAINED_VARIANCE_THRESHOLD, RANDOM_STATE
     )
     
     # Save results
-    output_dir = Path(RESULTS_DIR)
-    save_results(results, ENERGY_VARS, output_dir, OUTPUT_PREFIX)
+    save_results(wide, X_pca, pca, scaler, ENERGY_VARS, results_dir, OUTPUT_PREFIX)
+    
+    print("=" * 70)
+    print("✅ Step 1 complete!")
+    print("=" * 70)
+    print(f"Processed {len(wide)} cyclones")
+    print(f"Reduced {len(wide.columns)} features → {n_components} PCs")
+    print(f"Explained variance: {np.cumsum(pca.explained_variance_ratio_)[n_components-1]*100:.2f}%")
+    print()
+    print("Next step:")
+    print("  2. Run step2_plot_pca_results.py to visualize PCA results")
+    print()
     
     return 0
 

@@ -6,9 +6,11 @@ This directory contains all analysis scripts organized by purpose.
 
 ```
 scripts/
-├── utils/                  # Utility functions (data loading, etc.)
+├── utils/                  # Utility functions (data loading, clustering, etc.)
 │   ├── __init__.py
-│   └── load_data.py       # Functions to load data from GitHub
+│   ├── load_data.py       # Functions to load data from GitHub
+│   ├── preprocess_data.py # Data preprocessing utilities
+│   └── gap_statistic.py   # Gap Statistic implementation (Tibshirani et al. 2001)
 │
 ├── setup_and_examples/    # Setup and example scripts
 │   ├── __init__.py

@@ -1,3 +1,4 @@
+
 """Step 4: Apply K-Means clustering with optimal k.
 
 This script applies K-Means clustering to the PCA-transformed data using
@@ -28,11 +29,8 @@ warnings.filterwarnings('ignore')
 
 # Input files (from previous steps)
 RESULTS_DIR = "results/cluster"
-INPUT_PREFIX = "pca"
+INPUT_FILE = "pca_scores.csv"  # Wide matrix format (all phases together)
 OPTIMAL_K_FILE = "optimal_k.txt"
-
-# Phases to cluster (will use same k for all phases)
-PHASES = ['incipient', 'intensification', 'mature', 'decay']
 
 # K-Means parameters
 USE_OPTIMAL_K = True  # If False, use MANUAL_K
@@ -114,8 +112,8 @@ def apply_kmeans(X: np.ndarray, k: int, random_state: int = 42,
 
 def save_results(df_pca: pd.DataFrame, labels: np.ndarray, kmeans: KMeans,
                 pc_cols: list, energy_vars: list, pca_model: object,
-                scaler: object, results_dir: Path, prefix: str, phase: str):
-    """Save clustering results for a specific phase.
+                scaler: object, results_dir: Path, prefix: str):
+    """Save clustering results.
     
     Args:
         df_pca: DataFrame with PC scores
@@ -127,9 +125,8 @@ def save_results(df_pca: pd.DataFrame, labels: np.ndarray, kmeans: KMeans,
         scaler: Scaler model (for inverse transform)
         results_dir: Results directory
         prefix: Output file prefix
-        phase: Phase name (for file naming)
     """
-    print(f"  Saving results for {phase}...")
+    print("Saving results...")
     
     results_dir.mkdir(parents=True, exist_ok=True)
     
@@ -138,9 +135,9 @@ def save_results(df_pca: pd.DataFrame, labels: np.ndarray, kmeans: KMeans,
     df_clustered['cluster'] = labels
     
     # Save clustered data
-    clustered_file = results_dir / f"{prefix}_clustered_data_{phase}.csv"
-    df_clustered.to_csv(clustered_file, index=False)
-    print(f"    ✓ Clustered data: {clustered_file.name}")
+    clustered_file = results_dir / f"{prefix}_clustered_data.csv"
+    df_clustered.to_csv(clustered_file)
+    print(f"  ✓ Clustered data: {clustered_file.name}")
     
     # Save cluster centroids (in PC space)
     centroids_pc = pd.DataFrame(
@@ -148,9 +145,9 @@ def save_results(df_pca: pd.DataFrame, labels: np.ndarray, kmeans: KMeans,
         columns=pc_cols
     )
     centroids_pc['cluster'] = range(len(centroids_pc))
-    centroids_pc_file = results_dir / f"{prefix}_centroids_pc_{phase}.csv"
+    centroids_pc_file = results_dir / f"{prefix}_centroids_pc.csv"
     centroids_pc.to_csv(centroids_pc_file, index=False)
-    print(f"    ✓ Centroids (PC space): {centroids_pc_file.name}")
+    print(f"  ✓ Centroids (PC space): {centroids_pc_file.name}")
     
     # Inverse transform centroids to original energy space
     if pca_model is not None and scaler is not None:
@@ -165,24 +162,27 @@ def save_results(df_pca: pd.DataFrame, labels: np.ndarray, kmeans: KMeans,
         else:
             centroids_full = kmeans.cluster_centers_
         
-        # Inverse transform: PC space -> scaled space -> original space
+        # Inverse transform: PC space -> scaled space -> original space (wide format)
         centroids_scaled = pca_model.inverse_transform(centroids_full)
         centroids_original = scaler.inverse_transform(centroids_scaled)
         
+        # centroids_original has shape (n_clusters, 28) for wide format
+        # energy_vars should match the wide column names from step1
         centroids_energy = pd.DataFrame(
             centroids_original,
-            columns=energy_vars
+            columns=energy_vars  # This should be the 28 wide column names
         )
         centroids_energy['cluster'] = range(len(centroids_energy))
         
-        centroids_energy_file = results_dir / f"{prefix}_centroids_energy_{phase}.csv"
+        centroids_energy_file = results_dir / f"{prefix}_centroids_energy.csv"
         centroids_energy.to_csv(centroids_energy_file, index=False)
-        print(f"    ✓ Centroids (energy space): {centroids_energy_file.name}")
+        print(f"  ✓ Centroids (energy space): {centroids_energy_file.name}")
+        print(f"    Shape: {centroids_energy.shape} (wide format: {len(energy_vars)} features)")
     else:
-        print("    ⚠️  PCA/Scaler models not available, skipping energy space centroids")
+        print("  ⚠️  PCA/Scaler models not available, skipping energy space centroids")
     
     # Save KMeans model
-    model_file = results_dir / f"{prefix}_model_{phase}.pkl"
+    model_file = results_dir / f"{prefix}_model.pkl"
     with open(model_file, 'wb') as f:
         pickle.dump({
             'kmeans': kmeans,
@@ -190,11 +190,10 @@ def save_results(df_pca: pd.DataFrame, labels: np.ndarray, kmeans: KMeans,
             'pc_cols': pc_cols,
             'inertia': kmeans.inertia_
         }, f)
-    print(f"    ✓ KMeans model: {model_file.name}")
+    print(f"  ✓ KMeans model: {model_file.name}")
     
     # Save cluster summary
     summary = {
-        'phase': phase,
         'n_clusters': kmeans.n_clusters,
         'n_samples': len(labels),
         'n_features_used': len(pc_cols),
@@ -210,9 +209,9 @@ def save_results(df_pca: pd.DataFrame, labels: np.ndarray, kmeans: KMeans,
         summary[f'cluster_{label}_percentage'] = float(count / len(labels) * 100)
     
     summary_df = pd.DataFrame([summary])
-    summary_file = results_dir / f"{prefix}_summary_{phase}.csv"
+    summary_file = results_dir / f"{prefix}_summary.csv"
     summary_df.to_csv(summary_file, index=False)
-    print(f"    ✓ Summary: {summary_file.name}")
+    print(f"  ✓ Summary: {summary_file.name}")
     
     print()
 
@@ -222,7 +221,7 @@ def main():
     results_dir = Path(RESULTS_DIR)
     
     print("=" * 70)
-    print("Step 4: Applying K-Means clustering to each phase")
+    print("Step 4: Applying K-Means clustering (Wide Matrix Format)")
     print("=" * 70)
     
     # Determine k
@@ -233,62 +232,72 @@ def main():
         k = MANUAL_K
         print(f"Using manual k: k={k}")
     
-    print(f"Number of phases to cluster: {len(PHASES)}")
+    print(f"Format: Wide matrix (28 features = 7 terms × 4 phases)")
     print()
     
-    for phase in PHASES:
-        print(f"\n{'=' * 70}")
-        print(f"Processing Phase: {phase.upper()}")
-        print(f"{'=' * 70}")
-        
-        # Load PCA scores for this phase
-        scores_file = results_dir / f"{INPUT_PREFIX}_scores_{phase}.csv"
-        df_pca = pd.read_csv(scores_file)
-        print(f"  Loaded PC scores: {scores_file.name}")
-        print(f"    Shape: {df_pca.shape}")
-        
-        # Get PC columns
-        pc_cols = [col for col in df_pca.columns if col.startswith('PC')]
-        if N_PCS_TO_USE is not None:
-            pc_cols = pc_cols[:N_PCS_TO_USE]
-        
-        print(f"  Using {len(pc_cols)} principal components: {pc_cols}")
-        
-        X = df_pca[pc_cols].values
-        
-        # Load PCA model and scaler (for inverse transform)
-        models_file = results_dir / f"{INPUT_PREFIX}_models_{phase}.pkl"
-        if models_file.exists():
-            with open(models_file, 'rb') as f:
-                models = pickle.load(f)
-            pca_model = models['pca']
-            scaler = models['scaler']
-            energy_vars = models['energy_vars']
-            print(f"  Loaded PCA model and scaler: {models_file.name}")
-        else:
-            print(f"  ⚠️  PCA models file not found for {phase}")
-            pca_model = None
-            scaler = None
-            energy_vars = []
-        
-        # Apply K-Means
-        print(f"  Applying K-Means clustering with k={k}...")
-        labels, kmeans = apply_kmeans(X, k, random_state=RANDOM_STATE, n_init=N_INIT)
-        
-        # Print cluster distribution
-        unique_labels, counts = np.unique(labels, return_counts=True)
-        print(f"  Cluster distribution:")
-        for label, count in zip(unique_labels, counts):
-            print(f"    Cluster {label}: {count:5d} samples ({count/len(labels)*100:5.1f}%)")
-        
-        # Save results
-        save_results(df_pca, labels, kmeans, pc_cols, energy_vars, 
-                    pca_model, scaler, results_dir, OUTPUT_PREFIX, phase)
+    # Load PCA scores (wide matrix format)
+    scores_file = results_dir / INPUT_FILE
+    print(f"Loading PCA scores from: {scores_file}")
     
-    print("\n" + "=" * 70)
+    if not scores_file.exists():
+        print(f"\n❌ Error: File not found: {scores_file}")
+        print("Please run step1_normalize_and_pca.py first.")
+        return 1
+    
+    df_pca = pd.read_csv(scores_file, index_col=0)
+    print(f"  ✓ Loaded: {len(df_pca)} samples")
+    print(f"  Shape: {df_pca.shape}")
+    print()
+    
+    # Get PC columns
+    pc_cols = [col for col in df_pca.columns if col.startswith('PC')]
+    if N_PCS_TO_USE is not None:
+        pc_cols = pc_cols[:N_PCS_TO_USE]
+    
+    print(f"Using {len(pc_cols)} principal components")
+    print(f"  PCs: {', '.join(pc_cols[:5])}{'...' if len(pc_cols) > 5 else ''}")
+    print()
+    
+    X = df_pca[pc_cols].values
+    
+    # Load PCA model and scaler (for inverse transform)
+    models_file = results_dir / "pca_models.pkl"
+    if models_file.exists():
+        with open(models_file, 'rb') as f:
+            models = pickle.load(f)
+        pca_model = models['pca']
+        scaler = models['scaler']
+        energy_vars = models['feature_names']  # Wide column names (28 features)
+        print(f"Loaded PCA model and scaler: {models_file.name}")
+        print(f"  Wide features: {len(energy_vars)} columns (7 terms × 4 phases)")
+    else:
+        print(f"⚠️  PCA models file not found: {models_file}")
+        print("  Centroids in energy space will not be available.")
+        pca_model = None
+        scaler = None
+        energy_vars = []
+    print()
+    
+    # Apply K-Means
+    print(f"Applying K-Means clustering with k={k}...")
+    labels, kmeans = apply_kmeans(X, k, random_state=RANDOM_STATE, n_init=N_INIT)
+    
+    # Save results
+    save_results(df_pca, labels, kmeans, pc_cols, energy_vars, 
+                pca_model, scaler, results_dir, OUTPUT_PREFIX)
+    
+    print("=" * 70)
     print("✅ Step 4 complete!")
     print("=" * 70)
-    print(f"Clustered {len(PHASES)} phases with k={k} clusters each")
+    print(f"Clustered {len(df_pca)} samples into k={k} clusters")
+    print(f"Data format: Wide matrix (all phases together)")
+    print()
+    print("Files created:")
+    print(f"  - {OUTPUT_PREFIX}_clustered_data.csv")
+    print(f"  - {OUTPUT_PREFIX}_centroids_pc.csv")
+    print(f"  - {OUTPUT_PREFIX}_centroids_energy.csv (if PCA models available)")
+    print(f"  - {OUTPUT_PREFIX}_model.pkl")
+    print(f"  - {OUTPUT_PREFIX}_summary.csv")
     print()
     print("Next step:")
     print("  5. Run step5_plot_energy_patterns.py to visualize cluster centroids")

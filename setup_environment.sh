@@ -13,7 +13,7 @@ echo "Setting up conda environment: $ENV_NAME"
 echo "Project directory: $PROJECT_DIR"
 echo ""
 
-# Function to check if a package is installed
+# Function to check if a Python package is installed
 check_package() {
     python -c "import $1" 2>/dev/null
     return $?
@@ -79,6 +79,7 @@ if conda env list | grep -q "^$ENV_NAME "; then
         echo "Installing via pip..."
         pip install lorenz-phase-space reval --no-build-isolation
         echo ""
+        echo "ℹ️  Note: Gap Statistic implemented locally (gap-stat package has compatibility issues)"
         echo "✅ Missing packages installed!"
     fi
     
@@ -112,7 +113,7 @@ else
     # Install remaining packages via pip
     echo ""
     echo "Installing specialized packages via pip..."
-    pip install lorenz-phase-space reval --no-build-isolation
+    pip install lorenz-phase-space reval gap-stat --no-build-isolation
     
     echo ""
     echo "✅ Environment created and packages installed!"

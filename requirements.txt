@@ -21,6 +21,8 @@ statsmodels>=0.14.0
 # Clustering analysis
 lorenz-phase-space>=1.2.4
 reval>=0.1.0
+# Note: Gap Statistic implemented in scripts/utils/gap_statistic.py
+# (gap-stat package has compatibility issues with Python 3.11+)
 
 # Data handling
 netCDF4>=1.6.0

@@ -30,12 +30,9 @@ warnings.filterwarnings('ignore')
 RESULTS_DIR = "results/cluster"
 KMEANS_PREFIX = "kmeans"
 
-# Phases to plot (will create separate figures for each phase)
-PHASES = ['incipient', 'intensification', 'mature', 'decay']
-
 # Output settings
 FIGURES_DIR = "figures/cluster"
-OUTPUT_FILE_PATTERN = "lps_{phase}.png"  # One figure per phase
+OUTPUT_FILE_PREFIX = "lps"  # LPS diagrams
 DPI = 300
 
 # Lorenz cycle settings
@@ -49,56 +46,48 @@ CLUSTER_COLORS = None  # e.g., ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
 # ============================================================================
 
 
-def load_clustering_results(results_dir: Path, prefix: str, phase: str) -> tuple:
-    """Load clustering results from step 4 for a specific phase.
+def load_clustering_results(results_dir: Path, prefix: str) -> tuple:
+    """Load clustering results from step 4.
     
     Args:
         results_dir: Results directory
         prefix: File prefix
-        phase: Phase name
         
     Returns:
         Tuple of (df_clustered, centroids_energy, centroids_pc, summary)
     """
-    print(f"  Loading clustering results for {phase}...")
+    print("Loading clustering results...")
     
     # Load clustered data
-    clustered_file = results_dir / f"{prefix}_clustered_data_{phase}.csv"
-    df_clustered = pd.read_csv(clustered_file)
-    print(f"    ✓ Clustered data: {clustered_file.name} (shape: {df_clustered.shape})")
+    clustered_file = results_dir / f"{prefix}_clustered_data.csv"
+    df_clustered = pd.read_csv(clustered_file, index_col=0)
+    print(f"  ✓ Clustered data: {clustered_file.name}")
+    print(f"    Shape: {df_clustered.shape}")
     
     # Load centroids (energy space)
-    centroids_energy_file = results_dir / f"{prefix}_centroids_energy_{phase}.csv"
+    centroids_energy_file = results_dir / f"{prefix}_centroids_energy.csv"
     if centroids_energy_file.exists():
         centroids_energy = pd.read_csv(centroids_energy_file)
-        print(f"    ✓ Centroids (energy space): {centroids_energy_file.name}")
+        print(f"  ✓ Centroids (energy space): {centroids_energy_file.name}")
     else:
         centroids_energy = None
-        print(f"    ⚠️  Centroids (energy space) not found")
+        print(f"  ⚠️  Centroids (energy space) not found")
     
     # Load centroids (PC space)
-    centroids_pc_file = results_dir / f"{prefix}_centroids_pc_{phase}.csv"
+    centroids_pc_file = results_dir / f"{prefix}_centroids_pc.csv"
     centroids_pc = pd.read_csv(centroids_pc_file)
-    print(f"    ✓ Centroids (PC space): {centroids_pc_file.name}")
-    
-    # Load summary
-    summary_file = results_dir / f"{prefix}_summary_{phase}.csv"
-    if summary_file.exists():
-        summary = pd.read_csv(summary_file)
-        print(f"    ✓ Summary: {summary_file.name}")
-    else:
-        summary = None
-        print(f"    ⚠️  Summary not found")
-    
-    print()
-    return df_clustered, centroids_energy, centroids_pc, summary
+    print(f"  ✓ Centroids (PC space): {centroids_pc_file.name}")
     
     # Load summary
     summary_file = results_dir / f"{prefix}_summary.csv"
-    summary = pd.read_csv(summary_file)
-    print(f"✓ Loaded clustering summary: {summary_file}")
-    print()
+    if summary_file.exists():
+        summary = pd.read_csv(summary_file)
+        print(f"  ✓ Summary: {summary_file.name}")
+    else:
+        summary = None
+        print(f"  ⚠️  Summary not found")
     
+    print()
     return df_clustered, centroids_energy, centroids_pc, summary
 
 
@@ -227,7 +216,7 @@ def plot_lorenz_cycle_simple(centroids: pd.DataFrame, cluster_id: int,
 
 
 def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
-                        output_file: Path, phase_name: str, dpi: int = 300,
+                        output_file: Path, dpi: int = 300,
                         use_lorenz: bool = True, use_zoom: bool = True, 
                         cluster_colors: list = None):
     """Create Lorenz Phase Space diagrams for cluster centroids.
@@ -236,7 +225,6 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
         centroids_energy: DataFrame with centroids in energy space
         summary: DataFrame with clustering summary
         output_file: Output file path
-        phase_name: Name of the phase (for title)
         dpi: DPI for figure
         use_lorenz: Whether to try using lorenz-phase-space package
         use_zoom: Whether to use zoom in LPS diagrams
@@ -286,17 +274,28 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
         for cluster_id in range(n_clusters):
             centroid = centroids_energy[centroids_energy['cluster'] == cluster_id].iloc[0]
             
+            # Extract energy terms from wide format (aggregate across phases)
+            # Wide format: term_phase (e.g., Ck_inc, Ck_int, Ck_mat, Ck_dec)
+            # We'll use mean across phases for visualization
+            phases = ['inc', 'int', 'mat', 'dec']
+            
+            def get_term_mean(term):
+                """Get mean of term across all phases."""
+                cols = [f"{term}_{phase}" for phase in phases]
+                values = [float(centroid[col]) for col in cols if col in centroid.index]
+                return np.mean(values) if values else 0.0
+            
             # Prepare data based on LPS type
             if lps_type == 'mixed':
-                x_data = [float(centroid['Ck'])]
-                y_data = [float(centroid['Ca'])]
+                x_data = [get_term_mean('Ck')]
+                y_data = [get_term_mean('Ca')]
             elif lps_type == 'imports':
-                x_data = [float(centroid['BAe'])]
-                y_data = [float(centroid['BKe'])]
+                x_data = [get_term_mean('BAe')]
+                y_data = [get_term_mean('BKe')]
             
             # Marker color and size
-            marker_color = [float(centroid['Ge'])]
-            marker_size = [float(centroid['Ke'])]
+            marker_color = [get_term_mean('Ge')]
+            marker_size = [get_term_mean('Ke')]
             
             # Plot data point
             lps.plot_data(
@@ -329,17 +328,17 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
         
         # Set subplot title
         lps_name = 'Mixed Phase Space (Ck vs Ca)' if lps_type == 'mixed' else 'Imports Phase Space (BAe vs BKe)'
-        ax.set_title(f'{lps_name} - {phase_name.title()} Phase', fontsize=12, fontweight='bold')
+        ax.set_title(f'{lps_name}', fontsize=12, fontweight='bold')
         
         # Save individual figure and close before creating next
         if idx == 0:
-            output_file_mixed = output_file.parent / f"lps_{phase_name}_mixed.png"
+            output_file_mixed = output_file.parent / "lps_mixed.png"
             plt.savefig(output_file_mixed, dpi=dpi, bbox_inches='tight')
-            print(f"    ✓ Mixed LPS saved: {output_file_mixed.name}")
+            print(f"  ✓ Mixed LPS saved: {output_file_mixed.name}")
         else:
-            output_file_imports = output_file.parent / f"lps_{phase_name}_imports.png"
+            output_file_imports = output_file.parent / "lps_imports.png"
             plt.savefig(output_file_imports, dpi=dpi, bbox_inches='tight')
-            print(f"    ✓ Imports LPS saved: {output_file_imports.name}")
+            print(f"  ✓ Imports LPS saved: {output_file_imports.name}")
         
         plt.close()
 
@@ -350,32 +349,28 @@ def main():
     figures_dir = Path(FIGURES_DIR)
     
     print("=" * 70)
-    print("Step 5: Plotting Lorenz Phase Space diagrams for each phase")
+    print("Step 5: Plotting Lorenz Phase Space diagrams (Wide Matrix)")
     print("=" * 70)
     print(f"Results directory: {results_dir}")
     print(f"Figures directory: {figures_dir}")
-    print(f"Number of phases to plot: {len(PHASES)}")
     print(f"Using zoom: {USE_ZOOM}")
+    print(f"Format: Wide matrix (all phases together)")
     print()
     
-    for phase in PHASES:
-        print(f"\n{'=' * 70}")
-        print(f"Processing Phase: {phase.upper()}")
-        print(f"{'=' * 70}")
-        
-        # Load clustering results for this phase
-        df_clustered, centroids_energy, centroids_pc, summary = load_clustering_results(
-            results_dir, KMEANS_PREFIX, phase
-        )
-        
-        # Plot energy patterns
-        output_file = figures_dir / OUTPUT_FILE_PATTERN.format(phase=phase)
-        print(f"  Creating Lorenz Phase Space diagrams...")
-        plot_energy_patterns(centroids_energy, summary, output_file,
-                            phase_name=phase, dpi=DPI, use_lorenz=USE_LORENZ_PACKAGE,
-                            use_zoom=USE_ZOOM, cluster_colors=CLUSTER_COLORS)
+    # Load clustering results
+    df_clustered, centroids_energy, centroids_pc, summary = load_clustering_results(
+        results_dir, KMEANS_PREFIX
+    )
     
-    print("\n" + "=" * 70)
+    # Plot energy patterns
+    output_file = figures_dir / f"{OUTPUT_FILE_PREFIX}.png"
+    print("Creating Lorenz Phase Space diagrams...")
+    plot_energy_patterns(centroids_energy, summary, output_file,
+                        dpi=DPI, use_lorenz=USE_LORENZ_PACKAGE,
+                        use_zoom=USE_ZOOM, cluster_colors=CLUSTER_COLORS)
+    
+    print()
+    print("=" * 70)
     print("✅ Step 5 complete!")
     print("=" * 70)
     print()
@@ -385,7 +380,11 @@ def main():
     print(f"  - PCA results: {results_dir}/pca_*")
     print(f"  - Optimal k analysis: {results_dir}/optimal_k_*")
     print(f"  - K-Means results: {results_dir}/kmeans_*")
-    print(f"  - LPS diagrams: {figures_dir}/lps_*")
+    print(f"  - LPS diagrams: {figures_dir}/lps_mixed.png, lps_imports.png")
+    print()
+    print("Data format: Wide matrix (28 features = 7 terms × 4 phases)")
+    print(f"Total clusters: {len(centroids_energy) if centroids_energy is not None else 'N/A'}")
+    print(f"Total samples: {len(df_clustered)}")
     print()
     
     return 0

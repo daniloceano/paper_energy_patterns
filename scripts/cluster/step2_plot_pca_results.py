@@ -403,7 +403,7 @@ def plot_explained_variance(variance_df: pd.DataFrame, output_file: Path,
                   linewidth=2, alpha=0.7, zorder=4)
         
         # Add text annotation
-        ax2.text(n_threshold, variance_threshold*100 + 3, 
+        ax2.text(n_threshold - 0.6, variance_threshold*100 + 4.3, 
                 f'n={n_threshold}\n({cumvar[n_threshold-1]*100:.1f}%)',
                 ha='center', va='bottom', fontsize=10, fontweight='bold',
                 bbox=dict(boxstyle='round,pad=0.5', facecolor='yellow', alpha=0.7))
@@ -423,7 +423,7 @@ def plot_explained_variance(variance_df: pd.DataFrame, output_file: Path,
     ax2.set_ylim(0, 105)
     
     # Legend for cumulative line
-    ax2.legend(loc='lower right', fontsize=10, framealpha=0.9)
+    ax2.legend(fontsize=10, framealpha=0.9, bbox_to_anchor=(0.8, 0.99), ncol=1, loc='upper center')
     
     # Tick parameters
     ax.tick_params(axis='both', labelsize=10)

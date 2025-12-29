@@ -19,8 +19,8 @@ scikit-learn>=1.3.0
 statsmodels>=0.14.0
 
 # Clustering analysis
-lorenz-phase-space>=0.4.0
-reval>=2.2.0
+lorenz-phase-space>=1.2.4
+reval>=0.1.0
 
 # Data handling
 netCDF4>=1.6.0

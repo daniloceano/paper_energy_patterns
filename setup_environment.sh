@@ -70,7 +70,14 @@ if conda env list | grep -q "^$ENV_NAME "; then
     else
         echo ""
         echo "Installing missing packages..."
-        pip install -r "$PROJECT_DIR/requirements.txt"
+        echo ""
+        echo "Installing via conda-forge..."
+        conda install -c conda-forge numpy pandas scipy xarray matplotlib seaborn \
+            cmocean cartopy geopandas shapely scikit-learn statsmodels netCDF4 \
+            h5py pyarrow requests tqdm numba llvmlite -y
+        echo ""
+        echo "Installing via pip..."
+        pip install lorenz-phase-space reval --no-build-isolation
         echo ""
         echo "✅ Missing packages installed!"
     fi
@@ -78,17 +85,34 @@ if conda env list | grep -q "^$ENV_NAME "; then
 else
     echo "Creating new conda environment: $ENV_NAME"
     
-    # Create conda environment with Python 3.13
-    conda create -n "$ENV_NAME" python=3.13 -y
+    # Create conda environment with Python 3.11 (better compatibility)
+    conda create -n "$ENV_NAME" python=3.11 -y
     
     # Activate environment
     eval "$(conda shell.bash hook)"
     conda activate "$ENV_NAME"
     
-    # Install all packages
+    # Install CMake (needed for some packages)
     echo ""
-    echo "Installing packages from requirements.txt..."
-    pip install -r "$PROJECT_DIR/requirements.txt"
+    echo "Installing CMake..."
+    conda install cmake -y
+    
+    # Install main packages via conda-forge (pre-compiled binaries)
+    echo ""
+    echo "Installing main packages via conda-forge..."
+    conda install -c conda-forge numpy pandas scipy xarray matplotlib seaborn \
+        cmocean cartopy geopandas shapely scikit-learn statsmodels netCDF4 \
+        h5py pyarrow requests tqdm -y
+    
+    # Install numba and llvmlite via conda (avoid build issues)
+    echo ""
+    echo "Installing numba and llvmlite..."
+    conda install -c conda-forge numba llvmlite -y
+    
+    # Install remaining packages via pip
+    echo ""
+    echo "Installing specialized packages via pip..."
+    pip install lorenz-phase-space reval --no-build-isolation
     
     echo ""
     echo "✅ Environment created and packages installed!"

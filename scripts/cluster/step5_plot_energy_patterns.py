@@ -2,6 +2,9 @@
 
 This script visualizes the cluster centroids as energy patterns using
 the lorenz-phase-space package to create Lorenz Energy Cycle diagrams.
+
+Now plots sequential phase trajectories for each cluster showing how
+energy patterns evolve through: Incipient → Intensification → Mature → Decay
 """
 
 from __future__ import annotations
@@ -13,7 +16,6 @@ import warnings
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 
 # Ensure project root is importable
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -38,10 +40,6 @@ DPI = 300
 # Lorenz cycle settings
 USE_LORENZ_PACKAGE = True  # Try to use lorenz-phase-space package
 USE_ZOOM = True  # Use zoom in Lorenz Phase Space diagrams
-FIGSIZE_PER_CLUSTER = (8, 8)  # Size for each Lorenz diagram
-
-# Cluster colors (will be generated automatically if None)
-CLUSTER_COLORS = None  # e.g., ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728']
 
 # ============================================================================
 
@@ -91,256 +89,131 @@ def load_clustering_results(results_dir: Path, prefix: str) -> tuple:
     return df_clustered, centroids_energy, centroids_pc, summary
 
 
-def plot_lorenz_cycle_simple(centroids: pd.DataFrame, cluster_id: int, 
-                            ax: plt.Axes, color: str = None):
-    """Plot a simple Lorenz Energy Cycle diagram.
-    
-    This is a simplified version without the full lorenz-phase-space package.
-    Shows energy reservoirs (Ae, Ke) and conversion terms as arrows.
-    
-    Args:
-        centroids: DataFrame with centroid values
-        cluster_id: Cluster ID to plot
-        ax: Matplotlib axes
-        color: Color for the diagram
-    """
-    if color is None:
-        color = 'steelblue'
-    
-    # Get centroid values
-    centroid = centroids[centroids['cluster'] == cluster_id].iloc[0]
-    
-    # Energy reservoirs
-    Ae = centroid.get('Ae', 0)
-    Ke = centroid.get('Ke', 0)
-    
-    # Conversion terms
-    Ca = centroid.get('Ca', 0)
-    Ce = centroid.get('Ce', 0)
-    Ck = centroid.get('Ck', 0)
-    
-    # Boundary terms
-    BAe = centroid.get('BAe', 0)
-    BKe = centroid.get('BKe', 0)
-    
-    # Generation term
-    Ge = centroid.get('Ge', 0)
-    
-    # Residual
-    RKe = centroid.get('RKe', 0)
-    
-    # Box positions (normalized)
-    box_width = 0.15
-    box_height = 0.12
-    
-    # Positions: Ae (left), Ke (right)
-    pos_Ae = (0.25, 0.5)
-    pos_Ke = (0.75, 0.5)
-    
-    # Draw boxes for energy reservoirs
-    ax.add_patch(plt.Rectangle((pos_Ae[0] - box_width/2, pos_Ae[1] - box_height/2),
-                               box_width, box_height, 
-                               facecolor='lightblue', edgecolor=color, linewidth=2))
-    ax.text(pos_Ae[0], pos_Ae[1], f'Ae\n{Ae:.2e}', 
-           ha='center', va='center', fontsize=10, fontweight='bold')
-    
-    ax.add_patch(plt.Rectangle((pos_Ke[0] - box_width/2, pos_Ke[1] - box_height/2),
-                               box_width, box_height,
-                               facecolor='lightcoral', edgecolor=color, linewidth=2))
-    ax.text(pos_Ke[0], pos_Ke[1], f'Ke\n{Ke:.2e}',
-           ha='center', va='center', fontsize=10, fontweight='bold')
-    
-    # Draw arrows for conversion terms
-    arrow_props = dict(arrowstyle='->', lw=2, color=color)
-    
-    # Ck: Ae -> Ke
-    if abs(Ck) > 1e-10:
-        arrow_style = '->' if Ck > 0 else '<-'
-        ax.annotate('', xy=(pos_Ke[0] - box_width/2, pos_Ke[1]), 
-                   xytext=(pos_Ae[0] + box_width/2, pos_Ae[1]),
-                   arrowprops=dict(arrowstyle=arrow_style, lw=abs(Ck)*10+1, color=color, alpha=0.7))
-        ax.text((pos_Ae[0] + pos_Ke[0])/2, pos_Ae[1] + 0.08, 
-               f'Ck: {Ck:.2e}', ha='center', fontsize=8, color=color)
-    
-    # BAe: boundary input to Ae
-    if abs(BAe) > 1e-10:
-        arrow_style = '->' if BAe > 0 else '<-'
-        ax.annotate('', xy=(pos_Ae[0] - box_width/2 - 0.02, pos_Ae[1]),
-                   xytext=(pos_Ae[0] - box_width/2 - 0.15, pos_Ae[1]),
-                   arrowprops=dict(arrowstyle=arrow_style, lw=abs(BAe)*10+1, color='green', alpha=0.7))
-        ax.text(pos_Ae[0] - box_width/2 - 0.08, pos_Ae[1] + 0.08,
-               f'BAe: {BAe:.2e}', ha='center', fontsize=8, color='green')
-    
-    # BKe: boundary input to Ke
-    if abs(BKe) > 1e-10:
-        arrow_style = '->' if BKe > 0 else '<-'
-        ax.annotate('', xy=(pos_Ke[0] + box_width/2 + 0.02, pos_Ke[1]),
-                   xytext=(pos_Ke[0] + box_width/2 + 0.15, pos_Ke[1]),
-                   arrowprops=dict(arrowstyle=arrow_style, lw=abs(BKe)*10+1, color='purple', alpha=0.7))
-        ax.text(pos_Ke[0] + box_width/2 + 0.08, pos_Ke[1] + 0.08,
-               f'BKe: {BKe:.2e}', ha='center', fontsize=8, color='purple')
-    
-    # Ge: generation term (curved arrow at Ae)
-    if abs(Ge) > 1e-10:
-        arrow_style = '->' if Ge > 0 else '<-'
-        ax.annotate('', xy=(pos_Ae[0], pos_Ae[1] - box_height/2 - 0.02),
-                   xytext=(pos_Ae[0] - 0.08, pos_Ae[1] - box_height/2 - 0.08),
-                   arrowprops=dict(arrowstyle=arrow_style, lw=abs(Ge)*10+1, 
-                                 color='orange', alpha=0.7, connectionstyle='arc3,rad=.5'))
-        ax.text(pos_Ae[0], pos_Ae[1] - box_height/2 - 0.12,
-               f'Ge: {Ge:.2e}', ha='center', fontsize=8, color='orange')
-    
-    # RKe: residual (curved arrow at Ke)
-    if abs(RKe) > 1e-10:
-        arrow_style = '->' if RKe > 0 else '<-'
-        ax.annotate('', xy=(pos_Ke[0], pos_Ke[1] + box_height/2 + 0.02),
-                   xytext=(pos_Ke[0] + 0.08, pos_Ke[1] + box_height/2 + 0.08),
-                   arrowprops=dict(arrowstyle=arrow_style, lw=abs(RKe)*10+1,
-                                 color='brown', alpha=0.7, connectionstyle='arc3,rad=-.5'))
-        ax.text(pos_Ke[0], pos_Ke[1] + box_height/2 + 0.12,
-               f'RKe: {RKe:.2e}', ha='center', fontsize=8, color='brown')
-    
-    # Ca, Ce (if available)
-    if 'Ca' in centroid and abs(centroid['Ca']) > 1e-10:
-        ax.text(0.05, 0.95, f'Ca: {centroid["Ca"]:.2e}', 
-               transform=ax.transAxes, fontsize=8, va='top')
-    if 'Ce' in centroid and abs(centroid['Ce']) > 1e-10:
-        ax.text(0.05, 0.90, f'Ce: {centroid["Ce"]:.2e}',
-               transform=ax.transAxes, fontsize=8, va='top')
-    
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    ax.set_aspect('equal')
-    ax.axis('off')
-    ax.set_title(f'Cluster {cluster_id}', fontsize=12, fontweight='bold', color=color)
-
-
 def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
                         output_file: Path, dpi: int = 300,
-                        use_lorenz: bool = True, use_zoom: bool = True, 
-                        cluster_colors: list = None):
-    """Create Lorenz Phase Space diagrams for cluster centroids.
+                        use_lorenz: bool = True, use_zoom: bool = True):
+    """Create Lorenz Phase Space diagrams showing phase trajectories for each cluster.
     
     Args:
-        centroids_energy: DataFrame with centroids in energy space
+        centroids_energy: DataFrame with centroids in energy space (wide format)
         summary: DataFrame with clustering summary
         output_file: Output file path
         dpi: DPI for figure
         use_lorenz: Whether to try using lorenz-phase-space package
         use_zoom: Whether to use zoom in LPS diagrams
-        cluster_colors: List of colors for clusters
     """
     
     if centroids_energy is None:
-        print("    ❌ Cannot create energy patterns: centroids in energy space not available")
-        print("       Make sure step 1 (PCA) was run to save the models.")
+        print("  ❌ Cannot create energy patterns: centroids in energy space not available")
+        print("     Make sure step 1 (PCA) was run to save the models.")
+        return
+    
+    # Try to import lorenz-phase-space package
+    try:
+        from lorenz_phase_space.phase_diagrams import Visualizer
+    except ImportError:
+        print("  ⚠️  lorenz-phase-space not available")
+        print("     Install with: pip install lorenz-phase-space>=1.3.0")
         return
     
     n_clusters = len(centroids_energy)
+    phases = ['inc', 'int', 'mat', 'dec']
+    phase_names = {'inc': 'Incipient', 'int': 'Intensification', 
+                   'mat': 'Mature', 'dec': 'Decay'}
     
-    # Try to use lorenz-phase-space package
-    use_lorenz_pkg = False
-    if use_lorenz:
-        try:
-            from lorenz_phase_space.phase_diagrams import Visualizer
-            use_lorenz_pkg = True
-        except ImportError:
-            print("    ⚠️  lorenz-phase-space not available")
-            return
-    
-    if not use_lorenz_pkg:
-        print("    ❌ lorenz-phase-space package required for energy patterns")
-        return
+    print(f"  Creating LPS diagrams for {n_clusters} clusters...")
+    print(f"  Phases: {' → '.join([phase_names[p] for p in phases])}")
     
     # Create two LPS diagrams: 'mixed' and 'imports'
     lps_types = ['mixed', 'imports']
     
-    for idx, lps_type in enumerate(lps_types):
-        # Initialize Lorenz Phase Space with proper labels and zoom
-        try:
-            lps = Visualizer(LPS_type=lps_type, zoom=use_zoom, 
-                           labels={'size_label': 'Ke', 'color_label': 'Ge'})
-        except (KeyError, TypeError):
-            # Fallback for older versions
-            try:
-                lps = Visualizer(LPS_type=lps_type, zoom=use_zoom)
-            except:
-                print(f"    ❌ Could not create Visualizer for {lps_type}")
-                continue
+    for lps_type in lps_types:
+        print(f"\n  Processing {lps_type.upper()} LPS...")
         
-        ax = lps.ax  # Get the axes from the Visualizer
+        # Extract trajectory data for all clusters
+        all_x_data = []
+        all_y_data = []
+        all_color_data = []
+        all_size_data = []
         
-        # Plot each cluster centroid
         for cluster_id in range(n_clusters):
             centroid = centroids_energy[centroids_energy['cluster'] == cluster_id].iloc[0]
             
-            # Extract energy terms from wide format (aggregate across phases)
-            # Wide format: term_phase (e.g., Ck_inc, Ck_int, Ck_mat, Ck_dec)
-            # We'll use mean across phases for visualization
-            phases = ['inc', 'int', 'mat', 'dec']
+            # Extract sequential phase values
+            x_phase = []
+            y_phase = []
+            color_phase = []
+            size_phase = []
             
-            def get_term_mean(term):
-                """Get mean of term across all phases."""
-                cols = [f"{term}_{phase}" for phase in phases]
-                values = [float(centroid[col]) for col in cols if col in centroid.index]
-                return np.mean(values) if values else 0.0
+            for phase in phases:
+                if lps_type == 'mixed':
+                    x_phase.append(float(centroid[f'Ck_{phase}']))
+                    y_phase.append(float(centroid[f'Ca_{phase}']))
+                elif lps_type == 'imports':
+                    x_phase.append(float(centroid[f'BAe_{phase}']))
+                    y_phase.append(float(centroid[f'BKe_{phase}']))
+                
+                color_phase.append(float(centroid[f'Ge_{phase}']))
+                size_phase.append(float(centroid[f'Ke_{phase}']))
             
-            # Prepare data based on LPS type
-            if lps_type == 'mixed':
-                x_data = [get_term_mean('Ck')]
-                y_data = [get_term_mean('Ca')]
-            elif lps_type == 'imports':
-                x_data = [get_term_mean('BAe')]
-                y_data = [get_term_mean('BKe')]
+            all_x_data.append(x_phase)
+            all_y_data.append(y_phase)
+            all_color_data.append(color_phase)
+            all_size_data.append(size_phase)
+        
+        # Calculate global limits for consistent comparison
+        x_min = min([min(x) for x in all_x_data])
+        x_max = max([max(x) for x in all_x_data])
+        y_min = min([min(y) for y in all_y_data])
+        y_max = max([max(y) for y in all_y_data])
+        color_min = min([min(c) for c in all_color_data])
+        color_max = max([max(c) for c in all_color_data])
+        size_min = min([min(s) for s in all_size_data])
+        size_max = max([max(s) for s in all_size_data])
+        
+        # Create two versions: default and zoom
+        for use_zoom_mode in [False, True]:
+            zoom_suffix = '_zoom' if use_zoom_mode else '_default'
             
-            # Marker color and size
-            marker_color = [get_term_mean('Ge')]
-            marker_size = [get_term_mean('Ke')]
+            if use_zoom_mode:
+                # Use custom limits for zoom mode (better visualization)
+                lps = Visualizer(
+                    LPS_type=lps_type,
+                    zoom=True,
+                    x_limits=[x_min, x_max],
+                    y_limits=[y_min, y_max],
+                    color_limits=[color_min, color_max],
+                    marker_limits=[size_min, size_max]
+                )
+            else:
+                # Use default fixed limits
+                lps = Visualizer(LPS_type=lps_type, zoom=False)
             
-            # Plot data point
-            lps.plot_data(
-                x_axis=x_data,
-                y_axis=y_data,
-                marker_color=marker_color,
-                marker_size=marker_size
-            )
+            ax = lps.ax
             
-            # Add cluster label
-            ax.text(x_data[0], y_data[0], f'  C{cluster_id}', 
-                   fontsize=10, fontweight='bold', 
-                   ha='left', va='center')
-        
-        # Add cluster size info as text
-        info_text = []
-        for cluster_id in range(n_clusters):
-            size_col = f'cluster_{cluster_id}_size'
-            pct_col = f'cluster_{cluster_id}_percentage'
-            if size_col in summary.columns:
-                size = int(summary[size_col].values[0])
-                pct = summary[pct_col].values[0]
-                info_text.append(f'C{cluster_id}: n={size} ({pct:.1f}%)')
-        
-        if info_text:
-            ax.text(0.02, 0.98, '\n'.join(info_text),
-                   transform=ax.transAxes, fontsize=9,
-                   va='top', ha='left',
-                   bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-        
-        # Set subplot title
-        lps_name = 'Mixed Phase Space (Ck vs Ca)' if lps_type == 'mixed' else 'Imports Phase Space (BAe vs BKe)'
-        ax.set_title(f'{lps_name}', fontsize=12, fontweight='bold')
-        
-        # Save individual figure and close before creating next
-        if idx == 0:
-            output_file_mixed = output_file.parent / "lps_mixed.png"
-            plt.savefig(output_file_mixed, dpi=dpi, bbox_inches='tight')
-            print(f"  ✓ Mixed LPS saved: {output_file_mixed.name}")
-        else:
-            output_file_imports = output_file.parent / "lps_imports.png"
-            plt.savefig(output_file_imports, dpi=dpi, bbox_inches='tight')
-            print(f"  ✓ Imports LPS saved: {output_file_imports.name}")
-        
-        plt.close()
+            # Plot each cluster trajectory
+            for cluster_id in range(n_clusters):
+                lps.plot_data(
+                    x_axis=all_x_data[cluster_id],
+                    y_axis=all_y_data[cluster_id],
+                    marker_color=all_color_data[cluster_id],
+                    marker_size=all_size_data[cluster_id],
+                    alpha=0.8
+                )
+            
+            # Set title
+            lps_name = 'Mixed Phase Space (Ck vs Ca)' if lps_type == 'mixed' else 'Imports Phase Space (BAe vs BKe)'
+            zoom_label = ' (Zoom)' if use_zoom_mode else ' (Default Limits)'
+            ax.set_title(f'{lps_name}{zoom_label}', fontsize=12, fontweight='bold')
+            
+            # Save figure
+            output_filename = f"lps_{lps_type}{zoom_suffix}.png"
+            output_path = output_file.parent / output_filename
+            plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
+            plt.close()
+            
+            mode_desc = 'zoom' if use_zoom_mode else 'default'
+            print(f"    ✓ {lps_type.capitalize()} LPS ({mode_desc}): {output_filename}")
 
 
 def main():
@@ -367,7 +240,7 @@ def main():
     print("Creating Lorenz Phase Space diagrams...")
     plot_energy_patterns(centroids_energy, summary, output_file,
                         dpi=DPI, use_lorenz=USE_LORENZ_PACKAGE,
-                        use_zoom=USE_ZOOM, cluster_colors=CLUSTER_COLORS)
+                        use_zoom=USE_ZOOM)
     
     print()
     print("=" * 70)
@@ -380,11 +253,16 @@ def main():
     print(f"  - PCA results: {results_dir}/pca_*")
     print(f"  - Optimal k analysis: {results_dir}/optimal_k_*")
     print(f"  - K-Means results: {results_dir}/kmeans_*")
-    print(f"  - LPS diagrams: {figures_dir}/lps_mixed.png, lps_imports.png")
+    print(f"  - LPS diagrams (4 files):")
+    print(f"      • {figures_dir}/lps_mixed_default.png")
+    print(f"      • {figures_dir}/lps_mixed_zoom.png")
+    print(f"      • {figures_dir}/lps_imports_default.png")
+    print(f"      • {figures_dir}/lps_imports_zoom.png")
     print()
     print("Data format: Wide matrix (28 features = 7 terms × 4 phases)")
     print(f"Total clusters: {len(centroids_energy) if centroids_energy is not None else 'N/A'}")
     print(f"Total samples: {len(df_clustered)}")
+    print(f"Phase trajectory: Incipient → Intensification → Mature → Decay")
     print()
     
     return 0

@@ -399,7 +399,7 @@ def plot_by_phase(df: pd.DataFrame, output_dir: Path):
         
         # Create figure with shared title
         fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-        fig.suptitle(f'{phase_name} (n = {n_cyclones})', fontsize=14, fontweight='bold')
+        fig.suptitle(f'{phase_name}', fontsize=14, fontweight='bold')
 
         # Mixed diagram
         im = create_density_diagram(

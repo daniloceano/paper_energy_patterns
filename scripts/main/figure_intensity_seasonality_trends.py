@@ -217,34 +217,32 @@ def plot_interannual_trends(ax, df):
     # Add year column
     df['year'] = pd.to_datetime(df['time']).dt.year
     
-    # Calculate annual counts and percentages
+    # Calculate annual counts (absolute occurrences)
     years = sorted(df['year'].unique())
     
     for ep_num, color, label in zip([1, 2, 3], EP_COLORS, EP_NAMES):
         ep_data = df[df['EP'] == ep_num]
         
-        # Annual percentage
-        annual_pct = []
+        # Annual counts (absolute occurrences)
+        annual_counts = []
         for year in years:
-            year_total = len(df[df['year'] == year])
             year_ep = len(ep_data[ep_data['year'] == year])
-            pct = (year_ep / year_total * 100) if year_total > 0 else 0
-            annual_pct.append(pct)
+            annual_counts.append(year_ep)
         
         # Plot line
-        ax.plot(years, annual_pct, marker='o', markersize=4, linewidth=1.5,
+        ax.plot(years, annual_counts, marker='o', markersize=4, linewidth=1.5,
                color=color, label=label, alpha=0.8)
         
         # Mann-Kendall trend analysis
-        if HAS_MANNKENDALL and len(annual_pct) > 3:
+        if HAS_MANNKENDALL and len(annual_counts) > 3:
             try:
                 # Perform Mann-Kendall test
-                result = mk.original_test(annual_pct)
+                result = mk.original_test(annual_counts)
                 p_value = result.p
                 tau = result.Tau
                 
                 # Compute Sen's slope for trend line
-                res = theilslopes(annual_pct, years)
+                res = theilslopes(annual_counts, years)
                 slope = res[0]
                 intercept = res[1]
                 trend_line = slope * np.array(years) + intercept
@@ -274,19 +272,19 @@ def plot_interannual_trends(ax, df):
                 # Add trend annotation
                 mid_year = years[len(years)//2]
                 mid_idx = len(years)//2
-                mid_value = annual_pct[mid_idx]
+                mid_value = annual_counts[mid_idx]
                 ax.text(mid_year, mid_value, trend_symbol, fontsize=14,
                        color=color, fontweight='bold', ha='center',
                        bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
                                 edgecolor=color, alpha=0.8))
                 
-                print(f"{label}: trend={result.trend}, p={p_value:.4f}, Tau={tau:.4f}")
+                print(f"{label}: trend={result.trend}, p={p_value:.4f}, Tau={tau:.4f}, Sen's slope={slope:.4f}")
             
             except Exception as e:
                 print(f"Error computing trend for {label}: {e}")
     
     ax.set_xlabel('Year', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Relative Frequency (%)', fontsize=11, fontweight='bold')
+    ax.set_ylabel('Number of Cyclones', fontsize=11, fontweight='bold')
     ax.set_title('(c) Interannual Variability and Trends', fontsize=12, fontweight='bold', loc='left')
     ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, ncol=3)
     ax.grid(True, alpha=0.3, linestyle='--')

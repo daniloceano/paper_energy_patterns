@@ -9,7 +9,6 @@ Energy Patterns are defined based on the mean conversion from potential to kinet
 ## Pattern Definitions
 
 ### EP1: Strong Barotropic Conversion
-### EP1: Strong Barotropic Conversion
 - **Mean Ck**: -16.48 W/m² (lowest/most negative)
 - **Cluster ID**: 0
 - **Frequency**: 444 cyclones (11.6%)
@@ -50,8 +49,8 @@ Cluster 1  →  EP3 (Weak Barotropic)
 
 For each Energy Pattern, Lorenz Phase Space (LPS) diagrams show all cyclones belonging to that pattern:
 
-### Mixed LPS (Ck vs Ca)
-- Shows the relationship between conversion and generation of available potential energy
+### Conversion LPS (Ck vs Ca)
+- Shows the relationship between baroclinic (Ca) and barotropic (Ck) conversion and generation of available potential energy
 - Default view: Fixed limits for cross-EP comparison
 - Zoom view: Custom limits for detailed EP-specific analysis
 

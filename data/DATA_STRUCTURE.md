@@ -1,17 +1,31 @@
 # Data Structure Documentation
 
-## Cyclone Tracks (`tracks_SAt_filtered_with_periods.csv`)
+## Integrated Tracks and Energetics Dataset
 
-Hourly observations of cyclone positions and characteristics.
+**Source**: Zenodo ([DOI: 10.5281/zenodo.18133432](https://doi.org/10.5281/zenodo.18133432))  
+**File**: `tracks_SAt_filtered_with_energetics.csv`  
+**Format**: Long format - each row is a single UTC time step of a cyclone
 
-### Columns:
+### Dataset Characteristics:
+- **Period**: 1979-2020 (42 years)
+- **Tracking Method**: TRACK algorithm using 850 hPa relative vorticity
+- **Energy Method**: Semi-Lagrangian Lorenz Energy Cycle in 15°×15° storm-following domain
+- **Temporal Resolution**: 
+  - Track data (position, vorticity): 1-hourly
+  - Energy data (LEC terms): 3-hourly (may contain NaN at 1h and 2h marks)
+- **Regions**: ARG (Argentina), LA-PLATA (La Plata basin), SE-BR (Southeast Brazil)
+
+---
+
+## Column Descriptions
+
+### Identification and Location
 - `track_id`: Unique cyclone identifier (format: YYYYNNNN, e.g., 19790097)
-- `date`: Observation timestamp (ISO format)
-- `lon vor`: Longitude of vortex center
-- `lat vor`: Latitude of vortex center
-- `vor42`: Relative vorticity at 850 hPa (units: 10⁻⁵ s⁻¹)
-- `region`: Geographic region (mostly 'ARG' - Argentina/SW Atlantic)
-- `geometry`: Point geometry (WKT format)
+- `date`: UTC timestamp (ISO format)
+- `lon vor`: Longitude of cyclone center (degrees)
+- `lat vor`: Latitude of cyclone center (degrees)
+- `vor42`: Filtered 850 hPa vorticity (×10⁵ s⁻¹, stored as positive values)
+- `region`: Genesis region classification
 - `period`: Life cycle phase (see below)
 
 ### Life Cycle Phases:
@@ -19,20 +33,17 @@ Hourly observations of cyclone positions and characteristics.
 - `intensification`: Growth phase
 - `mature`: Maximum intensity phase
 - `decay`: Weakening phase
-- `residual`: Final dissipation phase
 
-Some cyclones may have secondary phases (e.g., `mature 2`, `decay 2`) indicating cyclone regeneration.
+Phases are determined objectively using CycloPhaser based on vorticity evolution.
 
 ---
 
-## Energy Data (`{track_id}_averages.csv`)
+## Energy Budget Terms
 
-Average energy budget terms for each life cycle phase of a cyclone.
-
-### File Format:
-- One file per cyclone
-- Filename: `{track_id}_averages.csv` (e.g., `19790097_averages.csv`)
-- Each row represents one life cycle phase
+### Availability
+- Available at 3-hourly intervals
+- May contain NaN values at intermediate time steps
+- Computed in semi-Lagrangian (storm-following) framework
 
 ### Energy Budget Terms:
 

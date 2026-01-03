@@ -1,25 +1,55 @@
 # Data Directory
 
-## Input Data (Accessed from GitHub)
+## Input Data (Accessed from Zenodo)
 
 Input data **does not need to be downloaded** - accessed directly via URL:
 
-### 1. Cyclone Tracks
-- **URL**: https://raw.githubusercontent.com/daniloceano/energetic_patterns_cyclones_south_atlantic/refs/heads/master/tracks_SAt_filtered/tracks_SAt_filtered_with_periods.csv
-- **Description**: Complete tracks of filtered cyclones with life cycle period information
-- **Main columns**:
-  - `track_id`: Unique cyclone ID
-  - `date`: Observation date/time
-  - `lon vor`, `lat vor`: Vortex center coordinates
-  - `vor42`: Relative vorticity
-  - `region`: Geographic region
-  - `period`: Life cycle phase (incipient, intensification, mature, decay, residual)
+### Cyclone Tracks and Energetics (Integrated Dataset)
+- **DOI**: [10.5281/zenodo.18133432](https://doi.org/10.5281/zenodo.18133432)
+- **Direct URL**: https://zenodo.org/records/18133432/files/tracks_SAt_filtered_with_energetics.csv
+- **Citation**: de Souza, D., & Gramcianinov, C. (2026). Southwestern Atlantic Cyclone Tracks and Semi-Lagrangian Lorenz Energy Cycle (LEC) diagnostics (1979–2020) [Data set]. Zenodo.
+- **Description**: Complete dataset combining cyclone tracks with semi-Lagrangian Lorenz Energy Cycle diagnostics
+- **Period**: 1979-2020 (42 years)
+- **Format**: Long format CSV (each row = one time step of one cyclone)
+- **Size**: 180.8 MB
+- **Temporal Resolution**:
+  - Track variables (position, vorticity): 1-hourly
+  - Energy variables (LEC terms): 3-hourly
 
-### 2. Energy by Period
-- **Base URL**: https://raw.githubusercontent.com/daniloceano/energetic_patterns_cyclones_south_atlantic/master/csv_database_energy_by_periods/
-- **Format**: `{track_id}_averages.csv` (e.g., `19790001_averages.csv`)
-- **Description**: Averages of energy components for each life cycle phase
-- **Coverage**: All ~6,700 cyclones have corresponding energy files (100% coverage)
+#### Main Columns:
+
+**Identification and Location:**
+  - `track_id`: Unique cyclone identifier (format: YYYYNNNN)
+  - `date`: UTC timestamp
+  - `lon vor`, `lat vor`: Cyclone center coordinates (degrees)
+  - `vor42`: Filtered 850 hPa vorticity (×10⁵ s⁻¹, positive values)
+  - `region`: Genesis region (ARG, LA-PLATA, SE-BR)
+  - `period`: Life cycle phase (incipient, intensification, mature, decay)
+
+**Energy Reservoirs (J m⁻²):**
+  - `Az`, `Ae`, `Kz`, `Ke`
+
+**Conversion Terms (W m⁻²):**
+  - `Cz`, `Ca`, `Ce`, `Ck`
+
+**Boundary Terms (W m⁻²):**
+  - `BAz`, `BAe`, `BKz`, `BKe` (flux terms)
+  - `BΦZ`, `BΦE` (pressure-work terms)
+
+**Generation Terms (W m⁻²):**
+  - `Gz`, `Ge` (diabatic generation)
+
+**Tendencies (W m⁻²):**
+  - `∂Az/∂t`, `∂Ae/∂t`, `∂Kz/∂t`, `∂Ke/∂t`
+
+**Residuals (W m⁻²):**
+  - `RGz`, `RGe`, `RKz`, `RKe`
+
+#### Key Features:
+- **Semi-Lagrangian**: 15°×15° storm-following control volume
+- **Quality Controlled**: Minimum lifetime/displacement thresholds applied
+- **Phase Attribution**: Objective life-cycle segmentation using CycloPhaser
+- **Missing Values**: Some timestamps may contain NaN for energy terms
 
 ## Processed Data (This directory)
 

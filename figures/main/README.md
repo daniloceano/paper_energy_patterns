@@ -5,7 +5,7 @@ This directory contains publication-ready figures for the Energy Patterns manusc
 ## Figures
 
 ### Figure 1: Energy Pattern Characteristics
-**File:** `ep_intensity_seasonality_trends.png` (729 KB)
+**File:** `ep_intensity_seasonality_trends.png` (706 KB)
 
 Three-panel figure combining key characteristics of Energy Patterns:
 
@@ -33,23 +33,135 @@ Three-panel figure combining key characteristics of Energy Patterns:
 #### (c) Interannual Variability and Trends (Bottom - Full Width)
 - **Type**: Time series with Mann-Kendall trend analysis
 - **Period**: 1979-2020 (42 years)
-- **Shows**: Relative frequency (%) of each EP over time with trend lines
+- **Shows**: Absolute number of cyclones per year for each EP with trend lines
 - **Statistical Method**: 
-  - Mann-Kendall test for monotonic trends (α = 0.05)
-  - Sen's slope estimator for trend magnitude
+  - Mann-Kendall test for monotonic trends on absolute counts (α = 0.05)
+  - Sen's slope estimator for trend magnitude (cyclones/year)
   - Solid lines = significant trends (p < 0.05)
   - Dashed lines = non-significant trends
 
 **Trend Results**:
-- **EP1**: No significant trend (p = 0.626, τ = -0.053) → Stable occurrence
-- **EP2**: Significant increasing trend (p = 0.035, τ = 0.228)* → Becoming more frequent
-- **EP3**: Significant decreasing trend (p = 0.044, τ = -0.217)* → Becoming less frequent
+- **EP1**: No significant trend (p = 1.000, τ = 0.000, slope = 0.000) → Stable occurrence
+- **EP2**: Significant increasing trend (p = 0.006, τ = 0.296, slope = 0.172)* → Increasing by ~0.17 cyclones/year
+- **EP3**: No significant trend (p = 0.728, τ = 0.038, slope = 0.000) → Stable occurrence
 
-**Climate Change Implications**: The opposing trends (EP2 increasing, EP3 decreasing) while EP1 remains stable suggest a systematic shift in cyclone energetics over the past 40+ years. The increase in EP2 (moderate baroclinic, high intensity) may indicate:
-- Changes in baroclinic zone strength or position
+**Climate Change Implications**: The significant increase in EP2 cyclones (~7 additional cyclones over 42 years) while EP1 and EP3 remain stable suggests a systematic shift in cyclone energetics. The increase in EP2 (moderate baroclinic, high intensity) may indicate:
+- Enhanced conditions for moderate energy conversion pathways
+- Changes in baroclinic zone strength or position favoring EP2 formation
 - Shifts in available potential energy gradients
-- Potential intensification of individual cyclones despite weaker baroclinic forcing
 - Adaptation to changing large-scale circulation patterns (SAM, ENSO)
+- Note: Using absolute counts is more appropriate than relative frequencies for trend analysis, as it avoids artifacts from inter-annual variability in total cyclone numbers
+
+---
+
+### Figure 3: Phase Space Density (2×2 Layout)
+**File:** `phase_density_2x2.png`
+
+Four-panel figure showing density distributions in Lorenz Phase Space for all Energy Patterns.
+
+#### Panel Layout:
+- **(a) All Cyclones - Conversion Phase Space**: Composite density for entire dataset
+- **(b) All Cyclones - Imports Phase Space**: Composite boundary flux density
+- **(c) Individual EPs - Conversion Phase Space**: Separated by Energy Pattern
+- **(d) Individual EPs - Imports Phase Space**: Separated by Energy Pattern
+
+**Purpose**: Reveals dominant energy pathways and their variability across Energy Patterns.
+
+---
+
+### Figure 4: Case Study - Cyclone 20070643
+**File:** `20070643_lps_track_publication.png`
+
+Three-panel figure showing detailed energetics and trajectory of cyclone 20070643 (maximum vorticity: 15.48 × 10⁻⁵ s⁻¹).
+
+#### Cyclone Details:
+- **Track ID**: 20070643
+- **Genesis**: 2007-07-24 14:00 UTC
+- **Lysis**: 2007-07-29 03:00 UTC
+- **Peak vorticity**: 2007-07-27 02:00 UTC (15.48 × 10⁻⁵ s⁻¹)
+- **Duration**: 109 hours
+
+#### Panel Layout:
+
+**(a) Conversion LPS (Top-Left)**
+- Baroclinic (Ca) and barotropic (Ck) energy conversions
+- X-axis: Ck - Conversion from zonal to eddy KE (W m⁻²)
+- Y-axis: Ca - Conversion from zonal to eddy APE (W m⁻²)
+- Marker color: Ge - Generation of eddy APE (W m⁻²)
+- Marker size: Ke - Eddy Kinetic Energy (J m⁻²)
+
+**(b) Imports LPS (Top-Right)**
+- Energy transport across cyclone boundaries
+- X-axis: BAe - Eddy APE boundary flux (W m⁻²)
+- Y-axis: BKe - Eddy KE boundary flux (W m⁻²)
+- Marker color: Ge (W m⁻²)
+- Marker size: Ke (J m⁻²)
+
+**(c) Track Map (Bottom)**
+- Geographic trajectory with energy and vorticity information
+- Marker color: vor42 - Relative vorticity (10⁻⁵ s⁻¹)
+- Marker size: Ke - Eddy Kinetic Energy (J m⁻²)
+- Temporal resolution: 3-hourly (matching Ke availability)
+- Green circle: Genesis location
+- Red X: Lysis location
+
+**Scientific Insights**: This extreme case demonstrates the energy pathway evolution during rapid intensification, showing the relative importance of baroclinic/barotropic conversions and boundary energy fluxes.
+
+---
+
+### Figure (Deprecated): Three Most Intense Cyclones - LPS and Tracks
+**File:** `three_most_intense_cyclones_lps_tracks.png` (1736 KB)
+
+*Note: This 3×3 composite figure has been superseded by the individual case study (Figure 4) for publication clarity.*
+
+Nine-panel (3×3) figure showing detailed energetics and trajectories of the three most intense cyclones.
+
+#### Cyclones Featured:
+1. **19920472**: Maximum vorticity 15.95 × 10⁻⁵ s⁻¹ (Duration: 232 hours)
+2. **19950629**: Maximum vorticity 15.53 × 10⁻⁵ s⁻¹ (Duration: 179 hours)
+3. **20070643**: Maximum vorticity 15.48 × 10⁻⁵ s⁻¹ (Duration: 109 hours)
+
+#### Panel Layout (each row = one cyclone):
+
+**Column 1 - Mixed Phase Space (Ck vs Ca):**
+- Shows baroclinic (Ca) and barotropic (Ck) energy conversions
+- X-axis: Conversion from zonal to eddy Kinetic Energy (Ck - W m⁻²)
+- Y-axis: Conversion from zonal to eddy Potential Energy (Ca - W m⁻²)
+- Marker color: Generation of eddy APE (Ge - W m⁻²)
+- Marker size: Eddy Kinetic Energy (Ke - J m⁻²)
+- Axes auto-adjusted to data range for optimal visualization
+
+**Column 2 - Imports Phase Space (BAe vs BKe):**
+- Shows energy transport across cyclone boundaries
+- X-axis: Eddy APE boundary flux (BAe - W m⁻²)
+- Y-axis: Eddy KE boundary flux (BKe - W m⁻²)
+- Marker color: Generation of eddy APE (Ge - W m⁻²)
+- Marker size: Eddy Kinetic Energy (Ke - J m⁻²)
+- Axes auto-adjusted to data range
+
+**Column 3 - Cyclone Track:**
+- Map showing complete cyclone trajectory
+- Marker color: Vorticity (vor42 - 10⁻⁵ s⁻¹)
+- Marker size: Eddy Kinetic Energy (Ke - J m⁻²)
+- Green circle: Genesis location
+- Red X: Lysis location
+- Track based on 1-hourly positions
+
+#### Key Features:
+- **Energy data**: 3-hourly resolution from semi-Lagrangian LEC
+- **Trajectories**: Black lines connecting sequential time steps
+- **Color scheme**: 
+  - LPS: RdBu_r colormap for Ge (±30 W m⁻²)
+  - Track: YlOrRd colormap for vorticity
+- **Panel labels**: (a)-(i) in upper right corners
+- **Shared legends**: Ge colorbar and Ke size legend at bottom
+
+#### Scientific Insights:
+These three extreme cases demonstrate:
+- **Energy pathway diversity**: Different combinations of baroclinic/barotropic conversions
+- **Boundary flux importance**: Variable role of energy import/export
+- **Spatial patterns**: Genesis regions and preferred trajectories
+- **Intensity-energy relationship**: How Ke and Ge evolve during extreme intensification
 
 ---
 

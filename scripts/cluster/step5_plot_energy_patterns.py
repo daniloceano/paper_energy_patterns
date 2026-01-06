@@ -37,6 +37,9 @@ FIGURES_DIR = "figures/cluster"
 OUTPUT_FILE_PREFIX = "lps"  # LPS diagrams
 DPI = 300
 
+# Colorbar label font size
+COLORBAR_LABELSIZE = 14
+
 # Lorenz cycle settings
 USE_LORENZ_PACKAGE = True  # Try to use lorenz-phase-space package
 USE_ZOOM = True  # Use zoom in Lorenz Phase Space diagrams
@@ -124,8 +127,8 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
     print(f"  Creating LPS diagrams for {n_clusters} clusters...")
     print(f"  Phases: {' → '.join([phase_names[p] for p in phases])}")
     
-    # Create two LPS diagrams: 'mixed' and 'imports'
-    lps_types = ['mixed', 'imports']
+    # Create two LPS diagrams: 'conversion' and 'imports'
+    lps_types = ['conversion', 'imports']
     
     for lps_type in lps_types:
         print(f"\n  Processing {lps_type.upper()} LPS...")
@@ -146,7 +149,7 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
             size_phase = []
             
             for phase in phases:
-                if lps_type == 'mixed':
+                if lps_type == 'conversion':
                     x_phase.append(float(centroid[f'Ck_{phase}']))
                     y_phase.append(float(centroid[f'Ca_{phase}']))
                 elif lps_type == 'imports':
@@ -176,12 +179,43 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
             zoom_suffix = '_zoom' if use_zoom_mode else '_default'
             
             if use_zoom_mode:
-                # Use custom limits for zoom mode (better visualization)
+                # Adjust limits so that if all values are positive (or negative)
+                # we still show a bit of the opposite sign on the axis.
+                def adjusted_limits(vmin, vmax):
+                    """Return adjusted (vmin_adj, vmax_adj).
+
+                    If vmin > 0 ensure vmin_adj < 0 by adding padding.
+                    If vmax < 0 ensure vmax_adj > 0 by adding padding.
+                    Otherwise add a small padding around the range.
+                    """
+                    # Compute a base padding relative to the range
+                    rng = vmax - vmin
+                    if rng == 0:
+                        # If constant, use absolute value or 1.0 as fallback
+                        pad = abs(vmax) * 0.1 if vmax != 0 else 1.0
+                    else:
+                        pad = max(abs(rng) * 0.1, abs(vmax) * 0.01, abs(vmin) * 0.01)
+
+                    vmin_adj = vmin - pad
+                    vmax_adj = vmax + pad
+
+                    # If all positive, force a small negative range
+                    if vmin > 0 and vmin_adj >= 0:
+                        vmin_adj = -abs(pad)
+                    # If all negative, force a small positive range
+                    if vmax < 0 and vmax_adj <= 0:
+                        vmax_adj = abs(pad)
+
+                    return [vmin_adj, vmax_adj]
+
+                x_limits_adj = adjusted_limits(x_min, x_max)
+                y_limits_adj = adjusted_limits(y_min, y_max)
+
                 lps = Visualizer(
                     LPS_type=lps_type,
                     zoom=True,
-                    x_limits=[x_min, x_max],
-                    y_limits=[y_min, y_max],
+                    x_limits=x_limits_adj,
+                    y_limits=y_limits_adj,
                     color_limits=[color_min, color_max],
                     marker_limits=[size_min, size_max]
                 )
@@ -202,9 +236,31 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
                 )
             
             # Set title
-            lps_name = 'Mixed Phase Space (Ck vs Ca)' if lps_type == 'mixed' else 'Imports Phase Space (BAe vs BKe)'
-            zoom_label = ' (Zoom)' if use_zoom_mode else ' (Default Limits)'
-            ax.set_title(f'{lps_name}{zoom_label}', fontsize=12, fontweight='bold')
+            # lps_name = 'Conversion LPS' if lps_type == 'conversion' else 'Imports LPS'
+            # ax.set_title(f'{lps_name} - Energy Patterns', fontsize=12, fontweight='bold')
+
+            # Try to increase colorbar label font size (support multiple Visualizer versions)
+            try:
+                if hasattr(lps, 'cbar') and lps.cbar is not None:
+                    lps.cbar.ax.yaxis.label.set_size(COLORBAR_LABELSIZE)
+                    lps.cbar.ax.tick_params(labelsize=max(8, COLORBAR_LABELSIZE - 2))
+                    # Reduce padding between colorbar label and ticks
+                    lps.cbar.ax.yaxis.labelpad = 20
+                elif hasattr(lps, 'colorbar') and lps.colorbar is not None:
+                    lps.colorbar.ax.yaxis.label.set_size(COLORBAR_LABELSIZE)
+                    lps.colorbar.ax.tick_params(labelsize=max(8, COLORBAR_LABELSIZE - 2))
+                else:
+                    # Fallback: find axes that contain a ylabel and treat them as colorbar axes
+                    fig = plt.gcf()
+                    for a in fig.axes:
+                        try:
+                            if a.get_ylabel():
+                                a.yaxis.label.set_size(COLORBAR_LABELSIZE)
+                                a.tick_params(labelsize=max(8, COLORBAR_LABELSIZE - 2))
+                        except Exception:
+                            continue
+            except Exception:
+                pass
             
             # Save figure
             output_filename = f"lps_{lps_type}{zoom_suffix}.png"
@@ -254,8 +310,8 @@ def main():
     print(f"  - Optimal k analysis: {results_dir}/optimal_k_*")
     print(f"  - K-Means results: {results_dir}/kmeans_*")
     print(f"  - LPS diagrams (4 files):")
-    print(f"      • {figures_dir}/lps_mixed_default.png")
-    print(f"      • {figures_dir}/lps_mixed_zoom.png")
+    print(f"      • {figures_dir}/lps_conversion_default.png")
+    print(f"      • {figures_dir}/lps_conversion_zoom.png")
     print(f"      • {figures_dir}/lps_imports_default.png")
     print(f"      • {figures_dir}/lps_imports_zoom.png")
     print()

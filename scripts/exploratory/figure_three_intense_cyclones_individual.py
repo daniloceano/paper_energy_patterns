@@ -107,6 +107,9 @@ def prepare_lps_data(track):
     """Prepare data for LPS plotting."""
     # Filter to times with energy data (not NaN)
     energy_track = track.dropna(subset=['Ck', 'Ca', 'BAe', 'BKe', 'Ge', 'Ke']).copy()
+
+    # Slice for data each 6 hours (to reduce overplotting)
+    energy_track = energy_track.iloc[::2].copy()
     
     if len(energy_track) == 0:
         raise ValueError("No valid energy data for this cyclone")
@@ -246,7 +249,7 @@ def plot_track_map(track_id, track, output_dir):
     # Add colorbar for vorticity
     cbar = plt.colorbar(scatter, ax=ax, orientation='horizontal', 
                        pad=0.08, aspect=40, shrink=0.8)
-    cbar.set_label('Vorticity (10$^{-5}$ s$^{-1}$)', 
+    cbar.set_label('Vorticity (-1 $\\times$ 10$^{-5}$ s$^{-1}$)', 
                   fontsize=11, fontweight='bold')
     
     # Add combined legend: size (Ke) entries + genesis/lysis markers in one box

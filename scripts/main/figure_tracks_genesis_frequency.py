@@ -17,6 +17,7 @@ import matplotlib.patches as mpatches
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from matplotlib.patches import Wedge
+from matplotlib.lines import Line2D
 
 # Add scripts directory to path
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -213,18 +214,28 @@ def main():
     # Create figure with two subplots
     fig = plt.figure(figsize=(12, 8))
     
-    # Left subplot: Tracks map (orthographic projection)
-    # Shift view slightly west and south to center more on central Atlantic/southern domain
-    proj = ccrs.Orthographic(central_longitude=-20, central_latitude=-55)
+    # Left subplot: Tracks map with South Polar Stereographic projection
+    # Centered at South Pole (like the figure from "A New Perspective on Southern Hemisphere Storm Tracks")
+    # This projection naturally emphasizes Atlantic and Indian Oceans while minimizing Pacific
+    proj = ccrs.Stereographic(central_latitude=-90, central_longitude=0)
     ax_map = fig.add_subplot(121, projection=proj)
     
-    # Add geographic features
-    ax_map.set_global()
+    # Set extent to show Southern Hemisphere focusing on Atlantic and Indian Oceans
+    # Limiting northern extent to avoid too much white space
+    # Longitude range covers Atlantic (-80 to 60) extending through Indian Ocean
+    ax_map.set_extent([-80, 120, -90, -20], crs=ccrs.PlateCarree())
     ax_map.add_feature(cfeature.LAND, facecolor='lightgray', alpha=0.3)
     ax_map.add_feature(cfeature.OCEAN, facecolor='white')
     ax_map.add_feature(cfeature.COASTLINE, linewidth=0.5, edgecolor='black')
     ax_map.gridlines(linewidth=0.5, linestyle='--', alpha=0.5)
     
+    # Determine top 10 most intense cyclones by maximum vor42 (if available)
+    if 'vor42' in df.columns:
+        top10_ids = df.groupby('track_id')['vor42'].max().nlargest(10).index.tolist()
+        print(f"Top 10 tracks by max vor42: {top10_ids}")
+    else:
+        top10_ids = []
+
     # Plot all tracks by region
     print('Plotting tracks...')
     for region in ['ARG', 'SE-BR', 'LA-PLATA']:
@@ -234,13 +245,18 @@ def main():
         for track_id, track_data in df_region.groupby('track_id'):
             lons = track_data['lon vor'].values
             lats = track_data['lat vor'].values
-            
-            ax_map.plot(lons, lats, 
+            # Highlight top-10 intense tracks
+            is_top = track_id in top10_ids
+            lw = LINEWIDTH * 3 if is_top else LINEWIDTH
+            a = 0.95 if is_top else ALPHA_TRACKS
+            z = 3 if is_top else 1
+
+            ax_map.plot(lons, lats,
                        color=REGION_COLORS[region],
-                       alpha=ALPHA_TRACKS,
-                       linewidth=LINEWIDTH,
+                       alpha=a,
+                       linewidth=lw,
                        transform=ccrs.PlateCarree(),
-                       zorder=1)
+                       zorder=z)
     
     # Add legend for regions
     legend_elements = [
@@ -250,6 +266,11 @@ def main():
     ]
     ax_map.legend(handles=legend_elements, loc='lower left', fontsize=10,
                  frameon=True, fancybox=True, shadow=True)
+    # Add legend entry for highlighted top-10 tracks
+    if len(top10_ids) > 0:
+        top_line = Line2D([0], [0], color='black', lw=LINEWIDTH * 3, label='Top 10 intensity')
+        ax_map.add_artist(ax_map.legend(handles=legend_elements + [top_line], loc='lower left', fontsize=10,
+                                       frameon=True, fancybox=True, shadow=True))
         
     # Right subplot: Sunburst chart
     ax_sun = fig.add_subplot(122)

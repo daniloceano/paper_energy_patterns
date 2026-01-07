@@ -45,6 +45,85 @@ Three-panel figure combining key characteristics of Energy Patterns:
 - **EP2**: Significant increasing trend (p = 0.006, τ = 0.296, slope = 0.172)* → Increasing by ~0.17 cyclones/year
 - **EP3**: No significant trend (p = 0.728, τ = 0.038, slope = 0.000) → Stable occurrence
 
+
+**Methodology — Seasonal Mann–Kendall, Hamed–Rao correction, and Theil–Sen slope**
+
+We test for monotonic trends in the monthly time series of cyclone counts using Mann–Kendall (MK) family tests and estimate trend magnitude with a (seasonal) Theil–Sen estimator. Seasonality and autocorrelation are explicitly considered: the script computes the Seasonal MK where appropriate and applies the Hamed & Rao (1998) variance correction when serial correlation is present.
+
+Key formulas used in the README and implemented in `scripts/main/figure_intensity_seasonality_trends.py`:
+
+- Mann–Kendall S-statistic (non-seasonal):
+
+  $$
+  S = \sum_{i=1}^{n-1} \sum_{j=i+1}^{n} \operatorname{sgn}(x_j - x_i),
+  $$
+
+  where $\operatorname{sgn}(y)=1$ if $y>0$, $0$ if $y=0$, and $-1$ if $y<0$.
+
+- Theil–Sen (Sen's) slope (non-seasonal):
+
+  $$
+  \beta = \mathrm{median}\left\{ \frac{x_j - x_i}{t_j - t_i} : 1 \le i < j \le n \right\},
+  $$
+
+  For seasonal data the script computes slopes within each season (e.g., all Januaries) and combines them (median of seasonal slopes) to obtain a seasonal Theil–Sen estimate. The script reports slopes in counts per year (monthly slope × 12 for monthly data).
+
+- Hamed & Rao (1998) effective sample size correction for autocorrelation:
+
+  Let $r_k$ be the lag-$k$ autocorrelation of the series and $n$ the sample size. Define the effective sample size $n_e$ as
+
+  $$
+  n_e = \frac{n}{1 + 2\sum_{k=1}^{n-1} \left(1 - \frac{k}{n}\right) r_k }.
+  $$
+
+  The MK variance is adjusted by the factor $n/n_e$ (equivalently the variance is inflated to account for positive serial correlation). The adjusted variance is used to compute the $Z$-score for the MK statistic and the associated p-value. The script implements this correction via the `hamed_rao_modification_test` routine in `pymannkendall` when autocorrelation is detected by the Ljung–Box test.
+
+Implementation notes:
+
+- Autocorrelation detection: the script runs the Ljung–Box test across lags 1..10 (or up to available years) and records p-values. If one or more lags have $p<0.05$, the script flags the series as autocorrelated and prefers the Hamed–Rao modification when annotating figures.
+- Tests executed (saved to CSV): `original_test`, `hamed_rao_modification_test`, `yue_wang_modification_test`, `pre_whitening_modification_test`, `trend_free_pre_whitening_modification_test`. The CSV contains the Theil–Sen slope and its 95% CI when available.
+
+References and implementation notes:
+
+- Mann, H. B. (1945). Nonparametric tests against trend. Econometrica.
+- Kendall, M. G. (1975). Rank Correlation Methods. Griffin.
+- Sen, P. K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association.
+- Hamed, K. H., & Rao, A. R. (1998). A modified Mann–Kendall trend test for autocorrelated data. Journal of Hydrology, 204(1-4), 182–196. https://doi.org/10.1016/S0022-1694(97)00125-X
+- Yue, S., Pilon, P., & Cavadias, G. (2002). Power of the Mann–Kendall and Spearman's rho tests for detecting monotonic trends in hydrological series. Journal of Hydrology.
+- Yue, S., & Wang, C. Y. (2004). The influence of serial correlation on the Mann–Kendall test. Water Resources Management.
+
+Reproducibility:
+
+- The code uses the `pymannkendall` package (`seasonal_test` and `seasonal_sens_slope`) to run the SMK and seasonal Theil–Sen estimators. Ensure `pymannkendall` is installed (see `requirements.txt`) before running `scripts/main/figure_intensity_seasonality_trends.py`.
+- The README and script include exact commands and parameters used (monthly aggregation, `period=12`, significance level `alpha=0.05`).
+
+MK Tests and saved results
+
+- This analysis now runs a suite of Mann–Kendall style tests on the annual counts per Energy Pattern (EP):
+  - `original_test` (Original Mann–Kendall)
+  - `hamed_rao_modification_test` (Hamed & Rao, 1998)
+  - `yue_wang_modification_test` (Yue & Wang, 2004)
+  - `pre_whitening_modification_test` (Pre-whitening approach)
+  - `trend_free_pre_whitening_modification_test` (Trend-free pre-whitening)
+
+- Autocorrelation is evaluated with the Ljung–Box test across lags 1..10 (or up to available years). If significant autocorrelation is detected (one or more lags with p<0.05), the script will prefer the Hamed & Rao modification for annotation; otherwise it uses the original MK result. All test results are saved for each EP.
+
+- Output file: `results/exploratory/mk_trend_results.csv`. The file includes a small header describing the contents, and the following columns:
+  - `EP`: Energy Pattern label (EP1, EP2, EP3)
+  - `test`: Name of MK test run
+  - `trend`: trend direction string (increasing/decreasing/no trend)
+  - `p_value`: p-value for the test
+  - `tau`: Kendall's tau (if provided by the test)
+  - `slope_per_year`: Theil–Sen slope (counts per year)
+  - `slope_ci_low`, `slope_ci_high`: lower/upper bounds of Theil–Sen slope (95% CI)
+  - `autocorr_pvalues`: dict-string of Ljung–Box p-values per lag
+  - `significant_lags`: list-string of lags where autocorrelation p<0.05
+  - `chosen`: boolean indicating which test was selected for annotation (Hamed-Rao when autocorr present, otherwise original)
+  - `years_range`: data years covered
+  - `created`: timestamp of the record
+
+Use this CSV for traceability and further inspection.
+
 **Climate Change Implications**: The significant increase in EP2 cyclones (~7 additional cyclones over 42 years) while EP1 and EP3 remain stable suggests a systematic shift in cyclone energetics. The increase in EP2 (moderate baroclinic, high intensity) may indicate:
 - Enhanced conditions for moderate energy conversion pathways
 - Changes in baroclinic zone strength or position favoring EP2 formation
@@ -106,62 +185,6 @@ Three-panel figure showing detailed energetics and trajectory of cyclone 2007064
 - Red X: Lysis location
 
 **Scientific Insights**: This extreme case demonstrates the energy pathway evolution during rapid intensification, showing the relative importance of baroclinic/barotropic conversions and boundary energy fluxes.
-
----
-
-### Figure (Deprecated): Three Most Intense Cyclones - LPS and Tracks
-**File:** `three_most_intense_cyclones_lps_tracks.png` (1736 KB)
-
-*Note: This 3×3 composite figure has been superseded by the individual case study (Figure 4) for publication clarity.*
-
-Nine-panel (3×3) figure showing detailed energetics and trajectories of the three most intense cyclones.
-
-#### Cyclones Featured:
-1. **19920472**: Maximum vorticity 15.95 × 10⁻⁵ s⁻¹ (Duration: 232 hours)
-2. **19950629**: Maximum vorticity 15.53 × 10⁻⁵ s⁻¹ (Duration: 179 hours)
-3. **20070643**: Maximum vorticity 15.48 × 10⁻⁵ s⁻¹ (Duration: 109 hours)
-
-#### Panel Layout (each row = one cyclone):
-
-**Column 1 - Mixed Phase Space (Ck vs Ca):**
-- Shows baroclinic (Ca) and barotropic (Ck) energy conversions
-- X-axis: Conversion from zonal to eddy Kinetic Energy (Ck - W m⁻²)
-- Y-axis: Conversion from zonal to eddy Potential Energy (Ca - W m⁻²)
-- Marker color: Generation of eddy APE (Ge - W m⁻²)
-- Marker size: Eddy Kinetic Energy (Ke - J m⁻²)
-- Axes auto-adjusted to data range for optimal visualization
-
-**Column 2 - Imports Phase Space (BAe vs BKe):**
-- Shows energy transport across cyclone boundaries
-- X-axis: Eddy APE boundary flux (BAe - W m⁻²)
-- Y-axis: Eddy KE boundary flux (BKe - W m⁻²)
-- Marker color: Generation of eddy APE (Ge - W m⁻²)
-- Marker size: Eddy Kinetic Energy (Ke - J m⁻²)
-- Axes auto-adjusted to data range
-
-**Column 3 - Cyclone Track:**
-- Map showing complete cyclone trajectory
-- Marker color: Vorticity (vor42 - 10⁻⁵ s⁻¹)
-- Marker size: Eddy Kinetic Energy (Ke - J m⁻²)
-- Green circle: Genesis location
-- Red X: Lysis location
-- Track based on 1-hourly positions
-
-#### Key Features:
-- **Energy data**: 3-hourly resolution from semi-Lagrangian LEC
-- **Trajectories**: Black lines connecting sequential time steps
-- **Color scheme**: 
-  - LPS: RdBu_r colormap for Ge (±30 W m⁻²)
-  - Track: YlOrRd colormap for vorticity
-- **Panel labels**: (a)-(i) in upper right corners
-- **Shared legends**: Ge colorbar and Ke size legend at bottom
-
-#### Scientific Insights:
-These three extreme cases demonstrate:
-- **Energy pathway diversity**: Different combinations of baroclinic/barotropic conversions
-- **Boundary flux importance**: Variable role of energy import/export
-- **Spatial patterns**: Genesis regions and preferred trajectories
-- **Intensity-energy relationship**: How Ke and Ge evolve during extreme intensification
 
 ---
 
@@ -228,18 +251,6 @@ Following **Hoskins and Hodges (2005)**, cyclone genesis density is computed usi
 - EP3 dominates absolute density (23.65 cyclones/10⁶ km²/year) - most frequent
 - EP2 has intermediate density (6.86)
 - EP1 has lowest density (3.85) but highest per-cyclone concentration
-- Geographic preferences suggest different formation mechanisms:
-  - **EP1**: Strong baroclinic forcing near coastline/orography
-  - **EP2**: Moderate conditions in transitional zone
-  - **EP3**: Diverse conditions allowing genesis over broader area
-
-**Oceanographic Context**:
-The primary genesis region corresponds to:
-- **Brazil-Malvinas Confluence**: Strong SST gradients
-- **Lee of Andes**: Orographic effects, downstream development
-- **Upper-level jet stream**: Baroclinic zone position
-- **Low-level baroclinicity**: Continental-oceanic temperature contrasts
-
 ---
 
 ## Scripts

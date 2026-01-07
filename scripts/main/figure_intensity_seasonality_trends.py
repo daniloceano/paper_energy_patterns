@@ -3,13 +3,25 @@
 """
 Figure: Intensity, Seasonality, and Interannual Trends by Energy Pattern
 
-This script creates a publication-ready figure combining:
-- Top-left: Violin plot of maximum intensity by EP
-- Top-right: Seasonal bar chart for each EP
-- Bottom: Interannual variability with Mann-Kendall trends (full width)
+This script creates a three-panel publication-ready figure combining:
+  (a) Violin plot of maximum cyclone intensity (vorticity) per Energy Pattern
+  (b) Seasonal distribution (% of cyclones per season) for each EP
+  (c) Interannual time series (1979–2020) with Mann–Kendall trend analysis
+
+Trend analysis methodology:
+  • Annual cyclone counts per EP (42 years: 1979–2020)
+  • Autocorrelation detection via Ljung–Box test (lags 1..10)
+  • Mann–Kendall family tests: original, Hamed–Rao, Yue–Wang, pre-whitening variants
+  • Theil–Sen slope estimator with 95% confidence intervals
+  • When autocorrelation is detected (any lag p<0.05), Hamed–Rao modification is used for annotation
+  • All test results saved to results/exploratory/mk_trend_results.csv
+
+Outputs:
+  • Figure: figures/main/ep_intensity_seasonality_trends.png (300 DPI)
+  • CSV: results/exploratory/mk_trend_results.csv (all MK test results with slope, CI, autocorr info)
 
 Author: Danilo Couto de Souza
-Date: December 2024
+Date: December 2024 / Updated January 2025
 """
 
 import numpy as np
@@ -315,7 +327,14 @@ def plot_interannual_trends(ax, df):
         mid_value = annual_counts[mid_idx]
         ax.text(mid_year, mid_value, trend_symbol, fontsize=14, color=color, fontweight='bold', ha='center', bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=color, alpha=0.8))
 
-        print(f"{label}: chosen test={chosen_test_name}, trend={chosen_trend}, p={chosen_p}, Sen's slope={slope:.4f} (per year), significant_lags={significant_lags}")
+        # Print summary for this EP
+        autocorr_status = "YES (lags: " + str(significant_lags) + ")" if has_autocorr else "NO"
+        print(f"  {label}:")
+        print(f"    • Autocorrelation detected: {autocorr_status}")
+        print(f"    • Test used for annotation: {chosen_test_name}")
+        print(f"    • Trend: {chosen_trend} (p={chosen_p:.5f}, tau={chosen_row['tau']:.4f})") 
+        print(f"    • Theil–Sen slope: {slope:.4f} cyclones/year (95% CI: [{slope_ci_low:.4f}, {slope_ci_high:.4f}])")
+        print(f"    • All {len(tests)} test results saved to CSV.")
 
     ax.set_xlabel('Year', fontsize=11, fontweight='bold')
     ax.set_ylabel('Number of Cyclones', fontsize=11, fontweight='bold')
@@ -336,16 +355,23 @@ def create_figure():
     ax3 = fig.add_subplot(gs[1, :])
 
     print("\n" + "="*60)
-    print("Generating intensity violin plot...")
+    print("Panel (a): Intensity violin plot")
+    print("="*60)
     plot_intensity_violin(ax1, df)
+    print("  ✓ Violin plot complete.")
 
     print("\n" + "="*60)
-    print("Generating seasonality bar chart...")
+    print("Panel (b): Seasonal distribution bars")
+    print("="*60)
     plot_seasonality_bars(ax2, df)
+    print("  ✓ Seasonality bars complete.")
 
     print("\n" + "="*60)
-    print("Generating interannual trends...")
+    print("Panel (c): Interannual trends with Mann–Kendall analysis")
+    print("="*60)
+    print("Running autocorrelation checks and MK tests for each EP...\n")
     plot_interannual_trends(ax3, df)
+    print("\n  ✓ Trend analysis complete.")
 
     output_file = FIGURES_DIR / 'ep_intensity_seasonality_trends.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')

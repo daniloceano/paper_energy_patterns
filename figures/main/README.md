@@ -46,69 +46,61 @@ Three-panel figure combining key characteristics of Energy Patterns:
 - **EP3**: No significant trend (p = 0.728, τ = 0.038, slope = 0.000) → Stable occurrence
 
 
-**Methodology — Seasonal Mann–Kendall, Hamed–Rao correction, and Theil–Sen slope**
+**Methodology — Mann–Kendall with Hamed–Rao correction and Theil–Sen slope**
 
-We test for monotonic trends in the monthly time series of cyclone counts using Mann–Kendall (MK) family tests and estimate trend magnitude with a (seasonal) Theil–Sen estimator. Seasonality and autocorrelation are explicitly considered: the script computes the Seasonal MK where appropriate and applies the Hamed & Rao (1998) variance correction when serial correlation is present.
+We test for monotonic trends in the **annual time series** of cyclone counts (one value per year, 1979–2020) using the Mann–Kendall (MK) family of tests and estimate trend magnitude with the Theil–Sen slope estimator. Autocorrelation is explicitly checked using the Ljung–Box test across multiple lags; when significant serial correlation is detected, we apply the Hamed & Rao (1998) variance correction.
 
-Key formulas used in the README and implemented in `scripts/main/figure_intensity_seasonality_trends.py`:
+**Key formulas** (implemented in `scripts/main/figure_intensity_seasonality_trends.py`):
 
-- Mann–Kendall S-statistic (non-seasonal):
+1. **Mann–Kendall S-statistic**:
 
-  $$
-  S = \sum_{i=1}^{n-1} \sum_{j=i+1}^{n} \operatorname{sgn}(x_j - x_i),
-  $$
+   $$
+   S = \sum_{i=1}^{n-1} \sum_{j=i+1}^{n} \operatorname{sgn}(x_j - x_i),
+   $$
 
-  where $\operatorname{sgn}(y)=1$ if $y>0$, $0$ if $y=0$, and $-1$ if $y<0$.
+   where $\operatorname{sgn}(y)=1$ if $y>0$, $=0$ if $y=0$, and $=-1$ if $y<0$. Under the null hypothesis of no trend, $S$ is approximately normally distributed for large $n$ with mean 0 and variance $\mathrm{Var}(S)$.
 
-- Theil–Sen (Sen's) slope (non-seasonal):
+2. **Theil–Sen slope estimator**:
 
-  $$
-  \beta = \mathrm{median}\left\{ \frac{x_j - x_i}{t_j - t_i} : 1 \le i < j \le n \right\},
-  $$
+   $$
+   \beta = \mathrm{median}\left\{ \frac{x_j - x_i}{t_j - t_i} : 1 \le i < j \le n \right\}.
+   $$
 
-  For seasonal data the script computes slopes within each season (e.g., all Januaries) and combines them (median of seasonal slopes) to obtain a seasonal Theil–Sen estimate. The script reports slopes in counts per year (monthly slope × 12 for monthly data).
+   This is a robust, nonparametric estimate of the linear trend (cyclones per year). Confidence intervals (95% CI) are computed via `scipy.stats.theilslopes`.
 
-- Hamed & Rao (1998) effective sample size correction for autocorrelation:
+3. **Hamed & Rao (1998) effective sample size correction**:
 
-  Let $r_k$ be the lag-$k$ autocorrelation of the series and $n$ the sample size. Define the effective sample size $n_e$ as
+   Let $r_k$ be the lag-$k$ sample autocorrelation and $n$ the sample size. The **effective sample size** is
 
-  $$
-  n_e = \frac{n}{1 + 2\sum_{k=1}^{n-1} \left(1 - \frac{k}{n}\right) r_k }.
-  $$
+   $$
+   n_e = \frac{n}{1 + 2\sum_{k=1}^{n-1} \left(1 - \frac{k}{n}\right) r_k }.
+   $$
 
-  The MK variance is adjusted by the factor $n/n_e$ (equivalently the variance is inflated to account for positive serial correlation). The adjusted variance is used to compute the $Z$-score for the MK statistic and the associated p-value. The script implements this correction via the `hamed_rao_modification_test` routine in `pymannkendall` when autocorrelation is detected by the Ljung–Box test.
+   The MK test variance is then scaled by $n/n_e$ to account for positive serial correlation, yielding a corrected $Z$-statistic and p-value. This correction is implemented in `pymannkendall.hamed_rao_modification_test`.
 
-Implementation notes:
+**Implementation details**:
 
-- Autocorrelation detection: the script runs the Ljung–Box test across lags 1..10 (or up to available years) and records p-values. If one or more lags have $p<0.05$, the script flags the series as autocorrelated and prefers the Hamed–Rao modification when annotating figures.
-- Tests executed (saved to CSV): `original_test`, `hamed_rao_modification_test`, `yue_wang_modification_test`, `pre_whitening_modification_test`, `trend_free_pre_whitening_modification_test`. The CSV contains the Theil–Sen slope and its 95% CI when available.
+- **Data**: Annual cyclone counts per Energy Pattern (EP), 1979–2020 (42 years).
+- **Autocorrelation detection**: Ljung–Box test at lags 1..10 (or up to $n-1$). If **any** lag has $p<0.05$, the series is flagged as autocorrelated.
+- **Test selection**: When autocorrelation is present, the **Hamed–Rao modification** is used for figure annotation; otherwise the **original MK test** is used.
+- **Tests executed** (all saved to CSV): `original_test`, `hamed_rao_modification_test`, `yue_wang_modification_test`, `pre_whitening_modification_test`, `trend_free_pre_whitening_modification_test`. Each test yields a trend direction (increasing/decreasing/no trend), p-value, and Kendall's tau.
+- **Slope & CI**: Computed once per EP using `scipy.stats.theilslopes` on annual counts; reported in cyclones/year with 95% confidence interval.
 
-References and implementation notes:
+**References**:
 
-- Mann, H. B. (1945). Nonparametric tests against trend. Econometrica.
-- Kendall, M. G. (1975). Rank Correlation Methods. Griffin.
-- Sen, P. K. (1968). Estimates of the regression coefficient based on Kendall's tau. Journal of the American Statistical Association.
-- Hamed, K. H., & Rao, A. R. (1998). A modified Mann–Kendall trend test for autocorrelated data. Journal of Hydrology, 204(1-4), 182–196. https://doi.org/10.1016/S0022-1694(97)00125-X
-- Yue, S., Pilon, P., & Cavadias, G. (2002). Power of the Mann–Kendall and Spearman's rho tests for detecting monotonic trends in hydrological series. Journal of Hydrology.
-- Yue, S., & Wang, C. Y. (2004). The influence of serial correlation on the Mann–Kendall test. Water Resources Management.
+- Mann, H. B. (1945). Nonparametric tests against trend. *Econometrica*, 13, 245–259.
+- Kendall, M. G. (1975). *Rank Correlation Methods* (4th ed.). Griffin, London.
+- Sen, P. K. (1968). Estimates of the regression coefficient based on Kendall's tau. *Journal of the American Statistical Association*, 63, 1379–1389.
+- Hamed, K. H., & Rao, A. R. (1998). A modified Mann–Kendall trend test for autocorrelated data. *Journal of Hydrology*, 204(1–4), 182–196. https://doi.org/10.1016/S0022-1694(97)00125-X
+- Yue, S., & Wang, C. (2004). The influence of serial correlation on the Mann–Kendall test for detecting monotonic trends. *Water Resources Management*, 18, 201–218.
 
-Reproducibility:
+**Reproducibility**:
 
-- The code uses the `pymannkendall` package (`seasonal_test` and `seasonal_sens_slope`) to run the SMK and seasonal Theil–Sen estimators. Ensure `pymannkendall` is installed (see `requirements.txt`) before running `scripts/main/figure_intensity_seasonality_trends.py`.
-- The README and script include exact commands and parameters used (monthly aggregation, `period=12`, significance level `alpha=0.05`).
+- Install `pymannkendall` (v1.4+), `scipy`, and `statsmodels` (see `requirements.txt`).
+- Run: `python scripts/main/figure_intensity_seasonality_trends.py`
+- Outputs: `figures/main/ep_intensity_seasonality_trends.png` and `results/exploratory/mk_trend_results.csv`.
 
-MK Tests and saved results
-
-- This analysis now runs a suite of Mann–Kendall style tests on the annual counts per Energy Pattern (EP):
-  - `original_test` (Original Mann–Kendall)
-  - `hamed_rao_modification_test` (Hamed & Rao, 1998)
-  - `yue_wang_modification_test` (Yue & Wang, 2004)
-  - `pre_whitening_modification_test` (Pre-whitening approach)
-  - `trend_free_pre_whitening_modification_test` (Trend-free pre-whitening)
-
-- Autocorrelation is evaluated with the Ljung–Box test across lags 1..10 (or up to available years). If significant autocorrelation is detected (one or more lags with p<0.05), the script will prefer the Hamed & Rao modification for annotation; otherwise it uses the original MK result. All test results are saved for each EP.
-
-- Output file: `results/exploratory/mk_trend_results.csv`. The file includes a small header describing the contents, and the following columns:
+**Output file structure** (`results/exploratory/mk_trend_results.csv`):
   - `EP`: Energy Pattern label (EP1, EP2, EP3)
   - `test`: Name of MK test run
   - `trend`: trend direction string (increasing/decreasing/no trend)

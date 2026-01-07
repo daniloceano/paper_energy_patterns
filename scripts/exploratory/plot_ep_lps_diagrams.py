@@ -9,8 +9,8 @@ Energy Pattern definitions (by mean Ck):
 - EP3: Highest mean Ck (weakest baroclinic conversion)
 
 For each EP, creates 4 diagrams:
-- Mixed LPS (default limits)
-- Mixed LPS (zoom)
+- Conversion LPS (default limits)
+- Conversion LPS (zoom)
 - Imports LPS (default limits)
 - Imports LPS (zoom)
 """
@@ -146,7 +146,7 @@ def plot_lps_for_ep(df_ep: pd.DataFrame, ep_id: int, output_dir: Path, dpi: int 
     print(f"  Phases: {' → '.join([phase_names[p] for p in phases])}")
     
     # Create diagrams for both LPS types
-    lps_types = ['mixed', 'imports']
+    lps_types = ['conversion', 'imports']
     
     for lps_type in lps_types:
         print(f"\n    Processing {lps_type.upper()} LPS...")
@@ -165,7 +165,7 @@ def plot_lps_for_ep(df_ep: pd.DataFrame, ep_id: int, output_dir: Path, dpi: int 
             size_phase = []
             
             for phase in phases:
-                if lps_type == 'mixed':
+                if lps_type == 'conversion':
                     x_phase.append(float(row[f'Ck_{phase}']))
                     y_phase.append(float(row[f'Ca_{phase}']))
                 elif lps_type == 'imports':
@@ -221,7 +221,7 @@ def plot_lps_for_ep(df_ep: pd.DataFrame, ep_id: int, output_dir: Path, dpi: int 
                 )
             
             # Set title
-            lps_name = 'Mixed Phase Space (Ck vs Ca)' if lps_type == 'mixed' else 'Imports Phase Space (BAe vs BKe)'
+            lps_name = 'Conversion Phase Space (Ck vs Ca)' if lps_type == 'conversion' else 'Imports Phase Space (BAe vs BKe)'
             zoom_label = ' (Zoom)' if use_zoom_mode else ' (Default)'
             ax.set_title(
                 f'EP{ep_id} - {lps_name}{zoom_label}\n{n_cyclones} cyclones',
@@ -288,8 +288,8 @@ def main():
     print()
     print("Generated figures (12 total):")
     print("  For each EP (1, 2, 3):")
-    print("    • Mixed LPS (default):  ep{id}_lps_mixed_default.png")
-    print("    • Mixed LPS (zoom):     ep{id}_lps_mixed_zoom.png")
+    print("    • Conversion LPS (default):  ep{id}_lps_conversion_default.png")
+    print("    • Conversion LPS (zoom):     ep{id}_lps_conversion_zoom.png")
     print("    • Imports LPS (default): ep{id}_lps_imports_default.png")
     print("    • Imports LPS (zoom):    ep{id}_lps_imports_zoom.png")
     print()

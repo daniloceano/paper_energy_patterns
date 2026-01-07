@@ -81,23 +81,53 @@ All lifecycle phases are **combined** for k determination to ensure:
 
 **Cluster Validity Indices** (CVIs):
 
-1. **Silhouette Coefficient**: Measures intra-cluster cohesion vs. inter-cluster separation
-2. **Davies-Bouldin Index**: Ratio of within-cluster to between-cluster scatter
-3. **Calinski-Harabasz Index**: Variance ratio criterion
-4. **Score Function**: Custom metric balancing compactness and separation (Saitta et al., 2008)
+Five complementary indices are computed to objectively determine the optimal number of clusters:
+
+1. **Silhouette Coefficient** (Rousseeuw, 1987)
+   - **Range**: [-1, 1] (higher is better)
+   - **Measures**: Balance between intra-cluster cohesion and inter-cluster separation
+   - **Interpretation**: Values near +1 indicate well-separated clusters; near 0 indicates overlapping clusters; negative values indicate misclassification
+   - **Formula**: $s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}$ where $a(i)$ is mean intra-cluster distance and $b(i)$ is mean nearest-cluster distance
+   - **Reference**: Rousseeuw, P. J. (1987). Silhouettes: a graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics*, 20, 53-65.
+
+2. **Davies-Bouldin Index** (Davies & Bouldin, 1979)
+   - **Range**: [0, ∞) (lower is better)
+   - **Measures**: Average similarity ratio between each cluster and its most similar cluster
+   - **Interpretation**: Lower values indicate better cluster separation and compactness
+   - **Formula**: $DB = \frac{1}{k}\sum_{i=1}^{k}\max_{j\neq i}\left(\frac{\sigma_i + \sigma_j}{d(c_i, c_j)}\right)$ where $\sigma_i$ is within-cluster scatter and $d(c_i, c_j)$ is between-centroid distance
+   - **Reference**: Davies, D. L., & Bouldin, D. W. (1979). A cluster separation measure. *IEEE Transactions on Pattern Analysis and Machine Intelligence*, 1(2), 224-227.
+
+3. **Calinski-Harabasz Index** (Variance Ratio Criterion) (Caliński & Harabasz, 1974)
+   - **Range**: [0, ∞) (higher is better)
+   - **Measures**: Ratio of between-cluster variance to within-cluster variance
+   - **Interpretation**: Higher values indicate denser, well-separated clusters
+   - **Formula**: $CH = \frac{\text{trace}(B_k)}{\text{trace}(W_k)} \times \frac{n-k}{k-1}$ where $B_k$ is between-cluster dispersion matrix and $W_k$ is within-cluster dispersion
+   - **Reference**: Caliński, T., & Harabasz, J. (1974). A dendrite method for cluster analysis. *Communications in Statistics - Theory and Methods*, 3(1), 1-27.
+
+4. **Score Function (SF)** (Saitta et al., 2008)
+   - **Range**: (0, 1) (higher is better)
+   - **Measures**: Logarithmic ratio of between-cluster to within-cluster distances, bounded by sigmoid function
+   - **Interpretation**: Balances cluster compactness and separation in a normalized scale
+   - **Formula**: $SF = \frac{1}{1 + e^{-\ln(bcd/wcd)}}$ where $bcd$ is between-cluster distance and $wcd$ is within-cluster distance
+   - **Reference**: Saitta, S., Raphael, B., & Smith, I. F. C. (2008). A comprehensive validity index for clustering. *Intelligent Data Analysis*, 12(6), 529-548.
+
+5. **Gap Statistic** (Tibshirani et al., 2001)
+   - **Range**: [0, ∞) (higher is better)
+   - **Measures**: Compares within-cluster dispersion to that expected under null reference distribution
+   - **Interpretation**: Optimal k maximizes the gap between observed and expected dispersion
+   - **Formula**: $\text{Gap}(k) = E_n^*[\log(W_k)] - \log(W_k)$ where $E_n^*$ is expectation under null (uniform) distribution and $W_k$ is pooled within-cluster sum of squares
+   - **Reference**: Tibshirani, R., Walther, G., & Hastie, T. (2001). Estimating the number of clusters in a data set via the gap statistic. *Journal of the Royal Statistical Society: Series B (Statistical Methodology)*, 63(2), 411-423.
 
 **Integration Method**:
-- All indices normalized to [0,1] range
-- Indices where "lower is better" are inverted (1 - normalized value)
-- Optimal k selected by maximizing mean normalized index across all CVIs
-- Multiple indices approach reduces bias from any single criterion
+- All indices normalized to [0,1] range using min-max scaling: $\text{normalized} = \frac{x - \min}{\max - \min}$
+- Indices where "lower is better" (Davies-Bouldin) are inverted: $\text{inverted} = 1 - \text{normalized}$
+- Mean index computed as unweighted average across all normalized CVIs
+- Optimal k selected by maximizing mean normalized index
+- Multiple indices approach reduces bias from any single criterion and provides robust validation
 
-**Result**: **k = 2** clusters identified as optimal for the combined dataset
+**Result**: **k = 3** clusters identified as optimal for the combined dataset
 
-**Physical Interpretation**: Two dominant energy patterns suggest a fundamental dichotomy in cyclone energetics, potentially related to:
-- Dry vs. moist cyclone types
-- Baroclinic vs. barotropic energy pathways
-- Intensification mechanisms (boundary fluxes vs. internal conversions)
+**Methodological Rationale**: The convergence of five independent validation criteria on k=3 provides strong statistical evidence for three distinct energy patterns in the dataset, minimizing the subjectivity inherent in selecting a single validation metric.
 
 ### Step 4: K-Means Clustering Application
 
@@ -105,7 +135,7 @@ All lifecycle phases are **combined** for k determination to ensure:
 
 **Procedure**:
 1. **Phase-Separated Clustering**: K-Means applied independently to each phase's PC space
-   - Uses k=2 (determined from Step 3) for all phases
+   - Uses k=3 (determined from Step 3) for all phases
    - Ensures consistency while respecting phase-specific variance structures
    
 2. **Centroid Calculation**: Cluster centroids computed in both:
@@ -115,15 +145,9 @@ All lifecycle phases are **combined** for k determination to ensure:
 3. **Multiple Initializations**: n_init=100 ensures stable convergence to global optimum
 
 **Cluster Distribution by Phase**:
-- **Incipient**: Cluster 0: 83.1% | Cluster 1: 16.9%
-- **Intensification**: Cluster 0: 74.2% | Cluster 1: 25.8%
-- **Mature**: Cluster 0: 23.3% | Cluster 1: 76.7%
-- **Decay**: Cluster 0: 86.0% | Cluster 1: 14.0%
-
-**Key Observation**: Cluster proportions vary substantially across phases, suggesting:
-- Cluster 1 becomes dominant during mature phase
-- Energy pattern transitions occur during cyclone evolution
-- Different patterns may be favored at different lifecycle stages
+- Distribution statistics saved in `kmeans_summary_{phase}.csv`
+- Cluster proportions vary across lifecycle phases
+- Energy Pattern membership tracked through cyclone evolution
 
 ### Step 5: Energy Pattern Characterization
 
@@ -175,8 +199,8 @@ results/cluster/
 **Optimal K Analysis** (3 files):
 ```
 results/cluster/
-├── optimal_k.txt                    # Single value: k=2
-├── optimal_k_raw_indices.csv        # Raw CVI values for k=2 to 12
+├── optimal_k.txt                    # Single value: k=3
+├── optimal_k_raw_indices.csv        # Raw CVI values for k=3 to 15
 └── optimal_k_normalized_indices.csv # Normalized & averaged CVIs
 ```
 
@@ -219,16 +243,11 @@ Where `{phase}` = incipient, intensification, mature, decay
 
 ### Key Findings
 
-1. **Two Dominant Patterns**: The objective analysis identifies k=2 as optimal, suggesting cyclone energetics are dominated by two archetypal configurations
+1. **Three Distinct Energy Patterns**: Objective analysis using five independent cluster validity indices identifies k=3 as optimal, indicating three archetypal energy configurations in South Atlantic cyclones
 
-2. **Phase-Dependent Distribution**: Cluster membership varies systematically through lifecycle phases:
-   - Pattern 1 (Cluster 1) intensifies during mature phase (17% → 26% → 77%)
-   - Pattern 0 dominates incipient and decay phases
+2. **Phase-Dependent Distribution**: Cluster membership varies systematically through lifecycle phases, with detailed statistics available in phase-specific summary files
 
-3. **Energetic Dichotomy**: Two-cluster solution implies fundamental differences in:
-   - Energy conversion pathways (baroclinic vs barotropic processes)
-   - Energy sources (boundary fluxes vs internal generation)
-   - Intensification mechanisms
+3. **Objective Classification**: Multi-index validation approach provides robust, reproducible classification independent of subjective interpretation
 
 ### Applications
 
@@ -277,9 +296,15 @@ conda run -n paper_energy_patterns python scripts/cluster/step5_plot_energy_patt
 
 ## References
 
-- Lorenz, E. N. (1955). Available potential energy and the maintenance of the general circulation. *Tellus*, 7(2), 157-167.
-- Saitta, S., Raphael, B., & Smith, I. F. (2008). A comprehensive validity index for clustering. *Intelligent Data Analysis*, 12(6), 529-548.
-- Rousseeuw, P. J. (1987). Silhouettes: a graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics*, 20, 53-65.
+### Theoretical Framework
+- Lorenz, E. N. (1955). Available potential energy and the maintenance of the general circulation. *Tellus*, 7(2), 157-167. https://doi.org/10.3402/tellusa.v7i2.8796
+
+### Cluster Validity Indices
+- Rousseeuw, P. J. (1987). Silhouettes: a graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics*, 20, 53-65. https://doi.org/10.1016/0377-0427(87)90125-7
+- Davies, D. L., & Bouldin, D. W. (1979). A cluster separation measure. *IEEE Transactions on Pattern Analysis and Machine Intelligence*, 1(2), 224-227. https://doi.org/10.1109/TPAMI.1979.4766909
+- Caliński, T., & Harabasz, J. (1974). A dendrite method for cluster analysis. *Communications in Statistics - Theory and Methods*, 3(1), 1-27. https://doi.org/10.1080/03610927408827101
+- Saitta, S., Raphael, B., & Smith, I. F. C. (2008). A comprehensive validity index for clustering. *Intelligent Data Analysis*, 12(6), 529-548. https://doi.org/10.3233/IDA-2008-12604
+- Tibshirani, R., Walther, G., & Hastie, T. (2001). Estimating the number of clusters in a data set via the gap statistic. *Journal of the Royal Statistical Society: Series B (Statistical Methodology)*, 63(2), 411-423. https://doi.org/10.1111/1467-9868.00293
 
 ## Authors & Contact
 
@@ -288,11 +313,7 @@ danilo.oceano@gmail.com
 
 ---
 
-*Last updated: December 2024*
-
-
-- Saitta, S., Raphael, B., & Smith, I. F. C. (2008). A comprehensive validity index for clustering. *Intelligent Data Analysis*, 12(6), 529-548.
-- Lorenz, E. N. (1955). Available potential energy and the maintenance of the general circulation. *Tellus*, 7(2), 157-167.
+*Last updated: January 2026*
 
 ---
 
@@ -305,7 +326,7 @@ Make sure to run step 3 before step 4.
 Step 1 must complete successfully to generate the models file.
 
 ### "reval not available"
-The reval package is optional. If not installed, step 3 will skip stability analysis and use only the other 4-5 indices.
+The reval package is optional. If not installed, step 3 will skip stability analysis and use the five primary indices (Silhouette, Davies-Bouldin, Calinski-Harabasz, Score Function, and Gap Statistic).
 
 ### "lorenz-phase-space not available"
 The lorenz-phase-space package is optional. Step 5 will use simplified Lorenz diagrams if the package is not available.

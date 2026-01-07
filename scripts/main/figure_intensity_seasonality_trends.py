@@ -214,31 +214,7 @@ def plot_interannual_trends(ax, df):
 
         ax.plot(years, annual_counts, marker='o', markersize=4, linewidth=1.5, color=color, label=label, alpha=0.8)
 
-        max_lag = min(10, max(1, len(years) - 1))
-        significant_lags = []
-        autocorr_pvalues = {}
-        try:
-            lags = list(range(1, max_lag + 1))
-            lb_multi = acorr_ljungbox(annual_counts, lags=lags, return_df=True)
-            for i, lag in enumerate(lags):
-                pval = float(lb_multi['lb_pvalue'].values[i])
-                autocorr_pvalues[lag] = pval
-                if pval < 0.05:
-                    significant_lags.append(lag)
-        except Exception:
-            autocorr_pvalues = {}
-            significant_lags = []
-
-        has_autocorr = len(significant_lags) > 0
-
-        tests = [
-            ('original_test', getattr(mk, 'original_test', None)),
-            ('hamed_rao_modification_test', getattr(mk, 'hamed_rao_modification_test', None)),
-            ('yue_wang_modification_test', getattr(mk, 'yue_wang_modification_test', None)),
-            ('pre_whitening_modification_test', getattr(mk, 'pre_whitening_modification_test', None)),
-            ('trend_free_pre_whitening_modification_test', getattr(mk, 'trend_free_pre_whitening_modification_test', None)),
-        ]
-
+        # Compute Theil-Sen slope first (needed for detrending)
         try:
             tsl = theilslopes(annual_counts, years)
             slope = float(tsl[0])
@@ -250,6 +226,35 @@ def plot_interannual_trends(ax, df):
             intercept = np.nan
             slope_ci_low = np.nan
             slope_ci_high = np.nan
+
+        # Detrend series using Theil-Sen slope to remove trend before testing autocorrelation
+        years_array = np.array(years)
+        annual_counts_array = np.array(annual_counts)
+        if not np.isnan(slope):
+            trend_line = slope * years_array + intercept
+            detrended = annual_counts_array - trend_line
+        else:
+            detrended = annual_counts_array
+
+        # Test autocorrelation on detrended residuals using Ljung-Box portmanteau test
+        # Use single test at max_lag (not multiple individual tests to avoid multiple comparisons)
+        max_lag = min(10, max(1, len(years) - 1))
+        lb_pvalue = np.nan
+        try:
+            lb_result = acorr_ljungbox(detrended, lags=[max_lag], return_df=True)
+            lb_pvalue = float(lb_result['lb_pvalue'].values[0])
+        except Exception:
+            lb_pvalue = np.nan
+
+        has_autocorr = (not np.isnan(lb_pvalue)) and (lb_pvalue < 0.05)
+
+        tests = [
+            ('original_test', getattr(mk, 'original_test', None)),
+            ('hamed_rao_modification_test', getattr(mk, 'hamed_rao_modification_test', None)),
+            ('yue_wang_modification_test', getattr(mk, 'yue_wang_modification_test', None)),
+            ('pre_whitening_modification_test', getattr(mk, 'pre_whitening_modification_test', None)),
+            ('trend_free_pre_whitening_modification_test', getattr(mk, 'trend_free_pre_whitening_modification_test', None)),
+        ]
 
         results_rows = []
         for test_name, test_func in tests:
@@ -269,8 +274,8 @@ def plot_interannual_trends(ax, df):
                 'slope_per_year': slope,
                 'slope_ci_low': slope_ci_low,
                 'slope_ci_high': slope_ci_high,
-                'autocorr_pvalues': str(autocorr_pvalues),
-                'significant_lags': str(significant_lags),
+                'lb_portmanteau_pvalue': lb_pvalue,
+                'max_lag_tested': max_lag,
                 'chosen': (test_name == 'hamed_rao_modification_test') if has_autocorr else (test_name == 'original_test'),
                 'years_range': f"{min(years)}-{max(years)}",
                 'created': datetime.utcnow().isoformat()
@@ -286,8 +291,8 @@ def plot_interannual_trends(ax, df):
                 f"# Created: {datetime.utcnow().isoformat()} UTC",
                 f"# Description: Mann-Kendall family of tests applied to annual cyclone counts per EP. Each row is a test result for one EP.",
                 f"# Tests included: original_test, hamed_rao_modification_test, yue_wang_modification_test, pre_whitening_modification_test, trend_free_pre_whitening_modification_test",
-                f"# Autocorrelation detection: Ljung-Box test for lags 1..{max_lag}; significant_lags lists lags with p<0.05",
-                "# Columns: EP,test,trend,p_value,tau,slope_per_year,slope_ci_low,slope_ci_high,autocorr_pvalues,significant_lags,chosen,years_range,created",
+                f"# Autocorrelation detection: Ljung-Box portmanteau test at lag h=min(10, n-1) on detrended residuals (Theil-Sen slope removed). Significant if p<0.05.",
+                "# Columns: EP,test,trend,p_value,tau,slope_per_year,slope_ci_low,slope_ci_high,lb_portmanteau_pvalue,max_lag_tested,chosen,years_range,created",
                 "# NOTE: lines starting with '#' are comments."
             ]
             with open(out_csv, 'w') as f:
@@ -328,9 +333,9 @@ def plot_interannual_trends(ax, df):
         ax.text(mid_year, mid_value, trend_symbol, fontsize=14, color=color, fontweight='bold', ha='center', bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=color, alpha=0.8))
 
         # Print summary for this EP
-        autocorr_status = "YES (lags: " + str(significant_lags) + ")" if has_autocorr else "NO"
+        autocorr_status = f"YES (Ljung-Box at lag {max_lag}: p={lb_pvalue:.5f})" if has_autocorr else f"NO (Ljung-Box at lag {max_lag}: p={lb_pvalue:.5f})"
         print(f"  {label}:")
-        print(f"    • Autocorrelation detected: {autocorr_status}")
+        print(f"    • Autocorrelation (detrended residuals): {autocorr_status}")
         print(f"    • Test used for annotation: {chosen_test_name}")
         print(f"    • Trend: {chosen_trend} (p={chosen_p:.5f}, tau={chosen_row['tau']:.4f})") 
         print(f"    • Theil–Sen slope: {slope:.4f} cyclones/year (95% CI: [{slope_ci_low:.4f}, {slope_ci_high:.4f}])")

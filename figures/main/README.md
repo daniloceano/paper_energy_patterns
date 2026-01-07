@@ -48,7 +48,7 @@ Three-panel figure combining key characteristics of Energy Patterns:
 
 **Methodology — Mann–Kendall with Hamed–Rao correction and Theil–Sen slope**
 
-We test for monotonic trends in the **annual time series** of cyclone counts (one value per year, 1979–2020) using the Mann–Kendall (MK) family of tests and estimate trend magnitude with the Theil–Sen slope estimator. Autocorrelation is explicitly checked using the Ljung–Box test across multiple lags; when significant serial correlation is detected, we apply the Hamed & Rao (1998) variance correction.
+We test for monotonic trends in the **annual time series** of cyclone counts (one value per year, 1979–2020) using the Mann–Kendall (MK) family of tests and estimate trend magnitude with the Theil–Sen slope estimator. Autocorrelation is explicitly assessed on **detrended residuals** (after removing the Theil–Sen linear trend) using a single **Ljung–Box portmanteau test**; when significant serial correlation is detected (p < 0.05), we apply the Hamed & Rao (1998) variance correction.
 
 **Key formulas** (implemented in `scripts/main/figure_intensity_seasonality_trends.py`):
 
@@ -81,7 +81,8 @@ We test for monotonic trends in the **annual time series** of cyclone counts (on
 **Implementation details**:
 
 - **Data**: Annual cyclone counts per Energy Pattern (EP), 1979–2020 (42 years).
-- **Autocorrelation detection**: Ljung–Box test at lags 1..10 (or up to $n-1$). If **any** lag has $p<0.05$, the series is flagged as autocorrelated.
+- **Detrending**: Before testing for autocorrelation, the linear trend (estimated via Theil–Sen slope) is removed from the series to obtain residuals.
+- **Autocorrelation detection**: Single **Ljung–Box portmanteau test** at lag $h = \min(10, n-1)$ applied to the detrended residuals. The series is flagged as autocorrelated if $p < 0.05$. This avoids the multiple comparison problem inherent in testing individual lags separately.
 - **Test selection**: When autocorrelation is present, the **Hamed–Rao modification** is used for figure annotation; otherwise the **original MK test** is used.
 - **Tests executed** (all saved to CSV): `original_test`, `hamed_rao_modification_test`, `yue_wang_modification_test`, `pre_whitening_modification_test`, `trend_free_pre_whitening_modification_test`. Each test yields a trend direction (increasing/decreasing/no trend), p-value, and Kendall's tau.
 - **Slope & CI**: Computed once per EP using `scipy.stats.theilslopes` on annual counts; reported in cyclones/year with 95% confidence interval.
@@ -108,8 +109,8 @@ We test for monotonic trends in the **annual time series** of cyclone counts (on
   - `tau`: Kendall's tau (if provided by the test)
   - `slope_per_year`: Theil–Sen slope (counts per year)
   - `slope_ci_low`, `slope_ci_high`: lower/upper bounds of Theil–Sen slope (95% CI)
-  - `autocorr_pvalues`: dict-string of Ljung–Box p-values per lag
-  - `significant_lags`: list-string of lags where autocorrelation p<0.05
+  - `lb_portmanteau_pvalue`: p-value from Ljung–Box portmanteau test on detrended residuals
+  - `max_lag_tested`: maximum lag used in Ljung–Box test ($h = \min(10, n-1)$)
   - `chosen`: boolean indicating which test was selected for annotation (Hamed-Rao when autocorr present, otherwise original)
   - `years_range`: data years covered
   - `created`: timestamp of the record

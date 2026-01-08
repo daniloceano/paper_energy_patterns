@@ -27,8 +27,8 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================================
 
-# Input files (from previous steps)
-RESULTS_DIR = "results/cluster"
+# Input files (from previous steps) - use absolute paths
+RESULTS_DIR = PROJECT_ROOT / "results" / "cluster"
 INPUT_FILE = "pca_scores.csv"  # Wide matrix format (all phases together)
 OPTIMAL_K_FILE = "optimal_k.txt"
 

@@ -47,12 +47,12 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================================
 
-# Input files (from step 1)
-RESULTS_DIR = "results/cluster"
+# Input files (from step 1) - use absolute paths
+RESULTS_DIR = PROJECT_ROOT / "results" / "cluster"
 INPUT_FILE = "pca_scores.csv"  # Wide matrix format (all phases together)
 
-# Output settings
-FIGURES_DIR = "figures/cluster"
+# Output settings - use absolute paths
+FIGURES_DIR = PROJECT_ROOT / "figures" / "cluster"
 OUTPUT_FILE = "optimal_k_analysis.png"
 OUTPUT_RESULTS_FILE = "optimal_k.txt"
 DPI = 300

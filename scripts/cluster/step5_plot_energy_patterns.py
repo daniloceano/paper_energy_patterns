@@ -28,12 +28,12 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================================
 
-# Input files (from step 4)
-RESULTS_DIR = "results/cluster"
+# Input files (from step 4) - use absolute paths
+RESULTS_DIR = PROJECT_ROOT / "results" / "cluster"
 KMEANS_PREFIX = "kmeans"
 
-# Output settings
-FIGURES_DIR = "figures/cluster"
+# Output settings - use absolute paths
+FIGURES_DIR = PROJECT_ROOT / "figures" / "cluster"
 OUTPUT_FILE_PREFIX = "lps"  # LPS diagrams
 DPI = 300
 

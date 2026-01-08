@@ -20,7 +20,8 @@ def main():
         print(f"{'='*70}")
         try:
             # Don't capture output - let it flow to terminal (allows user input)
-            proc = subprocess.run([sys.executable, path], cwd=HERE, timeout=600)
+            timeout = 1800  # 30 minutes
+            proc = subprocess.run([sys.executable, path], cwd=HERE, timeout=timeout)
             if proc.returncode == 0:
                 successes.append(fname)
                 print(f"\n✅ Completed successfully: {fname}")
@@ -28,7 +29,7 @@ def main():
                 failures[fname] = f"Exit code {proc.returncode}"
                 print(f"\n❌ Failed with exit code {proc.returncode}: {fname}")
         except subprocess.TimeoutExpired:
-            failures[fname] = "Timeout (>600s)"
+            failures[fname] = f"Timeout (>{timeout}s)"
             print(f"\n⏱️  Timeout: {fname}")
         except Exception as e:
             tb = traceback.format_exc()

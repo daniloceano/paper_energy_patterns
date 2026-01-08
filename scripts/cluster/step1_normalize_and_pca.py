@@ -66,8 +66,9 @@ PHASE_ABBR = {
 EXPLAINED_VARIANCE_THRESHOLD = 0.90  # Keep PCs explaining 90% variance
 RANDOM_STATE = 42
 
-# Output directories
-RESULTS_DIR = "results/cluster"
+# Output directories (absolute paths from PROJECT_ROOT)
+RESULTS_DIR = PROJECT_ROOT / "results" / "cluster"
+FIGURES_DIR = PROJECT_ROOT / "figures" / "cluster"
 OUTPUT_PREFIX = "pca"
 
 # ============================================================================
@@ -382,8 +383,6 @@ def save_results(wide: pd.DataFrame, X_pca: np.ndarray, pca: PCA,
 
 def main():
     """Main execution function."""
-    results_dir = Path(RESULTS_DIR)
-    
     print("=" * 70)
     print("STEP 1: Normalize and Apply PCA (Wide Matrix Approach)")
     print("=" * 70)
@@ -392,6 +391,8 @@ def main():
     print(f"Number of phases: {len(PHASE_ORDER)}")
     print(f"Total features: {len(ENERGY_VARS)} × {len(PHASE_ORDER)} = {len(ENERGY_VARS) * len(PHASE_ORDER)}")
     print(f"Variance threshold: {EXPLAINED_VARIANCE_THRESHOLD*100:.0f}%")
+    print(f"Results directory: {RESULTS_DIR}")
+    print(f"Figures directory: {FIGURES_DIR}")
     print()
     
     # Load and prepare data
@@ -409,7 +410,7 @@ def main():
     )
     
     # Save results
-    save_results(wide, X_pca, pca, scaler, ENERGY_VARS, results_dir, OUTPUT_PREFIX)
+    save_results(wide, X_pca, pca, scaler, ENERGY_VARS, RESULTS_DIR, OUTPUT_PREFIX)
     
     print("=" * 70)
     print("✅ Step 1 complete!")

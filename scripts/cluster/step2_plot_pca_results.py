@@ -33,12 +33,12 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================================
 
-# Input files (from step 1)
-RESULTS_DIR = "results/cluster"
+# Input files (from step 1) - use absolute paths
+RESULTS_DIR = PROJECT_ROOT / "results" / "cluster"
 INPUT_PREFIX = "pca"
 
-# Output settings
-FIGURES_DIR = "figures/cluster"
+# Output settings - use absolute paths
+FIGURES_DIR = PROJECT_ROOT / "figures" / "cluster"
 OUTPUT_SCATTER = "pca_scatter_wide.png"
 OUTPUT_LOADINGS = "pca_loadings_wide.png"
 OUTPUT_VARIANCE = "pca_variance_wide.png"

@@ -19,7 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.utils.preprocess_data import load_cache
+from scripts.analysis.preprocess_data import load_cache
 
 # ============================================================================
 # CONFIGURATION - Edit these variables to customize the analysis
@@ -61,7 +61,13 @@ def gather_energy_sample(sample_n: int = 0) -> pd.DataFrame:
         DataFrame with energy data filtered to main phases
     """
     print("Loading energy data from cache...")
-    df = load_cache()
+    try:
+        df = load_cache()
+    except (FileNotFoundError, OSError, Exception) as e:
+        print(f"\n❌ Error loading cache: {e}")
+        print("\n⚠️  Cache file missing or corrupted!")
+        print("Run: python scripts/analysis/preprocess_data.py")
+        raise SystemExit(1)
     
     # Filter to main four phases only (exclude residual and other)
     df = df[df['phase'].isin(['incipient', 'intensification', 'mature', 'decay'])]

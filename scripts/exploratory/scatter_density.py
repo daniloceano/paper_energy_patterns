@@ -20,7 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.utils.preprocess_data import load_cache
+from scripts.analysis.preprocess_data import load_cache
 
 # ============================================================================
 # CONFIGURATION - Edit these variables to customize the analysis
@@ -72,8 +72,14 @@ def gather_energy_sample(sample_n: int, use_cache: bool = True) -> pd.DataFrame:
     """
     if use_cache:
         print("Loading from preprocessed cache...")
-        df = load_cache()
-        print(f"✓ Loaded {len(df)} records from {df['track_id'].nunique()} cyclones")
+        try:
+            df = load_cache()
+            print(f"✓ Loaded {len(df)} records from {df['track_id'].nunique()} cyclones")
+        except (FileNotFoundError, OSError, Exception) as e:
+            print(f"\n❌ Error loading cache: {e}")
+            print("\n⚠️  Cache file missing or corrupted!")
+            print("Run: python scripts/analysis/preprocess_data.py")
+            raise SystemExit(1)
     else:
         # Fallback to direct loading (slow!)
         print("⚠️  Loading directly from GitHub (slow - consider using cache)")

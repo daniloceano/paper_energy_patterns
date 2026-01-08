@@ -9,6 +9,11 @@ This script implements the PCA approach from the exploratory notebook:
 
 This approach captures correlations between phases and energy terms, providing
 a more holistic view of cyclone energetics compared to phase-separated PCAs.
+
+Prerequisites:
+    - Energy cache file must exist (data/energy_cache.parquet)
+    - If cache is missing or corrupted, run first:
+      python scripts/analysis/preprocess_data.py
 """
 
 from __future__ import annotations
@@ -29,13 +34,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.utils.preprocess_data import load_cache, filter_complete_lifecycle_cyclones
+from scripts.analysis.preprocess_data import load_cache, filter_complete_lifecycle_cyclones
 
 warnings.filterwarnings('ignore')
 
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
+
+# Cache file location
+CACHE_FILE = PROJECT_ROOT / "data" / "energy_cache.parquet"
 
 # Energy variables to use (7 terms, excluding Ce and RKe)
 ENERGY_VARS = [
@@ -76,7 +84,22 @@ def load_and_prepare_data(energy_vars: List[str]) -> pd.DataFrame:
     print("=" * 70)
     
     # Load cache
-    df = load_cache()
+    try:
+        df = load_cache()
+    except (FileNotFoundError, OSError, Exception) as e:
+        print(f"\n❌ Error loading energy cache: {e}")
+        print("\n" + "=" * 70)
+        print("⚠️  CACHE FILE MISSING OR CORRUPTED")
+        print("=" * 70)
+        print("\nThe energy cache file is required but could not be loaded.")
+        print("\n📋 To fix this issue, run the preprocessing script:")
+        print("\n   python scripts/analysis/preprocess_data.py")
+        print("\nThis will generate the cache file at:")
+        print(f"   {CACHE_FILE}")
+        print("\nEstimated time: ~4-5 minutes with 50 parallel workers")
+        print("=" * 70)
+        raise SystemExit(1)
+    
     print(f"✓ Loaded {len(df):,} records from {df['track_id'].nunique()} cyclones")
     
     # Filter to complete lifecycle cyclones only

@@ -30,10 +30,10 @@ from scripts.analysis.preprocess_data import load_cache
 SAMPLE_SIZE = 0  # Number of cyclones to sample (0 = all available)
 USE_CACHE = True  # Use preprocessed cache (MUCH faster!)
 
-# Output directories
+# Output directories - use absolute paths
 TYPE = 'exploratory'
-RESULTS_DIR = f"results/{TYPE}"
-FIGURES_DIR = f"figures/{TYPE}"
+RESULTS_DIR = PROJECT_ROOT / "results" / TYPE
+FIGURES_DIR = PROJECT_ROOT / "figures" / TYPE
 
 # Figure settings
 DPI = 150  # DPI for saved figure (increase to 300+ for publication quality)

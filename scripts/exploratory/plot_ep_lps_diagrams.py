@@ -36,13 +36,13 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================================
 
-# Input files
-RESULTS_DIR = "results/cluster"
+# Input files - use absolute paths
+RESULTS_DIR = PROJECT_ROOT / "results" / "cluster"
 CLUSTERED_DATA_FILE = "kmeans_clustered_data.csv"
 CENTROIDS_ENERGY_FILE = "kmeans_centroids_energy.csv"
 
-# Output settings
-FIGURES_DIR = "figures/exploratory/lps_diagrams_by_ep"
+# Output settings - use absolute paths
+FIGURES_DIR = PROJECT_ROOT / "figures" / "exploratory" / "lps_diagrams_by_ep"
 DPI = 300
 
 # Energy Pattern mapping (cluster_id → EP_id)

@@ -39,13 +39,13 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================================
 
-# Input files
-RESULTS_DIR = "results/cluster"
+# Input files - use absolute paths
+RESULTS_DIR = PROJECT_ROOT / "results" / "cluster"
 PCA_FULL_DATA_FILE = "pca_full_data.csv"
 CLUSTERED_DATA_FILE = "kmeans_clustered_data.csv"
 
-# Output settings
-FIGURES_DIR = "figures/exploratory/density_ge"
+# Output settings - use absolute paths
+FIGURES_DIR = PROJECT_ROOT / "figures" / "exploratory" / "density_ge"
 DPI = 300
 
 # Energy Pattern mapping (cluster_id → EP_id)

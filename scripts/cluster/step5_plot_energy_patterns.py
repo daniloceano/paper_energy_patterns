@@ -44,6 +44,13 @@ COLORBAR_LABELSIZE = 14
 USE_LORENZ_PACKAGE = True  # Try to use lorenz-phase-space package
 USE_ZOOM = True  # Use zoom in Lorenz Phase Space diagrams
 
+# Cluster to EP mapping (based on Ck energy levels)
+CLUSTER_TO_EP = {
+    0: 1,  # Cluster 0 → EP1 (lowest Ck)
+    2: 2,  # Cluster 2 → EP2 (middle Ck)
+    1: 3   # Cluster 1 → EP3 (highest Ck)
+}
+
 # ============================================================================
 
 
@@ -227,13 +234,43 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
             
             # Plot each cluster trajectory
             for cluster_id in range(n_clusters):
-                lps.plot_data(
+                ep_num = CLUSTER_TO_EP.get(cluster_id, cluster_id + 1)
+                connection_linewidth = ep_num * 2  # Thicker lines for higher EP numbers
+                fig = lps.plot_data(
                     x_axis=all_x_data[cluster_id],
                     y_axis=all_y_data[cluster_id],
                     marker_color=all_color_data[cluster_id],
                     marker_size=all_size_data[cluster_id],
-                    alpha=0.8
+                    alpha=0.8,
+                    connection_linewidth=connection_linewidth,
                 )
+            
+            # Add linewidth legend for EPs (preserve existing Ke legend)
+            from matplotlib.lines import Line2D
+            
+            # Get existing legend (created by Visualizer for Ke)
+            existing_legend = ax.get_legend()
+            
+            # Create new legend elements for EPs (sorted by EP number)
+            legend_elements = []
+            # Create mapping of EP to cluster_id for proper ordering
+            ep_to_cluster = {ep: cid for cid, ep in CLUSTER_TO_EP.items()}
+            # Sort by EP number
+            for ep_num in sorted(ep_to_cluster.keys()):
+                linewidth = ep_num * 2  # Same as used in plotting
+                legend_elements.append(
+                    Line2D([0], [0], color='black', linewidth=linewidth, 
+                           label=f'EP{ep_num}')
+                )
+            
+            # Add new legend in upper left corner without removing the existing one
+            new_legend = ax.legend(handles=legend_elements, loc='lower left' if lps_type == 'conversion' else 'upper left', 
+                                   frameon=True, framealpha=0.9, fontsize=10,
+                                   title='Energy Pattern', title_fontsize=11)
+            
+            # Restore the original legend (Ke) by adding it back as an artist
+            if existing_legend is not None:
+                ax.add_artist(existing_legend)
             
             # Set title
             # lps_name = 'Conversion LPS' if lps_type == 'conversion' else 'Imports LPS'

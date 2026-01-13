@@ -30,8 +30,8 @@ SAMPLE_SIZE = 0  # Number of cyclones to sample (0 = all available)
 
 # Output directories
 TYPE = 'exploratory'
-RESULTS_DIR = f"results/{TYPE}"  # Change to "results/main" to promote to main analysis
-FIGURES_DIR = f"figures/{TYPE}"  # Change to "figures/main" to promote to main analysis
+RESULTS_DIR = PROJECT_ROOT / "results" / TYPE  # Change TYPE to "main" to promote to main analysis
+FIGURES_DIR = PROJECT_ROOT / "figures" / TYPE  # Change TYPE to "main" to promote to main analysis
 
 # Figure settings
 DPI = 150  # DPI for saved figure (increase to 300+ for publication quality)

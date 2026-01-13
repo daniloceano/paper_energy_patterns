@@ -41,6 +41,16 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 EP_NAMES = ['All Cyclones', 'EP1', 'EP2', 'EP3']
 EP_COLORS = ['#666666', '#1f77b4', '#ff7f0e', '#2ca02c']  # Gray, Blue, Orange, Green
 
+# Per-panel color limits: set to (vmin, vmax) to force limits or None to auto-compute
+# Keys: 'All Cyclones', 'EP1', 'EP2', 'EP3'
+# Example: COLOR_LIMITS = {'All Cyclones': (0, 0.12), 'EP1': None, 'EP2': None, 'EP3': None}
+COLOR_LIMITS = {
+    'All Cyclones': None,
+    'EP1': None,
+    'EP2': None,
+    'EP3': None
+}
+
 # Cluster to EP mapping (based on Ck energy levels)
 CLUSTER_TO_EP = {
     0: 1,  # Cluster 0 → EP1 (lowest Ck)
@@ -188,8 +198,14 @@ def setup_map_axes(ax, title):
     # Title
     ax.set_title(title, fontsize=11, fontweight='bold', loc='left')
 
-def plot_density_map(ax, density, longrd, latgrd, title, color, vmax=None):
-    """Plot density map with contours and coloring."""
+def plot_density_map(ax, density, longrd, latgrd, title, color, vmin=None, vmax=None):
+    """Plot density map with contours and coloring.
+
+    Parameters
+    - vmin, vmax : floats or None
+        Color scale limits. If None, `vmin` defaults to 0 and `vmax`
+        is computed from the 95th percentile of positive density values.
+    """
     # Mask domain
     lon_mask = (longrd >= LON_MIN) & (longrd <= LON_MAX)
     lat_mask = (latgrd >= LAT_MIN) & (latgrd <= LAT_MAX)
@@ -205,24 +221,35 @@ def plot_density_map(ax, density, longrd, latgrd, title, color, vmax=None):
     # Setup map
     setup_map_axes(ax, title)
     
-    # Determine vmax if not provided
+    # Determine vmin/vmax if not provided
+    if vmin is None:
+        vmin = 0.0
     if vmax is None:
-        vmax = np.percentile(density_region[density_region > 0], 95)
+        # handle case with no positive values
+        pos_vals = density_region[density_region > 0]
+        if pos_vals.size == 0:
+            vmax = 1e-6
+        else:
+            vmax = np.percentile(pos_vals, 95)
     
     # Plot filled contours
-    levels = np.linspace(0, vmax, 12)
-    cf = ax.contourf(lon_region, lat_region, density_region, 
-                     levels=levels, cmap='YlOrRd', 
+    levels = np.linspace(vmin, vmax, 12)
+    # Round to two decimal places
+    levels = np.round(levels, 2)
+
+    # Add filled contours
+    cf = ax.contourf(lon_region, lat_region, density_region,
+                     levels=levels, cmap='YlOrRd',
                      transform=ccrs.PlateCarree(), extend='max', alpha=0.8)
     
     # Add contour lines
     cs = ax.contour(lon_region, lat_region, density_region,
                     levels=6, colors='black', linewidths=0.5,
                     transform=ccrs.PlateCarree(), alpha=0.6)
-    ax.clabel(cs, inline=True, fontsize=7, fmt='%.1f')
+    ax.clabel(cs, inline=True, fontsize=12, fmt='%.2f')
     
     # Add colorbar
-    cbar = plt.colorbar(cf, ax=ax, orientation='horizontal', 
+    cbar = plt.colorbar(cf, ax=ax, orientation='horizontal',
                        pad=0.05, shrink=0.8, aspect=15)
     cbar.set_label('Cyclones per 10$^6$ km$^2$ per year', fontsize=9, fontweight='bold')
     cbar.ax.tick_params(labelsize=8)
@@ -259,18 +286,40 @@ def create_figure():
     # Panel 1: All cyclones
     print("Computing density for All Cyclones...")
     density_all, longrd, latgrd = compute_density(df, num_years)
-    vmax_all = plot_density_map(axes[0], density_all, longrd, latgrd,
-                                '(a) All Cyclones', EP_COLORS[0])
+    # Per-panel limits for All Cyclones
+    limits_all = COLOR_LIMITS.get('All Cyclones')
+    if limits_all is None:
+        vmin_all, vmax_all = None, None
+    else:
+        vmin_all, vmax_all = limits_all
+
+    vmax_used = plot_density_map(axes[0], density_all, longrd, latgrd,
+                                 '(a) All Cyclones', EP_COLORS[0],
+                                 vmin=vmin_all, vmax=vmax_all)
     print(f"  Max density: {density_all.max():.2f} cyclones/10^6 km^2/year")
+    if vmin_all is None and vmax_all is None:
+        print(f"  Color scale: auto (95th percentile -> {vmax_used:.3g})")
+    else:
+        print(f"  Color scale: vmin={vmin_all}, vmax={vmax_all}")
     
-    # Panels 2-4: Individual EPs (use same vmax for comparison)
+    # Panels 2-4: Individual EPs (each uses its own color limits from COLOR_LIMITS)
     ep_labels = ['(b) EP1', '(c) EP2', '(d) EP3']
     for i, (ep_num, label, color) in enumerate(zip([1, 2, 3], ep_labels, EP_COLORS[1:])):
         print(f"\nComputing density for EP{ep_num}...")
         ep_data = df[df['EP'] == ep_num]
         density_ep, _, _ = compute_density(ep_data, num_years)
-        plot_density_map(axes[i+1], density_ep, longrd, latgrd,
-                        label, color, vmax=vmax_all)
+        limits_ep = COLOR_LIMITS.get(f'EP{ep_num}')
+        if limits_ep is None:
+            vmin_ep, vmax_ep = None, None
+        else:
+            vmin_ep, vmax_ep = limits_ep
+
+        vmax_used_ep = plot_density_map(axes[i+1], density_ep, longrd, latgrd,
+                                        label, color, vmin=vmin_ep, vmax=vmax_ep)
+        if vmin_ep is None and vmax_ep is None:
+            print(f"  Color scale: auto (95th percentile -> {vmax_used_ep:.3g})")
+        else:
+            print(f"  Color scale: vmin={vmin_ep}, vmax={vmax_ep}")
         print(f"  Max density: {density_ep.max():.2f} cyclones/10^6 km^2/year")
         print(f"  N cyclones: {len(ep_data)}")
     

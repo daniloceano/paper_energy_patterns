@@ -37,24 +37,59 @@ Select the 10 most intense cyclones from EP1 based on:
 
 **Output**: List of selected track IDs with justification
 
+**Script**: `step1_select_cases.py`
+
 ---
 
-### 2. ERA5 Data Acquisition
-Download ERA5 reanalysis data for the selected cases covering **only the intensification phase**:
+### 2. Vertical Distribution Analysis (LEC Data)
+
+**IMPORTANT**: This step is now performed BEFORE downloading ERA5 data to optimize the download.
+
+Analyze existing LEC (Lorenz Energy Cycle) results from `data/lec_results/` to identify critical pressure levels:
+
+**Analysis**:
+- Load `Ca_level.csv` and `Ck_level.csv` for each selected cyclone
+- Extract data during intensification phase only
+- Compute mean vertical profiles of Ca(p) and Ck(p)
+- Identify pressure level with maximum Ca (baroclinic conversion)
+- Identify pressure level with minimum Ck (barotropic conversion)
+- Create boxplots showing distribution across all 10 cases
+- Determine median levels for download
+
+**Physical Interpretation**:
+- **Ca maximum**: Level of maximum baroclinic energy conversion, typically associated with the level of maximum temperature gradient
+- **Ck maximum**: Level of maximum barotropic energy conversion, typically associated with horizontal wind shear and momentum flux convergence
+
+**Output**: 
+- Critical pressure levels (median across cases)
+- Boxplots showing distribution
+- List of levels to download (including ±1 level for vertical derivatives)
+
+**Script**: `step3_vertical_levels_analysis.py`
+
+---
+
+### 3. ERA5 Data Acquisition
+
+Download ERA5 reanalysis data ONLY for the identified critical pressure levels, covering **only the intensification phase**:
 
 **Required Variables**:
-- **3D Fields** (multiple pressure levels):
-  - Zonal wind (u)
-  - Meridional wind (v)
-  - Temperature (T)
-  - Geopotential height (Z)
-  
-- **Pressure Levels**:
-  - Standard levels: 1000, 975, 950, 925, 900, 850, 800, 750, 700, 650, 600, 550, 500, 450, 400, 350, 300, 250, 200, 150, 100 hPa
+- **u_component_of_wind**: Zonal wind (for vorticity in RK, wind shear in EGR)
+- **v_component_of_wind**: Meridional wind (for vorticity in RK, wind shear in EGR)
+- **temperature**: Temperature (for Brunt-Väisälä frequency in EGR)
+- **geopotential**: Geopotential height (for vertical derivatives in EGR)
+
+**Pressure Levels**:
+- Level of Ca maximum ± 1 level (for centered finite differences in EGR)
+- Level of Ck minimum ± 1 level (for RK criterion analysis)
+
+**Rationale**: 
+- Instead of downloading all 21 pressure levels, download only ~3-6 levels needed
+- Saves significant download time and storage space
+- EGR requires vertical derivatives, hence ±1 level for centered differences
 
 **Spatial Coverage Strategy**:
-- **Single domain per cyclone**: Download one domain large enough to accommodate all analysis scales
-- **Domain size**: Track extent during intensification phase + 15° buffer on all sides
+- **Single domain per cyclone**: Track extent during intensification phase + 15° buffer on all sides
 - **Rationale**: This buffer allows for 30°×30° analysis (largest domain) while reusing the same data for smaller domains (5°×5° and 15°×15°)
 - **Efficiency**: Avoids redundant downloads of nested domains
 
@@ -63,25 +98,9 @@ Download ERA5 reanalysis data for the selected cases covering **only the intensi
 - 6-hourly data
 - **Central time step** identified for instability analysis
 
-**Note**: This step should be run on a remote server with good internet connection and storage capacity.
+**Note**: This step should be run on a remote server with good internet connection and storage capacity. Requires CDS API credentials.
 
----
-
-### 3. Vertical Distribution of Energy Conversions
-
-Compute Ca and Ck at each pressure level for the intensification phase of selected cyclones using the Lorenz Energy Cycle framework adapted for pressure levels.
-
-**Analysis**:
-- Identify levels of maximum positive Ca (strongest baroclinic conversion)
-- Identify levels of maximum negative Ck (strongest barotropic conversion)
-- Create vertical profiles showing Ca(p) and Ck(p) for each cyclone
-- Compute ensemble mean and spread across the 10 cases
-
-**Physical Interpretation**:
-- **Ca maximum**: Level of maximum baroclinic energy conversion, typically associated with the level of maximum temperature gradient
-- **Ck maximum**: Level of maximum barotropic energy conversion, typically associated with horizontal wind shear and momentum flux convergence
-
-**Output**: Vertical profiles and identification of critical levels
+**Script**: `step2_download_era5.py`
 
 ---
 
@@ -204,22 +223,29 @@ The combination of these processes explains why EP1 cyclones have the strongest 
 ## Directory Structure
 
 ```
-scripts/ep1_vertical_analysis/
+scripts/ep1_ibc_ibt_analysis/
 ├── README.md                           # This file
 ├── step1_select_cases.py              # Case selection (10 most intense EP1 cyclones)
-├── step2_download_era5.py             # ERA5 data download (run on server)
-├── step3_vertical_levels_analysis.py  # Compute Ca/Ck vertical profiles
+├── step2_vertical_levels_analysis.py  # Analyze LEC data to identify critical levels
+├── step3_download_era5.py             # ERA5 data download at identified levels (run on server)
 ├── step4_compute_instabilities.py     # Calculate RK and EGR
 ├── step5_create_figures.py            # Generate all figures
 └── run_all.py                         # Sequential execution of all steps
 ```
+
+**Execution Order**:
+1. `step1_select_cases.py` - Select 10 most intense EP1 cyclones
+2. `step2_vertical_levels_analysis.py` - Analyze existing LEC data to identify critical levels
+3. `step3_download_era5.py` - Download ERA5 data at identified levels (requires CDS API)
+4. `step4_compute_instabilities.py` - Compute RK and EGR diagnostics
+5. `step5_create_figures.py` - Generate all publication figures
 
 ## Data Requirements
 
 ### Input
 - `results/cluster/kmeans_clustered_data.csv`: EP1 cyclone classifications
 - `data/tracks_SAt_filtered_with_energetics_processed.csv`: Track and energy data
-- ERA5 reanalysis data (downloaded by step2)
+- ERA5 reanalysis data (downloaded by step3)
 
 ### Output
 - `results/ep1_vertical/`: Numerical results (vertical profiles, statistics)

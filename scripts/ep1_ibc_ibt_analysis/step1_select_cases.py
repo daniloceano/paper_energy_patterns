@@ -22,7 +22,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 import numpy as np
-from scripts.utils.load_data import load_tracks_data
+from scripts.utils.load_data import load_tracks
 
 # Configuration
 OUTPUT_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_vertical"
@@ -46,7 +46,7 @@ def main():
     
     # Load full track data
     print("\n2. Loading track data...")
-    tracks = load_tracks_data()
+    tracks = load_tracks()
     
     # Merge to get vorticity information
     tracks = tracks.merge(

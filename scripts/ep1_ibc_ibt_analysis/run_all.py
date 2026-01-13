@@ -6,13 +6,20 @@ analysis in sequence.
 
 Steps:
 1. Select 10 most intense EP1 cyclones
-2. Download ERA5 data (should be run separately on server)
-3. Analyze vertical distribution of Ca and Ck
+2. Analyze LEC data to identify critical pressure levels (Ca max, Ck min)
+3. Download ERA5 data at identified levels (should be run separately on server)
 4. Compute instability diagnostics (RK and EGR)
 5. Create publication-quality figures
 
-NOTE: Step 2 (ERA5 download) should be run separately on a remote server
-      with appropriate resources.
+EXECUTION ORDER:
+1. step1_select_cases.py
+2. step2_vertical_levels_analysis.py (analyzes existing LEC data)
+3. step3_download_era5.py (run separately on server with CDS API)
+4. step4_compute_instabilities.py
+5. step5_create_figures.py
+
+NOTE: Step 3 (ERA5 download) should be run separately on a remote server
+      with appropriate resources and CDS API credentials.
 
 Author: Danilo Couto de Souza
 Date: January 2026
@@ -49,13 +56,14 @@ def main():
     print("EP1 VERTICAL STRUCTURE AND INSTABILITY ANALYSIS")
     print("=" * 80)
     print("\nThis script will run all analysis steps in sequence.")
-    print("NOTE: Step 2 (ERA5 download) is skipped by default.")
-    print("      Run step2_download_era5.py separately on a remote server.\n")
+    print("NOTE: Step 3 (ERA5 download) is skipped by default.")
+    print("      Run step2_download_era5.py separately on a remote server")
+    print("      AFTER step3 identifies the critical pressure levels.\n")
     
     steps = [
         (1, "step1_select_cases.py", "Select Most Intense EP1 Cyclones"),
-        # Step 2 skipped - must be run manually on server
-        (3, "step3_vertical_levels_analysis.py", "Vertical Levels Analysis"),
+        (2, "step3_vertical_levels_analysis.py", "Analyze LEC Data - Identify Critical Levels"),
+        # Step 3 (step2_download_era5.py) skipped - must be run manually on server
         (4, "step4_compute_instabilities.py", "Compute Instability Diagnostics"),
         (5, "step5_create_figures.py", "Create Figures"),
     ]

@@ -22,6 +22,9 @@ data/*.nc
 data/*.h5
 data/*.hdf5
 
+# Exclude specific data subdirectories
+data/lec_results/
+
 # Keep data directory structure
 !data/README.md
 !data/.gitkeep
@@ -64,3 +67,4 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+

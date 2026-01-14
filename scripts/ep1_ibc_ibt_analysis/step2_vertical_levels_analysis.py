@@ -2,11 +2,17 @@
 Step 2: Vertical Distribution of Energy Conversions
 
 This script analyzes Ca (baroclinic conversion) and Ck (barotropic conversion)
-at each pressure level using existing LEC results from data/lec_results.
+at each pressure level using complete LEC results.
+
+Data Source: Zenodo (DOI: 10.5281/zenodo.18243447)
+- Complete Lorenz Energy Cycle results with vertical resolution
+- ~1,500 cyclones from 1979-2020
+- 32 pressure levels from 1000 hPa to 100 hPa
+- 3-hourly temporal resolution
 
 Analysis includes:
-- Load Ca_level.csv and Ck_level.csv for ALL cyclones (not just selected cases)
-- Compute vertical profiles during intensification phase
+- Load Ca_level.csv and Ck_level.csv for ALL cyclones
+- Compute vertical profiles during intensification phase only
 - Identify pressure levels with maximum Ca and minimum Ck across all systems
 - Generate publication-quality boxplots showing distribution by pressure level
 - Save identified critical levels for ERA5 download
@@ -28,56 +34,227 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import requests
+import zipfile
+import tarfile
+import io
+from tqdm import tqdm
 
 # Configuration
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "lec_results"
-RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_vertical"
-FIGURES_DIR = Path(__file__).resolve().parents[2] / "figures" / "ep1_vertical"
+BASE_DIR = Path(__file__).resolve().parents[2]
+RESULTS_DIR = BASE_DIR / "results" / "ep1_vertical"
+FIGURES_DIR = BASE_DIR / "figures" / "ep1_vertical"
+TEMP_DIR = BASE_DIR / "data" / "temp_lec_zenodo"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+# Data source information
+ZENODO_DOI = "10.5281/zenodo.18243447"
+ZENODO_RECORD_ID = "18243447"
+ZENODO_URL = "https://zenodo.org/records/18243447"
+
+print(f"Data source: Zenodo (DOI: {ZENODO_DOI})")
+print(f"URL: {ZENODO_URL}")
+print()
 
 # Set style
 sns.set_style("whitegrid")
 plt.rcParams['figure.dpi'] = 300
 
-# Set style
-sns.set_style("whitegrid")
-plt.rcParams['figure.dpi'] = 300
+
+def download_and_extract_lec_data():
+    """
+    Download and extract LEC results from Zenodo.
+    
+    Returns:
+        Path to extracted data directory
+    """
+    print("\n1. Downloading LEC data from Zenodo...")
+    print(f"   Source: {ZENODO_DOI}")
+    
+    # Check if already downloaded
+    # Look for directories ending with _ERA5_track
+    possible_dirs = []
+    if TEMP_DIR.exists():
+        for item in TEMP_DIR.iterdir():
+            if item.is_dir():
+                subdirs = [d for d in item.iterdir() if d.is_dir() and d.name.endswith('_ERA5_track')]
+                if len(subdirs) > 100:
+                    possible_dirs.append(item)
+        
+        # Check if _ERA5_track directories are directly in TEMP_DIR
+        direct_subdirs = [d for d in TEMP_DIR.iterdir() if d.is_dir() and d.name.endswith('_ERA5_track')]
+        if len(direct_subdirs) > 100:
+            possible_dirs.append(TEMP_DIR)
+    
+    if possible_dirs:
+        extracted_dir = possible_dirs[0]
+        cyclone_dirs = [d for d in extracted_dir.iterdir() if d.is_dir() and d.name.endswith('_ERA5_track')]
+        print(f"   Data already downloaded: {extracted_dir}")
+        print(f"   Found {len(cyclone_dirs)} directories")
+        return extracted_dir
+    
+    # First, get the list of files from Zenodo API
+    print(f"   Fetching file list from Zenodo API...")
+    api_url = f"https://zenodo.org/api/records/{ZENODO_RECORD_ID}"
+    response = requests.get(api_url)
+    response.raise_for_status()
+    
+    record_data = response.json()
+    files = record_data.get('files', [])
+    
+    if not files:
+        raise ValueError(f"No files found in Zenodo record {ZENODO_RECORD_ID}")
+    
+    # Find the LEC results archive file (tar.gz or zip)
+    archive_file = None
+    for file_info in files:
+        key_lower = file_info['key'].lower()
+        if 'lec' in key_lower and (key_lower.endswith('.tar.gz') or key_lower.endswith('.zip')):
+            archive_file = file_info
+            break
+    
+    if archive_file is None:
+        # List available files for debugging
+        available_files = [f['key'] for f in files]
+        raise ValueError(f"LEC archive file not found. Available files: {available_files}")
+    
+    download_url = archive_file['links']['self']
+    file_size = archive_file['size']
+    file_name = archive_file['key']
+    is_tarfile = file_name.endswith('.tar.gz')
+    
+    print(f"   Downloading {file_name} ({file_size / 1024 / 1024:.1f} MB)...")
+    print("   This may take several minutes...")
+    
+    # Download archive file
+    response = requests.get(download_url, stream=True)
+    response.raise_for_status()
+    
+    # Download with progress bar
+    archive_data = io.BytesIO()
+    with tqdm(total=file_size, unit='B', unit_scale=True, desc='Downloading') as pbar:
+        for chunk in response.iter_content(chunk_size=8192):
+            archive_data.write(chunk)
+            pbar.update(len(chunk))
+    
+    # Extract archive file
+    print("   Extracting...")
+    archive_data.seek(0)
+    
+    if is_tarfile:
+        with tarfile.open(fileobj=archive_data, mode='r:gz') as tar_ref:
+            tar_ref.extractall(TEMP_DIR, filter='data')
+    else:
+        with zipfile.ZipFile(archive_data, 'r') as zip_ref:
+            zip_ref.extractall(TEMP_DIR)
+    
+    # Find the extracted directory (might be lec_results or inside another folder)
+    # Look for directories ending with _ERA5_track
+    extracted_dir = None
+    for item in TEMP_DIR.iterdir():
+        if item.is_dir():
+            # Check if this directory contains _ERA5_track subdirectories
+            subdirs = [d for d in item.iterdir() if d.is_dir() and d.name.endswith('_ERA5_track')]
+            if len(subdirs) > 10:  # Should have many cyclone directories
+                extracted_dir = item
+                break
+    
+    if extracted_dir is None:
+        # Maybe the _ERA5_track directories are directly in TEMP_DIR
+        subdirs = [d for d in TEMP_DIR.iterdir() if d.is_dir() and d.name.endswith('_ERA5_track')]
+        if len(subdirs) > 10:
+            extracted_dir = TEMP_DIR
+        else:
+            raise FileNotFoundError(f"Could not find extracted LEC data in {TEMP_DIR}")
+    
+    print(f"   ✓ Extracted to: {extracted_dir}")
+    cyclone_dirs = [d for d in extracted_dir.iterdir() if d.is_dir() and d.name.endswith('_ERA5_track')]
+    print(f"   Found {len(cyclone_dirs)} cyclone directories")
+    
+    return extracted_dir
 
 
-def load_lec_level_data(track_id, variable='Ca'):
+def get_ep1_cyclones():
+    """
+    Load clustered data and filter for EP1 cyclones (cluster 0).
+    
+    Returns:
+        List of track_ids belonging to EP1
+    """
+    print("\n2. Loading cluster assignments...")
+    cluster_file = BASE_DIR / "results" / "cluster" / "kmeans_clustered_data.csv"
+    
+    if not cluster_file.exists():
+        raise FileNotFoundError(f"Cluster file not found: {cluster_file}")
+    
+    clustered = pd.read_csv(cluster_file)
+    ep1_tracks = clustered[clustered['cluster'] == 0]['track_id'].tolist()
+    
+    print(f"   Found {len(ep1_tracks)} EP1 cyclones (cluster 0)")
+    
+    return ep1_tracks
+
+
+def load_lec_level_data(data_dir, track_id, variable='Ca'):
     """
     Load LEC level data (Ca or Ck) for a specific cyclone.
     
+    Data format (from Zenodo DOI: 10.5281/zenodo.18243447):
+    - Index: Timestamps (3-hourly, UTC)
+    - Columns: Pressure levels in Pa (1000.0 to 100000.0)
+    - Values: Energy term in W m⁻² at each level and time
+    
     Args:
-        track_id: Cyclone ID (e.g., '19790135')
+        data_dir: Path to extracted LEC data directory
+        track_id: Cyclone ID (e.g., '19790006')
         variable: 'Ca' or 'Ck'
     
     Returns:
         DataFrame with time index and pressure levels as columns
     """
-    lec_dir = DATA_DIR / f"{track_id}_ERA5_track"
+    lec_dir = data_dir / f"{track_id}_ERA5_track"
     file_path = lec_dir / f"{variable}_level.csv"
     
+    # Check if file_path is actually a directory (Zenodo structure might differ)
+    if file_path.is_dir():
+        # Look for CSV files inside the directory
+        csv_files = list(file_path.glob('*.csv'))
+        if not csv_files:
+            return None
+        file_path = csv_files[0]  # Use the first CSV file found
+    
     if not file_path.exists():
-        print(f"   ⚠️  {variable} data not found for {track_id}")
         return None
     
     df = pd.read_csv(file_path, index_col=0, parse_dates=True)
     return df
 
 
-def get_intensification_phase_times(track_id):
+def get_intensification_phase_times(data_dir, track_id):
     """
     Get time steps for intensification phase from periods.csv.
     
+    File format (from Zenodo DOI: 10.5281/zenodo.18243447):
+    - Index: Phase name (incipient, intensification, mature, decay)
+    - Columns: 'start' and 'end' timestamps (UTC)
+    
     Args:
+        data_dir: Path to extracted LEC data directory
         track_id: Cyclone ID
     
     Returns:
         Tuple of (start_time, end_time) datetime objects
     """
-    lec_dir = DATA_DIR / f"{track_id}_ERA5_track"
+    lec_dir = data_dir / f"{track_id}_ERA5_track"
     periods_file = lec_dir / "periods.csv"
+    
+    # Check if periods.csv is actually a directory
+    if periods_file.is_dir():
+        csv_files = list(periods_file.glob('*.csv'))
+        if not csv_files:
+            return None
+        periods_file = csv_files[0]
     
     if not periods_file.exists():
         return None
@@ -96,9 +273,19 @@ def get_intensification_phase_times(track_id):
     return start_time, end_time
 
 
-def analyze_vertical_profiles(cases):
+def analyze_vertical_profiles(data_dir, ep1_track_ids):
     """
-    Analyze vertical profiles of Ca and Ck for all cases.
+    Analyze vertical profiles of Ca and Ck for EP1 cyclones only.
+    
+    Uses complete LEC results from Zenodo (DOI: 10.5281/zenodo.18243447):
+    - 32 pressure levels from 1000 hPa to 100 hPa
+    - 3-hourly temporal resolution
+    - Analysis restricted to intensification phase only
+    - Filters for EP1 cyclones (cluster 0) only
+    
+    Args:
+        data_dir: Path to extracted LEC data directory
+        ep1_track_ids: List of track_ids belonging to EP1
     
     Returns:
         Dictionary with analysis results
@@ -112,28 +299,26 @@ def analyze_vertical_profiles(cases):
         'ck_by_level': {}   # Store all values by pressure level
     }
     
-    print("\n2. Loading and analyzing LEC data...")
-    print(f"   Analyzing ALL cyclones in {DATA_DIR}...")
-    
-    # Get all cyclone directories
-    all_cyclones = [d.name.replace('_ERA5_track', '') for d in DATA_DIR.iterdir() 
-                   if d.is_dir() and d.name.endswith('_ERA5_track')]
-    
-    print(f"   Found {len(all_cyclones)} cyclones with LEC data")
+    print("\n3. Analyzing LEC data for EP1 cyclones...")
+    print(f"   Data source: Zenodo (DOI: {ZENODO_DOI})")
+    print(f"   Analyzing {len(ep1_track_ids)} EP1 cyclones...")
     
     successful = 0
-    for track_id in all_cyclones:
+    missing = 0
+    for track_id in tqdm(ep1_track_ids, desc="Processing cyclones"):
         
         # Load Ca and Ck data
-        ca_data = load_lec_level_data(track_id, 'Ca')
-        ck_data = load_lec_level_data(track_id, 'Ck')
+        ca_data = load_lec_level_data(data_dir, track_id, 'Ca')
+        ck_data = load_lec_level_data(data_dir, track_id, 'Ck')
         
         if ca_data is None or ck_data is None:
+            missing += 1
             continue
         
         # Get intensification phase times
-        phase_times = get_intensification_phase_times(track_id)
+        phase_times = get_intensification_phase_times(data_dir, track_id)
         if phase_times is None:
+            missing += 1
             continue
         
         start_time, end_time = phase_times
@@ -143,15 +328,22 @@ def analyze_vertical_profiles(cases):
         ck_intensification = ck_data[(ck_data.index >= start_time) & (ck_data.index <= end_time)]
         
         if len(ca_intensification) == 0:
+            missing += 1
             continue
         
         # Compute mean profiles during intensification
         ca_mean = ca_intensification.mean(axis=0)
         ck_mean = ck_intensification.mean(axis=0)
         
-        # Convert pressure levels from Pa to hPa
+        # Convert pressure levels from Pa to hPa and filter >= 100 hPa
         pressure_levels_pa = ca_mean.index.astype(float)
         pressure_levels_hpa = pressure_levels_pa / 100.0
+        
+        # Filter to only include levels >= 100 hPa (10000 Pa or less in Pa)
+        valid_mask = pressure_levels_hpa >= 100.0
+        pressure_levels_hpa = pressure_levels_hpa[valid_mask]
+        ca_mean = ca_mean[valid_mask]
+        ck_mean = ck_mean[valid_mask]
         
         # Store profiles by level
         for p_hpa, ca_val, ck_val in zip(pressure_levels_hpa, ca_mean.values, ck_mean.values):
@@ -173,13 +365,15 @@ def analyze_vertical_profiles(cases):
         
         successful += 1
     
-    print(f"   Successfully analyzed {successful} cyclones")
+    print(f"\n   Successfully analyzed {successful} EP1 cyclones")
+    print(f"   Missing/incomplete data: {missing} cyclones")
+    print(f"   Pressure levels: 100-1000 hPa, intensification phase only")
     
     return results
 
 
 def create_boxplots(results):
-    """Create publication-quality boxplots showing Ca and Ck distribution by pressure level."""
+    """Create publication-quality boxplots showing Ca and Ck distribution by pressure level for EP1 cyclones."""
     
     print("\n3. Creating publication-quality boxplots...")
     
@@ -257,9 +451,9 @@ def create_boxplots(results):
     ax2.set_ylabel('Ck (W m$^{-2}$)', fontsize=12, fontweight='bold')
     ax2.set_title('(b) Barotropic Conversion (Ck) by Pressure Level', 
                   fontsize=13, fontweight='bold', loc='left')
-    ax2.invert_yaxis()
     ax2.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
     ax2.set_xlim([1020, 80])
+    ax2.invert_xaxis()  # Invert x-axis so pressure increases left to right
     
     # Find and mark minimum Ck level
     ck_medians = [np.median(ck_by_level[p]) for p in pressure_levels]
@@ -301,9 +495,9 @@ def create_boxplots(results):
     ax1.set_ylabel('Ca (W m$^{-2}$)', fontsize=12, fontweight='bold')
     ax1.set_title('(a) Baroclinic Conversion (Ca) by Pressure Level', 
                   fontsize=13, fontweight='bold', loc='left')
-    ax1.invert_yaxis()
     ax1.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
     ax1.set_xlim([1020, 80])
+    ax1.invert_xaxis()  # Invert x-axis so pressure increases left to right
     ax1.plot(max_ca_level, max_ca_value, 'r*', markersize=15, 
              markeredgecolor='darkred', markeredgewidth=1.5, 
              label=f'Maximum Ca at {max_ca_level} hPa')
@@ -325,9 +519,9 @@ def create_boxplots(results):
     ax2.set_ylabel('Ck (W m$^{-2}$)', fontsize=12, fontweight='bold')
     ax2.set_title('(b) Barotropic Conversion (Ck) by Pressure Level', 
                   fontsize=13, fontweight='bold', loc='left')
-    ax2.invert_yaxis()
     ax2.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
     ax2.set_xlim([1020, 80])
+    ax2.invert_xaxis()  # Invert x-axis so pressure increases left to right
     ax2.plot(min_ck_level, min_ck_value, 'b*', markersize=15, 
              markeredgecolor='darkblue', markeredgewidth=1.5,
              label=f'Minimum Ck at {min_ck_level} hPa')
@@ -344,6 +538,13 @@ def create_boxplots(results):
     # Calculate statistics
     ca_mean_of_medians = np.mean(ca_medians)
     ck_mean_of_medians = np.mean(ck_medians)
+    
+    # Print mean values
+    print(f"\n   Statistics:")
+    print(f"   Ca mean across all levels: {ca_mean_of_medians:.4f} W m⁻²")
+    print(f"   Ca maximum (median): {max_ca_value:.4f} W m⁻² at {max_ca_level} hPa")
+    print(f"   Ck mean across all levels: {ck_mean_of_medians:.4f} W m⁻²")
+    print(f"   Ck minimum (median): {min_ck_value:.4f} W m⁻² at {min_ck_level} hPa")
     
     return max_ca_level, max_ca_value, min_ck_level, min_ck_value
 
@@ -416,25 +617,27 @@ def save_critical_levels(max_ca_level, max_ca_value, min_ck_level, min_ck_value,
 
 
 def main():
-    """Analyze vertical distribution of energy conversions."""
+    """Analyze vertical distribution of energy conversions for EP1 cyclones."""
     
     print("=" * 80)
-    print("STEP 2: Vertical Levels Analysis - ALL CYCLONES")
+    print("STEP 2: Vertical Levels Analysis - EP1 CYCLONES FROM ZENODO")
     print("=" * 80)
     
-    # Note: We don't need selected cases anymore - we use ALL cyclones
-    print("\n1. Analyzing ALL cyclones in data/lec_results...")
-    print("   This provides a more robust statistical estimate")
+    # Download and extract LEC data from Zenodo
+    data_dir = download_and_extract_lec_data()
     
-    # Analyze vertical profiles for all cyclones
-    results = analyze_vertical_profiles(None)
+    # Get EP1 cyclone track IDs
+    ep1_track_ids = get_ep1_cyclones()
+    
+    # Analyze vertical profiles for EP1 cyclones
+    results = analyze_vertical_profiles(data_dir, ep1_track_ids)
     
     if len(results['ca_max_levels']) == 0:
         print("\n❌ Error: No valid data found.")
-        print("   Check that LEC results exist in data/lec_results/")
+        print("   Check that EP1 cyclones have LEC data available.")
         return
     
-    print(f"\n   Successfully analyzed {len(results['ca_max_levels'])} cyclones")
+    print(f"\n   Successfully analyzed {len(results['ca_max_levels'])} EP1 cyclones")
     
     # Create boxplots
     max_ca_level, max_ca_value, min_ck_level, min_ck_value = create_boxplots(results)

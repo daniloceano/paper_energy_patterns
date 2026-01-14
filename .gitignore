@@ -24,6 +24,7 @@ data/*.hdf5
 
 # Exclude specific data subdirectories
 data/lec_results/
+data/temp_lec_zenodo
 
 # Keep data directory structure
 !data/README.md
@@ -67,4 +68,3 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
-

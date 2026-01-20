@@ -38,25 +38,23 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-
-try:
-    import cdsapi
-    CDS_AVAILABLE = True
-except ImportError:
-    CDS_AVAILABLE = False
-    print("⚠️  Warning: cdsapi not installed. Install with: pip install cdsapi")
+import cdsapi
+import multiprocessing as mp
+from functools import partial
 
 from scripts.utils.load_data import load_tracks
 
 # Configuration
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "era5_ep1"
 RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_vertical"
-LEC_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "lec_results"
+LEC_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 
 # Variables to download
 # For Rayleigh-Kuo (RK) criterion: u, v (to compute vorticity)
-# For Eady Growth Rate (EGR): u, v, t, z (for wind shear, static stability)
-VARIABLES = ['u_component_of_wind', 'v_component_of_wind', 'temperature', 'geopotential']
+# For Eady Growth Rate (EGR): u, v, t, z, q (for wind shear, static stability with moisture)
+#   - q (specific_humidity): needed to compute virtual temperature (Tv) for accurate 
+#     static stability calculation incorporating moisture effects on density
+VARIABLES = ['u_component_of_wind', 'v_component_of_wind', 'temperature', 'geopotential', 'specific_humidity']
 
 # Domain buffer (degrees)
 # Single domain per cyclone: track extent + this buffer on all sides
@@ -88,19 +86,19 @@ def get_intensification_phase_info(track_id):
     """Get intensification phase times and track extent."""
     
     lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
-    periods_file = lec_dir / "periods.csv"
+    periods_file = lec_dir / "periods.csv" / "periods.csv"
     
     if not periods_file.exists():
         return None
     
-    periods = pd.read_csv(periods_file)
-    intensification = periods[periods['period'] == 'intensification']
+    periods = pd.read_csv(periods_file, index_col=0)
+    intensification = periods.loc['intensification']
     
     if len(intensification) == 0:
         return None
     
-    start_time = pd.to_datetime(intensification['start_time'].iloc[0])
-    end_time = pd.to_datetime(intensification['end_time'].iloc[0])
+    start_time = pd.to_datetime(intensification['start'])
+    end_time = pd.to_datetime(intensification['end'])
     
     return start_time, end_time
 
@@ -113,7 +111,7 @@ def compute_domain_bounds(track_id, start_time, end_time):
     
     # Filter for this cyclone during intensification
     track_data = tracks[tracks['track_id'] == track_id].copy()
-    track_data['time'] = pd.to_datetime(track_data['time'])
+    track_data['time'] = pd.to_datetime(track_data['date'])
     track_intensification = track_data[
         (track_data['time'] >= start_time) & 
         (track_data['time'] <= end_time)
@@ -122,11 +120,18 @@ def compute_domain_bounds(track_id, start_time, end_time):
     if len(track_intensification) == 0:
         return None
     
+    # Find actual track point at temporal center (consistent with step1 and step5)
+    t_center = start_time + (end_time - start_time) / 2
+    time_diffs = np.abs((track_intensification['time'] - t_center).dt.total_seconds())
+    closest_idx = time_diffs.idxmin()
+    center_lat = track_intensification.loc[closest_idx, 'lat vor']
+    center_lon = track_intensification.loc[closest_idx, 'lon vor']
+    
     # Compute track extent
-    min_lat = track_intensification['lat'].min()
-    max_lat = track_intensification['lat'].max()
-    min_lon = track_intensification['lon'].min()
-    max_lon = track_intensification['lon'].max()
+    min_lat = track_intensification['lat vor'].min()
+    max_lat = track_intensification['lat vor'].max()
+    min_lon = track_intensification['lon vor'].min()
+    max_lon = track_intensification['lon vor'].max()
     
     # Add buffer
     domain = {
@@ -134,19 +139,61 @@ def compute_domain_bounds(track_id, start_time, end_time):
         'south': max(-90, min_lat - DOMAIN_BUFFER),
         'east': max_lon + DOMAIN_BUFFER,
         'west': min_lon - DOMAIN_BUFFER,
-        'track_center_lat': track_intensification['lat'].mean(),
-        'track_center_lon': track_intensification['lon'].mean()
+        'track_center_lat': center_lat,
+        'track_center_lon': center_lon
     }
     
     return domain
 
 
+def process_case_wrapper(case_data, pressure_levels):
+    """
+    Wrapper function for parallel processing.
+    Returns: (track_id, success)
+    """
+    idx, row = case_data
+    track_id = row['track_id']
+    
+    try:
+        print(f"\n   [{idx+1}] Processing {track_id}...")
+        
+        # Get intensification phase times
+        lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
+        periods_file = lec_dir / "periods.csv" / "periods.csv"
+        
+        if not periods_file.exists():
+            print(f"      ⚠️  No intensification phase found")
+            return (track_id, False)
+        
+        periods = pd.read_csv(periods_file, index_col=0)
+        intensification = periods.loc['intensification']
+        
+        if len(intensification) == 0:
+            print(f"      ⚠️  No intensification phase found")
+            return (track_id, False)
+        
+        start_time = pd.to_datetime(intensification['start'])
+        end_time = pd.to_datetime(intensification['end'])
+        print(f"      Intensification: {start_time} to {end_time}")
+        
+        # Compute domain bounds
+        domain = compute_domain_bounds(track_id, start_time, end_time)
+        if domain is None:
+            print(f"      ⚠️  Could not compute domain bounds")
+            return (track_id, False)
+        
+        # Download data
+        success = download_era5_for_case(track_id, start_time, end_time, domain, pressure_levels)
+        return (track_id, success)
+        
+    except Exception as e:
+        print(f"      ❌ Error processing {track_id}: {e}")
+        return (track_id, False)
+
+
 def download_era5_for_case(track_id, start_time, end_time, domain, pressure_levels):
     """Download ERA5 data for a single case."""
-    
-    if not CDS_AVAILABLE:
-        print("      ❌ cdsapi not available. Skipping download.")
-        return False
+
     
     print(f"      Downloading ERA5 data...")
     print(f"         Period: {start_time} to {end_time}")
@@ -251,42 +298,23 @@ def main():
     print(f"   Temporal resolution: 6-hourly")
     print(f"   Output directory: {DATA_DIR}")
     
-    if not CDS_AVAILABLE:
-        print("\n⚠️  cdsapi not installed. Install with:")
-        print("   pip install cdsapi")
-        print("\n   This is a dry run showing what would be downloaded.")
+    # Process cases in parallel
+    n_cores = max(1, mp.cpu_count() - 1)
+    print(f"\n4. Processing cases in parallel using {n_cores} cores...")
     
-    # Process each case
-    print("\n4. Processing cases...")
-    successful = 0
-    failed = 0
+    # Prepare case data with indices
+    case_data = [(idx, row) for idx, row in cases.iterrows()]
     
-    for idx, row in cases.iterrows():
-        track_id = row['track_id']
-        print(f"\n   [{idx+1}/{len(cases)}] Processing {track_id}...")
-        
-        # Get intensification phase times
-        phase_info = get_intensification_phase_info(track_id)
-        if phase_info is None:
-            print(f"      ⚠️  No intensification phase found")
-            failed += 1
-            continue
-        
-        start_time, end_time = phase_info
-        print(f"      Intensification: {start_time} to {end_time}")
-        
-        # Compute domain bounds
-        domain = compute_domain_bounds(track_id, start_time, end_time)
-        if domain is None:
-            print(f"      ⚠️  Could not compute domain bounds")
-            failed += 1
-            continue
-        
-        # Download data
-        if download_era5_for_case(track_id, start_time, end_time, domain, pressure_levels):
-            successful += 1
-        else:
-            failed += 1
+    # Create partial function with pressure_levels
+    process_func = partial(process_case_wrapper, pressure_levels=pressure_levels)
+    
+    # Process in parallel
+    with mp.Pool(processes=n_cores) as pool:
+        results = pool.map(process_func, case_data)
+    
+    # Count successes and failures
+    successful = sum(1 for _, success in results if success)
+    failed = sum(1 for _, success in results if not success)
     
     print("\n" + "=" * 80)
     print(f"✓ Download complete!")

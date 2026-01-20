@@ -59,6 +59,8 @@ def main():
         ("h5py", "h5py"),
         ("requests", "requests"),
         ("tqdm", "tqdm"),
+        ("metpy", "metpy"),
+        ("cdsapi", "cdsapi"),
     ]
     
     all_installed = True

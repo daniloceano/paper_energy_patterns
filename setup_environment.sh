@@ -103,7 +103,7 @@ else
     echo "Installing main packages via conda-forge..."
     conda install -c conda-forge numpy pandas scipy xarray matplotlib seaborn \
         cmocean cartopy geopandas shapely scikit-learn statsmodels netCDF4 \
-        h5py pyarrow requests tqdm -y
+        h5py pyarrow requests tqdm metpy -y
     
     # Install numba and llvmlite via conda (avoid build issues)
     echo ""
@@ -113,7 +113,7 @@ else
     # Install remaining packages via pip
     echo ""
     echo "Installing specialized packages via pip..."
-    pip install lorenz-phase-space reval gap-stat --no-build-isolation
+    pip install lorenz-phase-space reval cdsapi --no-build-isolation
     
     echo ""
     echo "✅ Environment created and packages installed!"

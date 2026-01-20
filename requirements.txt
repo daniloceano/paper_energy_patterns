@@ -34,3 +34,7 @@ requests>=2.31.0
 tqdm>=4.65.0
 # Trend analysis
 pymannkendall>=1.4.0
+
+# Meteorology and Climate Data
+metpy>=1.5.0
+cdsapi>=0.6.1

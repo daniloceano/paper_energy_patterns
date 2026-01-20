@@ -5,18 +5,20 @@ This script executes all steps of the EP1 vertical structure and instability
 analysis in sequence.
 
 Steps:
-1. Select 10 most intense EP1 cyclones
+1. Select EP1 cyclones within specified domain
 2. Analyze LEC data to identify critical pressure levels (Ca max, Ck min)
 3. Download ERA5 data at identified levels (should be run separately on server)
-4. Compute instability diagnostics (RK and EGR)
-5. Create publication-quality figures
+4. Compute instability diagnostics (EGR and RK)
+5. Consolidate instability results into summary tables
+6. Create publication-quality figures 
 
 EXECUTION ORDER:
 1. step1_select_cases.py
 2. step2_vertical_levels_analysis.py (analyzes existing LEC data)
 3. step3_download_era5.py (run separately on server with CDS API)
 4. step4_compute_instabilities.py
-5. step5_create_figures.py
+5. consolidate_instability_results.py
+6. step5_create_figures.py 
 
 NOTE: Step 3 (ERA5 download) should be run separately on a remote server
       with appropriate resources and CDS API credentials.
@@ -57,15 +59,16 @@ def main():
     print("=" * 80)
     print("\nThis script will run all analysis steps in sequence.")
     print("NOTE: Step 3 (ERA5 download) is skipped by default.")
-    print("      Run step2_download_era5.py separately on a remote server")
-    print("      AFTER step3 identifies the critical pressure levels.\n")
+    print("      Run step3_download_era5.py separately on a remote server")
+    print("      AFTER step2 identifies the critical pressure levels.\n")
     
     steps = [
-        (1, "step1_select_cases.py", "Select Most Intense EP1 Cyclones"),
-        (2, "step3_vertical_levels_analysis.py", "Analyze LEC Data - Identify Critical Levels"),
-        # Step 3 (step2_download_era5.py) skipped - must be run manually on server
-        (4, "step4_compute_instabilities.py", "Compute Instability Diagnostics"),
-        (5, "step5_create_figures.py", "Create Figures"),
+        (1, "step1_select_cases.py", "Select EP1 Cyclones within Specified Domain"),
+        (2, "step2_vertical_levels_analysis.py", "Analyze LEC Data - Identify Critical Levels"),
+        (3, "step3_download_era5.py", "Download ERA5 Data at Identified Levels"), # Note: This step should be run separately
+        (4, "step4_compute_instabilities.py", "Compute Instability Diagnostics (EGR & RK)"),
+        (5, "consolidate_instability_results.py", "Consolidate Results into Summary Tables"),
+        (6, "step5_create_figures.py", "Create Publication-Quality Figures"),
     ]
     
     success_count = 0

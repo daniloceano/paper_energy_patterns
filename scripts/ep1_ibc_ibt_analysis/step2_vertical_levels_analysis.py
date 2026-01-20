@@ -17,8 +17,24 @@ Analysis includes:
 - Generate publication-quality boxplots showing distribution by pressure level
 - Save identified critical levels for ERA5 download
 
-NOTE: This step analyzes ALL cyclones in data/lec_results for a more robust
-statistical estimate, not just the 10 selected EP1 cases.
+IMPORTANT - Data Corrections Applied:
+-------------------------------------
+Two corrections are applied to vertically-resolved LEC data:
+
+1. Ca (Baroclinic Conversion): Sign inversion
+   - Ca_corrected = -Ca_raw
+   - Reason: Old LorenzCycleToolkit version saved Ca_level with opposite sign
+
+2. Ck (Barotropic Conversion): Division by gravity
+   - Ck_corrected = Ck_raw / g (g = 9.8 m/s²)
+   - Reason: Old LorenzCycleToolkit version saved Ck_level without gravity normalization
+
+These corrections were validated in validate_step2.py by comparing manual vertical
+integration with pre-computed integrated values. The corrections ensure that
+vertically-integrated values match the original pre-computed values from the toolkit.
+
+NOTE: Current version of LorenzCycleToolkit has fixed these issues. These corrections
+are only needed for the Zenodo dataset used in this paper.
 
 Author: Danilo Couto de Souza
 Date: January 2026
@@ -40,7 +56,10 @@ import tarfile
 import io
 from tqdm import tqdm
 
-# Configuration
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
 BASE_DIR = Path(__file__).resolve().parents[2]
 RESULTS_DIR = BASE_DIR / "results" / "ep1_vertical"
 FIGURES_DIR = BASE_DIR / "figures" / "ep1_vertical"
@@ -52,6 +71,9 @@ TEMP_DIR.mkdir(parents=True, exist_ok=True)
 ZENODO_DOI = "10.5281/zenodo.18243447"
 ZENODO_RECORD_ID = "18243447"
 ZENODO_URL = "https://zenodo.org/records/18243447"
+
+# Physical constants
+GRAVITY = 9.8  # m/s² - Used for Ck correction (see docstring for details)
 
 print(f"Data source: Zenodo (DOI: {ZENODO_DOI})")
 print(f"URL: {ZENODO_URL}")
@@ -205,13 +227,28 @@ def load_lec_level_data(data_dir, track_id, variable='Ca'):
     - Columns: Pressure levels in Pa (1000.0 to 100000.0)
     - Values: Energy term in W m⁻² at each level and time
     
+    IMPORTANT - Data Corrections Applied:
+    --------------------------------------
+    Two corrections are applied based on validation results (see validate_step2.py):
+    
+    1. Ca (Baroclinic Conversion): Sign inversion
+       - Ca_corrected = -Ca_raw
+       - Reason: Old LorenzCycleToolkit saved Ca_level with opposite sign
+    
+    2. Ck (Barotropic Conversion): Division by gravity
+       - Ck_corrected = Ck_raw / g (g = 9.8 m/s²)
+       - Reason: Old LorenzCycleToolkit saved Ck_level without gravity normalization
+    
+    These corrections ensure that vertical integration of level data matches
+    pre-computed integrated values from the toolkit.
+    
     Args:
         data_dir: Path to extracted LEC data directory
         track_id: Cyclone ID (e.g., '19790006')
         variable: 'Ca' or 'Ck'
     
     Returns:
-        DataFrame with time index and pressure levels as columns
+        DataFrame with time index, pressure levels as columns, and corrected values
     """
     lec_dir = data_dir / f"{track_id}_ERA5_track"
     file_path = lec_dir / f"{variable}_level.csv"
@@ -227,7 +264,25 @@ def load_lec_level_data(data_dir, track_id, variable='Ca'):
     if not file_path.exists():
         return None
     
+    # Load raw data
     df = pd.read_csv(file_path, index_col=0, parse_dates=True)
+    
+    # ═══════════════════════════════════════════════════════════════════════
+    # APPLY DATA CORRECTIONS (validated in validate_step2.py)
+    # ═══════════════════════════════════════════════════════════════════════
+    
+    if variable == 'Ca':
+        # CORRECTION 1: Invert sign for Ca
+        # Reason: Old LorenzCycleToolkit version saved Ca_level with opposite sign
+        # This ensures vertical integration matches pre-computed values
+        df = -df
+        
+    elif variable == 'Ck':
+        # CORRECTION 2: Divide by gravity for Ck
+        # Reason: Old LorenzCycleToolkit version saved Ck_level without gravity normalization
+        # This ensures vertical integration matches pre-computed values
+        df = df / GRAVITY
+    
     return df
 
 
@@ -283,6 +338,11 @@ def analyze_vertical_profiles(data_dir, ep1_track_ids):
     - Analysis restricted to intensification phase only
     - Filters for EP1 cyclones (cluster 0) only
     
+    IMPORTANT: Data corrections are applied in load_lec_level_data():
+    - Ca: Sign inversion (-Ca_raw)
+    - Ck: Division by gravity (Ck_raw / 9.8)
+    See function docstring and validate_step2.py for details.
+    
     Args:
         data_dir: Path to extracted LEC data directory
         ep1_track_ids: List of track_ids belonging to EP1
@@ -301,6 +361,8 @@ def analyze_vertical_profiles(data_dir, ep1_track_ids):
     
     print("\n3. Analyzing LEC data for EP1 cyclones...")
     print(f"   Data source: Zenodo (DOI: {ZENODO_DOI})")
+    print(f"   Applying validated corrections: Ca sign inversion, Ck gravity normalization")
+    print(f"   (See validate_step2.py for validation details)")
     print(f"   Analyzing {len(ep1_track_ids)} EP1 cyclones...")
     
     successful = 0
@@ -381,22 +443,25 @@ def create_boxplots(results):
     ca_by_level = results['ca_by_level']
     ck_by_level = results['ck_by_level']
     
-    # Sort pressure levels
-    pressure_levels = sorted(ca_by_level.keys())
+    # Sort pressure levels in descending order (1000 hPa to 100 hPa)
+    pressure_levels = sorted(ca_by_level.keys(), reverse=True)
     
     # Prepare data for boxplots
     ca_data = [ca_by_level[p] for p in pressure_levels]
     ck_data = [ck_by_level[p] for p in pressure_levels]
     
+    # Create regularly spaced positions for boxplots (avoid irregular spacing)
+    positions = np.arange(len(pressure_levels))
+    
     # Create figure with Scientific Reports style
-    fig, axes = plt.subplots(2, 1, figsize=(10, 12))
+    fig, axes = plt.subplots(2, 1, figsize=(12, 12))
     
     # Style settings
     plt.rcParams.update({
         'font.size': 11,
         'axes.labelsize': 12,
         'axes.titlesize': 13,
-        'xtick.labelsize': 10,
+        'xtick.labelsize': 9,
         'ytick.labelsize': 10,
         'legend.fontsize': 10,
         'font.family': 'sans-serif',
@@ -405,7 +470,7 @@ def create_boxplots(results):
     
     # Panel A: Ca (Baroclinic conversion)
     ax1 = axes[0]
-    bp1 = ax1.boxplot(ca_data, positions=pressure_levels, widths=20,
+    bp1 = ax1.boxplot(ca_data, positions=positions, widths=0.6,
                       patch_artist=True, showfliers=False,
                       medianprops=dict(color='darkred', linewidth=2),
                       boxprops=dict(facecolor='lightcoral', edgecolor='darkred', alpha=0.7),
@@ -416,9 +481,12 @@ def create_boxplots(results):
     ax1.set_ylabel('Ca (W m$^{-2}$)', fontsize=12, fontweight='bold')
     ax1.set_title('(a) Baroclinic Conversion (Ca) by Pressure Level', 
                   fontsize=13, fontweight='bold', loc='left')
-    ax1.invert_yaxis()
     ax1.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax1.set_xlim([1020, 80])
+    
+    # Set x-axis ticks and labels
+    ax1.set_xticks(positions)
+    ax1.set_xticklabels([f'{int(p)}' for p in pressure_levels], rotation=45, ha='right')
+    ax1.set_xlim([positions[0] - 0.5, positions[-1] + 0.5])
     
     # Find and mark maximum Ca level
     ca_medians = [np.median(ca_by_level[p]) for p in pressure_levels]
@@ -426,20 +494,20 @@ def create_boxplots(results):
     max_ca_level = pressure_levels[max_ca_idx]
     max_ca_value = ca_medians[max_ca_idx]
     
-    ax1.plot(max_ca_level, max_ca_value, 'r*', markersize=15, 
+    ax1.plot(positions[max_ca_idx], max_ca_value, 'r*', markersize=15, 
              markeredgecolor='darkred', markeredgewidth=1.5, 
              label=f'Maximum Ca at {max_ca_level} hPa')
     ax1.legend(loc='best', frameon=True, fancybox=True, shadow=True)
     
     # Add text with statistics
     n_systems = len(results['ca_profiles'])
-    ax1.text(0.98, 0.02, f'n = {n_systems} systems',
-             transform=ax1.transAxes, ha='right', va='bottom',
+    ax1.text(0.98, 0.98, f'n = {n_systems} systems',
+             transform=ax1.transAxes, ha='right', va='top',
              fontsize=10, bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
     # Panel B: Ck (Barotropic conversion)
     ax2 = axes[1]
-    bp2 = ax2.boxplot(ck_data, positions=pressure_levels, widths=20,
+    bp2 = ax2.boxplot(ck_data, positions=positions, widths=0.6,
                       patch_artist=True, showfliers=False,
                       medianprops=dict(color='darkblue', linewidth=2),
                       boxprops=dict(facecolor='lightblue', edgecolor='darkblue', alpha=0.7),
@@ -452,8 +520,11 @@ def create_boxplots(results):
     ax2.set_title('(b) Barotropic Conversion (Ck) by Pressure Level', 
                   fontsize=13, fontweight='bold', loc='left')
     ax2.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax2.set_xlim([1020, 80])
-    ax2.invert_xaxis()  # Invert x-axis so pressure increases left to right
+    
+    # Set x-axis ticks and labels
+    ax2.set_xticks(positions)
+    ax2.set_xticklabels([f'{int(p)}' for p in pressure_levels], rotation=45, ha='right')
+    ax2.set_xlim([positions[0] - 0.5, positions[-1] + 0.5])
     
     # Find and mark minimum Ck level
     ck_medians = [np.median(ck_by_level[p]) for p in pressure_levels]
@@ -461,7 +532,7 @@ def create_boxplots(results):
     min_ck_level = pressure_levels[min_ck_idx]
     min_ck_value = ck_medians[min_ck_idx]
     
-    ax2.plot(min_ck_level, min_ck_value, 'b*', markersize=15, 
+    ax2.plot(positions[min_ck_idx], min_ck_value, 'b*', markersize=15, 
              markeredgecolor='darkblue', markeredgewidth=1.5,
              label=f'Minimum Ck at {min_ck_level} hPa')
     ax2.legend(loc='best', frameon=True, fancybox=True, shadow=True)
@@ -480,11 +551,11 @@ def create_boxplots(results):
     
     # Also save as PDF for publication
     output_file_pdf = FIGURES_DIR / "critical_levels_boxplot.pdf"
-    fig, axes = plt.subplots(2, 1, figsize=(10, 12))
+    fig, axes = plt.subplots(2, 1, figsize=(12, 12))
     
-    # Recreate for PDF (same code as above)
+    # Recreate for PDF with same settings
     ax1 = axes[0]
-    bp1 = ax1.boxplot(ca_data, positions=pressure_levels, widths=20,
+    bp1 = ax1.boxplot(ca_data, positions=positions, widths=0.6,
                       patch_artist=True, showfliers=False,
                       medianprops=dict(color='darkred', linewidth=2),
                       boxprops=dict(facecolor='lightcoral', edgecolor='darkred', alpha=0.7),
@@ -496,18 +567,19 @@ def create_boxplots(results):
     ax1.set_title('(a) Baroclinic Conversion (Ca) by Pressure Level', 
                   fontsize=13, fontweight='bold', loc='left')
     ax1.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax1.set_xlim([1020, 80])
-    ax1.invert_xaxis()  # Invert x-axis so pressure increases left to right
-    ax1.plot(max_ca_level, max_ca_value, 'r*', markersize=15, 
+    ax1.set_xticks(positions)
+    ax1.set_xticklabels([f'{int(p)}' for p in pressure_levels], rotation=45, ha='right')
+    ax1.set_xlim([positions[0] - 0.5, positions[-1] + 0.5])
+    ax1.plot(positions[max_ca_idx], max_ca_value, 'r*', markersize=15, 
              markeredgecolor='darkred', markeredgewidth=1.5, 
              label=f'Maximum Ca at {max_ca_level} hPa')
     ax1.legend(loc='best', frameon=True, fancybox=True, shadow=True)
-    ax1.text(0.98, 0.02, f'n = {n_systems} systems',
-             transform=ax1.transAxes, ha='right', va='bottom',
+    ax1.text(0.98, 0.98, f'n = {n_systems} systems',
+             transform=ax1.transAxes, ha='right', va='top',
              fontsize=10, bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
     
     ax2 = axes[1]
-    bp2 = ax2.boxplot(ck_data, positions=pressure_levels, widths=20,
+    bp2 = ax2.boxplot(ck_data, positions=positions, widths=0.6,
                       patch_artist=True, showfliers=False,
                       medianprops=dict(color='darkblue', linewidth=2),
                       boxprops=dict(facecolor='lightblue', edgecolor='darkblue', alpha=0.7),
@@ -520,9 +592,10 @@ def create_boxplots(results):
     ax2.set_title('(b) Barotropic Conversion (Ck) by Pressure Level', 
                   fontsize=13, fontweight='bold', loc='left')
     ax2.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax2.set_xlim([1020, 80])
-    ax2.invert_xaxis()  # Invert x-axis so pressure increases left to right
-    ax2.plot(min_ck_level, min_ck_value, 'b*', markersize=15, 
+    ax2.set_xticks(positions)
+    ax2.set_xticklabels([f'{int(p)}' for p in pressure_levels], rotation=45, ha='right')
+    ax2.set_xlim([positions[0] - 0.5, positions[-1] + 0.5])
+    ax2.plot(positions[min_ck_idx], min_ck_value, 'b*', markersize=15, 
              markeredgecolor='darkblue', markeredgewidth=1.5,
              label=f'Minimum Ck at {min_ck_level} hPa')
     ax2.legend(loc='best', frameon=True, fancybox=True, shadow=True)
@@ -622,6 +695,11 @@ def main():
     print("=" * 80)
     print("STEP 2: Vertical Levels Analysis - EP1 CYCLONES FROM ZENODO")
     print("=" * 80)
+    print("\n⚠️  DATA CORRECTIONS APPLIED:")
+    print("   • Ca (Baroclinic): Sign inversion applied (Ca_corrected = -Ca_raw)")
+    print("   • Ck (Barotropic): Gravity normalization applied (Ck_corrected = Ck_raw / 9.8)")
+    print("   • Validated in validate_step2.py - see script for details")
+    print("   • Required due to old LorenzCycleToolkit version used for Zenodo dataset")
     
     # Download and extract LEC data from Zenodo
     data_dir = download_and_extract_lec_data()

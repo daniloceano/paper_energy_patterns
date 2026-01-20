@@ -64,7 +64,8 @@ RESULTS_DIR = BASE_DIR / "results" / "ck_analysis" / "lec_results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # LorenzCycleToolkit installation path
-LORENZ_TOOLKIT_DIR = Path.home() / "Documents" / "Programs_and_scripts" / "lorenz-cycle"
+# LORENZ_TOOLKIT_DIR = Path.home() / "Documents" / "Programs_and_scripts" / "lorenz-cycle"
+LORENZ_TOOLKIT_DIR = Path("/p1-swell/danilocs/LorenzCycleToolkit/")
 LORENZ_SCRIPT = LORENZ_TOOLKIT_DIR / "lorenzcycletoolkit.py"
 LORENZ_RESULTS_DIR = LORENZ_TOOLKIT_DIR / "LEC_Results"  # Where LorenzCycleToolkit saves results
 

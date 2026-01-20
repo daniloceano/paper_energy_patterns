@@ -12,6 +12,41 @@ All analysis scripts follow a common pattern:
 
 ## Available Scripts
 
+### `download_lec_from_zenodo.py`
+
+Downloads the complete LEC (Lorenz Energy Cycle) results dataset from Zenodo.
+
+**Data Source:** Zenodo (DOI: 10.5281/zenodo.18243447)
+- Complete Lorenz Energy Cycle results with vertical resolution
+- ~1,500 cyclones from 1979-2020
+- 32 pressure levels from 1000 hPa to 100 hPa
+- 3-hourly temporal resolution
+
+**Output location:** `data/temp_lec_zenodo/LEC_Results_energetic-patterns/`
+
+**Usage:**
+```bash
+python scripts/analysis/download_lec_from_zenodo.py
+```
+
+**Notes:**
+- The script checks if data is already downloaded and skips re-downloading
+- Download size: ~1-2 GB (archive file)
+- Extraction creates ~6,700 directories (one per cyclone)
+- This is a prerequisite for scripts in `ep1_ibc_ibt_analysis/`
+
+### `extract_tracks_from_zenodo.py`
+
+Extracts tracks and energetics from the remote Zenodo CSV and creates a smaller,
+processed CSV for fast local reads used by plotting scripts.
+
+**Output:** `data/tracks_SAt_filtered_with_energetics_processed.csv`
+
+**Usage:**
+```bash
+python scripts/analysis/extract_tracks_from_zenodo.py
+```
+
 ### `exploratory_kde_pairplot.py`
 
 Creates a pairwise KDE contour plot matrix for selected energy terms across life-cycle phases.

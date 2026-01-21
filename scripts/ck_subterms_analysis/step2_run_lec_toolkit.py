@@ -69,6 +69,8 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR = BASE_DIR / "results" / "ck_analysis" / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / f"step2_lec_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+CYCLONE_LOG_DIR = LOG_DIR / "cyclones"  # Individual cyclone stdout/stderr
+CYCLONE_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # LorenzCycleToolkit installation path
 # LORENZ_TOOLKIT_DIR = Path.home() / "Documents" / "Programs_and_scripts" / "lorenz-cycle"
@@ -237,6 +239,10 @@ def process_cyclone(track_file):
         logger.info(f"[{track_id}] Running LorenzCycleToolkit...")
         logger.debug(f"[{track_id}] Command: {' '.join(cmd)}")
         
+        # Prepare log files for stdout/stderr
+        stdout_log = CYCLONE_LOG_DIR / f"{track_id}_stdout.log"
+        stderr_log = CYCLONE_LOG_DIR / f"{track_id}_stderr.log"
+        
         # Run LorenzCycleToolkit
         # Note: Must run from LORENZ_TOOLKIT_DIR to access inputs/ directory
         result = subprocess.run(
@@ -246,6 +252,12 @@ def process_cyclone(track_file):
             text=True,
             timeout=7200  # 2 hour timeout per cyclone
         )
+        
+        # Save full output to files
+        with open(stdout_log, 'w') as f:
+            f.write(result.stdout)
+        with open(stderr_log, 'w') as f:
+            f.write(result.stderr)
         
         if result.returncode == 0:
             logger.info(f"[{track_id}] LorenzCycleToolkit completed successfully")
@@ -268,11 +280,15 @@ def process_cyclone(track_file):
                     logger.error(f"[{track_id}] Output files not found")
                     return (track_id, False, "Completed but output files not found")
         else:
-            # Extract error message
-            error_msg = result.stderr.split('\n')[-10:]  # Last 10 lines
+            # Extract error message (last non-empty lines)
+            stderr_lines = [line for line in result.stderr.split('\n') if line.strip()]
+            error_msg = stderr_lines[-5:] if len(stderr_lines) >= 5 else stderr_lines
+            
             logger.error(f"[{track_id}] LorenzCycleToolkit failed with exit code {result.returncode}")
-            logger.debug(f"[{track_id}] Error: {' '.join(error_msg)}")
-            return (track_id, False, f"Exit code {result.returncode}: {' '.join(error_msg)}")
+            logger.error(f"[{track_id}] Last stderr lines: {error_msg}")
+            logger.error(f"[{track_id}] Full logs: stdout={stdout_log}, stderr={stderr_log}")
+            
+            return (track_id, False, f"Exit code {result.returncode}. See {stderr_log}")
             
     except subprocess.TimeoutExpired:
         logger.error(f"[{track_id}] Timeout (>2 hours)")

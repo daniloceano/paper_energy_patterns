@@ -53,6 +53,8 @@ import multiprocessing as mp
 from functools import partial
 import time
 import shutil
+import logging
+from datetime import datetime
 
 # ============================================================================
 # CONFIGURATION
@@ -62,6 +64,11 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 TRACKS_DIR = BASE_DIR / "data" / "ck_analysis" / "tracks"
 RESULTS_DIR = BASE_DIR / "results" / "ck_analysis" / "lec_results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Logging configuration
+LOG_DIR = BASE_DIR / "results" / "ck_analysis" / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / f"step2_lec_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
 # LorenzCycleToolkit installation path
 # LORENZ_TOOLKIT_DIR = Path.home() / "Documents" / "Programs_and_scripts" / "lorenz-cycle"
@@ -202,9 +209,14 @@ def process_cyclone(track_file):
     # Extract track ID from filename: track_19790205.txt -> 19790205
     track_id = track_file.stem.replace('track_', '')
     
+    # Setup logging for this worker
+    logger = logging.getLogger(f'worker_{mp.current_process().name}')
+    logger.info(f"[{track_id}] Starting processing...")
+    
     try:
         # Check if already processed
         if is_already_processed(track_id):
+            logger.info(f"[{track_id}] Already processed, skipping")
             return (track_id, True, "Already processed (skipped)")
         
         # Prepare command
@@ -222,6 +234,9 @@ def process_cyclone(track_file):
             '--trackfile', str(track_file)
         ]
         
+        logger.info(f"[{track_id}] Running LorenzCycleToolkit...")
+        logger.debug(f"[{track_id}] Command: {' '.join(cmd)}")
+        
         # Run LorenzCycleToolkit
         # Note: Must run from LORENZ_TOOLKIT_DIR to access inputs/ directory
         result = subprocess.run(
@@ -233,42 +248,69 @@ def process_cyclone(track_file):
         )
         
         if result.returncode == 0:
+            logger.info(f"[{track_id}] LorenzCycleToolkit completed successfully")
             # Move results from LorenzCycleToolkit directory to project directory
             if move_results_to_project(track_id):
                 # Verify results were moved successfully
                 if is_already_processed(track_id):
+                    logger.info(f"[{track_id}] ✓ Completed and validated")
                     return (track_id, True, "Completed successfully")
                 else:
+                    logger.error(f"[{track_id}] Results moved but validation failed")
                     return (track_id, False, "Results moved but validation failed")
             else:
                 # Check if results are in LorenzCycleToolkit directory
                 lorenz_result_dir = LORENZ_RESULTS_DIR / f"{track_id}_ERA5_track"
                 if lorenz_result_dir.exists():
+                    logger.error(f"[{track_id}] Failed to move results")
                     return (track_id, False, "Completed but failed to move results")
                 else:
+                    logger.error(f"[{track_id}] Output files not found")
                     return (track_id, False, "Completed but output files not found")
         else:
             # Extract error message
             error_msg = result.stderr.split('\n')[-10:]  # Last 10 lines
+            logger.error(f"[{track_id}] LorenzCycleToolkit failed with exit code {result.returncode}")
+            logger.debug(f"[{track_id}] Error: {' '.join(error_msg)}")
             return (track_id, False, f"Exit code {result.returncode}: {' '.join(error_msg)}")
             
     except subprocess.TimeoutExpired:
+        logger.error(f"[{track_id}] Timeout (>2 hours)")
         return (track_id, False, "Timeout (>2 hours)")
         
     except Exception as e:
+        logger.exception(f"[{track_id}] Exception occurred: {str(e)}")
         return (track_id, False, f"Exception: {str(e)}")
 
 
 def main():
     """Run LorenzCycleToolkit for all selected cyclones."""
     
+    # Setup logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(LOG_FILE),
+            logging.StreamHandler()  # Also print to console
+        ]
+    )
+    logger = logging.getLogger('main')
+    
     print("=" * 80)
     print("STEP 2: Running LorenzCycleToolkit for EP1 Cyclones")
     print("=" * 80)
+    print(f"\nLog file: {LOG_FILE}")
+    
+    logger.info("Starting step2_run_lec_toolkit.py")
+    logger.info(f"Log file: {LOG_FILE}")
     
     # Check prerequisites
+    logger.info("Checking prerequisites...")
     if not check_prerequisites():
+        logger.error("Prerequisites check failed")
         return 1
+    logger.info("Prerequisites check passed")
     
     # Get list of track files
     track_files = sorted(TRACKS_DIR.glob("track_*.txt"))
@@ -295,13 +337,18 @@ def main():
     print(f"   - Cyclone lifecycle duration")
     print(f"\n   Progress updates will appear as cyclones complete.")
     print(f"   You can monitor: {RESULTS_DIR}")
+    print(f"   Real-time log: tail -f {LOG_FILE}")
     print()
     
+    logger.info(f"Starting parallel processing of {n_total} cyclones with {N_WORKERS} workers")
     start_time = time.time()
     
     # Process cyclones in parallel
+    logger.info("Launching worker pool...")
     with mp.Pool(processes=N_WORKERS) as pool:
         results = pool.map(process_cyclone, track_files)
+    
+    logger.info("All workers completed")
     
     # Analyze results
     successes = [(tid, msg) for tid, success, msg in results if success]
@@ -311,6 +358,8 @@ def main():
     elapsed_hours = elapsed_time / 3600
     
     # Summary
+    logger.info(f"Processing completed. Successes: {len(successes)}, Failures: {len(failures)}")
+    
     print("\n" + "=" * 80)
     print("SUMMARY")
     print("=" * 80)

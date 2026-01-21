@@ -134,7 +134,7 @@ def main():
     print(f"   - Delimiter: semicolon (;)")
     print(f"   - Time format: YYYY-MM-DD-HHMM")
     print(f"   - Coordinates: vorticity center (lat vor, lon vor)")
-    print(f"   - Temporal resolution: 6-hourly")
+    print(f"   - Temporal resolution: 3-hourly")
     
     successful = 0
     failed = []
@@ -158,7 +158,7 @@ def main():
         duration_days = (pd.to_datetime(end_date) - pd.to_datetime(start_date)).days
         
         print(f"      Track points: {n_points}")
-        print(f"      Duration: {duration_days} days ({n_points * 6} hours)")
+        print(f"      Duration: {duration_days} days ({n_points * 3} hours)")
         print(f"      Period: {start_date} to {end_date}")
         
         # Create track file

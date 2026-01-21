@@ -16,7 +16,7 @@ How it works:
    - Moving framework (-t) to follow cyclone center
    - Residuals computation (-r) for dissipation/generation terms
    - Plots generation (-p) for visualization
-   - 6-hourly temporal resolution (matches track resolution)
+    - 3-hourly temporal resolution (matches track resolution)
 
 Output:
 - results/ck_analysis/lec_results/{track_id}_ERA5_track/
@@ -86,9 +86,10 @@ LORENZ_CONDA_ENV = "lorenz"
 N_WORKERS = 4  # Adjust based on available CPU cores and CDS API limits
 
 # LorenzCycleToolkit settings
-TIME_RESOLUTION = 6  # hours (matches track temporal resolution)
-# Flags: -t (track), -r (residuals), -p (plots), -v (verbose), --cdsapi (auto download)
-LEC_FLAGS = ['-t', '-r', '-p', '-v', '--cdsapi']
+# Use 3-hour temporal resolution
+TIME_RESOLUTION = 3  # hours (was 6)
+# Flags: -t (track), -r (residuals), -v (verbose), --cdsapi (auto download)
+LEC_FLAGS = ['-t', '-r', '-v', '--cdsapi']
 
 
 def check_prerequisites():

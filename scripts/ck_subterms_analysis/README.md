@@ -98,7 +98,7 @@ time;Lat;Lon
 - Coordinates: Latitude and Longitude in decimal degrees
 - Delimiter: Semicolon (`;`) with NO spaces
 - Data source: Full cyclone lifecycle (all phases)
-- Temporal resolution: 6-hourly (ERA5 native resolution)
+- Temporal resolution: 3-hourly (matches project configuration)
 
 **Script**: `step1_prepare_tracks.py`
 
@@ -343,10 +343,10 @@ results/ck_analysis/lec_results/{track_id}_ERA5_track/
    - ~94 EP1 cyclones with complete lifecycle
    - Domain: 60°W-45°W, 45°S-30°S (intensification center)
 
-2. **ERA5 Reanalysis**:
+3. **ERA5 Reanalysis**:
    - Automatically downloaded by LorenzCycleToolkit
    - Standard pressure levels (1000-100 hPa)
-   - 6-hourly temporal resolution
+   - 3-hourly temporal resolution
    - 0.25° spatial resolution
 
 3. **Track Data**:

@@ -118,6 +118,22 @@ def check_prerequisites():
     
     print(f"   ✓ LorenzCycleToolkit found: {LORENZ_SCRIPT}")
     
+    # Setup correct namelist for ERA5-cdsapi
+    namelist_source = LORENZ_TOOLKIT_DIR / "inputs" / "namelist_ERA5-cdsapi"
+    namelist_dest = LORENZ_TOOLKIT_DIR / "inputs" / "namelist"
+    
+    if not namelist_source.exists():
+        print(f"   ❌ Error: ERA5-cdsapi namelist not found: {namelist_source}")
+        return False
+    
+    # Copy namelist_ERA5-cdsapi to namelist
+    try:
+        shutil.copy2(namelist_source, namelist_dest)
+        print(f"   ✓ Namelist configured for ERA5-cdsapi")
+    except Exception as e:
+        print(f"   ❌ Error copying namelist: {e}")
+        return False
+    
     # Check CDS API credentials
     cdsapirc = Path.home() / ".cdsapirc"
     if not cdsapirc.exists():

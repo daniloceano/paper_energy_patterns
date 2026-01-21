@@ -65,6 +65,8 @@ Thumbs.db
 *.tmp
 *.bak
 *.log
+*.out
+
 
 # Distribution / packaging
 dist/

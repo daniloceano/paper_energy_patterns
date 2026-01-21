@@ -55,6 +55,7 @@ import time
 import shutil
 import logging
 from datetime import datetime
+import os
 
 # ============================================================================
 # CONFIGURATION
@@ -68,7 +69,7 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 # Logging configuration
 LOG_DIR = BASE_DIR / "results" / "ck_analysis" / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
-LOG_FILE = LOG_DIR / f"step2_lec_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+LOG_FILE = LOG_DIR / "step2_lec_current.log"  # Fixed name, will be overwritten
 CYCLONE_LOG_DIR = LOG_DIR / "cyclones"  # Individual cyclone stdout/stderr
 CYCLONE_LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -85,6 +86,10 @@ LORENZ_CONDA_ENV = "lorenz"
 # Parallelization settings
 N_WORKERS = 4  # Adjust based on available CPU cores and CDS API limits
 
+# Global progress counter (shared between processes)
+processed_counter = None
+total_cases = None
+
 # LorenzCycleToolkit settings
 # Use 3-hour temporal resolution
 TIME_RESOLUTION = 3  # hours (was 6)
@@ -92,10 +97,138 @@ TIME_RESOLUTION = 3  # hours (was 6)
 LEC_FLAGS = ['-t', '-r', '-v', '--cdsapi']
 
 
+def update_lorenz_toolkit():
+    """Update LorenzCycleToolkit from git repository."""
+    
+    print("\n1. Updating LorenzCycleToolkit...")
+    
+    if not LORENZ_TOOLKIT_DIR.exists():
+        print(f"   ❌ Error: LorenzCycleToolkit directory not found: {LORENZ_TOOLKIT_DIR}")
+        return False
+    
+    try:
+        # Run git pull
+        result = subprocess.run(
+            ['git', 'pull'],
+            cwd=str(LORENZ_TOOLKIT_DIR),
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+        
+        if result.returncode == 0:
+            output = result.stdout.strip()
+            if 'Already up to date' in output or 'Already up-to-date' in output:
+                print(f"   ✓ LorenzCycleToolkit is up to date")
+            else:
+                print(f"   ✓ LorenzCycleToolkit updated successfully")
+                print(f"      {output.split(chr(10))[0]}")
+            return True
+        else:
+            print(f"   ⚠ Warning: git pull failed: {result.stderr.strip()}")
+            print(f"   Continuing with current version...")
+            return True  # Continue anyway
+            
+    except Exception as e:
+        print(f"   ⚠ Warning: Failed to update LorenzCycleToolkit: {e}")
+        print(f"   Continuing with current version...")
+        return True  # Continue anyway
+
+
+def check_conda_environment():
+    """Check if lorenz conda environment is properly configured."""
+    
+    print("\n2. Checking conda environment...")
+    
+    try:
+        # Check if environment exists
+        result = subprocess.run(
+            ['conda', 'env', 'list'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if LORENZ_CONDA_ENV not in result.stdout:
+            print(f"   ❌ Error: Conda environment '{LORENZ_CONDA_ENV}' not found")
+            print(f"   Creating environment...")
+            return recreate_conda_environment()
+        
+        # Check if required packages are installed
+        result = subprocess.run(
+            ['conda', 'run', '-n', LORENZ_CONDA_ENV, 'python', '-c',
+             'import xarray, numpy, scipy, matplotlib, cdsapi, metpy; print("OK")'],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode == 0 and 'OK' in result.stdout:
+            print(f"   ✓ Environment '{LORENZ_CONDA_ENV}' is properly configured")
+            return True
+        else:
+            print(f"   ⚠ Environment '{LORENZ_CONDA_ENV}' is missing required packages")
+            print(f"   Recreating environment...")
+            return recreate_conda_environment()
+            
+    except Exception as e:
+        print(f"   ⚠ Warning: Failed to check conda environment: {e}")
+        print(f"   Attempting to recreate...")
+        return recreate_conda_environment()
+
+
+def recreate_conda_environment():
+    """Remove and recreate the lorenz conda environment."""
+    
+    print(f"   Removing old environment '{LORENZ_CONDA_ENV}'...")
+    
+    try:
+        # Remove existing environment
+        subprocess.run(
+            ['conda', 'env', 'remove', '-n', LORENZ_CONDA_ENV, '-y'],
+            capture_output=True,
+            timeout=120
+        )
+        
+        # Check if there's an environment.yml in LorenzCycleToolkit
+        env_file = LORENZ_TOOLKIT_DIR / "environment.yml"
+        
+        if env_file.exists():
+            print(f"   Creating environment from {env_file}...")
+            result = subprocess.run(
+                ['conda', 'env', 'create', '-f', str(env_file)],
+                capture_output=True,
+                text=True,
+                timeout=600  # 10 minutes
+            )
+        else:
+            # Create basic environment
+            print(f"   Creating environment with basic packages...")
+            result = subprocess.run(
+                ['conda', 'create', '-n', LORENZ_CONDA_ENV, '-y',
+                 'python=3.11', 'xarray', 'numpy', 'scipy', 'matplotlib',
+                 'cdsapi', 'metpy', 'netcdf4', 'dask', '-c', 'conda-forge'],
+                capture_output=True,
+                text=True,
+                timeout=600  # 10 minutes
+            )
+        
+        if result.returncode == 0:
+            print(f"   ✓ Environment '{LORENZ_CONDA_ENV}' created successfully")
+            return True
+        else:
+            print(f"   ❌ Failed to create environment: {result.stderr.strip()}")
+            return False
+            
+    except Exception as e:
+        print(f"   ❌ Failed to recreate environment: {e}")
+        return False
+
+
 def check_prerequisites():
     """Check if all prerequisites are met."""
     
-    print("\n1. Checking prerequisites...")
+    print("\n3. Checking prerequisites...")
     
     # Check if tracks directory exists and has files
     if not TRACKS_DIR.exists():
@@ -215,6 +348,13 @@ def move_results_to_project(track_id):
         return False
 
 
+def init_worker(counter, total):
+    """Initialize worker process with shared counter."""
+    global processed_counter, total_cases
+    processed_counter = counter
+    total_cases = total
+
+
 def process_cyclone(track_file):
     """
     Process a single cyclone using LorenzCycleToolkit.
@@ -230,14 +370,19 @@ def process_cyclone(track_file):
     
     # Setup logging for this worker
     logger = logging.getLogger(f'worker_{mp.current_process().name}')
+    
+    # Check if already processed before starting
+    if is_already_processed(track_id):
+        with processed_counter.get_lock():
+            processed_counter.value += 1
+            current = processed_counter.value
+        print(f"   [{current}/{total_cases.value}] {track_id} - Already processed (skipping)")
+        logger.info(f"[{track_id}] Already processed, skipping")
+        return (track_id, True, "Already processed (skipped)")
+    
     logger.info(f"[{track_id}] Starting processing...")
     
     try:
-        # Check if already processed
-        if is_already_processed(track_id):
-            logger.info(f"[{track_id}] Already processed, skipping")
-            return (track_id, True, "Already processed (skipped)")
-        
         # Prepare command
         # Output file: 19790205_ERA5.nc (will be created by --cdsapi)
         output_file = f"{track_id}_ERA5.nc"
@@ -282,18 +427,34 @@ def process_cyclone(track_file):
             if move_results_to_project(track_id):
                 # Verify results were moved successfully
                 if is_already_processed(track_id):
+                    with processed_counter.get_lock():
+                        processed_counter.value += 1
+                        current = processed_counter.value
+                    print(f"   [{current}/{total_cases.value}] {track_id} - ✓ Completed successfully")
                     logger.info(f"[{track_id}] ✓ Completed and validated")
                     return (track_id, True, "Completed successfully")
                 else:
+                    with processed_counter.get_lock():
+                        processed_counter.value += 1
+                        current = processed_counter.value
+                    print(f"   [{current}/{total_cases.value}] {track_id} - ❌ Results moved but validation failed")
                     logger.error(f"[{track_id}] Results moved but validation failed")
                     return (track_id, False, "Results moved but validation failed")
             else:
                 # Check if results are in LorenzCycleToolkit directory
                 lorenz_result_dir = LORENZ_RESULTS_DIR / f"{track_id}_ERA5_track"
                 if lorenz_result_dir.exists():
+                    with processed_counter.get_lock():
+                        processed_counter.value += 1
+                        current = processed_counter.value
+                    print(f"   [{current}/{total_cases.value}] {track_id} - ❌ Failed to move results")
                     logger.error(f"[{track_id}] Failed to move results")
                     return (track_id, False, "Completed but failed to move results")
                 else:
+                    with processed_counter.get_lock():
+                        processed_counter.value += 1
+                        current = processed_counter.value
+                    print(f"   [{current}/{total_cases.value}] {track_id} - ❌ Output files not found")
                     logger.error(f"[{track_id}] Output files not found")
                     return (track_id, False, "Completed but output files not found")
         else:
@@ -301,6 +462,10 @@ def process_cyclone(track_file):
             stderr_lines = [line for line in result.stderr.split('\n') if line.strip()]
             error_msg = stderr_lines[-5:] if len(stderr_lines) >= 5 else stderr_lines
             
+            with processed_counter.get_lock():
+                processed_counter.value += 1
+                current = processed_counter.value
+            print(f"   [{current}/{total_cases.value}] {track_id} - ❌ Failed (exit code {result.returncode})")
             logger.error(f"[{track_id}] LorenzCycleToolkit failed with exit code {result.returncode}")
             logger.error(f"[{track_id}] Last stderr lines: {error_msg}")
             logger.error(f"[{track_id}] Full logs: stdout={stdout_log}, stderr={stderr_log}")
@@ -308,10 +473,18 @@ def process_cyclone(track_file):
             return (track_id, False, f"Exit code {result.returncode}. See {stderr_log}")
             
     except subprocess.TimeoutExpired:
+        with processed_counter.get_lock():
+            processed_counter.value += 1
+            current = processed_counter.value
+        print(f"   [{current}/{total_cases.value}] {track_id} - ❌ Timeout (>2 hours)")
         logger.error(f"[{track_id}] Timeout (>2 hours)")
         return (track_id, False, "Timeout (>2 hours)")
         
     except Exception as e:
+        with processed_counter.get_lock():
+            processed_counter.value += 1
+            current = processed_counter.value
+        print(f"   [{current}/{total_cases.value}] {track_id} - ❌ Exception: {str(e)}")
         logger.exception(f"[{track_id}] Exception occurred: {str(e)}")
         return (track_id, False, f"Exception: {str(e)}")
 
@@ -319,12 +492,16 @@ def process_cyclone(track_file):
 def main():
     """Run LorenzCycleToolkit for all selected cyclones."""
     
+    # Remove old log file to overwrite
+    if LOG_FILE.exists():
+        LOG_FILE.unlink()
+    
     # Setup logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(LOG_FILE),
+            logging.FileHandler(LOG_FILE, mode='w'),  # Overwrite mode
             logging.StreamHandler()  # Also print to console
         ]
     )
@@ -337,6 +514,18 @@ def main():
     
     logger.info("Starting step2_run_lec_toolkit.py")
     logger.info(f"Log file: {LOG_FILE}")
+    
+    # Update LorenzCycleToolkit
+    logger.info("Updating LorenzCycleToolkit...")
+    if not update_lorenz_toolkit():
+        logger.error("Failed to update LorenzCycleToolkit")
+        return 1
+    
+    # Check conda environment
+    logger.info("Checking conda environment...")
+    if not check_conda_environment():
+        logger.error("Failed to setup conda environment")
+        return 1
     
     # Check prerequisites
     logger.info("Checking prerequisites...")
@@ -358,11 +547,13 @@ def main():
     
     # Check how many are already processed
     already_processed = [f for f in track_files if is_already_processed(f.stem.replace('track_', ''))]
+    n_to_process = n_total - len(already_processed)
     print(f"\n   Already processed: {len(already_processed)}/{n_total}")
+    print(f"   To process: {n_to_process}/{n_total}")
     if len(already_processed) > 0:
-        print(f"   These will be skipped")
+        print(f"   Already processed cases will be skipped")
     
-    print(f"\n3. Starting parallel processing...")
+    print(f"\n4. Starting parallel processing...")
     print(f"   Using conda environment: {LORENZ_CONDA_ENV}")
     print(f"   Note: This may take several hours depending on:")
     print(f"   - Number of cyclones to process")
@@ -376,11 +567,17 @@ def main():
     logger.info(f"Starting parallel processing of {n_total} cyclones with {N_WORKERS} workers")
     start_time = time.time()
     
+    # Create shared counter for progress tracking
+    counter = mp.Value('i', 0)
+    total = mp.Value('i', n_total)
+    
     # Process cyclones in parallel
     logger.info("Launching worker pool...")
-    with mp.Pool(processes=N_WORKERS) as pool:
+    print(f"\n   Progress (completed/total):")
+    with mp.Pool(processes=N_WORKERS, initializer=init_worker, initargs=(counter, total)) as pool:
         results = pool.map(process_cyclone, track_files)
     
+    print(f"\n   All {n_total} cases completed!\n")
     logger.info("All workers completed")
     
     # Analyze results

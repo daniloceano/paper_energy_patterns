@@ -12,9 +12,9 @@ Input:
 - Main track database (via load_tracks())
 
 Output Format (one file per cyclone):
-    time;Lat;Lon
-    2005-08-08-0000;-22.5;-45.0
-    2005-08-08-0600;-23.0;-44.5
+    time;lon;lat
+    2005-08-08 00:00:00;-45.0;-22.5
+    2005-08-08 06:00:00;-44.5;-23.0
     ...
 
 File naming: track_{track_id}.txt
@@ -45,8 +45,8 @@ def format_datetime_for_lec(dt):
     """
     Format datetime for LorenzCycleToolkit input.
     
-    Format: YYYY-MM-DD-HHMM (no spaces)
-    Example: 2005-08-08-0000
+    Format: YYYY-MM-DD HH:MM:SS (with space and colons)
+    Example: 2005-08-08 00:00:00
     
     Args:
         dt: pandas Timestamp
@@ -54,7 +54,7 @@ def format_datetime_for_lec(dt):
     Returns:
         Formatted string
     """
-    return dt.strftime('%Y-%m-%d-%H%M')
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
 def create_track_file(track_id, tracks_df, output_dir):
@@ -82,17 +82,17 @@ def create_track_file(track_id, tracks_df, output_dir):
     # Convert date to datetime if not already
     track_data['date'] = pd.to_datetime(track_data['date'])
     
-    # Format for LorenzCycleToolkit: time;Lat;Lon
+    # Format for LorenzCycleToolkit: time;lon;lat (lowercase, lon before lat!)
     # Important: Use 'lat vor' and 'lon vor' (vorticity center coordinates)
-    output_lines = ['time;Lat;Lon']
+    output_lines = ['time;lon;lat']
     
     for _, row in track_data.iterrows():
         time_str = format_datetime_for_lec(row['date'])
         lat = row['lat vor']
         lon = row['lon vor']
         
-        # Format: time;Lat;Lon (semicolon delimiter, NO spaces)
-        output_lines.append(f"{time_str};{lat};{lon}")
+        # Format: time;lon;lat (semicolon delimiter, lowercase, lon before lat)
+        output_lines.append(f"{time_str};{lon};{lat}")
     
     # Write to file
     output_file = output_dir / f"track_{track_id}.txt"
@@ -132,8 +132,10 @@ def main():
     print(f"   Output directory: {OUTPUT_DIR}")
     print(f"\n   Format:")
     print(f"   - Delimiter: semicolon (;)")
-    print(f"   - Time format: YYYY-MM-DD-HHMM")
-    print(f"   - Coordinates: vorticity center (lat vor, lon vor)")
+    print(f"   - Header: time;lon;lat (lowercase)")
+    print(f"   - Time format: YYYY-MM-DD HH:MM:SS")
+    print(f"   - Coordinates: vorticity center (lon vor, lat vor)")
+    print(f"   - Column order: time, longitude, latitude")
     print(f"   - Temporal resolution: 3-hourly")
     
     successful = 0

@@ -12,9 +12,9 @@ Input:
 - Main track database (via load_tracks())
 
 Output Format (one file per cyclone):
-    time;lon;lat
-    2005-08-08 00:00:00;-45.0;-22.5
-    2005-08-08 06:00:00;-44.5;-23.0
+    time;Lat;Lon
+    2005-08-08-0000;-22.5;-45.0
+    2005-08-08-0600;-23.0;-44.5
     ...
 
 File naming: track_{track_id}.txt
@@ -45,8 +45,8 @@ def format_datetime_for_lec(dt):
     """
     Format datetime for LorenzCycleToolkit input.
     
-    Format: YYYY-MM-DD HH:MM:SS (with space and colons)
-    Example: 2005-08-08 00:00:00
+    Format: YYYY-MM-DD-HHMM (no spaces, dash before time)
+    Example: 2005-08-08-0000
     
     Args:
         dt: pandas Timestamp
@@ -54,12 +54,15 @@ def format_datetime_for_lec(dt):
     Returns:
         Formatted string
     """
-    return dt.strftime('%Y-%m-%d %H:%M:%S')
+    return dt.strftime('%Y-%m-%d-%H%M')
 
 
 def create_track_file(track_id, tracks_df, output_dir):
     """
     Create track file in LorenzCycleToolkit format for a single cyclone.
+    
+    The track data is resampled to 3-hourly intervals (00, 03, 06, 09, 12, 15, 18, 21)
+    to match ERA5 data availability.
     
     Args:
         track_id: Cyclone track ID
@@ -74,32 +77,42 @@ def create_track_file(track_id, tracks_df, output_dir):
     
     if len(track_data) == 0:
         print(f"   ⚠ Warning: No track data found for {track_id}")
-        return False
-    
-    # Sort by date to ensure temporal order
-    track_data = track_data.sort_values('date')
+        return False, 0
     
     # Convert date to datetime if not already
     track_data['date'] = pd.to_datetime(track_data['date'])
     
-    # Format for LorenzCycleToolkit: time;lon;lat (lowercase, lon before lat!)
+    # Sort by date to ensure temporal order
+    track_data = track_data.sort_values('date')
+    
+    # Resample to 3-hourly intervals (ERA5 standard times: 00, 03, 06, 09, 12, 15, 18, 21)
+    # Round each timestamp to the nearest 3-hour interval
+    track_data['date_3h'] = track_data['date'].dt.floor('3h')
+    
+    # Remove duplicates (keep first occurrence at each 3-hour interval)
+    track_data = track_data.drop_duplicates(subset=['date_3h'], keep='first')
+    
+    # Use the rounded 3-hourly timestamps
+    track_data['date'] = track_data['date_3h']
+    
+    # Format for LorenzCycleToolkit: time;Lat;Lon (capitalized, Lat before Lon)
     # Important: Use 'lat vor' and 'lon vor' (vorticity center coordinates)
-    output_lines = ['time;lon;lat']
+    output_lines = ['time;Lat;Lon']
     
     for _, row in track_data.iterrows():
         time_str = format_datetime_for_lec(row['date'])
         lat = row['lat vor']
         lon = row['lon vor']
         
-        # Format: time;lon;lat (semicolon delimiter, lowercase, lon before lat)
-        output_lines.append(f"{time_str};{lon};{lat}")
+        # Format: time;Lat;Lon (semicolon delimiter, capitalized)
+        output_lines.append(f"{time_str};{lat};{lon}")
     
     # Write to file
     output_file = output_dir / f"track_{track_id}.txt"
     with open(output_file, 'w') as f:
         f.write('\n'.join(output_lines))
     
-    return True
+    return True, len(track_data)
 
 
 def main():
@@ -132,11 +145,11 @@ def main():
     print(f"   Output directory: {OUTPUT_DIR}")
     print(f"\n   Format:")
     print(f"   - Delimiter: semicolon (;)")
-    print(f"   - Header: time;lon;lat (lowercase)")
-    print(f"   - Time format: YYYY-MM-DD HH:MM:SS")
-    print(f"   - Coordinates: vorticity center (lon vor, lat vor)")
-    print(f"   - Column order: time, longitude, latitude")
-    print(f"   - Temporal resolution: 3-hourly")
+    print(f"   - Header: time;Lat;Lon (capitalized)")
+    print(f"   - Time format: YYYY-MM-DD-HHMM")
+    print(f"   - Coordinates: vorticity center (lat vor, lon vor)")
+    print(f"   - Temporal resolution: 3-hourly (resampled to ERA5 times)")
+    print(f"   - Valid hours: 00, 03, 06, 09, 12, 15, 18, 21")
     
     successful = 0
     failed = []
@@ -147,9 +160,9 @@ def main():
         
         # Get track points for this cyclone
         track_points = tracks[tracks['track_id'] == track_id]
-        n_points = len(track_points)
+        n_points_original = len(track_points)
         
-        if n_points == 0:
+        if n_points_original == 0:
             print(f"      ⚠ No track data found")
             failed.append(track_id)
             continue
@@ -159,15 +172,17 @@ def main():
         end_date = track_points['date'].max()
         duration_days = (pd.to_datetime(end_date) - pd.to_datetime(start_date)).days
         
-        print(f"      Track points: {n_points}")
-        print(f"      Duration: {duration_days} days ({n_points * 3} hours)")
+        print(f"      Original track points: {n_points_original}")
+        print(f"      Duration: {duration_days} days")
         print(f"      Period: {start_date} to {end_date}")
         
-        # Create track file
-        success = create_track_file(track_id, tracks, OUTPUT_DIR)
+        # Create track file (resampled to 3-hourly)
+        result = create_track_file(track_id, tracks, OUTPUT_DIR)
         
-        if success:
+        if result and result[0]:
+            success, n_points_3h = result
             output_file = OUTPUT_DIR / f"track_{track_id}.txt"
+            print(f"      Resampled to 3-hourly: {n_points_3h} points")
             print(f"      ✓ Created: {output_file}")
             successful += 1
         else:

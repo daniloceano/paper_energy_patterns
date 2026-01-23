@@ -81,10 +81,10 @@ Step 5: Statistical Analysis and Visualization
 
 **Output Format** (one file per cyclone):
 ```
-time;lon;lat
-2005-08-08 00:00:00;-45.0;-22.5
-2005-08-08 06:00:00;-44.5;-23.0
-2005-08-08 12:00:00;-44.0;-23.5
+time;Lat;Lon
+2005-08-08-0000;-22.5;-45.0
+2005-08-08-0600;-23.0;-44.5
+2005-08-08-1200;-23.5;-44.0
 ...
 ```
 
@@ -94,9 +94,8 @@ time;lon;lat
 **Output Directory**: `data/ck_analysis/tracks/`
 
 **Key Considerations**:
-- Time format: `YYYY-MM-DD HH:MM:SS` (with space and colons)
-- Column order: `time;lon;lat` (longitude before latitude)
-- Column names: lowercase
+- Time format: `YYYY-MM-DD-HHMM` (no spaces, dash before time)
+- Header: `time;Lat;Lon` (capitalized)
 - Coordinates: Latitude and Longitude in decimal degrees
 - Delimiter: Semicolon (`;`) with NO spaces
 - Data source: Full cyclone lifecycle (all phases)

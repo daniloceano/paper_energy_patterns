@@ -207,7 +207,9 @@ def create_composite_figure(domain_name, domain_size, all_data, output_dir):
     # =========================================================================
     ax1 = fig.add_subplot(gs[0, 0])
     
-    levels_rk = np.linspace(-2e-8, 2e-8, 21)
+    # Symmetric levels around 0 based on actual data
+    rk_max_abs = np.nanmax(np.abs(deta_dy_mean))
+    levels_rk = np.linspace(-rk_max_abs, rk_max_abs, 21)
     im1 = ax1.contourf(x_2d, y_2d, deta_dy_mean, levels=levels_rk,
                        cmap='RdBu_r', extend='both')
     ax1.contour(x_2d, y_2d, deta_dy_mean, levels=[0], colors='k', linewidths=1.5)
@@ -258,7 +260,10 @@ def create_composite_figure(domain_name, domain_size, all_data, output_dir):
     # =========================================================================
     ax3 = fig.add_subplot(gs[1, 0])
     
-    pv_levels = np.linspace(-2, 2, 21)
+    # Only negative values for Southern Hemisphere cyclones
+    pv_min = np.nanmin(pv_mean * 1e6)
+    pv_max = min(0, np.nanpercentile(pv_mean * 1e6, 95))  # Up to 0 or 95th percentile
+    pv_levels = np.linspace(pv_min, 0, 21)
     im3 = ax3.contourf(x_2d, y_2d, pv_mean * 1e6, levels=pv_levels,
                        cmap='RdYlBu_r', extend='both')
     

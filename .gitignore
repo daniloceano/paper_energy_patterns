@@ -41,6 +41,10 @@ figures/**/*.jpg
 figures/**/*.pdf
 figures/**/*.svg
 
+# Exclude specific results subdirectories
+results/lec_results/
+results/ck_analysis/lec_results
+
 # Keep directory structure for results and figures
 !results/README.md
 !results/.gitkeep

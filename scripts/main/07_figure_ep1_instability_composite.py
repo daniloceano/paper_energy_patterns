@@ -90,7 +90,7 @@ plt.rcParams.update({
 # Add ep1_ibc_ibt_analysis to path
 sys.path.insert(0, str(BASE_DIR / 'scripts' / 'ep1_ibc_ibt_analysis'))
 
-from step4_compute_instabilities import (
+from ep1_ibc_ibt_analysis.step4_compute_instabilities import (
     rayleigh_kuo_criterion, 
     eady_growth_rate,
     geopotential_height

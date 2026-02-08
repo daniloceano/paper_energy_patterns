@@ -272,7 +272,7 @@ def create_figure():
     print(f"Time span: {years.min()}-{years.max()} ({num_years} years)")
     
     # Create figure
-    fig = plt.figure(figsize=(14, 12))
+    fig = plt.figure(figsize=(7, 6))
     
     # Create 2x2 grid with map projection
     axes = []
@@ -327,7 +327,7 @@ def create_figure():
     plt.tight_layout()
     
     # Save figure
-    output_file = FIGURES_DIR / 'ep_genesis_density_kde.png'
+    output_file = FIGURES_DIR / '5_ep_genesis_density_kde.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n{'='*60}")
     print(f"Figure saved: {output_file}")

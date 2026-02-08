@@ -228,6 +228,21 @@ Four-panel figure showing density distributions in Lorenz Phase Space for all cy
 **Purpose**: Reveals dominant energy pathways and their variability across cyclones lifecycle.
 
 ---
+### Figure 4: Lorenz Phase Space for Energy Patterns (EP1–EP3)
+**Files:** `lps_ep1_conversion.png`, `lps_ep1_imports.png`, `lps_ep2_conversion.png`, `lps_ep2_imports.png`, `lps_ep3_conversion.png`, `lps_ep3_imports.png`
+
+Two-panel LPS diagrams are provided for each Energy Pattern (EP1, EP2, EP3), showing both:
+- **Conversion LPS (left):** Ca × Ck phase space across sequential phases
+- **Imports LPS (right):** BAe × BKe phase space across sequential phases
+
+Each panel shows the phase trajectory through: Incipient → Intensification → Mature → Decay, with:
+- **Marker color:** Ge — Generation of eddy APE (W m⁻²)
+- **Marker size:** Ke — Eddy Kinetic Energy (J m⁻²)
+- **Legends:** EP linewidths and Ke marker-size legend included; Ke legend placed inside the plot in zoomed variants for clarity
+- **Zoomed variants:** Available to inspect behavior near zero and compare EPs more clearly
+
+**Purpose:** Illustrates how the three canonical energy patterns differ in their Lorenz Phase Space signatures and how their conversion/import pathways evolve through development phases.
+
 
 ### Figure 6: Genesis Density (KDE - Hoskins & Hodges Method)
 **File:** `6_ep_genesis_density_kde.png` (1.5 MB)

@@ -117,13 +117,13 @@ def create_sunburst_chart(ax, df_genesis):
                     y = label_radius * np.sin(np.radians(mid_angle))
                     pct = 100 * count / region_total
                     ax.text(x, y, f'{pct:.0f}%', ha='center', va='center',
-                           fontsize=8, fontweight='bold', color='white')
+                           fontsize=12, fontweight='bold', color='white')
                     # Add season label (small)
                     label_radius_outer = outer_radius - 0.05
                     x_outer = label_radius_outer * np.cos(np.radians(mid_angle))
                     y_outer = label_radius_outer * np.sin(np.radians(mid_angle))
                     ax.text(x_outer, y_outer, season, ha='center', va='center',
-                           fontsize=6, fontweight='bold', color='black')
+                           fontsize=10, fontweight='bold', color='black')
 
                 region_start -= angle
 
@@ -152,10 +152,10 @@ def create_sunburst_chart(ax, df_genesis):
         
         # Region name
         ax.text(x, y + 0.05, region, ha='center', va='center',
-               fontsize=10, fontweight='bold', color='white')
+               fontsize=14, fontweight='bold', color='white')
         # Percentage and count
         ax.text(x, y - 0.05, f'{pct:.0f}%\n({region_total})', ha='center', va='center',
-               fontsize=8, color='white')
+               fontsize=12, color='white')
         
         start_angle -= region_angle
     

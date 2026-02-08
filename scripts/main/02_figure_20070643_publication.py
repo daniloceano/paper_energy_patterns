@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
 BASE_DIR = Path(__file__).resolve().parents[2]
-SRC_DIR = BASE_DIR / 'figures' / 'exploratory' / 'three_most_intense_cyclones'
+SRC_DIR = BASE_DIR / 'figures' / 'exploratory' / 'three_most_intense_cyclones_zoom'
 OUT_DIR = BASE_DIR / 'figures' / 'main'
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 TRACK_ID = '20070643'
 FILES = {
-    'conv': SRC_DIR / f'{TRACK_ID}_lps_conversion.png',
-    'imp': SRC_DIR / f'{TRACK_ID}_lps_imports.png',
+    'conv': SRC_DIR / f'{TRACK_ID}_lps_conversion_zoom.png',
+    'imp': SRC_DIR / f'{TRACK_ID}_lps_imports_zoom.png',
     'track': SRC_DIR / f'{TRACK_ID}_track.png',
 }
 
@@ -48,18 +48,18 @@ ax3 = fig.add_subplot(gs[1, :])
 # Display images
 ax1.imshow(img_conv)
 ax1.axis('off')
-ax1.text(0.02, 0.98, '(a)', transform=ax1.transAxes,
-         fontsize=12, fontweight='bold', va='top', ha='left')
+ax1.text(0.14, 0.995, '(a)', transform=ax1.transAxes,
+         fontsize=10, fontweight='bold', va='top', ha='left')
 
 ax2.imshow(img_imp)
 ax2.axis('off')
-ax2.text(0.02, 0.98, '(b)', transform=ax2.transAxes,
-         fontsize=12, fontweight='bold', va='top', ha='left')
+ax2.text(0.17, 0.995, '(b)', transform=ax2.transAxes,
+         fontsize=10, fontweight='bold', va='top', ha='left')
 
 ax3.imshow(img_track)
 ax3.axis('off')
-ax3.text(0.05, 0.99, '(c)', transform=ax3.transAxes,
-         fontsize=12, fontweight='bold', va='top', ha='left')
+ax3.text(0.33, 0.99, '(c)', transform=ax3.transAxes,
+         fontsize=10, fontweight='bold', va='top', ha='left')
 
 
 # Save

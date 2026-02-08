@@ -3,6 +3,11 @@
 """
 Create publication-ready figure for cyclone 20070643 by combining
 its LPS conversion, LPS imports, and track images into a single figure.
+
+This script assumes the individual images have already been created by
+scripts/exploratory/figure_three_intense_cyclones_individual.py. It reads
+those images, arranges them in a 2x1 layout (two images on top, one on bottom),
+adds panel labels, and saves the final figure.
 """
 from pathlib import Path
 import matplotlib.pyplot as plt
@@ -39,7 +44,7 @@ import matplotlib.gridspec as gridspec
 # Use tight spacing and manual margins to avoid white space
 gs = gridspec.GridSpec(2, 2, figure=fig, height_ratios=[1, 0.3],
                        top=0.98, bottom=0.02, left=0.02, right=0.98,
-                       hspace=-0.4, wspace=0.05)
+                       hspace=-0.35, wspace=-0.171)
 
 ax1 = fig.add_subplot(gs[0, 0])
 ax2 = fig.add_subplot(gs[0, 1])
@@ -63,7 +68,7 @@ ax3.text(0.33, 0.99, '(c)', transform=ax3.transAxes,
 
 
 # Save
-out_file = OUT_DIR / f'{TRACK_ID}_lps_track_publication.png'
+out_file = OUT_DIR / f'2_{TRACK_ID}_lps_track_publication.png'
 plt.savefig(out_file, dpi=300, bbox_inches='tight', facecolor='white')
 plt.close(fig)
 print(f'✓ Saved: {out_file}')

@@ -44,6 +44,14 @@ COLORBAR_LABELSIZE = 14
 USE_LORENZ_PACKAGE = True  # Try to use lorenz-phase-space package
 USE_ZOOM = True  # Use zoom in Lorenz Phase Space diagrams
 
+# Font size overrides for zoomed LPS
+LPS_ZOOM_AXIS_FONTSIZE = 18
+LPS_ZOOM_LEGEND_FONTSIZE = 16
+LPS_ZOOM_LEGEND_TITLESIZE = 18
+LPS_ZOOM_TICK_LABELSIZE = 14
+LPS_ZOOM_CBAR_LABELSIZE = 18
+LPS_ZOOM_FIGSIZE = (10, 10)
+
 # Cluster to EP mapping (based on Ck energy levels)
 CLUSTER_TO_EP = {
     0: 1,  # Cluster 0 → EP1 (lowest Ck)
@@ -264,12 +272,45 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
                 )
             
             # Add new legend in upper left corner without removing the existing one
-            new_legend = ax.legend(handles=legend_elements, loc='lower left' if lps_type == 'conversion' else 'upper left', 
-                                   frameon=True, framealpha=0.9, fontsize=10,
-                                   title='Energy Pattern', title_fontsize=11)
+            # Legend font sizes: increase when zooming
+            legend_fs = LPS_ZOOM_LEGEND_FONTSIZE if use_zoom_mode else 10
+            legend_title_fs = LPS_ZOOM_LEGEND_TITLESIZE if use_zoom_mode else 11
+            new_legend = ax.legend(handles=legend_elements, loc='lower left' if lps_type == 'conversion' else 'upper left',
+                                   frameon=True, framealpha=0.9, fontsize=legend_fs,
+                                   title='Energy Pattern', title_fontsize=legend_title_fs)
+            # Nudge EPs legend slightly to the right when zooming conversion plots
+            if use_zoom_mode and lps_type == 'conversion':
+                try:
+                    # move a bit to the right inside axes coordinates
+                    new_legend.set_bbox_to_anchor((0.33, 0.05), transform=ax.transAxes)
+                except Exception:
+                    pass
             
             # Restore the original legend (Ke) by adding it back as an artist
             if existing_legend is not None:
+                # Increase existing legend font size when zooming
+                if use_zoom_mode:
+                    try:
+                        for txt in existing_legend.get_texts():
+                            txt.set_fontsize(LPS_ZOOM_LEGEND_FONTSIZE)
+                        if existing_legend.get_title() is not None:
+                            existing_legend.get_title().set_fontsize(LPS_ZOOM_LEGEND_TITLESIZE)
+                        # Position existing (Ke) legend inside plot for zoom mode
+                        # conversion -> lower left; imports -> lower right
+                        loc_inside = 'lower left' if lps_type == 'conversion' else 'lower right'
+                        try:
+                            existing_legend.set_loc(loc_inside)
+                        except Exception:
+                            pass
+                        try:
+                            if loc_inside == 'lower left':
+                                existing_legend.set_bbox_to_anchor((0.02, 0.02), transform=ax.transAxes)
+                            else:
+                                existing_legend.set_bbox_to_anchor((0.98, 0.02), transform=ax.transAxes)
+                        except Exception:
+                            pass
+                    except Exception:
+                        pass
                 ax.add_artist(existing_legend)
             
             # Set title
@@ -278,30 +319,48 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
 
             # Try to increase colorbar label font size (support multiple Visualizer versions)
             try:
+                cbar_labelsize = LPS_ZOOM_CBAR_LABELSIZE if use_zoom_mode else COLORBAR_LABELSIZE
+                cbar_tick_labelsize = max(8, cbar_labelsize - 2)
                 if hasattr(lps, 'cbar') and lps.cbar is not None:
-                    lps.cbar.ax.yaxis.label.set_size(COLORBAR_LABELSIZE)
-                    lps.cbar.ax.tick_params(labelsize=max(8, COLORBAR_LABELSIZE - 2))
+                    lps.cbar.ax.yaxis.label.set_size(cbar_labelsize)
+                    lps.cbar.ax.tick_params(labelsize=cbar_tick_labelsize)
                     # Reduce padding between colorbar label and ticks
                     lps.cbar.ax.yaxis.labelpad = 20
                 elif hasattr(lps, 'colorbar') and lps.colorbar is not None:
-                    lps.colorbar.ax.yaxis.label.set_size(COLORBAR_LABELSIZE)
-                    lps.colorbar.ax.tick_params(labelsize=max(8, COLORBAR_LABELSIZE - 2))
+                    lps.colorbar.ax.yaxis.label.set_size(cbar_labelsize)
+                    lps.colorbar.ax.tick_params(labelsize=cbar_tick_labelsize)
                 else:
                     # Fallback: find axes that contain a ylabel and treat them as colorbar axes
                     fig = plt.gcf()
                     for a in fig.axes:
                         try:
                             if a.get_ylabel():
-                                a.yaxis.label.set_size(COLORBAR_LABELSIZE)
-                                a.tick_params(labelsize=max(8, COLORBAR_LABELSIZE - 2))
+                                a.yaxis.label.set_size(cbar_labelsize)
+                                a.tick_params(labelsize=cbar_tick_labelsize)
                         except Exception:
                             continue
             except Exception:
                 pass
+
+            # Increase axis labels and tick label sizes when zooming
+            if use_zoom_mode:
+                try:
+                    ax.xaxis.label.set_size(LPS_ZOOM_AXIS_FONTSIZE)
+                    ax.yaxis.label.set_size(LPS_ZOOM_AXIS_FONTSIZE)
+                    ax.tick_params(axis='both', which='major', labelsize=LPS_ZOOM_TICK_LABELSIZE)
+                except Exception:
+                    pass
             
             # Save figure
             output_filename = f"lps_{lps_type}{zoom_suffix}.png"
             output_path = output_file.parent / output_filename
+            # If zoom mode, increase figure width to accommodate legends
+            try:
+                fig = plt.gcf()
+                if use_zoom_mode:
+                    fig.set_size_inches(LPS_ZOOM_FIGSIZE)
+            except Exception:
+                pass
             plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
             plt.close()
             

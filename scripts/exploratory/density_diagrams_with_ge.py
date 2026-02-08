@@ -72,6 +72,19 @@ MIN_POINTS_PER_BIN = 3  # Minimum points to show a bin
 GE_BINS = [-10, -2, -1, 0, 1, 2, 10]
 GE_LABELS = ['< -2', '-2 to -1', '-1 to 0', '0 to 1', '1 to 2', '> 2']
 
+# Font size configuration (for consistent plot styling)
+# Adjust these values to normalize fonts across all figures
+SUPTITLE_FONTSIZE = 16
+TITLE_FONTSIZE = 18
+AXIS_FONTSIZE = 14
+CBAR_FONTSIZE = 14
+CONTOUR_LABEL_FONTSIZE = 14
+CORNER_TEXT_FONTSIZE = 14
+INSUFFICIENT_FONTSIZE = 12
+TICK_LABEL_FONTSIZE = 12
+
+# Figure size defaults
+FIGSIZE = (10, 5)
 # ============================================================================
 
 
@@ -141,8 +154,9 @@ def create_density_diagram(df: pd.DataFrame, x_var: str, y_var: str,
     
     if n_total < min_points:
         ax.text(0.5, 0.5, 'Insufficient data', ha='center', va='center',
-                transform=ax.transAxes, fontsize=12)
-        ax.set_title(title, fontsize=12, fontweight='bold')
+            transform=ax.transAxes, fontsize=INSUFFICIENT_FONTSIZE)
+        ax.set_title(title, fontsize=TITLE_FONTSIZE, fontweight='bold')
+        ax.tick_params(axis='both', which='major', labelsize=TICK_LABEL_FONTSIZE)
         return
     
     # Calculate data-driven limits with some padding
@@ -197,9 +211,9 @@ def create_density_diagram(df: pd.DataFrame, x_var: str, y_var: str,
         XX, YY = np.meshgrid(X_centers, Y_centers)
         
         contours = ax.contour(XX, YY, count_smooth.T, levels=levels,
-                             colors='black', linewidths=1.5, alpha=0.8)
+                     colors='black', linewidths=1.5, alpha=0.8)
         # Add contour labels
-        ax.clabel(contours, inline=True, fontsize=9, fmt='%d')
+        ax.clabel(contours, inline=True, fontsize=CONTOUR_LABEL_FONTSIZE, fmt='%d')
     
     # Add reference lines at zero
     ax.axhline(0, color='gray', linestyle='--', linewidth=1.5, alpha=0.7, zorder=10)
@@ -217,7 +231,7 @@ def create_density_diagram(df: pd.DataFrame, x_var: str, y_var: str,
     q4 = ((x_data > 0) & (y_data < 0)).sum() / n_total * 100  # Bottom-right
     
     # Add percentage labels in corners
-    text_props = dict(fontsize=10, fontweight='bold', 
+    text_props = dict(fontsize=CORNER_TEXT_FONTSIZE, fontweight='bold', 
                      bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
                               edgecolor='black', alpha=0.8))
     
@@ -242,8 +256,8 @@ def create_density_diagram(df: pd.DataFrame, x_var: str, y_var: str,
             ha='right', va='bottom', **text_props)
     
     # Labels and title
-    ax.set_xlabel(x_var, fontsize=12, fontweight='bold')
-    ax.set_ylabel(y_var, fontsize=12, fontweight='bold')
+    ax.set_xlabel(x_var, fontsize=AXIS_FONTSIZE, fontweight='bold')
+    ax.set_ylabel(y_var, fontsize=AXIS_FONTSIZE, fontweight='bold')
     
     # Add sample size to title if provided (set on axes only if a title is given)
     if title is not None:
@@ -251,7 +265,8 @@ def create_density_diagram(df: pd.DataFrame, x_var: str, y_var: str,
             title_with_n = f"{title}\n(n = {n_sample})"
         else:
             title_with_n = title
-        ax.set_title(title_with_n, fontsize=12, fontweight='bold', pad=10)
+        ax.set_title(title_with_n, fontsize=TITLE_FONTSIZE, fontweight='bold', pad=10)
+        ax.tick_params(axis='both', which='major', labelsize=TICK_LABEL_FONTSIZE)
     
     # Set limits
     ax.set_xlim(x_min, x_max)
@@ -283,9 +298,9 @@ def plot_all_cyclones(df: pd.DataFrame, output_dir: Path):
     n_cyclones = len(df)
     
     # Create figure
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+    fig, axes = plt.subplots(1, 2, figsize=FIGSIZE)
     # Use a shared suptitle instead of repeating the same title on both axes
-    fig.suptitle(f'All Cyclones (n = {n_cyclones})', fontsize=14, fontweight='bold')
+    fig.suptitle(f'All Cyclones (n = {n_cyclones})', fontsize=SUPTITLE_FONTSIZE, fontweight='bold')
     
     # Mixed diagram (Ca×Ck)
     im = create_density_diagram(
@@ -302,11 +317,13 @@ def plot_all_cyclones(df: pd.DataFrame, output_dir: Path):
     )
     
     # Add colorbar
+    # Add colorbar
     if im is not None:
         cbar = fig.colorbar(im, ax=axes, orientation='horizontal', cax=fig.add_axes([0.15, - 0.05, 0.7, 0.05]))
-        cbar.set_label('Mean Ge (W/m²)', fontsize=12, fontweight='bold')
+        cbar.set_label('Mean Ge (W/m²)', fontsize=CBAR_FONTSIZE, fontweight='bold')
         cbar.set_ticks(GE_BINS[1:-1])
         cbar.ax.set_xticklabels(GE_LABELS[:-1])
+        cbar.ax.tick_params(labelsize=TICK_LABEL_FONTSIZE)
     
     plt.tight_layout()
     
@@ -342,8 +359,8 @@ def plot_by_energy_pattern(df: pd.DataFrame, output_dir: Path):
         df_agg = pd.DataFrame(cols_to_agg)
         
         # Create figure (shared title instead of repeating on both axes)
-        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-        fig.suptitle(f'EP{ep_id} (n = {n_cyclones})', fontsize=14, fontweight='bold')
+        fig, axes = plt.subplots(1, 2, figsize=FIGSIZE)
+        fig.suptitle(f'EP{ep_id} (n = {n_cyclones})', fontsize=SUPTITLE_FONTSIZE, fontweight='bold')
 
         # Mixed diagram
         im = create_density_diagram(
@@ -362,9 +379,11 @@ def plot_by_energy_pattern(df: pd.DataFrame, output_dir: Path):
         # Add colorbar
         if im is not None:
             cbar = fig.colorbar(im, ax=axes, orientation='horizontal',  cax=fig.add_axes([0.15, - 0.05, 0.7, 0.05]))
-            cbar.set_label('Mean Ge (W/m²)', fontsize=12, fontweight='bold')
+            cbar.set_label('Mean Ge (W/m²)', fontsize=CBAR_FONTSIZE, fontweight='bold')
             cbar.set_ticks(GE_BINS[1:-1])
             cbar.ax.set_xticklabels(GE_LABELS[:-1])
+            cbar.ax.tick_params(labelsize=TICK_LABEL_FONTSIZE)
+            cbar.ax.tick_params(labelsize=TICK_LABEL_FONTSIZE)
         
         plt.tight_layout()
         
@@ -398,8 +417,8 @@ def plot_by_phase(df: pd.DataFrame, output_dir: Path):
         n_cyclones = len(df)
         
         # Create figure with shared title
-        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-        fig.suptitle(f'{phase_name}', fontsize=14, fontweight='bold')
+        fig, axes = plt.subplots(1, 2, figsize=FIGSIZE)
+        fig.suptitle(f'{phase_name}', fontsize=SUPTITLE_FONTSIZE, fontweight='bold')
 
         # Mixed diagram
         im = create_density_diagram(
@@ -418,7 +437,7 @@ def plot_by_phase(df: pd.DataFrame, output_dir: Path):
         # Add colorbar
         if im is not None:
             cbar = fig.colorbar(im, ax=axes, orientation='horizontal',  cax=fig.add_axes([0.15, - 0.05, 0.7, 0.05]))
-            cbar.set_label('Mean Ge (W/m²)', fontsize=12, fontweight='bold')
+            cbar.set_label('Mean Ge (W/m²)', fontsize=CBAR_FONTSIZE, fontweight='bold')
             cbar.set_ticks(GE_BINS[1:-1])
             cbar.ax.set_xticklabels(GE_LABELS[:-1])
         
@@ -457,8 +476,8 @@ def plot_by_phase_and_ep(df: pd.DataFrame, output_dir: Path):
             n_cyclones = len(df_ep)
             
             # Create figure with shared suptitle
-            fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-            fig.suptitle(f'EP{ep_id} - {phase_name} (n = {n_cyclones})', fontsize=14, fontweight='bold')
+            fig, axes = plt.subplots(1, 2, figsize=FIGSIZE)
+            fig.suptitle(f'EP{ep_id} - {phase_name} (n = {n_cyclones})', fontsize=SUPTITLE_FONTSIZE, fontweight='bold')
 
             # Mixed diagram
             im = create_density_diagram(
@@ -477,9 +496,10 @@ def plot_by_phase_and_ep(df: pd.DataFrame, output_dir: Path):
             # Add colorbar
             if im is not None:
                 cbar = fig.colorbar(im, ax=axes, orientation='horizontal',  cax=fig.add_axes([0.15, - 0.05, 0.7, 0.05]))
-                cbar.set_label('Mean Ge (W/m²)', fontsize=12, fontweight='bold')
+                cbar.set_label('Mean Ge (W/m²)', fontsize=CBAR_FONTSIZE, fontweight='bold')
                 cbar.set_ticks(GE_BINS[1:-1])
                 cbar.ax.set_xticklabels(GE_LABELS[:-1])
+                cbar.ax.tick_params(labelsize=TICK_LABEL_FONTSIZE)
             
             plt.tight_layout()
             

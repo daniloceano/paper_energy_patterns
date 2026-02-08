@@ -7,6 +7,10 @@ This script combines two Lorenz Phase Space (LPS) diagrams into a single figure:
 - Left panel: Conversion LPS (zoom)
 - Right panel: Imports LPS (zoom)
 
+This script assumes the individual LPS diagrams have already been created by
+scripts/cluster/step5_plot_energy_patterns.py. It reads those images,
+arranges them side by side, adds panel labels, and saves the final figure.
+
 Source figures:
 - figures/cluster/lps_conversion_zoom.png
 - figures/cluster/lps_imports_zoom.png
@@ -37,11 +41,11 @@ SOURCE_FILES = [
 ]
 
 # Output file
-OUTPUT_FILE = MAIN_FIGURES_DIR / 'lps_combined.png'
+OUTPUT_FILE = MAIN_FIGURES_DIR / '4_lps_combined.png'
 
 # Figure settings
 DPI = 300
-FIGSIZE = (16, 7)  # Wide figure to accommodate two LPS diagrams side by side
+FIGSIZE = (10, 7)  # Wide figure to accommodate two LPS diagrams side by side
 
 # Panel labels
 PANEL_LABELS = ['(a)', '(b)']
@@ -92,13 +96,17 @@ def create_combined_figure():
         ax.axis('off')
         
         # Add panel label in upper left corner
-        ax.text(0.02, 0.98, label, transform=ax.transAxes,
-                fontsize=14, fontweight='bold', va='top', ha='left',
+        if ax == axes[0]:  # Only label the left panel as (a)
+            x = 0
+        else:  # Label the right panel as (b)
+            x = 0.02
+        ax.text(x, 0.98, label, transform=ax.transAxes,
+                fontsize=10, fontweight='bold', va='top', ha='left',
                 bbox=dict(boxstyle='round,pad=0.3', facecolor='white', 
                          edgecolor='none', alpha=0.8))
     
     # Adjust layout to minimize white space
-    plt.subplots_adjust(wspace=0.05, hspace=0.0)
+    plt.subplots_adjust(wspace=0.02, hspace=0.0)
     
     # Save figure
     fig.savefig(OUTPUT_FILE, dpi=DPI, bbox_inches='tight', pad_inches=0.05)

@@ -280,7 +280,7 @@ def main():
     plt.tight_layout()
     
     # Save figure
-    out_file = OUT_DIR / 'tracks_genesis_frequency.png'
+    out_file = OUT_DIR / '1_tracks_genesis_frequency.png'
     plt.savefig(out_file, dpi=DPI, bbox_inches='tight', facecolor='white')
     plt.close()
     

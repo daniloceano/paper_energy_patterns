@@ -49,7 +49,7 @@ Two-panel figure showing the dimensionality reduction and clustering validation:
 ## Main Figures
 
 ### Figure 1: Energy Pattern Characteristics
-**File:** `ep_intensity_seasonality_trends.png` (706 KB)
+**File:** `1_ep_intensity_seasonality_trends.png` (706 KB)
 
 Three-panel figure combining key characteristics of Energy Patterns:
 
@@ -170,23 +170,8 @@ Use this CSV for traceability and further inspection.
 
 ---
 
-### Figure 3: Phase Space Density (2×2 Layout)
-**File:** `phase_density_2x2.png`
-
-Four-panel figure showing density distributions in Lorenz Phase Space for all Energy Patterns.
-
-#### Panel Layout:
-- **(a) All Cyclones - Conversion Phase Space**: Composite density for entire dataset
-- **(b) All Cyclones - Imports Phase Space**: Composite boundary flux density
-- **(c) Individual EPs - Conversion Phase Space**: Separated by Energy Pattern
-- **(d) Individual EPs - Imports Phase Space**: Separated by Energy Pattern
-
-**Purpose**: Reveals dominant energy pathways and their variability across Energy Patterns.
-
----
-
-### Figure 4: Case Study - Cyclone 20070643
-**File:** `20070643_lps_track_publication.png`
+### Figure 2: Case Study - Cyclone 20070643
+**File:** `2_20070643_lps_track_publication.png`
 
 Three-panel figure showing detailed energetics and trajectory of cyclone 20070643 (maximum vorticity: 15.48 × 10⁻⁵ s⁻¹).
 
@@ -225,8 +210,27 @@ Three-panel figure showing detailed energetics and trajectory of cyclone 2007064
 
 ---
 
-### Figure 2: Genesis Density (KDE - Hoskins & Hodges Method)
-**File:** `ep_genesis_density_kde.png` (1.5 MB)
+### Figure 3: Phase Space Density (2×2 Layout)
+**File:** `3_phase_density_2x2.png`
+
+Four-panel figure showing density distributions in Lorenz Phase Space for all cyclones in the Dataset, for each development phase.
+
+#### Panel Layout:
+- **(a) Conversion Phase Space for Incipient Phase**
+- **(b) Import Phase Space for Incipient Phase**
+- **(c) Conversion Phase Space for Intensification Phase**
+- **(d) Import Phase Space for Intensification Phase**
+- **(e) Conversion Phase Space for Mature Phase**
+- **(f) Import Phase Space for Mature Phase**
+- **(g) Conversion Phase Space for Decay Phase**
+- **(h) Import Phase Space for Decay Phase**
+
+**Purpose**: Reveals dominant energy pathways and their variability across cyclones lifecycle.
+
+---
+
+### Figure 6: Genesis Density (KDE - Hoskins & Hodges Method)
+**File:** `6_ep_genesis_density_kde.png` (1.5 MB)
 
 Four-panel map figure showing cyclone genesis density using Kernel Density Estimation.
 
@@ -308,7 +312,7 @@ Creates Figure 1 with intensity, seasonality, and trend analysis.
 - scipy.stats.theilslopes (Sen's slope)
 
 ### `figure_genesis_density_kde.py`
-Creates Figure 2 with KDE-based genesis density maps.
+Creates Figure 6 with KDE-based genesis density maps.
 
 **Key Features**:
 - Implements Hoskins & Hodges (2005) KDE methodology
@@ -367,22 +371,3 @@ Both figures meet **Scientific Reports** requirements:
 ## References
 
 **Hoskins, B. J., & Hodges, K. I. (2005).** A new perspective on Southern Hemisphere storm tracks. *Journal of Climate*, 18(20), 4108-4129. https://doi.org/10.1175/JCLI3570.1
-
----
-
-## Usage
-
-To regenerate figures:
-
-```bash
-# Activate environment
-source activate.sh
-
-# Generate Figure 1
-python scripts/main/figure_intensity_seasonality_trends.py
-
-# Generate Figure 2
-python scripts/main/figure_genesis_density_kde.py
-```
-
-Both scripts will save outputs to `figures/main/` directory.

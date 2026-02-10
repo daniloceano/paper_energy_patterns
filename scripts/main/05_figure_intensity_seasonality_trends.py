@@ -81,14 +81,23 @@ SEASON_COLORS = {
 }
 
 # Figure settings
+# Font size configuration (customizable)
+BASE_FONTSIZE = 10
+AXIS_LABELSIZE = 11
+PANEL_TITLESIZE = 12
+TICK_LABELSIZE = 10
+LEGEND_FONTSIZE = 9
+FIGURE_TITLESIZE = 13
+ANNOTATION_FONTSIZE = 9
+
 plt.rcParams.update({
-    'font.size': 10,
-    'axes.labelsize': 11,
-    'axes.titlesize': 12,
-    'xtick.labelsize': 10,
-    'ytick.labelsize': 10,
-    'legend.fontsize': 9,
-    'figure.titlesize': 13,
+    'font.size': BASE_FONTSIZE,
+    'axes.labelsize': AXIS_LABELSIZE,
+    'axes.titlesize': PANEL_TITLESIZE,
+    'xtick.labelsize': TICK_LABELSIZE,
+    'ytick.labelsize': TICK_LABELSIZE,
+    'legend.fontsize': LEGEND_FONTSIZE,
+    'figure.titlesize': FIGURE_TITLESIZE,
     'font.family': 'sans-serif',
     'font.sans-serif': ['Arial', 'Helvetica', 'DejaVu Sans']
 })
@@ -159,12 +168,13 @@ def plot_intensity_violin(ax, df):
         ep_data = df[df['EP'] == ep_num]
         mean_val = ep_data['max_vorticity_module'].mean()
         std_val = ep_data['max_vorticity_module'].std()
-        ax.text(i + 1, mean_val + 0.5, f'{mean_val:.2f}±{std_val:.2f}', ha='center', va='bottom', fontsize=9, fontweight='bold')
+        # ax.text(i + 1, mean_val + 0.5, f'{mean_val:.2f}±{std_val:.2f}', ha='center',
+        #         va='bottom', fontsize=ANNOTATION_FONTSIZE, fontweight='bold')
 
     ax.set_xticks([1, 2, 3])
     ax.set_xticklabels(EP_NAMES, fontweight='bold')
-    ax.set_ylabel('Maximum Vorticity (-1 $\\times$ 10$^{-5}$ s$^{-1}$)', fontsize=11, fontweight='bold')
-    ax.set_title('(a) Intensity Distribution', fontsize=12, fontweight='bold', loc='left')
+    ax.set_ylabel('Maximum Vorticity (-1 $\\times$ 10$^{-5}$ s$^{-1}$)', fontsize=AXIS_LABELSIZE, fontweight='bold')
+    ax.set_title('(a) Intensity Distribution', fontsize=PANEL_TITLESIZE, fontweight='bold', loc='left')
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     ax.set_ylim(bottom=0)
 
@@ -189,13 +199,17 @@ def plot_seasonality_bars(ax, df):
         bars = ax.bar(x + offset, percentages, width, label=EP_NAMES[i], color=color, alpha=0.8, edgecolor='black', linewidth=1)
         for j, (bar, pct) in enumerate(zip(bars, percentages)):
             height = bar.get_height()
-            ax.text(bar.get_x() + bar.get_width()/2., height + 0.5, f'{pct:.1f}%', ha='center', va='bottom', fontsize=8)
+            # ax.text(bar.get_x() + bar.get_width()/2., height + 0.5,
+            #         f'{pct:.1f}%', ha='center', va='bottom', fontsize=ANNOTATION_FONTSIZE,
+            #         rotation=90, fontweight='bold')
 
     ax.set_xticks(x)
     ax.set_xticklabels(season_order, fontweight='bold')
-    ax.set_ylabel('Frequency (%)', fontsize=11, fontweight='bold')
-    ax.set_title('(b) Seasonal Distribution', fontsize=12, fontweight='bold', loc='left')
-    ax.legend(loc='upper right', frameon=True, fancybox=True, shadow=True)
+    ax.set_ylabel('Frequency (%)', fontsize=AXIS_LABELSIZE, fontweight='bold')
+    ax.set_title('(b) Seasonal Distribution', fontsize=PANEL_TITLESIZE, fontweight='bold', loc='left')
+    # Legend above the plot, keep x-position at right edge (bbox x=1.0)
+    ax.legend(loc='upper right', ncol=1, frameon=True, fancybox=True, shadow=True,
+              bbox_to_anchor=(1.0, 0.98), bbox_transform=ax.transAxes)
     ax.grid(axis='y', alpha=0.3, linestyle='--')
     ax.set_ylim(0, max([ax.get_ylim()[1]]) * 1.15)
 
@@ -330,7 +344,7 @@ def plot_interannual_trends(ax, df):
         mid_year = years[len(years)//2]
         mid_idx = len(years)//2
         mid_value = annual_counts[mid_idx]
-        ax.text(mid_year, mid_value, trend_symbol, fontsize=14, color=color, fontweight='bold', ha='center', bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=color, alpha=0.8))
+        ax.text(mid_year, mid_value, trend_symbol, fontsize=ANNOTATION_FONTSIZE+5, color=color, fontweight='bold', ha='center', bbox=dict(boxstyle='round,pad=0.3', facecolor='white', edgecolor=color, alpha=0.8))
 
         # Print summary for this EP
         autocorr_status = f"YES (Ljung-Box at lag {max_lag}: p={lb_pvalue:.5f})" if has_autocorr else f"NO (Ljung-Box at lag {max_lag}: p={lb_pvalue:.5f})"
@@ -341,10 +355,10 @@ def plot_interannual_trends(ax, df):
         print(f"    • Theil–Sen slope: {slope:.4f} cyclones/year (95% CI: [{slope_ci_low:.4f}, {slope_ci_high:.4f}])")
         print(f"    • All {len(tests)} test results saved to CSV.")
 
-    ax.set_xlabel('Year', fontsize=11, fontweight='bold')
-    ax.set_ylabel('Number of Cyclones', fontsize=11, fontweight='bold')
-    ax.set_title('(c) Interannual Variability and Trends (p < 0.05 | Solid: significant, Dashed: non-significant)', fontsize=12, fontweight='bold', loc='left')
-    ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, ncol=3)
+    ax.set_xlabel('Year', fontsize=AXIS_LABELSIZE, fontweight='bold')
+    ax.set_ylabel('Number of Cyclones', fontsize=AXIS_LABELSIZE, fontweight='bold')
+    ax.set_title('(c) Interannual Variability and Trends (p < 0.05 | Solid: significant, Dashed: non-significant)', fontsize=PANEL_TITLESIZE, fontweight='bold', loc='left')
+    ax.legend(loc='upper left', frameon=True, fancybox=True, shadow=True, ncol=3, fontsize=LEGEND_FONTSIZE)
     ax.grid(True, alpha=0.3, linestyle='--')
 
 # ============================================================================
@@ -353,7 +367,7 @@ def plot_interannual_trends(ax, df):
 
 def create_figure():
     df = load_data()
-    fig = plt.figure(figsize=(14, 10))
+    fig = plt.figure(figsize=(10, 6))
     gs = fig.add_gridspec(2, 2, height_ratios=[1, 1], hspace=0.35, wspace=0.3, left=0.08, right=0.95, top=0.95, bottom=0.08)
     ax1 = fig.add_subplot(gs[0, 0])
     ax2 = fig.add_subplot(gs[0, 1])
@@ -378,7 +392,7 @@ def create_figure():
     plot_interannual_trends(ax3, df)
     print("\n  ✓ Trend analysis complete.")
 
-    output_file = FIGURES_DIR / 'ep_intensity_seasonality_trends.png'
+    output_file = FIGURES_DIR / '5_ep_intensity_seasonality_trends.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n{'='*60}")
     print(f"Figure saved: {output_file}")

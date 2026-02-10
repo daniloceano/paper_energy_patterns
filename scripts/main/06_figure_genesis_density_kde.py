@@ -246,13 +246,16 @@ def plot_density_map(ax, density, longrd, latgrd, title, color, vmin=None, vmax=
     cs = ax.contour(lon_region, lat_region, density_region,
                     levels=6, colors='black', linewidths=0.5,
                     transform=ccrs.PlateCarree(), alpha=0.6)
-    ax.clabel(cs, inline=True, fontsize=12, fmt='%.2f')
+    # ax.clabel(cs, inline=True, fontsize=12, fmt='%.0f')
     
     # Add colorbar
     cbar = plt.colorbar(cf, ax=ax, orientation='horizontal',
-                       pad=0.05, shrink=0.8, aspect=15)
-    cbar.set_label('Cyclones per 10$^6$ km$^2$ per year', fontsize=9, fontweight='bold')
+                       pad=0.15, shrink=0.8, aspect=15)
+    # cbar.set_label('Cyclones per 10$^6$ km$^2$ per year', fontsize=9, fontweight='bold')
     cbar.ax.tick_params(labelsize=8)
+    # # Tick labels with integer
+    cbar.set_ticks(levels[::2])
+    cbar.set_ticklabels([f'{lev:.1f}' for lev in levels[::2]])  # Show every 4th level for clarity
     
     return vmax
 
@@ -327,7 +330,7 @@ def create_figure():
     plt.tight_layout()
     
     # Save figure
-    output_file = FIGURES_DIR / '5_ep_genesis_density_kde.png'
+    output_file = FIGURES_DIR / '6_ep_genesis_density_kde.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n{'='*60}")
     print(f"Figure saved: {output_file}")

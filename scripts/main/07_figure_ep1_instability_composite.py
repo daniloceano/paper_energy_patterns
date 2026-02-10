@@ -66,16 +66,28 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 DPI = 300
 DOMAIN_SIZES = {'local': 5.0, 'mesoscale': 15.0, 'synoptic': 30.0}
 
-# Scientific Reports style - optimized for 12-panel figure
+# --------------------------------------------------------------------------
+# Font size configuration (centralized)
+# --------------------------------------------------------------------------
+BASE_FONTSIZE = 11
+AXIS_LABELSIZE = 12
+PANEL_TITLESIZE = 13
+TICK_LABELSIZE = 10
+LEGEND_FONTSIZE = 9
+CBAR_LABELSIZE = 11
+ANNOTATION_FONTSIZE = 10
+FIGURE_TITLESIZE = 14
+
+# Apply font sizes to rcParams for consistency
 plt.rcParams.update({
-    'font.size': 11,
+    'font.size': BASE_FONTSIZE,
+    'axes.labelsize': AXIS_LABELSIZE,
+    'axes.titlesize': PANEL_TITLESIZE,
+    'xtick.labelsize': TICK_LABELSIZE,
+    'ytick.labelsize': TICK_LABELSIZE,
+    'legend.fontsize': LEGEND_FONTSIZE,
+    'figure.titlesize': FIGURE_TITLESIZE,
     'font.family': 'sans-serif',
-    'axes.labelsize': 12,
-    'axes.titlesize': 13,
-    'xtick.labelsize': 10,
-    'ytick.labelsize': 10,
-    'legend.fontsize': 10,
-    'figure.titlesize': 14,
     'figure.dpi': 100,
     'savefig.dpi': DPI,
     'savefig.bbox': 'tight',
@@ -347,9 +359,10 @@ def create_main_figure(data_dict, output_file):
     output_file : Path
         Output file path
     """
-    fig = plt.figure(figsize=(16, 18))
-    gs = gridspec.GridSpec(4, 3, hspace=0.35, wspace=0.3,
-                          left=0.08, right=0.95, top=0.96, bottom=0.04)
+    # Compact layout: tighter spacing and reduced margins for a more concise figure
+    fig = plt.figure(figsize=(11, 9))
+    gs = gridspec.GridSpec(4, 3, hspace=0.15, wspace=0.08,
+                          left=0.05, right=0.98, top=0.98, bottom=0.03)
     
     domains = ['local', 'mesoscale', 'synoptic']
     domain_labels = ['5°', '15°', '30°']
@@ -391,22 +404,22 @@ def create_main_figure(data_dict, output_file):
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         
-        # Title with domain size (using derivative notation)
-        title = f'{panel_labels[0][col]} ∂η/∂y ({label})'
-        ax.set_title(title, fontsize=13, loc='left', fontweight='bold')
+        # Panel label (compact) — remove full title to save space
+        ax.text(0.01, 0.98, panel_labels[0][col], transform=ax.transAxes,
+            fontsize=ANNOTATION_FONTSIZE+1, fontweight='bold', ha='left', va='top')
         
         # Add sample size
         ax.text(0.98, 0.02, f'n={data["n_cases"]}',
-               transform=ax.transAxes, fontsize=10, ha='right', va='bottom',
-               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            transform=ax.transAxes, fontsize=ANNOTATION_FONTSIZE, ha='right', va='bottom',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
         
         # Colorbar only in last column
         if col == 2:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="4%", pad=0.08)
             cb = plt.colorbar(im, cax=cax)
-            cb.set_label(r'∂η/∂y (s$^{-1}$ m$^{-1}$)', fontsize=11)
-            cb.ax.tick_params(labelsize=11)
+            cb.set_label(r'∂η/∂y (s$^{-1}$ m$^{-1}$)', fontsize=CBAR_LABELSIZE)
+            cb.ax.tick_params(labelsize=CBAR_LABELSIZE)
             cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.2e}'))
     
     # ========================================================================
@@ -434,13 +447,13 @@ def create_main_figure(data_dict, output_file):
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         
-        # Title with overbar notation
-        title = f'{panel_labels[1][col]} $\\overline{{∂η/∂y}}$ ({label})'
-        ax.set_title(title, fontsize=13, loc='left', fontweight='bold')
+        # Panel label (compact)
+        ax.text(0.01, 0.98, panel_labels[1][col], transform=ax.transAxes,
+            fontsize=ANNOTATION_FONTSIZE+1, fontweight='bold', ha='left', va='top')
         
         # Add legend only to first panel
         if col == 0:
-            ax.legend(fontsize=9, frameon=True, loc='best')
+            ax.legend(fontsize=LEGEND_FONTSIZE, frameon=True, loc='best')
     
     # ========================================================================
     # Row 3: Baroclinic PV - compute shared colorbar levels
@@ -469,17 +482,17 @@ def create_main_figure(data_dict, output_file):
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         
-        # Title
-        title = f'{panel_labels[2][col]} Potential Vorticity ({label})'
-        ax.set_title(title, fontsize=13, loc='left', fontweight='bold')
+        # Panel label (compact)
+        ax.text(0.01, 0.98, panel_labels[2][col], transform=ax.transAxes,
+            fontsize=ANNOTATION_FONTSIZE+1, fontweight='bold', ha='left', va='top')
         
         # Colorbar only in last column
         if col == 2:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="4%", pad=0.08)
             cb = plt.colorbar(im, cax=cax)
-            cb.set_label(r'PV (10$^{-6}$ K m$^2$ kg$^{-1}$ s$^{-1}$)', fontsize=11)
-            cb.ax.tick_params(labelsize=11)
+            cb.set_label(r'PV (10$^{-6}$ K m$^2$ kg$^{-1}$ s$^{-1}$)', fontsize=CBAR_LABELSIZE)
+            cb.ax.tick_params(labelsize=CBAR_LABELSIZE)
             cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.2f}'))
     
     # ========================================================================
@@ -514,23 +527,23 @@ def create_main_figure(data_dict, output_file):
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         
-        # Title
-        title = f'{panel_labels[3][col]} Eady Growth Rate ({label})'
-        ax.set_title(title, fontsize=13, loc='left', fontweight='bold')
+        # Panel label (compact)
+        ax.text(0.01, 0.98, panel_labels[3][col], transform=ax.transAxes,
+            fontsize=ANNOTATION_FONTSIZE+1, fontweight='bold', ha='left', va='top')
         
         # Mean EGR annotation
         mean_egr = np.nanmean(data['egr_day_mean'])
         ax.text(0.98, 0.02, f'Mean: {mean_egr:.2f} day$^{{-1}}$',
-               transform=ax.transAxes, fontsize=10, ha='right', va='bottom',
-               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+            transform=ax.transAxes, fontsize=ANNOTATION_FONTSIZE, ha='right', va='bottom',
+            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
         
         # Colorbar only in last column
         if col == 2:
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="4%", pad=0.08)
             cb = plt.colorbar(im, cax=cax)
-            cb.set_label(r'EGR (day$^{-1}$)', fontsize=11)
-            cb.ax.tick_params(labelsize=11)
+            cb.set_label(r'EGR (day$^{-1}$)', fontsize=CBAR_LABELSIZE)
+            cb.ax.tick_params(labelsize=CBAR_LABELSIZE)
             cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.2f}'))
     
     # Save figure
@@ -576,7 +589,7 @@ def main():
     print("Creating main figure...")
     print(f"{'='*80}")
     
-    output_file = FIGURES_DIR / "ep1_instability_composite_4x3.png"
+    output_file = FIGURES_DIR / "7_ep1_instability_composite_4x3.png"
     create_main_figure(data_dict, output_file)
     
     print(f"\n{'='*80}")

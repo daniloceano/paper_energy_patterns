@@ -242,6 +242,68 @@ Each panel shows the phase trajectory through: Incipient → Intensification →
 - **Zoomed variants:** Available to inspect behavior near zero and compare EPs more clearly
 
 **Purpose:** Illustrates how the three canonical energy patterns differ in their Lorenz Phase Space signatures and how their conversion/import pathways evolve through development phases.
+ 
+### Figure 7: EP1 Instability Composite (4×3)
+**File:** `7_ep1_instability_composite_4x3.png`
+
+Four-by-three composite figure showing instability diagnostics for EP1 cyclones across three spatial scales (local 5°, mesoscale 15°, synoptic 30°). The rows show, from top to bottom:
+- Rayleigh–Kuo (RK) 2D maps (∂η/∂y at Ck = 350 hPa)
+- RK zonal-mean profiles (ensemble members in gray; ensemble mean in bold)
+- Baroclinic Potential Vorticity (PV at Ca ≈ 975 hPa)
+- Eady Growth Rate (EGR) maps (day⁻¹)
+
+Notes on presentation and compact layout:
+- The figure is optimized for compact display (titles removed; panels labeled with (a)–(l) in the top-left corner) to maximize data density while preserving readability.
+- Shared colorbar scales are used per row to facilitate cross-scale comparison; colorbars are placed in the rightmost column.
+
+Computation and data:
+- Data source: ERA5 cyclone-centered composites for selected EP1 cases (see `scripts/ep1_ibc_ibt_analysis` pipeline).
+- Diagnostics computed with MetPy and in-house utilities: RK criterion, baroclinic PV, and EGR.
+
+Outputs:
+- `figures/main/7_ep1_instability_composite_4x3.png` (300 DPI, publication-ready)
+
+Recreate: `python scripts/main/07_figure_ep1_instability_composite.py` (run upstream preprocessing in `scripts/ep1_ibc_ibt_analysis/` first to produce the input composites).
+
+### Figure 5: Intensity, Seasonality, and Interannual Trends (EP1–EP3)
+**File:** `5_ep_intensity_seasonality_trends.png`
+
+Three-panel figure summarizing intensity, seasonal distribution, and long-term trends of cyclones grouped by Energy Pattern (EP1–EP3).
+
+Panel layout and purpose:
+- **(a) Intensity Distribution (Violin plot)** — Shows the distribution of maximum relative vorticity (units: 10⁻⁵ s⁻¹) per cyclone for each EP, with mean/median markers and annotated summary statistics.
+- **(b) Seasonal Distribution (Grouped bar chart)** — Percentage of cyclones occurring in each austral season (DJF, MAM, JJA, SON) for each EP.
+- **(c) Interannual Variability and Trends (Time series)** — Annual counts of cyclones (1979–2020) per EP with Mann–Kendall trend analysis and Theil–Sen slope; when autocorrelation is detected on detrended residuals (Ljung–Box), the Hamed–Rao modification is used for hypothesis testing.
+
+Key results (computed on the full dataset used in the manuscript):
+
+- **Median maximum vorticity (panel a)** — median of the per-track maximum vorticity (units shown as 10⁻⁵ s⁻¹):
+  - **EP1:** 8.87
+  - **EP2:** 9.43
+  - **EP3:** 6.26
+
+- **Seasonal percentages (panel b)** — share of cyclones for each season by EP (percent of EP total):
+  - **EP1:** DJF 18.0%, MAM 26.1%, JJA 35.6%, SON 20.3%
+  - **EP2:** DJF 21.6%, MAM 24.6%, JJA 26.4%, SON 27.5%
+  - **EP3:** DJF 30.9%, MAM 21.7%, JJA 21.2%, SON 26.2%
+
+- **Interannual trends (panel c)** — Mann–Kendall family testing with Theil–Sen slope (1979–2020, 42 years):
+  - **EP1:** No significant trend (chosen test: original MK), p = 1.0000, Kendall’s tau: not applicable; Theil–Sen slope ≈ 0.0000 cyclones/year (95% CI: [-0.0909, 0.0769]). Interpretation: EP1 occurrence is stable over the study period.
+  - **EP2:** Significant increasing trend (chosen test: Hamed–Rao when autocorrelation present), p = 0.0058, Kendall’s tau = 0.296; Theil–Sen slope ≈ +0.1724 cyclones/year (95% CI: [0.0500, 0.3000]). Interpretation: EP2 shows a robust upward trend, corresponding to ≈7 additional EP2 cyclones over the 42-year period.
+  - **EP3:** No significant trend (chosen test: original MK), p = 0.7278, Kendall’s tau = 0.038; Theil–Sen slope ≈ 0.0000 cyclones/year (95% CI: [-0.1538, 0.1905]). Interpretation: EP3 occurrence is effectively stable.
+
+Methodological notes (brief):
+- Data: annual cyclone counts per EP (1979–2020) used for trend testing; per-track maximum vorticity computed from observed vorticity time series.
+- Trend testing: Theil–Sen slope estimator for magnitude; Mann–Kendall family tests applied and saved to `results/exploratory/mk_trend_results.csv`.
+- Autocorrelation handling: Residuals are detrended by the Theil–Sen estimate and tested with a single Ljung–Box portmanteau test at lag h = min(10, n-1); when significant autocorrelation is detected (p < 0.05) the Hamed–Rao modification is preferred for annotation.
+
+Outputs and reproducibility:
+- Figure file: `5_ep_intensity_seasonality_trends.png` (publication-quality 300 DPI PNG).
+- Trend CSV: `results/exploratory/mk_trend_results.csv` (contains full set of MK tests, slopes, CIs, autocorrelation p-values and chosen-test flags).
+- Recreate: `python scripts/main/05_figure_intensity_seasonality_trends.py` (see script header for dependencies and exact procedure).
+
+Scientific interpretation (concise):
+- EP2 shows a statistically significant increase in absolute counts across 1979–2020, while EP1 and EP3 remain stable. Combined with panel (a) (EP2 has the highest median intensity) and the seasonal breakdown in panel (b), this suggests a shifting contribution of moderate–high intensity events (EP2) to the regional cyclone climatology, with potential implications for energy conversion pathways and climate-related modulation of cyclone energetics.
 
 
 ### Figure 6: Genesis Density (KDE - Hoskins & Hodges Method)
@@ -311,7 +373,7 @@ Following **Hoskins and Hodges (2005)**, cyclone genesis density is computed usi
 
 ## Scripts
 
-### `figure_intensity_seasonality_trends.py`
+### `6_figure_intensity_seasonality_trends.py`
 Creates Figure 1 with intensity, seasonality, and trend analysis.
 
 **Key Features**:

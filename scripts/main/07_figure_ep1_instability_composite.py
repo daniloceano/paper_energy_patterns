@@ -53,6 +53,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib.lines import Line2D
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -72,10 +73,10 @@ DOMAIN_SIZES = {'local': 5.0, 'mesoscale': 15.0, 'synoptic': 30.0}
 BASE_FONTSIZE = 11
 AXIS_LABELSIZE = 12
 PANEL_TITLESIZE = 13
-TICK_LABELSIZE = 10
-LEGEND_FONTSIZE = 9
-CBAR_LABELSIZE = 11
-ANNOTATION_FONTSIZE = 10
+TICK_LABELSIZE = 12
+LEGEND_FONTSIZE = 12
+CBAR_LABELSIZE = 12
+ANNOTATION_FONTSIZE = 12
 FIGURE_TITLESIZE = 14
 
 # Apply font sizes to rcParams for consistency
@@ -359,10 +360,12 @@ def create_main_figure(data_dict, output_file):
     output_file : Path
         Output file path
     """
-    # Compact layout: tighter spacing and reduced margins for a more concise figure
-    fig = plt.figure(figsize=(11, 9))
-    gs = gridspec.GridSpec(4, 3, hspace=0.15, wspace=0.08,
-                          left=0.05, right=0.98, top=0.98, bottom=0.03)
+    # Compact layout: reserve extra column for colorbars so they don't
+    # shrink the main plotting panels when added. Increase figure width.
+    fig = plt.figure(figsize=(8, 10))
+    gs = gridspec.GridSpec(4, 4, hspace=0.12, wspace=0.06,
+                          left=0.05, right=0.98, top=0.98, bottom=0.03,
+                          width_ratios=[1, 1, 1, 0.12])
     
     domains = ['local', 'mesoscale', 'synoptic']
     domain_labels = ['5°', '15°', '30°']
@@ -397,7 +400,11 @@ def create_main_figure(data_dict, output_file):
         
         ax.set_xlim(data['x'].min(), data['x'].max())
         ax.set_ylim(data['y'].min(), data['y'].max())
-        ax.set_aspect('equal')
+        # Force the axes box to be square so map panels have consistent display size
+        try:
+            ax.set_box_aspect(1)
+        except Exception:
+            ax.set_aspect('equal')
         ax.grid(True, alpha=0.3, linestyle='--')
         
         # Remove tick labels (composite data)
@@ -408,19 +415,20 @@ def create_main_figure(data_dict, output_file):
         ax.text(0.01, 0.98, panel_labels[0][col], transform=ax.transAxes,
             fontsize=ANNOTATION_FONTSIZE+1, fontweight='bold', ha='left', va='top')
         
-        # Add sample size
-        ax.text(0.98, 0.02, f'n={data["n_cases"]}',
-            transform=ax.transAxes, fontsize=ANNOTATION_FONTSIZE, ha='right', va='bottom',
-            bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        # # Add sample size
+        # ax.text(0.98, 0.02, f'n={data["n_cases"]}',
+        #     transform=ax.transAxes, fontsize=ANNOTATION_FONTSIZE, ha='right', va='bottom',
+        #     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
         
-        # Colorbar only in last column
+        # Colorbar placed in dedicated cbar column (col index 3)
         if col == 2:
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="4%", pad=0.08)
+            cax = fig.add_subplot(gs[0, 3])
             cb = plt.colorbar(im, cax=cax)
             cb.set_label(r'∂η/∂y (s$^{-1}$ m$^{-1}$)', fontsize=CBAR_LABELSIZE)
             cb.ax.tick_params(labelsize=CBAR_LABELSIZE)
             cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.2e}'))
+            cax.yaxis.set_ticks_position('right')
+            cax.xaxis.set_visible(False)
     
     # ========================================================================
     # Row 2: RK Zonal Mean
@@ -435,13 +443,19 @@ def create_main_figure(data_dict, output_file):
         
         # Plot all individual cases in gray (like step5)
         for member in data['deta_dy_zonal_individual']:
-            ax.plot(member, data['y'], 'gray', linewidth=0.5, alpha=0.3)
-        
-        # Plot ensemble mean in bold
-        ax.plot(data['deta_dy_zonal_mean'], data['y'], 'b-', linewidth=2.5, label='Ensemble mean')
+            ax.plot(member, data['y'], color='gray', linewidth=0.5, alpha=0.3)
+
+        # Plot composite mean in bold (no in-axes legend; placed to the right)
+        ax.plot(data['deta_dy_zonal_mean'], data['y'], color='b', linewidth=2.5)
         
         ax.set_ylim(data['y'].min(), data['y'].max())
         ax.grid(True, alpha=0.3)
+
+        # Make zonal-mean panels use the same display box aspect as map panels
+        try:
+            ax.set_box_aspect(1)
+        except Exception:
+            pass
         
         # Remove tick labels
         ax.set_xticklabels([])
@@ -451,9 +465,24 @@ def create_main_figure(data_dict, output_file):
         ax.text(0.01, 0.98, panel_labels[1][col], transform=ax.transAxes,
             fontsize=ANNOTATION_FONTSIZE+1, fontweight='bold', ha='left', va='top')
         
-        # Add legend only to first panel
+        # Place legend in dedicated right column (gs[1,3]) for the first column
         if col == 0:
-            ax.legend(fontsize=LEGEND_FONTSIZE, frameon=True, loc='best')
+            legend_ax = fig.add_subplot(gs[1, 3])
+            legend_ax.axis('off')
+            handles = [
+                Line2D([0], [0], color='gray', linewidth=0.8, alpha=0.9),
+                Line2D([0], [0], color='b', linewidth=2.5)
+            ]
+            labels = ['Individual\ncase', 'Composite\nmean']
+            legend = legend_ax.legend(handles, labels, loc='center', frameon=True,
+                                      fontsize=LEGEND_FONTSIZE, handlelength=2)
+            # Nudge legend further right into the margin/space reserved for colorbars
+            try:
+                pos = legend_ax.get_position()
+                shift = 0.06
+                legend_ax.set_position([pos.x0 + shift, pos.y0, pos.width, pos.height])
+            except Exception:
+                pass
     
     # ========================================================================
     # Row 3: Baroclinic PV - compute shared colorbar levels
@@ -475,7 +504,10 @@ def create_main_figure(data_dict, output_file):
         
         ax.set_xlim(data['x'].min(), data['x'].max())
         ax.set_ylim(data['y'].min(), data['y'].max())
-        ax.set_aspect('equal')
+        try:
+            ax.set_box_aspect(1)
+        except Exception:
+            ax.set_aspect('equal')
         ax.grid(True, alpha=0.3, linestyle='--')
         
         # Remove tick labels
@@ -486,14 +518,15 @@ def create_main_figure(data_dict, output_file):
         ax.text(0.01, 0.98, panel_labels[2][col], transform=ax.transAxes,
             fontsize=ANNOTATION_FONTSIZE+1, fontweight='bold', ha='left', va='top')
         
-        # Colorbar only in last column
+        # Colorbar placed in dedicated cbar column (col index 3)
         if col == 2:
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="4%", pad=0.08)
+            cax = fig.add_subplot(gs[2, 3])
             cb = plt.colorbar(im, cax=cax)
             cb.set_label(r'PV (10$^{-6}$ K m$^2$ kg$^{-1}$ s$^{-1}$)', fontsize=CBAR_LABELSIZE)
             cb.ax.tick_params(labelsize=CBAR_LABELSIZE)
             cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.2f}'))
+            cax.yaxis.set_ticks_position('right')
+            cax.xaxis.set_visible(False)
     
     # ========================================================================
     # Row 4: Eady Growth Rate - compute shared colorbar levels
@@ -520,7 +553,10 @@ def create_main_figure(data_dict, output_file):
         
         ax.set_xlim(data['x'].min(), data['x'].max())
         ax.set_ylim(data['y'].min(), data['y'].max())
-        ax.set_aspect('equal')
+        try:
+            ax.set_box_aspect(1)
+        except Exception:
+            ax.set_aspect('equal')
         ax.grid(True, alpha=0.3, linestyle='--')
         
         # Remove tick labels
@@ -537,14 +573,15 @@ def create_main_figure(data_dict, output_file):
             transform=ax.transAxes, fontsize=ANNOTATION_FONTSIZE, ha='right', va='bottom',
             bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
         
-        # Colorbar only in last column
+        # Colorbar placed in dedicated cbar column (col index 3)
         if col == 2:
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes("right", size="4%", pad=0.08)
+            cax = fig.add_subplot(gs[3, 3])
             cb = plt.colorbar(im, cax=cax)
             cb.set_label(r'EGR (day$^{-1}$)', fontsize=CBAR_LABELSIZE)
             cb.ax.tick_params(labelsize=CBAR_LABELSIZE)
             cb.ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, p: f'{x:.2f}'))
+            cax.yaxis.set_ticks_position('right')
+            cax.xaxis.set_visible(False)
     
     # Save figure
     plt.savefig(output_file, dpi=DPI, bbox_inches='tight')

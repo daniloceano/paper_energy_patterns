@@ -549,65 +549,6 @@ def create_boxplots(results):
     print(f"   ✓ Saved boxplot: {output_file}")
     plt.close()
     
-    # Also save as PDF for publication
-    output_file_pdf = FIGURES_DIR / "critical_levels_boxplot.pdf"
-    fig, axes = plt.subplots(2, 1, figsize=(12, 12))
-    
-    # Recreate for PDF with same settings
-    ax1 = axes[0]
-    bp1 = ax1.boxplot(ca_data, positions=positions, widths=0.6,
-                      patch_artist=True, showfliers=False,
-                      medianprops=dict(color='darkred', linewidth=2),
-                      boxprops=dict(facecolor='lightcoral', edgecolor='darkred', alpha=0.7),
-                      whiskerprops=dict(color='darkred', linewidth=1.5),
-                      capprops=dict(color='darkred', linewidth=1.5))
-    
-    ax1.axhline(y=0, color='gray', linestyle='--', linewidth=1, alpha=0.5)
-    ax1.set_ylabel('Ca (W m$^{-2}$)', fontsize=12, fontweight='bold')
-    ax1.set_title('(a) Baroclinic Conversion (Ca) by Pressure Level', 
-                  fontsize=13, fontweight='bold', loc='left')
-    ax1.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax1.set_xticks(positions)
-    ax1.set_xticklabels([f'{int(p)}' for p in pressure_levels], rotation=45, ha='right')
-    ax1.set_xlim([positions[0] - 0.5, positions[-1] + 0.5])
-    ax1.plot(positions[max_ca_idx], max_ca_value, 'r*', markersize=15, 
-             markeredgecolor='darkred', markeredgewidth=1.5, 
-             label=f'Maximum Ca at {max_ca_level} hPa')
-    ax1.legend(loc='best', frameon=True, fancybox=True, shadow=True)
-    ax1.text(0.98, 0.98, f'n = {n_systems} systems',
-             transform=ax1.transAxes, ha='right', va='top',
-             fontsize=10, bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    
-    ax2 = axes[1]
-    bp2 = ax2.boxplot(ck_data, positions=positions, widths=0.6,
-                      patch_artist=True, showfliers=False,
-                      medianprops=dict(color='darkblue', linewidth=2),
-                      boxprops=dict(facecolor='lightblue', edgecolor='darkblue', alpha=0.7),
-                      whiskerprops=dict(color='darkblue', linewidth=1.5),
-                      capprops=dict(color='darkblue', linewidth=1.5))
-    
-    ax2.axhline(y=0, color='gray', linestyle='--', linewidth=1, alpha=0.5)
-    ax2.set_xlabel('Pressure Level (hPa)', fontsize=12, fontweight='bold')
-    ax2.set_ylabel('Ck (W m$^{-2}$)', fontsize=12, fontweight='bold')
-    ax2.set_title('(b) Barotropic Conversion (Ck) by Pressure Level', 
-                  fontsize=13, fontweight='bold', loc='left')
-    ax2.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax2.set_xticks(positions)
-    ax2.set_xticklabels([f'{int(p)}' for p in pressure_levels], rotation=45, ha='right')
-    ax2.set_xlim([positions[0] - 0.5, positions[-1] + 0.5])
-    ax2.plot(positions[min_ck_idx], min_ck_value, 'b*', markersize=15, 
-             markeredgecolor='darkblue', markeredgewidth=1.5,
-             label=f'Minimum Ck at {min_ck_level} hPa')
-    ax2.legend(loc='best', frameon=True, fancybox=True, shadow=True)
-    ax2.text(0.98, 0.02, f'n = {n_systems} systems',
-             transform=ax2.transAxes, ha='right', va='bottom',
-             fontsize=10, bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-    
-    plt.tight_layout()
-    plt.savefig(output_file_pdf, dpi=300, bbox_inches='tight')
-    print(f"   ✓ Saved PDF: {output_file_pdf}")
-    plt.close()
-    
     # Calculate statistics
     ca_mean_of_medians = np.mean(ca_medians)
     ck_mean_of_medians = np.mean(ck_medians)

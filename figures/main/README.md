@@ -211,10 +211,11 @@ Use this CSV for traceability and further inspection.
 ### Figure 6: Genesis Density (KDE - Hoskins & Hodges Method)
 **File:** `6_ep_genesis_density_kde.png` (1.5 MB)
 
-Four-panel map figure showing cyclone genesis density using Kernel Density Estimation.
+Four-panel map figure showing cyclone genesis density using Kernel Density Estimation with normalized relative anomaly visualization for Energy Patterns.
 
 #### Methodology
-Following **Hoskins and Hodges (2005)**, cyclone genesis density is computed using:
+
+**KDE Computation** — Following **Hoskins and Hodges (2005)**:
 - **Kernel**: Gaussian with haversine metric (great circle distance)
 - **Bandwidth**: 0.05 radians (~555 km)
 - **Grid**: Global 2.5° grid (128×64 lon×lat)
@@ -224,47 +225,80 @@ Following **Hoskins and Hodges (2005)**, cyclone genesis density is computed usi
   - Earth radius at 40°S (6369 km)
   - Time period (42 years)
 
+**Min-Max Normalization for EP Panels** — To highlight spatial contributions:
+
+Panels (b)–(d) display **normalized relative anomalies** rather than absolute densities. This approach emphasizes regions where each Energy Pattern has enhanced or reduced genesis contribution relative to the overall climatology, independent of the absolute frequency of each EP.
+
+The normalization follows these steps:
+
+1. **Min-Max scaling** (applied separately to each density field):
+   
+   $$
+   \text{norm}(x) = \frac{x - \min(x)}{\max(x) - \min(x)}, \quad x > 0
+   $$
+   
+   where $x$ represents the KDE density field. Grid cells with zero density remain zero. This scales all positive density values to the range [0, 1] while preserving spatial structure.
+
+2. **Relative anomaly** (difference in normalized space):
+   
+   $$
+   \Delta_{\text{EP}} = \text{norm}(\text{density}_{\text{EP}}) - \text{norm}(\text{density}_{\text{All}})
+   $$
+   
+   Values range from approximately -1 to +1, where:
+   - **Positive values** (red): regions with relatively stronger EP contribution
+   - **Negative values** (blue): regions with relatively weaker EP contribution
+   - **Near zero** (white): proportional to overall climatology
+
+**Why this approach?**
+
+Simply plotting absolute EP densities is dominated by EP3's high frequency (62.7% of cyclones), obscuring spatial patterns in EP1 and EP2. Dividing raw densities (density_EP / density_All) also fails because it amplifies noise in low-density regions and doesn't account for the expected fractional contribution of each EP.
+
+Min-Max normalization removes scale differences before comparison, allowing us to identify **spatial patterns** in genesis distribution that are unique to each EP, independent of their overall frequency. This reveals where each energy pathway preferentially generates cyclones within the common genesis region.
+
 #### Panel Description
 
 **(a) All Cyclones** (Top-Left)
-- Composite genesis density for entire dataset
+- **Type**: Absolute density (cyclones per 10⁶ km²/year)
+- Composite genesis density for entire dataset (3820 cyclones, 1979–2020)
 - **Maximum density**: 34.36 cyclones/10⁶ km²/year
 - **Primary hotspot**: Southwestern Atlantic near Argentina coast (~60°W, 40-45°S)
-- Shows overall cyclogenesis climatology
+- Shows overall cyclogenesis climatology baseline
 
 **(b) EP1** (Top-Right)
+- **Type**: Normalized relative anomaly (dimensionless, range ≈ -1 to +1)
 - 444 cyclones (11.6% of total)
-- **Maximum density**: 3.85 cyclones/10⁶ km²/year
-- **Pattern**: Most concentrated genesis, southern distribution
-- **Geographic preference**: Closer to Argentina coast, strongest baroclinic forcing
+- **Colormap**: RdBu_r (diverging, red = enhanced contribution, blue = reduced)
+- **Pattern**: Negative/neutral anomalies across most of domain
+- **Interpretation**: EP1 genesis is less spatially concentrated than the overall climatology; despite being the least frequent EP, its genesis locations are broadly distributed rather than clustered in the main hotspot
 
 **(c) EP2** (Bottom-Left)
+- **Type**: Normalized relative anomaly
 - 979 cyclones (25.6% of total)
-- **Maximum density**: 6.86 cyclones/10⁶ km²/year
-- **Pattern**: Intermediate concentration and spatial extent
-- **Geographic preference**: Middle latitudes, balanced distribution
+- **Pattern**: Moderate positive anomaly in northern part of genesis region
+- **Interpretation**: EP2 shows enhanced genesis contribution at slightly more equatorward latitudes (~37-42°S), suggesting environmental conditions favorable to EP2's balanced energy pathways are offset northward from the main climatological hotspot
 
 **(d) EP3** (Bottom-Right)
+- **Type**: Normalized relative anomaly
 - 2397 cyclones (62.7% of total) - **Most frequent**
-- **Maximum density**: 23.65 cyclones/10⁶ km²/year - **Highest density**
-- **Pattern**: Broadest spatial distribution, dominates overall density
-- **Geographic preference**: Extends further offshore and equatorward
-- **Pattern**: Intermediate concentration and spatial extent
-- **Geographic preference**: Middle latitudes, balanced distribution
+- **Pattern**: Strong positive anomaly concentrated near 40-45°S and coastal regions
+- **Interpretation**: EP3 dominates the core genesis hotspot near the Argentina coast. Despite being the most frequent EP overall, its spatial concentration exceeds its fractional frequency, indicating a strong geographic preference for the primary baroclinic zone
 
 #### Key Findings
 
-**Spatial Patterns**:
-- All EPs share a common genesis region in the southwestern Atlantic
-- Latitudinal differences are subtle but systematic:
-  - EP1: Most concentrated near 40-45°S
-  - EP2: Broadest extent, peak slightly north (~37-42°S)
-  - EP3: Intermediate position (~38-44°S)
+**Spatial Differentiation**:
+- **EP3** concentrates in the primary genesis hotspot (40-45°S, near coast), showing positive anomalies that indicate over-representation relative to its 62.7% frequency share
+- **EP2** exhibits positive anomalies slightly equatorward (~37-42°S), suggesting environmental conditions favorable to balanced energy pathways peak northward of the climatological maximum
+- **EP1** shows weak/negative anomalies, indicating a more dispersed genesis distribution that underutilizes the main hotspot despite being concentrated at southern latitudes in absolute terms
 
-**Density Comparison**:
-- EP3 dominates absolute density (23.65 cyclones/10⁶ km²/year) - most frequent
-- EP2 has intermediate density (6.86)
-- EP1 has lowest density (3.85) but highest per-cyclone concentration
+**Physical Interpretation**:
+- The normalized anomaly approach reveals that **Energy Pattern determines preferred genesis latitude** within the broader South Atlantic genesis region
+- EP3 (highest barotropic conversion) dominates where SST gradients and baroclinicity peak
+- EP2 (balanced conversions) prefers transition zones with moderate gradients
+- EP1 (lowest barotropic, highest baroclinic) occurs more uniformly across the domain, not preferentially tied to the strongest frontal zones
+
+**Methodological Note**:
+The Min-Max normalization successfully isolates **spatial preferences** from **frequency differences**, revealing subtle but systematic geographic patterns that would be masked by plotting absolute densities (which EP3 dominates) or simple ratios (which amplify noise).
 
 ## References
 

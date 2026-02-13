@@ -7,10 +7,15 @@ This script creates a 2x2 figure showing cyclone genesis density using
 Kernel Density Estimation following Hoskins and Hodges (2005) methodology.
 
 Panels:
-- Top-left: All cyclones (total density)
-- Top-right: EP1
-- Bottom-left: EP2
-- Bottom-right: EP3
+- Top-left: All cyclones (absolute density in cyclones/10^6 km^2/year)
+- Top-right: EP1 (normalized anomaly relative to all cyclones)
+- Bottom-left: EP2 (normalized anomaly relative to all cyclones)
+- Bottom-right: EP3 (normalized anomaly relative to all cyclones)
+
+The EP panels use Min-Max normalization (0-1 scaling on positive values only)
+to compute relative anomalies: norm_EP - norm_All. This highlights regions
+where each Energy Pattern has enhanced or reduced genesis contribution
+relative to the overall climatology.
 
 Author: Danilo Couto de Souza
 Date: December 2024
@@ -23,6 +28,7 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from pathlib import Path
 from sklearn.neighbors import KernelDensity
+from matplotlib.colors import TwoSlopeNorm
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -252,12 +258,109 @@ def plot_density_map(ax, density, longrd, latgrd, title, color, vmin=None, vmax=
     cbar = plt.colorbar(cf, ax=ax, orientation='horizontal',
                        pad=0.15, shrink=0.8, aspect=15)
     # cbar.set_label('Cyclones per 10$^6$ km$^2$ per year', fontsize=9, fontweight='bold')
-    cbar.ax.tick_params(labelsize=8)
+    cbar.ax.tick_params(labelsize=10)
     # # Tick labels with integer
     cbar.set_ticks(levels[::2])
     cbar.set_ticklabels([f'{lev:.1f}' for lev in levels[::2]])  # Show every 4th level for clarity
     
     return vmax
+
+def minmax_normalize_positive(arr):
+    """
+    Apply Min-Max normalization (0-1 scaling) to positive values only.
+    Zero values remain zero. This preserves spatial structure while
+    enabling comparison of relative magnitudes.
+    
+    Parameters
+    ----------
+    arr : numpy.ndarray
+        Input array (e.g., KDE density field)
+    
+    Returns
+    -------
+    numpy.ndarray
+        Normalized array with positive values scaled to [0, 1]
+    """
+    out = np.full(arr.shape, 0.0, dtype=float)
+    pos_mask = arr > 0
+    if not np.any(pos_mask):
+        return out
+    pos = arr[pos_mask]
+    mn = pos.min()
+    mx = pos.max()
+    if mx == mn:
+        out[pos_mask] = 1.0
+    else:
+        out[pos_mask] = (arr[pos_mask] - mn) / (mx - mn)
+    return out
+
+def plot_relative_anomaly_map(ax, rel_anom, longrd, latgrd, title):
+    """
+    Plot normalized relative anomaly map with diverging colormap.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Map axes with projection
+    rel_anom : numpy.ndarray
+        Relative anomaly field (norm_EP - norm_All)
+    longrd : numpy.ndarray
+        Longitude grid
+    latgrd : numpy.ndarray
+        Latitude grid
+    title : str
+        Panel title
+    
+    Returns
+    -------
+    float
+        Maximum absolute anomaly value used for color scale
+    """
+    # Mask domain
+    lon_mask = (longrd >= LON_MIN) & (longrd <= LON_MAX)
+    lat_mask = (latgrd >= LAT_MIN) & (latgrd <= LAT_MAX)
+    
+    # Extract regional data
+    lon_idx = np.where(lon_mask)[0]
+    lat_idx = np.where(lat_mask)[0]
+    
+    rel_region = rel_anom[np.ix_(lat_idx, lon_idx)]
+    lon_region = longrd[lon_idx]
+    lat_region = latgrd[lat_idx]
+    
+    # Setup map
+    setup_map_axes(ax, title)
+    
+    # Mask invalid values
+    masked = np.ma.masked_invalid(rel_region)
+    maxabs = np.nanmax(np.abs(rel_region))
+    if np.isnan(maxabs) or maxabs == 0:
+        maxabs = 0.1
+    
+    # Diverging colormap centered at zero
+    norm = TwoSlopeNorm(vcenter=0.0, vmin=-maxabs, vmax=maxabs)
+    levels = np.linspace(-maxabs, maxabs, 13)
+    
+    # Add filled contours
+    cf = ax.contourf(lon_region, lat_region, masked,
+                     levels=levels, cmap='RdBu_r', norm=norm,
+                     transform=ccrs.PlateCarree(), extend='both', alpha=0.8)
+    
+    # Add contour lines
+    cs = ax.contour(lon_region, lat_region, masked,
+                    levels=7, colors='black', linewidths=0.4,
+                    transform=ccrs.PlateCarree(), alpha=0.6)
+    
+    # Add colorbar
+    cbar = plt.colorbar(cf, ax=ax, orientation='horizontal',
+                       pad=0.15, shrink=0.8, aspect=15)
+    # Use custom tick labels to show relative anomaly values
+    cbar.set_ticks(np.linspace(-maxabs, maxabs, 5))
+    cbar.set_ticklabels([f'{tick:.2f}' for tick in np.linspace(-maxabs, maxabs, 5)])
+    # cbar.set_label('Normalized anomaly (relative to all cyclones)', fontsize=8)
+    cbar.ax.tick_params(labelsize=10)
+    
+    return maxabs
 
 # ============================================================================
 # Main Figure Creation
@@ -305,26 +408,28 @@ def create_figure():
     else:
         print(f"  Color scale: vmin={vmin_all}, vmax={vmax_all}")
     
-    # Panels 2-4: Individual EPs (each uses its own color limits from COLOR_LIMITS)
+    # Panels 2-4: Individual EPs with normalized relative anomalies
+    # Normalize the overall density field
+    norm_all = minmax_normalize_positive(density_all)
+    
     ep_labels = ['(b) EP1', '(c) EP2', '(d) EP3']
     for i, (ep_num, label, color) in enumerate(zip([1, 2, 3], ep_labels, EP_COLORS[1:])):
-        print(f"\nComputing density for EP{ep_num}...")
+        print(f"\nComputing relative anomaly for EP{ep_num}...")
         ep_data = df[df['EP'] == ep_num]
         density_ep, _, _ = compute_density(ep_data, num_years)
-        limits_ep = COLOR_LIMITS.get(f'EP{ep_num}')
-        if limits_ep is None:
-            vmin_ep, vmax_ep = None, None
-        else:
-            vmin_ep, vmax_ep = limits_ep
-
-        vmax_used_ep = plot_density_map(axes[i+1], density_ep, longrd, latgrd,
-                                        label, color, vmin=vmin_ep, vmax=vmax_ep)
-        if vmin_ep is None and vmax_ep is None:
-            print(f"  Color scale: auto (95th percentile -> {vmax_used_ep:.3g})")
-        else:
-            print(f"  Color scale: vmin={vmin_ep}, vmax={vmax_ep}")
-        print(f"  Max density: {density_ep.max():.2f} cyclones/10^6 km^2/year")
+        
+        # Normalize EP density
+        norm_ep = minmax_normalize_positive(density_ep)
+        
+        # Calculate relative anomaly (difference in normalized space)
+        rel_anom = norm_ep - norm_all
+        
+        # Plot relative anomaly
+        maxabs = plot_relative_anomaly_map(axes[i+1], rel_anom, longrd, latgrd, label)
+        
+        print(f"  Max absolute density: {density_ep.max():.2f} cyclones/10^6 km^2/year")
         print(f"  N cyclones: {len(ep_data)}")
+        print(f"  Relative anomaly range: [{-maxabs:.3f}, {maxabs:.3f}]")
     
     # Adjust layout
     plt.tight_layout()

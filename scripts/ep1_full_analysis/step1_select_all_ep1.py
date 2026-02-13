@@ -117,7 +117,7 @@ def plot_all_ep1_tracks(selected_df, tracks_df):
     Create overview map with all EP1 cyclone tracks.
     Shows complete tracks and highlights intensification phase.
     """
-    print("\n4. Creating track visualization...")
+    print("   Creating track visualization...")
     
     fig = plt.figure(figsize=(14, 10))
     
@@ -213,23 +213,35 @@ def main():
     print("STEP 1: SELECT ALL EP1 CYCLONES FOR FULL ANALYSIS")
     print("=" * 70)
     
-    # 1. Load tracks
-    print("\n1. Loading track data...")
+    # 1. Load cluster assignments
+    print("\n1. Loading cluster assignments...")
+    cluster_file = Path(__file__).resolve().parents[2] / "results" / "cluster" / "kmeans_clustered_data.csv"
+    
+    if not cluster_file.exists():
+        raise FileNotFoundError(f"Cluster file not found: {cluster_file}")
+    
+    clustered_df = pd.read_csv(cluster_file)
+    ep1_cyclones = clustered_df[clustered_df['cluster'] == 0].copy()
+    print(f"   Total EP1 cyclones (cluster 0): {len(ep1_cyclones)}")
+    
+    # 2. Load tracks
+    print("\n2. Loading track data...")
     tracks_df = load_tracks()
     print(f"   Total tracks: {tracks_df['track_id'].nunique()}")
     
-    # 2. Filter EP1 only
-    print("\n2. Filtering EP1 (cluster 0)...")
-    ep1_tracks = tracks_df[tracks_df['cluster'] == 0].copy()
-    print(f"   EP1 tracks: {ep1_tracks['track_id'].nunique()}")
+    # 3. Filter tracks to only EP1 cyclones
+    print("\n3. Filtering for EP1 cyclones...")
+    ep1_track_ids = ep1_cyclones['track_id'].unique()
+    ep1_tracks = tracks_df[tracks_df['track_id'].isin(ep1_track_ids)].copy()
+    print(f"   EP1 tracks in database: {ep1_tracks['track_id'].nunique()}")
     
-    # 3. Filter complete lifecycle
-    print("\n3. Filtering complete lifecycle tracks...")
+    # 4. Filter complete lifecycle
+    print("\n4. Filtering complete lifecycle tracks...")
     complete_ids = filter_complete_lifecycle_tracks(ep1_tracks)
     print(f"   Complete lifecycle tracks: {len(complete_ids)}")
     
-    # 4. Get intensification info for all tracks
-    print("\n4. Extracting intensification phase information...")
+    # 5. Get intensification info for all tracks
+    print("\n5. Extracting intensification phase information...")
     selected_cases = []
     
     for track_id in complete_ids:
@@ -249,14 +261,14 @@ def main():
     selected_df = pd.DataFrame(selected_cases)
     print(f"   Valid cases with intensification data: {len(selected_df)}")
     
-    # 5. Save results
-    print("\n5. Saving results...")
+    # 6. Save results
+    print("\n6. Saving results...")
     out_csv = OUTPUT_DIR / "all_ep1_cases.csv"
     selected_df.to_csv(out_csv, index=False)
     print(f"   Saved: {out_csv}")
     
-    # 6. Print statistics
-    print("\n6. Dataset Statistics:")
+    # 7. Print statistics
+    print("\n7. Dataset Statistics:")
     print(f"   Total cases: {len(selected_df)}")
     print(f"   Mean timesteps per case: {selected_df['n_timesteps'].mean():.1f}")
     print(f"   Total timesteps: {selected_df['n_timesteps'].sum()}")
@@ -264,7 +276,7 @@ def main():
     print(f"   Lat range: [{selected_df['center_lat'].min():.1f}, {selected_df['center_lat'].max():.1f}]")
     print(f"   Lon range: [{selected_df['center_lon'].min():.1f}, {selected_df['center_lon'].max():.1f}]")
     
-    # 7. Create visualization
+    # 8. Create visualization
     plot_all_ep1_tracks(selected_df, tracks_df)
     
     print("\n" + "=" * 70)

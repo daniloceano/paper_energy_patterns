@@ -37,6 +37,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import pandas as pd
 import numpy as np
+import xarray as xr
 from datetime import datetime, timedelta
 import cdsapi
 import multiprocessing as mp
@@ -60,9 +61,111 @@ VARIABLES = ['u_component_of_wind', 'v_component_of_wind', 'temperature', 'geopo
 # Single domain per cyclone: track extent + this buffer on all sides
 DOMAIN_BUFFER = 15  # Allows for 30°×30° analysis (largest domain)
 
-# Domain buffer (degrees)
-# Single domain per cyclone: track extent + this buffer on all sides
-DOMAIN_BUFFER = 15  # Allows for 30°×30° analysis (largest domain)
+
+def validate_netcdf_file(nc_file, expected_variables, expected_levels):
+    """Validate NetCDF file integrity and completeness.
+    
+    Returns:
+    --------
+    valid : bool
+    issues : list of str (problems found)
+    """
+    issues = []
+    
+    if not nc_file.exists():
+        issues.append("File does not exist")
+        return False, issues
+    
+    try:
+        with xr.open_dataset(nc_file) as ds:
+            # Check variables
+            missing_vars = set(expected_variables) - set(ds.data_vars)
+            if missing_vars:
+                issues.append(f"Missing variables: {missing_vars}")
+            
+            # Check pressure levels
+            pressure_coord = 'pressure_level' if 'pressure_level' in ds.coords else 'level'
+            if pressure_coord not in ds.coords:
+                issues.append("No pressure coordinate found")
+                return False, issues
+            
+            actual_levels = sorted(ds[pressure_coord].values)
+            expected_levels_sorted = sorted(expected_levels)
+            
+            if actual_levels != expected_levels_sorted:
+                missing_levels = set(expected_levels_sorted) - set(actual_levels)
+                extra_levels = set(actual_levels) - set(expected_levels_sorted)
+                if missing_levels:
+                    issues.append(f"Missing levels: {missing_levels}")
+                if extra_levels:
+                    issues.append(f"Extra levels (OK): {extra_levels}")
+            
+            # Check for excessive NaN values (>50% indicates corruption)
+            for var in expected_variables:
+                if var in ds.data_vars:
+                    data = ds[var].values
+                    nan_fraction = np.isnan(data).sum() / data.size
+                    if nan_fraction > 0.5:
+                        issues.append(f"{var}: {nan_fraction*100:.1f}% NaN (corrupted?)")
+            
+            # Check temporal dimension
+            if 'valid_time' in ds.coords or 'time' in ds.coords:
+                time_coord = 'valid_time' if 'valid_time' in ds.coords else 'time'
+                if len(ds[time_coord]) == 0:
+                    issues.append("No time steps found")
+    
+    except Exception as e:
+        issues.append(f"Failed to open/read file: {e}")
+        return False, issues
+    
+    return len(issues) == 0, issues
+
+
+def check_existing_files(cases, pressure_levels):
+    """Check which files already exist and are valid.
+    
+    Returns:
+    --------
+    to_download : list of (idx, row) for cases needing download
+    valid_files : list of track_ids with valid files
+    invalid_files : list of (track_id, issues) for corrupted files
+    """
+    print("\n   Validating existing files...")
+    
+    to_download = []
+    valid_files = []
+    invalid_files = []
+    
+    # Map variable names to NetCDF names
+    var_map = {
+        'u_component_of_wind': 'u',
+        'v_component_of_wind': 'v',
+        'temperature': 't',
+        'geopotential': 'z',
+        'specific_humidity': 'q'
+    }
+    expected_vars = list(var_map.values())
+    
+    for idx, row in cases.iterrows():
+        track_id = row['track_id']
+        nc_file = DATA_DIR / f"{track_id}_era5.nc"
+        meta_file = DATA_DIR / f"{track_id}_metadata.csv"
+        
+        # Check if both files exist
+        if not nc_file.exists() or not meta_file.exists():
+            to_download.append((idx, row))
+            continue
+        
+        # Validate NetCDF
+        is_valid, issues = validate_netcdf_file(nc_file, expected_vars, pressure_levels)
+        
+        if is_valid:
+            valid_files.append(track_id)
+        else:
+            invalid_files.append((track_id, issues))
+            to_download.append((idx, row))
+    
+    return to_download, valid_files, invalid_files
 
 
 def load_critical_levels():
@@ -78,6 +181,11 @@ def load_critical_levels():
     
     # Extract unique pressure levels
     pressure_levels = sorted(levels_df['pressure_level_hPa'].unique())
+    
+    # Add 250 hPa for jet stream analysis
+    if 250 not in pressure_levels:
+        pressure_levels.append(250)
+        pressure_levels = sorted(pressure_levels)
     
     return pressure_levels, levels_df
 
@@ -292,6 +400,27 @@ def main():
     # Create output directory
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     
+    # Check existing files
+    to_download, valid_files, invalid_files = check_existing_files(cases, pressure_levels)
+    
+    print(f"\n   Valid files: {len(valid_files)}/{len(cases)}")
+    
+    if invalid_files:
+        print(f"\n   ⚠️  Found {len(invalid_files)} corrupted/incomplete files:")
+        for track_id, issues in invalid_files[:5]:  # Show first 5
+            print(f"      {track_id}: {'; '.join(issues)}")
+        if len(invalid_files) > 5:
+            print(f"      ... and {len(invalid_files)-5} more")
+        print("\n   ⚠️  These files will be re-downloaded.")
+        print("      To avoid re-download, remove them manually first.")
+    
+    if len(to_download) == 0:
+        print("\n   ✓ All files are valid and complete!")
+        print(f"\n   Next step: Run step4_compute_instabilities.py")
+        return
+    
+    print(f"\n   Files to download: {len(to_download)}/{len(cases)}")
+    
     print("\n3. ERA5 download configuration:")
     print(f"   Variables: {', '.join(VARIABLES)}")
     print(f"   Domain buffer: {DOMAIN_BUFFER}° (allows 30°×30° analysis)")
@@ -300,17 +429,14 @@ def main():
     
     # Process cases in parallel
     n_cores = max(1, mp.cpu_count() - 1)
-    print(f"\n4. Processing cases in parallel using {n_cores} cores...")
-    
-    # Prepare case data with indices
-    case_data = [(idx, row) for idx, row in cases.iterrows()]
+    print(f"\n4. Downloading {len(to_download)} files using {n_cores} cores...")
     
     # Create partial function with pressure_levels
     process_func = partial(process_case_wrapper, pressure_levels=pressure_levels)
     
     # Process in parallel
     with mp.Pool(processes=n_cores) as pool:
-        results = pool.map(process_func, case_data)
+        results = pool.map(process_func, to_download)
     
     # Count successes and failures
     successful = sum(1 for _, success in results if success)
@@ -318,10 +444,15 @@ def main():
     
     print("\n" + "=" * 80)
     print(f"✓ Download complete!")
-    print(f"  Successful: {successful}/{len(cases)}")
-    print(f"  Failed: {failed}/{len(cases)}")
-    if successful > 0:
-        print(f"\n  Next step: Run step4_compute_instabilities.py")
+    print(f"  Already valid: {len(valid_files)}")
+    print(f"  Downloaded now: {successful}/{len(to_download)}")
+    print(f"  Failed: {failed}/{len(to_download)}")
+    print(f"  Total valid: {len(valid_files) + successful}/{len(cases)}")
+    if len(valid_files) + successful == len(cases):
+        print(f"\n  ✓ All files ready!")
+        print(f"  Next step: Run step4_compute_instabilities.py")
+    elif failed > 0:
+        print(f"\n  ⚠️  Some downloads failed. Re-run this script to retry.")
     print("=" * 80)
 
 if __name__ == "__main__":

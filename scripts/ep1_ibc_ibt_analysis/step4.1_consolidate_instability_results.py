@@ -50,14 +50,16 @@ for domain in ['local', 'mesoscale', 'synoptic']:
     col = f'rk_{domain}_satisfied'
     n_satisfied = df[col].sum()
     pct = 100 * n_satisfied / len(df)
-    print(f"  {domain:12s}: {n_satisfied}/{len(df)} cases ({pct:.0f}%)")
+    size = domain_sizes[domain]
+    print(f"  {domain:12s} ({size:2d}\u00b0): {n_satisfied:2d}/{len(df)} cases ({pct:5.1f}%)")
 
 print("\nZonal Mean (meridional structure):")
 for domain in ['local', 'mesoscale', 'synoptic']:
     col = f'rk_{domain}_satisfied_zonal'
     n_satisfied = df[col].sum()
     pct = 100 * n_satisfied / len(df)
-    print(f"  {domain:12s}: {n_satisfied}/{len(df)} cases ({pct:.0f}%)")
+    size = domain_sizes[domain]
+    print(f"  {domain:12s} ({size:2d}\u00b0): {n_satisfied:2d}/{len(df)} cases ({pct:5.1f}%)")
 
 print("\n--- Static Stability (Brunt-Väisälä, s⁻¹) ---")
 for domain in ['local', 'mesoscale', 'synoptic']:

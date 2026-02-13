@@ -132,11 +132,13 @@ Download ERA5 reanalysis data ONLY for the identified critical pressure levels, 
 **Pressure Levels**:
 - Level of Ca maximum ± 1 level (for centered finite differences in EGR)
 - Level of Ck minimum ± 1 level (for RK criterion analysis)
+- **250 hPa**: Upper-level jet stream (for composite analysis and synoptic context)
 
 **Rationale**: 
-- Instead of downloading all 21 pressure levels, download only ~3-6 levels needed
+- Instead of downloading all 21 pressure levels, download only ~3-7 levels needed
 - Saves significant download time and storage space
 - EGR requires vertical derivatives, hence ±1 level for centered differences
+- 250 hPa provides upper-tropospheric jet structure for composite figures
 
 **Spatial Coverage Strategy**:
 - **Single domain per cyclone**: Track extent during intensification phase + 15° buffer on all sides

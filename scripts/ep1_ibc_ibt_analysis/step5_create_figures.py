@@ -187,6 +187,8 @@ def create_composite_figure(domain_name, domain_size, all_data, output_dir):
     egr_day_mean = np.nanmean(np.stack([d['egr_day'] for d in all_data]), axis=0)
     pv_mean = np.nanmean(np.stack([d['pv'] for d in all_data]), axis=0)
     deta_dy_zonal_mean = np.nanmean(np.stack([d['deta_dy_zonal'] for d in all_data]), axis=0)
+    u250_mean = np.nanmean(np.stack([d['u250'] for d in all_data]), axis=0)
+    v250_mean = np.nanmean(np.stack([d['v250'] for d in all_data]), axis=0)
     
     # Get grid dimensions from first case (all identical)
     nlat, nlon = deta_dy_mean.shape
@@ -256,7 +258,7 @@ def create_composite_figure(domain_name, domain_size, all_data, output_dir):
     ax2.grid(True, alpha=0.3)
     
     # =========================================================================
-    # Panel 3: Composite PV
+    # Panel 3: Composite PV + Jet at 250 hPa
     # =========================================================================
     ax3 = fig.add_subplot(gs[1, 0])
     
@@ -266,6 +268,17 @@ def create_composite_figure(domain_name, domain_size, all_data, output_dir):
     pv_levels = np.linspace(pv_min, 0, 21)
     im3 = ax3.contourf(x_2d, y_2d, pv_mean * 1e6, levels=pv_levels,
                        cmap='RdYlBu_r', extend='both')
+    
+    # Add wind barbs at 250 hPa (jet stream)
+    # Subsample for clarity (every N points)
+    skip = max(1, nlat // 15)  # Adaptive: ~15 barbs per axis
+    x_barbs = x_2d[::skip, ::skip]
+    y_barbs = y_2d[::skip, ::skip]
+    u_barbs = u250_mean[::skip, ::skip]
+    v_barbs = v250_mean[::skip, ::skip]
+    ax3.barbs(x_barbs, y_barbs, u_barbs, v_barbs, 
+              length=5, linewidth=0.5, barbcolor='black', flagcolor='black',
+              alpha=0.7)
     
     # Mark center
     ax3.plot(0, 0, 'k*', markersize=15, markeredgecolor='white', markeredgewidth=1)
@@ -282,7 +295,7 @@ def create_composite_figure(domain_name, domain_size, all_data, output_dir):
     cb3 = plt.colorbar(im3, cax=cax3)
     cb3.set_label(r'PV (10$^{-6}$ K m$^2$ kg$^{-1}$ s$^{-1}$)', fontsize=9)
     
-    ax3.set_title(f'(c) Baroclinic PV - Composite (Ca: {lev_ca} hPa)', 
+    ax3.set_title(f'(c) Baroclinic PV (Ca: {lev_ca} hPa) + Jet (250 hPa)', 
                   fontsize=10, loc='left')
     
     # =========================================================================
@@ -406,6 +419,15 @@ def main():
             z3 = geopotential_height(ds_sub['z'].sel(pressure_level=lev3_ca).values)
             p3 = np.array(lev3_ca) * 100.0
             
+            # Jet at 250 hPa
+            try:
+                u250 = ds_sub['u'].sel(pressure_level=250).values
+                v250 = ds_sub['v'].sel(pressure_level=250).values
+            except:
+                print(f"  ⚠️  250 hPa not found for {track_id}, using NaN")
+                u250 = np.full_like(lat_2d, np.nan)
+                v250 = np.full_like(lat_2d, np.nan)
+            
             _, _, deta_dy, deta_dy_zonal, _ = rayleigh_kuo_criterion(u_rk, v_rk, lat_2d, lon_2d)
             _, egr_day, _ = eady_growth_rate(u3, v3, T3, q3, p3, z3, lat_2d)
             
@@ -421,6 +443,8 @@ def main():
                 'deta_dy_zonal': deta_dy_zonal,
                 'egr_day': egr_day,
                 'pv': pv,
+                'u250': u250,
+                'v250': v250,
                 'lev_rk': lev_rk,
                 'lev_ca': lev3_ca[1]
             })

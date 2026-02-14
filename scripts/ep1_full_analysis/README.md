@@ -32,12 +32,27 @@ python scripts/ep1_full_analysis/step1_select_all_ep1.py
 
 ### Step 2: Download ERA5 Data (Parallel)
 ```bash
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 8
+# Default: 2 parallel jobs (CDS API recommended limit)
+python scripts/ep1_full_analysis/step2_download_era5_parallel.py
+
+# Custom parallelization (not recommended > 4 due to CDS API limits)
+python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 2
+
+# With nohup for background execution
+nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py &> download.log &
+# Log file automatically created in logs/step2_download_YYYYMMDD_HHMMSS.log
 ```
 - Downloads ERA5 for all EP1 cyclones
 - **Includes Sea Level Pressure (SLP)**
-- **Parallel download** (customizable, default = CPUs - 1)
+- **Parallel download** (default: 2 jobs, respecting CDS API limits)
+- **Logging**: Progress tracking with timestamps, estimated time remaining
+- **Automatic retry**: Validates existing files, re-downloads corrupted data
 - Saves to `data/era5_ep1_full/`
+
+**CDS API Constraints:**
+- Maximum 2-4 simultaneous requests per user account
+- Default `--jobs 2` respects this limit
+- Higher values may cause "Number queued requests... temporarily limited" errors
 
 ### Step 3: Precompute Composites
 ```bash

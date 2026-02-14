@@ -62,17 +62,18 @@ Total: 7 levels (reduced from 14 for efficiency)
 
 **Usage:**
 ```bash
-# Default: uses (CPUs - 1) workers
+# Default: 2 parallel jobs (CDS API safe limit)
 python scripts/ep1_full_analysis/step2_download_era5_parallel.py
 
-# Custom: 8 workers
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 8
+# Custom: specify number of jobs (max 2-4 recommended)
+python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 2
 
-# Remote server (e.g., 15 cores)
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 15
+# Background execution with nohup
+nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py &
+# Logs saved to: logs/step2_download_YYYYMMDD_HHMMSS.log
 ```
 
-⚠️ **IMPORTANT:** CDS API has rate limits. Even with parallelization, the server may throttle requests.
+⚠️ **IMPORTANT:** CDS API limits: 2-4 simultaneous requests per user. Default `--jobs 2` respects this constraint.
 
 ---
 
@@ -274,8 +275,8 @@ python scripts/ep1_full_analysis/step2_download_era5_parallel.py
 
 1. **✅ Customizable parallel download** 
    - Argument `--jobs N`
-   - Default: CPUs - 1
-   - Ideal for servers
+   - Default: 2 (respects CDS API limits)
+   - Max recommended: 2-4 (CDS API constraint)
 
 2. **✅ SLP included**
    - Mean Sea Level Pressure downloaded and merged automatically
@@ -307,6 +308,12 @@ python scripts/ep1_full_analysis/step2_download_era5_parallel.py
    - Based on Ca/Ck vertical analysis (step2_vertical_levels_analysis.py)
    - 7 targeted levels instead of 14 (50% data reduction)
    - See VERTICAL_LEVELS.md for detailed rationale
+
+9. **✅ Production-ready logging**
+   - Automatic log files with timestamps
+   - Progress tracking (completed/remaining/estimated time)
+   - Compatible with nohup for background execution
+   - CDS API error handling and retry logic
 
 ---
 

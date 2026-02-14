@@ -41,6 +41,7 @@ import cdsapi
 import multiprocessing as mp
 from functools import partial
 import time
+import logging
 
 from scripts.utils.load_data import load_tracks
 
@@ -48,6 +49,13 @@ from scripts.utils.load_data import load_tracks
 DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "era5_ep1_full"
 RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_full"
 LEC_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
+LOG_DIR = Path(__file__).resolve().parents[2] / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# CDS API Configuration
+# CDS API allows ~2-4 simultaneous requests per user account
+# Setting conservative default to avoid rejection
+MAX_PARALLEL_JOBS = 10  # Conservative limit for CDS API
 
 # Variables to download (pressure levels)
 PRESSURE_VARS = ['u_component_of_wind', 'v_component_of_wind', 'temperature', 
@@ -229,12 +237,12 @@ def compute_domain_bounds(track_id, start_time, end_time):
 def download_era5_for_case(track_id, start_time, end_time, domain):
     """Download ERA5 data (pressure levels + SLP) for a single case."""
     
-    print(f"      Downloading ERA5 data...")
-    print(f"         Period: {start_time} to {end_time}")
-    print(f"         Domain: [{domain['south']:.1f}, {domain['west']:.1f}] to [{domain['north']:.1f}, {domain['east']:.1f}]")
+    logging.info(f"      Downloading ERA5 data for {track_id}")
+    logging.info(f"         Period: {start_time} to {end_time}")
+    logging.info(f"         Domain: [{domain['south']:.1f}, {domain['west']:.1f}] to [{domain['north']:.1f}, {domain['east']:.1f}]")
     
     # Prepare time range (6-hourly data)
-    dates = pd.date_range(start_time, end_time, freq='6H')
+    dates = pd.date_range(start_time, end_time, freq='6h')  # lowercase 'h' (pandas 2.0+)
     years = dates.year.unique().astype(str).tolist()
     months = dates.month.unique().astype(str).tolist()
     days = dates.day.unique().astype(str).tolist()
@@ -250,7 +258,7 @@ def download_era5_for_case(track_id, start_time, end_time, domain):
     
     try:
         # Download pressure-level data
-        print(f"      -> Downloading pressure levels...")
+        logging.info(f"      -> Downloading pressure levels...")
         c.retrieve(
             'reanalysis-era5-pressure-levels',
             {
@@ -268,7 +276,7 @@ def download_era5_for_case(track_id, start_time, end_time, domain):
         )
         
         # Download single-level data (SLP)
-        print(f"      -> Downloading single-level (SLP)...")
+        logging.info(f"      -> Downloading single-level (SLP)...")
         c.retrieve(
             'reanalysis-era5-single-levels',
             {
@@ -285,7 +293,7 @@ def download_era5_for_case(track_id, start_time, end_time, domain):
         )
         
         # Merge both files into one
-        print(f"      -> Merging files...")
+        logging.info(f"      -> Merging files...")
         ds_pressure = xr.open_dataset(pressure_file)
         ds_single = xr.open_dataset(single_file)
         ds_merged = xr.merge([ds_pressure, ds_single])
@@ -297,7 +305,7 @@ def download_era5_for_case(track_id, start_time, end_time, domain):
         pressure_file.unlink()
         single_file.unlink()
         
-        print(f"      ✓ Downloaded: {output_file}")
+        logging.info(f"      ✓ Downloaded: {output_file}")
         
         # Save metadata
         metadata = {
@@ -321,7 +329,7 @@ def download_era5_for_case(track_id, start_time, end_time, domain):
         return True
         
     except Exception as e:
-        print(f"      ❌ Download failed: {e}")
+        logging.error(f"      ❌ Download failed for {track_id}: {e}")
         # Clean up partial files
         for f in [pressure_file, single_file, output_file]:
             if f.exists():
@@ -334,20 +342,20 @@ def process_case_wrapper(case_data):
     Wrapper function for parallel processing.
     Returns: (track_id, success)
     """
-    idx, row = case_data
+    idx, row, total = case_data
     track_id = row['track_id']
     
     try:
-        print(f"\n   [{idx+1}] Processing {track_id}...")
+        logging.info(f"\n   [{idx+1}/{total}] Processing {track_id}...")
         
         start_time = pd.to_datetime(row['intensification_start'])
         end_time = pd.to_datetime(row['intensification_end'])
-        print(f"      Intensification: {start_time} to {end_time}")
+        logging.info(f"      Intensification: {start_time} to {end_time}")
         
         # Compute domain bounds
         domain = compute_domain_bounds(track_id, start_time, end_time)
         if domain is None:
-            print(f"      ⚠️  Could not compute domain bounds")
+            logging.warning(f"      ⚠️  Could not compute domain bounds")
             return (track_id, False)
         
         # Download data
@@ -355,9 +363,9 @@ def process_case_wrapper(case_data):
         return (track_id, success)
         
     except Exception as e:
-        print(f"      ❌ Error processing {track_id}: {e}")
+        logging.error(f"      ❌ Error processing {track_id}: {e}")
         import traceback
-        traceback.print_exc()
+        logging.error(traceback.format_exc())
         return (track_id, False)
 
 
@@ -366,28 +374,51 @@ def main():
     
     parser = argparse.ArgumentParser(description='Download ERA5 data in parallel')
     parser.add_argument('--jobs', type=int, default=None,
-                       help='Number of parallel jobs (default: CPUs - 1)')
+                       help=f'Number of parallel jobs (default: {MAX_PARALLEL_JOBS}, max recommended: 2-4 for CDS API)')
+    parser.add_argument('--log-file', type=str, default=None,
+                       help='Log file path (default: logs/step2_download_YYYYMMDD_HHMMSS.log)')
     args = parser.parse_args()
     
-    print("=" * 80)
-    print("STEP 2: Downloading ERA5 Data in Parallel (ALL EP1 CYCLONES)")
-    print("=" * 80)
-    print("\nNOTE: This script requires:")
-    print("  1. step1_select_all_ep1.py to be run first")
-    print("  2. CDS API key setup (https://cds.climate.copernicus.eu)")
-    print("  3. ~/.cdsapirc file configured\n")
+    # Setup logging
+    if args.log_file:
+        log_file = Path(args.log_file)
+    else:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_file = LOG_DIR / f"step2_download_{timestamp}.log"
+    
+    # Configure logging to both file and console
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s [%(levelname)s] %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler()
+        ]
+    )
+    
+    logging.info(f"Log file: {log_file}")
+    
+    logging.info("=" * 80)
+    logging.info("STEP 2: Downloading ERA5 Data in Parallel (ALL EP1 CYCLONES)")
+    logging.info("=" * 80)
+    logging.info("")
+    logging.info("NOTE: This script requires:")
+    logging.info("  1. step1_select_all_ep1.py to be run first")
+    logging.info("  2. CDS API key setup (https://cds.climate.copernicus.eu)")
+    logging.info("  3. ~/.cdsapirc file configured")
+    logging.info("")
     
     # Load cases
-    print("1. Loading EP1 cases...")
+    logging.info("1. Loading EP1 cases...")
     cases_file = RESULTS_DIR / "all_ep1_cases.csv"
     if not cases_file.exists():
-        print(f"❌ Error: {cases_file} not found.")
-        print("   Please run step1_select_all_ep1.py first.")
+        logging.error(f"❌ Error: {cases_file} not found.")
+        logging.error("   Please run step1_select_all_ep1.py first.")
         return
     
     cases = pd.read_csv(cases_file)
-    print(f"   Found {len(cases)} cases to process")
-    print(f"   Total timesteps to download: {cases['n_timesteps'].sum()}")
+    logging.info(f"   Found {len(cases)} cases to process")
+    logging.info(f"   Total timesteps to download: {cases['n_timesteps'].sum()}")
     
     # Create output directory
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -395,41 +426,53 @@ def main():
     # Check existing files
     to_download, valid_files, invalid_files = check_existing_files(cases)
     
-    print(f"\n   Valid files: {len(valid_files)}/{len(cases)}")
+    logging.info(f"\n   Valid files: {len(valid_files)}/{len(cases)}")
     
     if invalid_files:
-        print(f"\n   ⚠️  Found {len(invalid_files)} corrupted/incomplete files:")
+        logging.warning(f"\n   ⚠️  Found {len(invalid_files)} corrupted/incomplete files:")
         for track_id, issues in invalid_files[:5]:
-            print(f"      {track_id}: {'; '.join(issues)}")
+            logging.warning(f"      {track_id}: {'; '.join(issues)}")
         if len(invalid_files) > 5:
-            print(f"      ... and {len(invalid_files)-5} more")
-        print("\n   These files will be re-downloaded.")
+            logging.warning(f"      ... and {len(invalid_files)-5} more")
+        logging.warning("\n   These files will be re-downloaded.")
     
     if len(to_download) == 0:
-        print("\n   ✓ All files are valid and complete!")
-        print(f"\n   Next step: python scripts/ep1_full_analysis/step3_precompute_composites.py")
+        logging.info("\n   ✓ All files are valid and complete!")
+        logging.info(f"\n   Next step: python scripts/ep1_full_analysis/step3_precompute_composites.py")
         return
     
-    print(f"\n   Files to download: {len(to_download)}/{len(cases)}")
+    logging.info(f"\n   Files to download: {len(to_download)}/{len(cases)}")
     
     # Determine number of parallel jobs
-    n_jobs = args.jobs if args.jobs is not None else max(1, mp.cpu_count() - 1)
-    print(f"\n2. Download configuration:")
-    print(f"   Pressure variables: {', '.join(PRESSURE_VARS)}")
-    print(f"   Single-level variables: {', '.join(SINGLE_LEVEL_VARS)}")
-    print(f"   Pressure levels: {PRESSURE_LEVELS}")
-    print(f"   Domain buffer: {DOMAIN_BUFFER}° (allows 30°×30° analysis)")
-    print(f"   Temporal resolution: 6-hourly")
-    print(f"   Parallel jobs: {n_jobs}")
-    print(f"   Output directory: {DATA_DIR}")
+    # CDS API constraint: ~2-4 simultaneous requests per user
+    n_jobs = args.jobs if args.jobs is not None else MAX_PARALLEL_JOBS
+    if n_jobs > 4:
+        logging.warning(f"   ⚠️  Warning: {n_jobs} parallel jobs may exceed CDS API limits (recommended: 2-4)")
+        logging.warning(f"      You may experience request rejections. Consider using --jobs 2")
     
-    print(f"\n3. Starting parallel downloads ({n_jobs} workers)...")
+    logging.info(f"\n2. Download configuration:")
+    logging.info(f"   Pressure variables: {', '.join(PRESSURE_VARS)}")
+    logging.info(f"   Single-level variables: {', '.join(SINGLE_LEVEL_VARS)}")
+    logging.info(f"   Pressure levels: {PRESSURE_LEVELS}")
+    logging.info(f"   Domain buffer: {DOMAIN_BUFFER}° (allows 30°×30° analysis)")
+    logging.info(f"   Temporal resolution: 6-hourly")
+    logging.info(f"   Parallel jobs: {n_jobs} (CDS API limit: 2-4 recommended)")
+    logging.info(f"   Output directory: {DATA_DIR}")
+    
+    logging.info(f"\n3. Starting parallel downloads ({n_jobs} workers)...")
+    logging.info(f"   Cases to download: {len(to_download)}")
+    logging.info(f"   Estimated time: {len(to_download) * 3 / n_jobs:.0f}-{len(to_download) * 5 / n_jobs:.0f} minutes (rough estimate)")
+    logging.info("")
+    
     start_time = time.time()
+    
+    # Add total count to case data for progress tracking
+    to_download_with_total = [(idx, row, len(to_download)) for idx, row in to_download]
     
     # Process in parallel (but CDS API may throttle)
     # Note: CDS has rate limits, so actual parallelism may be limited by server
     with mp.Pool(processes=n_jobs) as pool:
-        results = pool.map(process_case_wrapper, to_download)
+        results = pool.map(process_case_wrapper, to_download_with_total)
     
     elapsed = time.time() - start_time
     
@@ -437,18 +480,23 @@ def main():
     successful = sum(1 for _, success in results if success)
     failed = sum(1 for _, success in results if not success)
     
-    print("\n" + "=" * 80)
-    print(f"✓ Download complete! (elapsed: {elapsed/60:.1f} min)")
-    print(f"  Already valid: {len(valid_files)}")
-    print(f"  Downloaded now: {successful}/{len(to_download)}")
-    print(f"  Failed: {failed}/{len(to_download)}")
-    print(f"  Total valid: {len(valid_files) + successful}/{len(cases)}")
+    logging.info("\n" + "=" * 80)
+    logging.info(f"✓ Download complete! (elapsed: {elapsed/60:.1f} min)")
+    logging.info(f"  Already valid: {len(valid_files)}")
+    logging.info(f"  Downloaded now: {successful}/{len(to_download)}")
+    logging.info(f"  Failed: {failed}/{len(to_download)}")
+    logging.info(f"  Total valid: {len(valid_files) + successful}/{len(cases)}")
+    logging.info(f"  Average time per download: {elapsed/max(1, successful):.1f} seconds")
+    
     if len(valid_files) + successful == len(cases):
-        print(f"\n  ✓ All files ready!")
-        print(f"  Next step: python scripts/ep1_full_analysis/step3_precompute_composites.py")
+        logging.info(f"\n  ✓ All files ready!")
+        logging.info(f"  Next step: python scripts/ep1_full_analysis/step3_precompute_composites.py")
     elif failed > 0:
-        print(f"\n  ⚠️  Some downloads failed. Re-run this script to retry.")
-    print("=" * 80)
+        logging.warning(f"\n  ⚠️  Some downloads failed. Re-run this script to retry.")
+        logging.warning(f"     If failures persist due to CDS API limits, try: --jobs 2")
+    
+    logging.info("=" * 80)
+    logging.info(f"Log file saved: {log_file}")
 
 
 if __name__ == "__main__":

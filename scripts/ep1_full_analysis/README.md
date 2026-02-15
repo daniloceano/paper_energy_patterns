@@ -56,39 +56,44 @@ nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py &> downlo
 
 ### Step 3: Precompute Composites and Diagnostics
 ```bash
+# Default: uses min(3, cpu_count) parallel jobs
 python scripts/ep1_full_analysis/step3_precompute_composites.py
+
+# Custom parallelization
+python scripts/ep1_full_analysis/step3_precompute_composites.py --jobs 4
+
+# With nohup for background execution
+nohup python scripts/ep1_full_analysis/step3_precompute_composites.py --jobs 4 &
+# Log file automatically created in logs/step3_precompute_YYYYMMDD_HHMMSS.log
 ```
 - **PRECOMPUTES** composites of all downloaded variables AND diagnostic fields
+- **Parallel processing**: Domain-level parallelization with progress tracking (tqdm)
+- **Logging**: Timestamped logs for monitoring long-running computations
+- **Separate files per domain**: Creates `precomputed_composites_{domain}.nc` for efficient transfer
 - Computes instability diagnostics:
   - **EGR** (Eady Growth Rate) at Ca level (975 hPa)
   - **∂η/∂y** (Rayleigh-Kuo gradient) at Ck level (350 hPa), both 2D and zonal mean
   - **PV** (Potential Vorticity) at both Ca (975 hPa) and Ck (350 hPa) levels
 - Avoids reprocessing in future analyses
-- Saves spatial composites by domain to `data/era5_ep1_full/precomputed_composites.nc`
+- Saves to `data/era5_ep1_full/precomputed_composites_{local,mesoscale,synoptic}.nc`
 
-### Step 4: Compute Instabilities Time Series (Optional)
-```bash
-python scripts/ep1_full_analysis/step4_compute_instabilities_all_times.py
-```
-- **OPTIONAL:** Computes diagnostics for **ALL intensification times** of each individual cyclone
-- Useful for analyzing temporal evolution patterns
-- Not required for composite figures (step5) since diagnostics are already in step3
-- Saves temporal results to `results/ep1_full/instabilities/`
-
-### Step 5: Create Figures
+### Step 4: Create Figures
 ```bash
 python scripts/ep1_full_analysis/step5_create_figures.py
+# Log file automatically created in logs/step5_figures_YYYYMMDD_HHMMSS.log
 ```
 - Generates 4-panel composite figures for each domain
+- **Logging**: Timestamped logs with file sizes and generation status
 - **Panel layout:**
   - **(a)** 2D map of ∂η/∂y (RK criterion) at Ck level (350 hPa)
   - **(b)** Zonal mean profile of ∂η/∂y
   - **(c)** PV at Ca level (975 hPa, shaded) + PV at Ck level (350 hPa, contours) + 250 hPa wind vectors
   - **(d)** EGR at Ca level (975 hPa, shaded) + SLP contours + wind vectors at Ca level
 - Uses precomputed data from step3 for efficiency
+- Reads separate files per domain: `precomputed_composites_{domain}.nc`
 - Saves to `figures/ep1_full/composite/`
 
-### Step 6: Generate Scientific Documentation
+### Step 5: Generate Scientific Documentation
 ```bash
 python scripts/ep1_full_analysis/update_scientific_notes.py
 ```
@@ -104,9 +109,66 @@ python scripts/ep1_full_analysis/update_scientific_notes.py
 ```bash
 python scripts/ep1_full_analysis/run_all.py
 ```
-- Executes pipeline automatically (steps 1-3, 5)
-- **Step 4 is optional** (time series analysis) - run separately if needed
+- Executes pipeline automatically (steps 1-4)
 - Generates composite figures ready for publication
+
+## 🚀 Remote Server Execution
+
+**For compute-intensive steps (2 and 3), remote execution is recommended:**
+
+### Quick Start
+
+1. **On remote server:**
+```bash
+# Activate environment
+cd ~/paper_energy_patterns
+conda activate paper_energy
+
+# Step 2: Download ERA5 (parallel, ~6-12 hours)
+nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 2 &
+
+# Step 3: Precompute diagnostics (parallel, ~3-6 hours)
+nohup python scripts/ep1_full_analysis/step3_precompute_composites.py --jobs 4 &
+
+# Monitor progress
+tail -f logs/step2_download_*.log
+tail -f logs/step3_precompute_*.log
+```
+
+2. **Transfer only processed data (~5-10 GB):**
+```bash
+# On local machine
+rsync -avz --progress user@server:/path/to/data/era5_ep1_full/precomputed_composites.nc \
+  data/era5_ep1_full/
+
+# Transfer results if needed
+rsync -avz --progress user@server:/path/to/results/ep1_full/ results/ep1_full/
+```
+
+3. **Generate figures locally:**
+```bash
+python scripts/ep1_full_analysis/step5_create_figures.py
+```
+
+### Why This Workflow?
+
+| Item | Remote (50-80 GB) | Transfer (5-10 GB) | Local |
+|------|-------------------|---------------------|-------|
+| **ERA5 raw files** | ✓ Download | ❌ Skip | ❌ |
+| **precomputed_composites.nc** | ✓ Compute | ✓ Transfer | ✓ Figures |
+| **Time saved** | 6-18 hours compute | ~30 min transfer | ~5 min figures |
+
+**Storage optimization:** Transfer only 10-15% of total data volume while maintaining full analysis capability.
+
+### Detailed Guide
+
+**See [REMOTE_EXECUTION_GUIDE.md](REMOTE_EXECUTION_GUIDE.md)** for:
+- Complete nohup command examples with SSH key authentication
+- File transfer with SCP (`transfer_guide_scp.sh`)
+- SSH connection management for master.iag.usp.br
+- Two-window password authentication workflow
+- Troubleshooting common issues
+- Log file monitoring strategies
 
 ## Downloaded Variables
 
@@ -152,9 +214,10 @@ For calculating diagnostics at these levels, we need adjacent levels for vertica
 - Ideal for multi-core servers
 
 ### Estimated Storage
-- **~50-80 GB** for all EP1 cyclones (7 targeted pressure levels + SLP)
-- Precomputed composites: ~3-5 GB
-- **Total: ~100-150 GB** (significantly reduced via targeted level selection)
+- **ERA5 raw files**: ~50-80 GB (7 targeted pressure levels + SLP)
+- **Precomputed composites**: ~100-300 MB total (3 separate domain files)
+- **Figures**: ~5-15 MB
+- **Total**: ~50-85 GB (significantly reduced via targeted level selection)
 
 ### Efficiency Note
 By using only necessary pressure levels identified in preliminary Ca/Ck analysis, we reduce data volume by ~50% compared to downloading all 14 standard levels, while preserving all diagnostic capabilities.

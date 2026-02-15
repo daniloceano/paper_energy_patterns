@@ -7,10 +7,7 @@ Steps:
 1. Select all EP1 cyclones
 2. Download ERA5 data in parallel (with SLP)
 3. Precompute composites AND diagnostic fields
-4. [OPTIONAL] Compute instabilities time series for individual cyclones
-5. Create 4-panel composite figures
-
-Note: Step 4 is optional since all diagnostics are precomputed in Step 3.
+4. Create 4-panel composite figures
 
 Author: Danilo Couto de Souza
 Date: February 2026
@@ -54,8 +51,6 @@ def main():
     print("=" * 80)
     print("\nThis will run all analysis steps for ALL EP1 cyclones.")
     print("Estimated time: Several hours (depending on download speed)")
-    print("\nNote: Step 4 (time series for individual cyclones) is optional and will be skipped.")
-    print("Run step4_compute_instabilities_all_times.py separately if needed.")
     print()
     
     response = input("Continue? (y/n): ")
@@ -63,13 +58,12 @@ def main():
         print("Aborted.")
         return
     
-    # Core steps (step4 is optional)
+    # Core steps
     steps = [
         ("step1_select_all_ep1.py", "Step 1: Select All EP1 Cyclones"),
         ("step2_download_era5_parallel.py", "Step 2: Download ERA5 Data (Parallel)"),
         ("step3_precompute_composites.py", "Step 3: Precompute Composites + Diagnostics"),
-        # Step 4 is optional - skip by default
-        ("step5_create_figures.py", "Step 5: Create 4-Panel Composite Figures"),
+        ("step4_create_figures.py", "Step 4: Create 4-Panel Composite Figures"),
     ]
     
     for script, description in steps:
@@ -83,11 +77,9 @@ def main():
     print("✓ PIPELINE COMPLETE")
     print("=" * 80)
     print(f"\nResults saved in:")
-    print(f"  - data/era5_ep1_full/")
+    print(f"  - data/era5_ep1_full/precomputed_composites_*.nc")
     print(f"  - results/ep1_full/")
     print(f"  - figures/ep1_full/composite/")
-    print(f"\nTo compute time series for individual cyclones (optional):")
-    print(f"  python scripts/ep1_full_analysis/step4_compute_instabilities_all_times.py")
 
 
 if __name__ == '__main__':

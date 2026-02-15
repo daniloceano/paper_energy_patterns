@@ -7,6 +7,12 @@ Precomputes spatial composites (domain-mean) for:
 
 This avoids reprocessing in subsequent analyses.
 
+Features:
+- Parallel processing (multiprocessing)
+- Robust logging for nohup execution
+- Progress tracking
+- Automatic error recovery
+
 This step:
 - Reads all ERA5 files downloaded in step2
 - Computes composites for ALL pressure levels and ALL variables
@@ -16,6 +22,11 @@ This step:
 
 Output:
 - data/era5_ep1_full/precomputed_composites.nc
+- logs/step3_precompute_YYYYMMDD_HHMMSS.log
+
+Usage:
+    python step3_precompute_composites.py [--jobs N]
+    nohup python step3_precompute_composites.py --jobs 8 &
 
 Author: Danilo Couto de Souza
 Date: February 2026
@@ -31,10 +42,12 @@ import pandas as pd
 import numpy as np
 import xarray as xr
 import warnings
-
-# MetPy for meteorological calculations
-from metpy.calc import virtual_temperature, potential_temperature, potential_vorticity_baroclinic
-from metpy.units import units
+import argparse
+import logging
+from datetime import datetime
+from multiprocessing import Pool, cpu_count
+from functools import partial
+from tqdm import tqdm
 
 # MetPy for meteorological calculations
 from metpy.calc import virtual_temperature, potential_temperature, potential_vorticity_baroclinic
@@ -48,6 +61,48 @@ C_p = 1004.0             # Specific heat constant pressure (J kg⁻¹ K⁻¹)
 KAPPA = R_d / C_p        # Poisson constant ≈ 0.286
 P_0 = 100000.0           # Reference pressure 1000 hPa (Pa)
 R_EARTH = 6.371e6        # Earth radius (m)
+
+# Quality control
+MIN_LAT = 5.0            # Minimum |lat| for EGR (avoid equator)
+MAX_EGR_DAY = 5.0        # Maximum reasonable EGR (day⁻¹)
+MIN_N_SQUARED = 1e-6     # Minimum N² for stable stratification
+
+# Configuration
+BASE_DIR = Path(__file__).resolve().parents[2]
+DATA_DIR = BASE_DIR / "data" / "era5_ep1_full"
+RESULTS_DIR = BASE_DIR / "results" / "ep1_full"
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+
+# Domain sizes for composites
+DOMAIN_SIZES = {'local': 5.0, 'mesoscale': 15.0, 'synoptic': 30.0}
+RESOLUTION = 0.25
+
+
+# ============================================================================
+# LOGGING SETUP
+# ============================================================================
+
+def setup_logging():
+    """Setup logging to file and console."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = LOG_DIR / f"step3_precompute_{timestamp}.log"
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    logging.info("=" * 80)
+    logging.info("STEP 3: PRECOMPUTE COMPOSITES + DIAGNOSTICS")
+    logging.info("=" * 80)
+    logging.info(f"Log file: {log_file}")
+    
+    return log_file
 
 # Quality control
 MIN_LAT = 5.0            # Minimum |lat| for EGR (avoid equator)
@@ -268,14 +323,21 @@ def compute_composites_for_domain(cases, domain_name):
     pv_ca_list = []  # PV at Ca level (975 hPa)
     pv_ck_list = []  # PV at Ck level (350 hPa)
     
-    print(f"\n   Processing {domain_name} domain ({domain_size}°)...")
+    logging.info(f"\n   Processing {domain_name} domain ({domain_size}°)...")
     
-    for idx, row in cases.iterrows():
+    # Progress tracking
+    processed = 0
+    failed = 0
+    
+    for idx, row in tqdm(cases.iterrows(), total=len(cases), 
+                        desc=f"   {domain_name}", 
+                        leave=False):
         track_id = row['track_id']
         nc_file = DATA_DIR / f"{track_id}_era5.nc"
         meta_file = DATA_DIR / f"{track_id}_metadata.csv"
         
         if not nc_file.exists() or not meta_file.exists():
+            failed += 1
             continue
         
         try:
@@ -371,19 +433,20 @@ def compute_composites_for_domain(cases, domain_name):
             pv_ck_list.append(pv_ck)
             
             ds.close()
+            processed += 1
             
         except Exception as e:
-            print(f"      Warning: Error processing {track_id}: {e}")
-            import traceback
-            traceback.print_exc()
+            logging.warning(f"      Error processing {track_id}: {e}")
+            failed += 1
             continue
     
     if not var_lists:
         raise RuntimeError(f"No valid cases found for domain {domain_name}")
     
-    print(f"      Processed {len(var_lists[list(var_lists.keys())[0]])} cases")
+    logging.info(f"      Completed: {processed}/{len(cases)} cases (failed: {failed})")
     
     # Compute means for raw variables
+    logging.info(f"      Computing ensemble means...")
     composites = {}
     for var, data_list in var_lists.items():
         composites[var] = np.nanmean(np.stack(data_list), axis=0)
@@ -471,69 +534,128 @@ def compute_composites_for_domain(cases, domain_name):
 
 
 def main():
-    print("=" * 80)
-    print("STEP 3: PRECOMPUTE COMPOSITES FOR ALL VARIABLES")
-    print("=" * 80)
+    """Main execution function with logging and progress tracking."""
+    
+    # Parse arguments
+    parser = argparse.ArgumentParser(
+        description='Precompute composites + diagnostics for EP1 cyclones',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+    # Default (auto-detect CPUs for domain parallelization)
+    python step3_precompute_composites.py
+    
+    # Specify number of parallel domains
+    python step3_precompute_composites.py --jobs 3
+    
+    # Run with nohup
+    nohup python step3_precompute_composites.py --jobs 3 &
+        """
+    )
+    parser.add_argument('--jobs', type=int, default=min(3, cpu_count()),
+                       help='Number of domains to process in parallel (default: min(3, CPU count))')
+    args = parser.parse_args()
+    
+    # Setup logging
+    log_file = setup_logging()
+    
+    logging.info(f"Running with {args.jobs} parallel job(s)")
+    logging.info(f"Available CPUs: {cpu_count()}")
     
     # Load cases
-    print("\n1. Loading EP1 cases...")
+    logging.info("\n1. Loading EP1 cases...")
     cases_file = RESULTS_DIR / "all_ep1_cases.csv"
     if not cases_file.exists():
-        print(f"❌ Error: {cases_file} not found.")
-        print("   Please run step1_select_all_ep1.py first.")
+        logging.error(f"❌ Error: {cases_file} not found.")
+        logging.error("   Please run step1_select_all_ep1.py first.")
         return
     
     cases = pd.read_csv(cases_file)
-    print(f"   Found {len(cases)} cases")
+    logging.info(f"   Found {len(cases)} cases")
     
     # Check if data files exist
-    print("\n2. Checking data availability...")
+    logging.info("\n2. Checking data availability...")
     available = 0
     for _, row in cases.iterrows():
         nc_file = DATA_DIR / f"{row['track_id']}_era5.nc"
         if nc_file.exists():
             available += 1
     
-    print(f"   Available data files: {available}/{len(cases)}")
+    logging.info(f"   Available data files: {available}/{len(cases)}")
     if available == 0:
-        print(f"\n❌ Error: No ERA5 files found in {DATA_DIR}")
-        print("   Please run step2_download_era5_parallel.py first.")
+        logging.error(f"\n❌ Error: No ERA5 files found in {DATA_DIR}")
+        logging.error("   Please run step2_download_era5_parallel.py first.")
         return
     
     # Compute composites for each domain
-    print("\n3. Computing composites for all domains...")
-    domains = list(DOMAIN_SIZES.keys())
+    logging.info("\n3. Computing composites + diagnostics for all domains...")
+    logging.info(f"   Processing {len(DOMAIN_SIZES)} domains: {list(DOMAIN_SIZES.keys())}")
     
-    ds_all = xr.Dataset()
+    domains = list(DOMAIN_SIZES.keys())
+    domain_datasets = {}
+    
+    if args.jobs == 1 or len(domains) == 1:
+        # Sequential processing
+        for domain in domains:
+            logging.info(f"\n   Processing {domain} domain...")
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore')
+                ds_domain = compute_composites_for_domain(cases, domain)
+            domain_datasets[domain] = ds_domain
+    else:
+        # Parallel processing of domains
+        logging.info(f"   Using {args.jobs} parallel processes for domain computation")
+        
+        with Pool(processes=min(args.jobs, len(domains))) as pool:
+            func = partial(compute_composites_for_domain, cases)
+            results = []
+            
+            for ds_domain in tqdm(pool.imap(func, domains), 
+                                 total=len(domains),
+                                 desc="Processing domains"):
+                results.append(ds_domain)
+        
+        # Store domain results
+        for domain, ds_domain in zip(domains, results):
+            domain_datasets[domain] = ds_domain
+    
+    # Save each domain to a separate file
+    logging.info(f"\n4. Saving precomputed composites (one file per domain)...")
+    total_size_mb = 0
     
     for domain in domains:
+        output_file = DATA_DIR / f"precomputed_composites_{domain}.nc"
+        logging.info(f"   Saving {domain} → {output_file.name}")
+        
         with warnings.catch_warnings():
             warnings.filterwarnings('ignore')
-            ds_domain = compute_composites_for_domain(cases, domain)
-        ds_all = xr.merge([ds_all, ds_domain])
-    
-    # Save output
-    output_file = DATA_DIR / "precomputed_composites.nc"
-    print(f"\n4. Saving precomputed composites...")
-    ds_all.to_netcdf(output_file)
-    print(f"   ✓ Saved: {output_file}")
+            domain_datasets[domain].to_netcdf(output_file)
+        
+        file_size_mb = output_file.stat().st_size / 1024**2
+        total_size_mb += file_size_mb
+        logging.info(f"     ✓ {file_size_mb:.1f} MB, {len(domain_datasets[domain].data_vars)} variables")
     
     # Print summary
-    print("\n5. Summary:")
-    print(f"   Variables: {list(ds_all.data_vars.keys())[:15]}...")
-    print(f"   File size: {output_file.stat().st_size / 1024**2:.1f} MB")
-    print(f"   Domains: {domains}")
-    print("\n   Diagnostics computed:")
-    print("   - EGR (Eady Growth Rate) at Ca level (975 hPa)")
-    print("   - ∂η/∂y (Rayleigh-Kuo gradient) at Ck level (350 hPa)")
-    print("   - ∂η/∂y zonal mean")
-    print("   - PV at Ca level (975 hPa)")
-    print("   - PV at Ck level (350 hPa)")
+    logging.info("\n5. Summary:")
+    logging.info(f"   Total files: {len(domains)}")
+    logging.info(f"   Total size: {total_size_mb:.1f} MB")
+    logging.info(f"   Domains: {domains}")
+    logging.info("\n   Diagnostics computed per domain:")
+    logging.info("   - EGR (Eady Growth Rate) at Ca level (975 hPa)")
+    logging.info("   - ∂η/∂y (Rayleigh-Kuo gradient) at Ck level (350 hPa)")
+    logging.info("   - ∂η/∂y zonal mean profile")
+    logging.info("   - PV at Ca level (975 hPa)")
+    logging.info("   - PV at Ck level (350 hPa)")
     
-    print("\n" + "=" * 80)
-    print("STEP 3 COMPLETE")
-    print("=" * 80)
-    print(f"\nNext step: python scripts/ep1_full_analysis/step5_create_figures.py")
+    logging.info("\n" + "=" * 80)
+    logging.info("✓ STEP 3 COMPLETE")
+    logging.info("=" * 80)
+    logging.info(f"\nLog file: {log_file}")
+    logging.info("\nNext steps:")
+    logging.info("  1. Transfer to local machine:")
+    logging.info(f"     rsync -avz user@server:{{remote_path}}/data/era5_ep1_full/precomputed_composites.nc ./data/era5_ep1_full/")
+    logging.info("  2. Generate figures locally:")
+    logging.info("     python scripts/ep1_full_analysis/step5_create_figures.py")
 
 
 if __name__ == '__main__':

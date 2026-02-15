@@ -1,5 +1,5 @@
 """
-Step 5: Create Publication-Quality Figures for EP1 Full Analysis
+Step 4: Create Publication-Quality Figures for EP1 Full Analysis
 
 Creates 4-panel composite figures from precomputed data.
 
@@ -24,6 +24,8 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import warnings
+import logging
+from datetime import datetime
 
 warnings.filterwarnings('ignore')
 
@@ -32,6 +34,8 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = BASE_DIR / "data" / "era5_ep1_full"
 RESULTS_DIR = BASE_DIR / "results" / "ep1_full"
 FIGURES_DIR = BASE_DIR / "figures" / "ep1_full"
+LOG_DIR = BASE_DIR / "logs"
+LOG_DIR.mkdir(exist_ok=True)
 
 # Create subdirectories
 (FIGURES_DIR / "composite").mkdir(parents=True, exist_ok=True)
@@ -56,18 +60,39 @@ plt.rcParams.update({
 })
 
 
+def setup_logging():
+    """Setup logging to file and console."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = LOG_DIR / f"step4_figures_{timestamp}.log"
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler(log_file),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    return log_file
+
+
 def load_precomputed_composites():
     """Load precomputed composites if available."""
     comp_file = DATA_DIR / "precomputed_composites.nc"
     if comp_file.exists():
-        print(f"Loading precomputed composites from {comp_file}")
+        logging.info(f"Loading precomputed composites from {comp_file}")
+        file_size_mb = comp_file.stat().st_size / 1024**2
+        logging.info(f"   File size: {file_size_mb:.1f} MB")
         return xr.open_dataset(comp_file)
     else:
-        print("⚠️  Precomputed composites not found. Run step3 first.")
+        logging.error("⚠️  Precomputed composites not found.")
+        logging.error(f"   Expected: {comp_file}")
+        logging.error("   Please run step3_precompute_composites.py first.")
         return None
 
 
-def create_composite_figure(domain_name, ds_comp, output_dir):
+def create_composite_figure(domain_name, ds_domain, output_dir):
     """
     Create 4-panel composite figure for a domain.
     
@@ -75,7 +100,7 @@ def create_composite_figure(domain_name, ds_comp, output_dir):
     (a) ∂η/∂y 2D map at Ck level       (b) ∂η/∂y zonal mean profile
     (c) PV composite (Ca + Ck + jet)   (d) EGR + SLP + winds
     """
-    print(f"  Creating 4-panel composite for {domain_name}...")
+    logging.info(f"  Creating 4-panel composite for {domain_name}...")
     
     try:
         # Load data for this domain
@@ -84,24 +109,24 @@ def create_composite_figure(domain_name, ds_comp, output_dir):
         level_dim = f'level_{domain_name}'
         
         # Get coordinates
-        x = ds_comp[x_dim].values
-        y = ds_comp[y_dim].values
+        x = ds_domain[x_dim].values
+        y = ds_domain[y_dim].values
         
         # Get diagnostic fields (precomputed in step3)
-        deta_dy = ds_comp[f'{domain_name}_deta_dy'].values  # 2D at Ck level
-        deta_dy_zonal = ds_comp[f'{domain_name}_deta_dy_zonal'].values  # 1D zonal mean
-        pv_ca = ds_comp[f'{domain_name}_pv_ca'].values  # 2D at Ca level (975 hPa)
-        pv_ck = ds_comp[f'{domain_name}_pv_ck'].values  # 2D at Ck level (350 hPa)
-        egr = ds_comp[f'{domain_name}_egr'].values  # 2D at Ca level (975 hPa)
+        deta_dy = ds_domain[f'{domain_name}_deta_dy'].values  # 2D at Ck level
+        deta_dy_zonal = ds_domain[f'{domain_name}_deta_dy_zonal'].values  # 1D zonal mean
+        pv_ca = ds_domain[f'{domain_name}_pv_ca'].values  # 2D at Ca level (975 hPa)
+        pv_ck = ds_domain[f'{domain_name}_pv_ck'].values  # 2D at Ck level (350 hPa)
+        egr = ds_domain[f'{domain_name}_egr'].values  # 2D at Ca level (975 hPa)
         
         # Get SLP if available
-        msl = ds_comp[f'{domain_name}_msl'].values if f'{domain_name}_msl' in ds_comp else None
+        msl = ds_domain[f'{domain_name}_msl'].values if f'{domain_name}_msl' in ds_domain else None
         
         # Get winds at specific levels from 3D arrays
-        if level_dim in ds_comp.coords:
-            levels = ds_comp[level_dim].values
-            u_all = ds_comp[f'{domain_name}_u'].values
-            v_all = ds_comp[f'{domain_name}_v'].values
+        if level_dim in ds_domain.coords:
+            levels = ds_domain[level_dim].values
+            u_all = ds_domain[f'{domain_name}_u'].values
+            v_all = ds_domain[f'{domain_name}_v'].values
             
             # Find indices
             idx_975 = np.argmin(np.abs(levels - 975))
@@ -241,41 +266,65 @@ def create_composite_figure(domain_name, ds_comp, output_dir):
         out_file = output_dir / f'composite_{domain_name}.png'
         fig.savefig(out_file, dpi=DPI, bbox_inches='tight')
         plt.close(fig)
-        print(f"    ✓ Saved: {out_file}")
+        logging.info(f"    ✓ Saved: {out_file.name}")
         
     except Exception as e:
-        print(f"    ❌ Error: {e}")
+        logging.error(f"    ❌ Error: {e}")
         import traceback
         traceback.print_exc()
 
 
 def main():
-    print("=" * 80)
-    print("STEP 5: CREATE FIGURES")
-    print("=" * 80)
+    """Main execution function."""
+    
+    # Setup logging
+    log_file = setup_logging()
+    
+    logging.info("=" * 80)
+    logging.info("STEP 4: CREATE FIGURES")
+    logging.info("=" * 80)
+    logging.info(f"Log file: {log_file}")
     
     # Load precomputed composites
-    ds_comp = load_precomputed_composites()
-    if ds_comp is None:
+    domain_datasets = load_precomputed_composites()
+    if domain_datasets is None:
         return
     
+    # Verify required variables
+    logging.info("\nVerifying data integrity...")
+    for domain in DOMAIN_SIZES.keys():
+        ds = domain_datasets[domain]
+        required_vars = [f'{domain}_egr', f'{domain}_deta_dy', f'{domain}_pv_ca', f'{domain}_pv_ck']
+        missing = [v for v in required_vars if v not in ds]
+        
+        if missing:
+            logging.error(f"❌ Missing required variables in {domain}: {missing}")
+            logging.error("   Please re-run step3_precompute_composites.py")
+            return
+    
+    logging.info("   ✓ All required variables present in all domains")
+    
     # Create composite figures for each domain
-    print("\nCreating 4-panel composite figures...")
+    logging.info("\nCreating 4-panel composite figures...")
     composite_dir = FIGURES_DIR / "composite"
     
     for domain_name in DOMAIN_SIZES.keys():
-        print(f"\nDomain: {domain_name}")
-        create_composite_figure(domain_name, ds_comp, composite_dir)
+        logging.info(f"\nDomain: {domain_name}")
+        create_composite_figure(domain_name, domain_datasets[domain_name], composite_dir)
+        domain_datasets[domain_name].close()
     
-    ds_comp.close()
-    
-    print("\n" + "=" * 80)
-    print("✓ FIGURES COMPLETE")
-    print("=" * 80)
-    print(f"\nFigures saved in: {composite_dir}")
-    print("\nGenerated figures:")
+    logging.info("\n" + "=" * 80)
+    logging.info("✓ FIGURES COMPLETE")
+    logging.info("=" * 80)
+    logging.info(f"\nFigures saved in: {composite_dir}")
+    logging.info("\nGenerated figures:")
     for domain in DOMAIN_SIZES.keys():
-        print(f"  - composite_{domain}.png (4-panel analysis)")
+        fig_file = composite_dir / f"composite_{domain}.png"
+        if fig_file.exists():
+            size_mb = fig_file.stat().st_size / 1024**2
+            logging.info(f"  ✓ composite_{domain}.png ({size_mb:.2f} MB)")
+    
+    logging.info(f"\nLog file: {log_file}")
 
 
 if __name__ == '__main__':

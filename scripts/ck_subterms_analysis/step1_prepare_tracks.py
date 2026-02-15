@@ -1,14 +1,14 @@
 """
 Step 1: Prepare Track Files for LorenzCycleToolkit
 
-This script converts selected EP1 cyclone tracks to LorenzCycleToolkit input format.
+This script converts ALL EP1 cyclone tracks to LorenzCycleToolkit input format.
 
 Prerequisites:
-- Run scripts/ep1_ibc_ibt_analysis/step1_select_cases.py first
-- This creates results/ep1_vertical/selected_cases.csv with selected EP1 cyclones
+- Run scripts/ep1_full_analysis/step1_select_all_ep1.py first
+- This creates results/ep1_full/all_ep1_cases.csv with ALL EP1 cyclones (no spatial restriction)
 
 Input:
-- results/ep1_vertical/selected_cases.csv - Selected EP1 cyclones
+- results/ep1_full/all_ep1_cases.csv - ALL EP1 cyclones
 - Main track database (via load_tracks())
 
 Output Format (one file per cyclone):
@@ -21,7 +21,7 @@ File naming: track_{track_id}.txt
 Output directory: data/ck_analysis/tracks/
 
 Author: Danilo Couto de Souza
-Date: January 2026
+Date: February 2026
 """
 
 import sys
@@ -36,7 +36,7 @@ from scripts.utils.load_data import load_tracks
 
 # Configuration
 BASE_DIR = Path(__file__).resolve().parents[2]
-SELECTED_CASES_FILE = BASE_DIR / "results" / "ep1_vertical" / "selected_cases.csv"
+ALL_EP1_CASES_FILE = BASE_DIR / "results" / "ep1_full" / "all_ep1_cases.csv"
 OUTPUT_DIR = BASE_DIR / "data" / "ck_analysis" / "tracks"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -116,23 +116,23 @@ def create_track_file(track_id, tracks_df, output_dir):
 
 
 def main():
-    """Prepare track files for all selected EP1 cyclones."""
+    """Prepare track files for all EP1 cyclones."""
     
     print("=" * 80)
-    print("STEP 1: Preparing Track Files for LorenzCycleToolkit")
+    print("STEP 1: Preparing Track Files for LorenzCycleToolkit (ALL EP1)")
     print("=" * 80)
     
-    # Check if selected cases file exists
-    if not SELECTED_CASES_FILE.exists():
-        print(f"\n❌ Error: Selected cases file not found: {SELECTED_CASES_FILE}")
-        print("\nPlease run scripts/ep1_ibc_ibt_analysis/step1_select_cases.py first.")
-        print("This will create the required file with selected EP1 cyclones.")
+    # Check if all EP1 cases file exists
+    if not ALL_EP1_CASES_FILE.exists():
+        print(f"\n❌ Error: All EP1 cases file not found: {ALL_EP1_CASES_FILE}")
+        print("\nPlease run scripts/ep1_full_analysis/step1_select_all_ep1.py first.")
+        print("This will create the required file with ALL EP1 cyclones.")
         return 1
     
-    # Load selected cases
-    print(f"\n1. Loading selected cases...")
-    selected_cases = pd.read_csv(SELECTED_CASES_FILE)
-    print(f"   Found {len(selected_cases)} selected EP1 cyclones")
+    # Load all EP1 cases
+    print(f"\n1. Loading ALL EP1 cyclones...")
+    all_ep1_cases = pd.read_csv(ALL_EP1_CASES_FILE)
+    print(f"   Found {len(all_ep1_cases)} EP1 cyclones (no spatial restriction)")
     
     # Load full track database
     print(f"\n2. Loading full track database...")
@@ -154,9 +154,9 @@ def main():
     successful = 0
     failed = []
     
-    for idx, row in selected_cases.iterrows():
+    for idx, row in all_ep1_cases.iterrows():
         track_id = row['track_id']
-        print(f"\n   [{idx+1}/{len(selected_cases)}] Processing {track_id}...")
+        print(f"\n   [{idx+1}/{len(all_ep1_cases)}] Processing {track_id}...")
         
         # Get track points for this cyclone
         track_points = tracks[tracks['track_id'] == track_id]
@@ -193,7 +193,7 @@ def main():
     print("\n" + "=" * 80)
     print("SUMMARY")
     print("=" * 80)
-    print(f"\nSuccessfully created: {successful}/{len(selected_cases)} track files")
+    print(f"\nSuccessfully created: {successful}/{len(all_ep1_cases)} track files")
     
     if failed:
         print(f"\nFailed to create track files for {len(failed)} cyclones:")

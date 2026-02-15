@@ -3,7 +3,8 @@
 Run all Ck subterms analysis scripts in sequence.
 
 Prerequisites:
-- scripts/ep1_ibc_ibt_analysis/step1_select_cases.py must be run first
+- scripts/ep1_full_analysis/step1_select_all_ep1.py must be run first
+- This creates results/ep1_full/all_ep1_cases.csv with ALL EP1 cyclones
 
 Usage:
     python scripts/ck_subterms_analysis/run_all.py
@@ -31,15 +32,16 @@ SCRIPTS = [
 
 def main():
     print("\n" + "=" * 80)
-    print("Running Ck Subterms Analysis Pipeline")
+    print("Running Ck Subterms Analysis Pipeline (ALL EP1 CYCLONES)")
     print("=" * 80)
     
     # Check prerequisites
-    required_file = PROJECT_ROOT / "results" / "ep1_vertical" / "selected_cases.csv"
+    required_file = PROJECT_ROOT / "results" / "ep1_full" / "all_ep1_cases.csv"
     if not required_file.exists():
         print(f"\n❌ Error: Required file not found: {required_file}")
-        print("\nPlease run the EP1 selection analysis first:")
-        print("   python scripts/ep1_ibc_ibt_analysis/step1_select_cases.py")
+        print("\nPlease run the EP1 full selection analysis first:")
+        print("   python scripts/ep1_full_analysis/step1_select_all_ep1.py")
+        print("\nThis will create all_ep1_cases.csv with ALL EP1 cyclones (no spatial restriction).")
         return 1
     
     successes = []

@@ -24,6 +24,7 @@ where:
 EP1 cyclones exhibit the strongest energetic conversions in the Southwestern Atlantic:
 - **Mean Ck**: -16.48 W/m² (strongest barotropic conversion among all patterns)
 - **Frequency**: 444 cyclones (11.6% of total)
+- **Analysis scope**: ALL EP1 cyclones (no spatial restriction)
 - **Vertical structure**: Ck minimum occurs at mid-tropospheric levels (~500-600 hPa)
 
 ## Research Questions
@@ -49,11 +50,11 @@ EP1 cyclones exhibit the strongest energetic conversions in the Southwestern Atl
 
 ### Prerequisites
 
-**IMPORTANT**: This analysis requires completion of the EP1 selection analysis first:
-- Run `scripts/ep1_ibc_ibt_analysis/step1_select_cases.py`
-- This creates `results/ep1_vertical/selected_cases.csv` with ~94 EP1 cyclones
-- Domain: Intensification center within 60°W-45°W, 45°S-30°S
-- Criteria: Complete lifecycle (incipient → intensification → mature → decay)
+**IMPORTANT**: This analysis requires completion of the EP1 full selection first:
+- Run `scripts/ep1_full_analysis/step1_select_all_ep1.py`
+- This creates `results/ep1_full/all_ep1_cases.csv` with ALL EP1 cyclones
+- **No spatial restriction** (all EP1 cyclones regardless of location)
+- **~444 cyclones** (entire EP1 population)
 
 ### Workflow Overview
 
@@ -73,10 +74,10 @@ Step 5: Statistical Analysis and Visualization
 
 ### Step 1: Prepare Track Files for LorenzCycleToolkit
 
-**Objective**: Convert selected EP1 cyclone tracks to LorenzCycleToolkit input format.
+**Objective**: Convert ALL EP1 cyclone tracks to LorenzCycleToolkit input format.
 
 **Input**:
-- `results/ep1_vertical/selected_cases.csv` - Selected EP1 cyclones
+- `results/ep1_full/all_ep1_cases.csv` - ALL EP1 cyclones (no spatial restriction)
 - Main track database (via `load_tracks()`)
 
 **Output Format** (one file per cyclone):
@@ -98,7 +99,7 @@ time;Lat;Lon
 - Header: `time;Lat;Lon` (capitalized)
 - Coordinates: Latitude and Longitude in decimal degrees
 - Delimiter: Semicolon (`;`) with NO spaces
-- Data source: Full cyclone lifecycle (all phases)
+- Data source: Full cyclone lifecycle (all phases, all timesteps)
 - Temporal resolution: 3-hourly (matches project configuration)
 
 **Script**: `step1_prepare_tracks.py`
@@ -152,7 +153,7 @@ results/ck_analysis/lec_results/{track_id}_ERA5_track/
 **Computational Requirements**:
 - **Storage**: ~500 MB per cyclone (ERA5 data + results)
 - **Time**: ~30-60 min per cyclone (depending on lifecycle length)
-- **Total**: ~94 cyclones × 500 MB = ~47 GB
+- **Total for ALL EP1**: ~444 cyclones × 500 MB = ~222 GB
 - **Processing**: Can be parallelized across cyclones
 
 **Script**: `step2_run_lec_toolkit.py` (wrapper script)

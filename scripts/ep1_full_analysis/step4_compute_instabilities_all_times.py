@@ -24,7 +24,7 @@ from tqdm import tqdm
 import warnings
 
 # Import instability computation functions from ep1_ibc_ibt_analysis
-from ep1_ibc_ibt_analysis.step4_compute_instabilities import (
+from scripts.ep1_ibc_ibt_analysis.step4_compute_instabilities import (
     eady_growth_rate,
     rayleigh_kuo_criterion,
     geopotential_height,

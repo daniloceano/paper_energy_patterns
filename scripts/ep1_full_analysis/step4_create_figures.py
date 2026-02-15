@@ -78,18 +78,30 @@ def setup_logging():
 
 
 def load_precomputed_composites():
-    """Load precomputed composites if available."""
-    comp_file = DATA_DIR / "precomputed_composites.nc"
-    if comp_file.exists():
-        logging.info(f"Loading precomputed composites from {comp_file}")
+    """Load precomputed composite data from separate domain files."""
+    
+    logging.info("Loading precomputed composites...")
+    
+    domain_datasets = {}
+    total_size_mb = 0
+    
+    for domain in DOMAIN_SIZES.keys():
+        comp_file = DATA_DIR / f'precomputed_composites_{domain}.nc'
+        
+        if not comp_file.exists():
+            logging.error(f"❌ ERROR: File not found: {comp_file}")
+            logging.error("Please run step3_precompute_composites.py first.")
+            return None
+        
         file_size_mb = comp_file.stat().st_size / 1024**2
-        logging.info(f"   File size: {file_size_mb:.1f} MB")
-        return xr.open_dataset(comp_file)
-    else:
-        logging.error("⚠️  Precomputed composites not found.")
-        logging.error(f"   Expected: {comp_file}")
-        logging.error("   Please run step3_precompute_composites.py first.")
-        return None
+        total_size_mb += file_size_mb
+        logging.info(f"   {domain}: {comp_file.name} ({file_size_mb:.1f} MB)")
+        
+        domain_datasets[domain] = xr.open_dataset(comp_file)
+    
+    logging.info(f"   ✓ Loaded {len(domain_datasets)} domains, total {total_size_mb:.1f} MB")
+    
+    return domain_datasets
 
 
 def create_composite_figure(domain_name, ds_domain, output_dir):

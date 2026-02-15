@@ -162,7 +162,10 @@ def brunt_vaisala_frequency(T, q, p, z):
     dtheta_v_dz = dtheta_v / dz_safe
     
     N_squared = (G / theta_v[1]) * dtheta_v_dz
-    N = np.where(N_squared > MIN_N_SQUARED, np.sqrt(N_squared), np.nan)
+    
+    # Suppress expected warning for negative N² (statically unstable atmosphere)
+    with np.errstate(invalid='ignore'):
+        N = np.where(N_squared > MIN_N_SQUARED, np.sqrt(N_squared), np.nan)
     
     return N, N_squared, theta_v[1]
 
@@ -269,8 +272,10 @@ def compute_baroclinic_pv(u, v, T, q, p, z, lat_2d, lon_2d):
     # Calculate potential temperature
     theta = potential_temperature(pressure_da, temperature_da)
     
-    # Calculate baroclinic PV
-    pv_baroclinic = potential_vorticity_baroclinic(theta, pressure_da, u_da, v_da)
+    # Calculate baroclinic PV (suppress MetPy dimension detection warning)
+    with warnings.catch_warnings():
+        warnings.filterwarnings('ignore', message='Vertical dimension number not found')
+        pv_baroclinic = potential_vorticity_baroclinic(theta, pressure_da, u_da, v_da)
     
     # Return middle level
     return pv_baroclinic.isel(level=1).metpy.unit_array.magnitude

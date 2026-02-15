@@ -28,9 +28,10 @@ Output:
   └── ...                     # Other energy terms and figures
 
 Processing:
-- Serial execution to avoid resource contention and CDS API limits
-- Each cyclone is processed sequentially
-- Progress updates after each cyclone
+- Parallel execution with configurable number of workers (default: 5)
+- Multiple cyclones processed concurrently
+- Progress updates as cyclones complete
+- ThreadPoolExecutor manages concurrent jobs
 
 Error Handling:
 - Checks if LEC already computed (avoids reprocessing)
@@ -54,6 +55,7 @@ import logging
 from datetime import datetime
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================================================================
 # CONFIGURATION
@@ -87,9 +89,12 @@ TIME_RESOLUTION = 3  # hours (was 6)
 # Flags: -t (track), -r (residuals), -v (verbose), --cdsapi (auto download)
 LEC_FLAGS = ['-t', '-r', '-v', '--cdsapi']
 
-# Timeout per cyclone (in seconds) - no timeout for serial execution
+# Timeout per cyclone (in seconds)
 # Set to None to disable timeout, or a value like 14400 (4 hours) if needed
 TIMEOUT_SECONDS = None  # No timeout - let it run to completion
+
+# Parallel execution settings
+N_PARALLEL_JOBS = 5  # Number of cyclones to process concurrently
 
 
 def update_lorenz_toolkit():
@@ -433,7 +438,7 @@ def parse_toolkit_output(stdout, stderr, logger, track_id):
 
 def process_cyclone(track_file, current_idx, total_count, logger):
     """
-    Process a single cyclone using LorenzCycleToolkit (serial version).
+    Process a single cyclone using LorenzCycleToolkit (parallel version).
     
     Args:
         track_file: Path to track file
@@ -604,7 +609,7 @@ def process_cyclone(track_file, current_idx, total_count, logger):
 
 
 def main():
-    """Run LorenzCycleToolkit for all selected cyclones (serial execution)."""
+    """Run LorenzCycleToolkit for all selected cyclones (parallel execution)."""
     
     # Remove old log file to overwrite
     if LOG_FILE.exists():
@@ -622,12 +627,12 @@ def main():
     logger = logging.getLogger('main')
     
     print("=" * 80)
-    print("STEP 2: Running LorenzCycleToolkit for EP1 Cyclones (Serial Execution)")
+    print("STEP 2: Running LorenzCycleToolkit for EP1 Cyclones (Parallel Execution)")
     print("=" * 80)
     print(f"\nLog file: {LOG_FILE}")
     
     logger.info("="*80)
-    logger.info("Starting step2_run_lec_toolkit.py (Serial Execution)")
+    logger.info("Starting step2_run_lec_toolkit.py (Parallel Execution)")
     logger.info("="*80)
     logger.info(f"Log file: {LOG_FILE}")
     
@@ -656,14 +661,14 @@ def main():
     
     print(f"\n2. Processing configuration:")
     print(f"   Total cyclones: {n_total}")
-    print(f"   Execution mode: SERIAL (one at a time)")
+    print(f"   Execution mode: PARALLEL ({N_PARALLEL_JOBS} concurrent jobs)")
     print(f"   Temporal resolution: {TIME_RESOLUTION} hours")
     print(f"   Timeout per cyclone: {'None (no limit)' if TIMEOUT_SECONDS is None else f'{TIMEOUT_SECONDS/3600:.1f} hours'}")
     print(f"   LorenzCycleToolkit: {LORENZ_SCRIPT}")
     print(f"   Results directory: {RESULTS_DIR}")
     
     logger.info(f"Total cyclones: {n_total}")
-    logger.info(f"Execution mode: SERIAL")
+    logger.info(f"Execution mode: PARALLEL ({N_PARALLEL_JOBS} workers)")
     logger.info(f"Temporal resolution: {TIME_RESOLUTION} hours")
     logger.info(f"LorenzCycleToolkit: {LORENZ_SCRIPT}")
     logger.info(f"Results directory: {RESULTS_DIR}")
@@ -691,8 +696,9 @@ def main():
     
     logger.info(f"To process: {len(to_process)}/{n_total}")
     
-    print(f"\n4. Starting serial processing...")
+    print(f"\n4. Starting parallel processing...")
     print(f"   Using conda environment: {LORENZ_CONDA_ENV}")
+    print(f"   Concurrent jobs: {N_PARALLEL_JOBS}")
     print(f"   Note: This may take several hours depending on:")
     print(f"   - Number of cyclones to process")
     print(f"   - CDS API response time")
@@ -702,23 +708,40 @@ def main():
     print(f"   Real-time log: tail -f {LOG_FILE}")
     print()
     
-    logger.info("Starting serial processing...")
+    logger.info(f"Starting parallel processing with {N_PARALLEL_JOBS} workers...")
     start_time = time.time()
     
-    # Process cyclones one by one (serial execution)
+    # Process cyclones in parallel using ThreadPoolExecutor
     results = []
+    completed_count = 0
     print(f"\n   Progress (completed/total):")
     
-    for idx, track_file in enumerate(track_files, 1):
-        result = process_cyclone(track_file, idx, n_total, logger)
-        results.append(result)
+    with ThreadPoolExecutor(max_workers=N_PARALLEL_JOBS) as executor:
+        # Submit all jobs
+        future_to_track = {}
+        for idx, track_file in enumerate(track_files, 1):
+            future = executor.submit(process_cyclone, track_file, idx, n_total, logger)
+            future_to_track[future] = (track_file, idx)
         
-        # Log progress periodically
-        if idx % 10 == 0:
-            elapsed = time.time() - start_time
-            elapsed_hours = elapsed / 3600
-            successes_so_far = sum(1 for _, s, _ in results if s)
-            logger.info(f"Progress: {idx}/{n_total} completed, {successes_so_far} successful, {elapsed_hours:.1f} hours elapsed")
+        # Process results as they complete
+        for future in as_completed(future_to_track):
+            track_file, idx = future_to_track[future]
+            try:
+                result = future.result()
+                results.append(result)
+                completed_count += 1
+                
+                # Log progress periodically
+                if completed_count % 10 == 0:
+                    elapsed = time.time() - start_time
+                    elapsed_hours = elapsed / 3600
+                    successes_so_far = sum(1 for _, s, _ in results if s)
+                    logger.info(f"Progress: {completed_count}/{n_total} completed, {successes_so_far} successful, {elapsed_hours:.1f} hours elapsed")
+            except Exception as e:
+                track_id = track_file.stem.replace('track_', '')
+                logger.exception(f"[{track_id}] Exception in future: {e}")
+                results.append((track_id, False, f"Exception: {str(e)}"))
+                completed_count += 1
     
     print(f"\n   All {n_total} cases completed!\n")
     logger.info("All cyclones processed")
@@ -778,7 +801,7 @@ def main():
         
         print(f"\n   Full failure log saved to: {failures_file}")
         print(f"\n   Common reasons for failure:")
-        print(f"   - CDS API rate limits (too many concurrent requests)")
+        print(f"   - CDS API rate limits (reduce N_PARALLEL_JOBS if needed)")
         print(f"   - Network connectivity issues")
         print(f"   - Invalid track data (KeyError on valid_time)")
         print(f"   - Insufficient disk space")

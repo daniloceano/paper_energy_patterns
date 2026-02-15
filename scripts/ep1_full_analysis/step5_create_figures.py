@@ -1,13 +1,13 @@
 """
 Step 5: Create Publication-Quality Figures for EP1 Full Analysis
 
-Creates composite figures from precomputed data or recomputes if needed.
+Creates 4-panel composite figures from precomputed data.
 
-Modifications from ep1_ibc_ibt_analysis/step5:
-- Uses precomputed composites when available
-- PV composites: includes PV(250 hPa) contours + wind vectors (gray) at 250 hPa
-- EGR composites: includes SLP contours + wind vectors at 975 hPa
-- Generates time series plots (new)
+For each domain (5°, 15°, 30°):
+Panel (a): 2D map of ∂η/∂y (Rayleigh-Kuo criterion) at Ck level (350 hPa)
+Panel (b): Zonal mean profile of ∂η/∂y
+Panel (c): PV at Ca level (975 hPa, shaded) + PV at Ck level (350 hPa, contours) + 250 hPa wind vectors
+Panel (d): EGR at Ca level (975 hPa, shaded) + SLP contours + wind vectors at Ca level (975 hPa)
 
 Author: Danilo Couto de Souza
 Date: February 2026
@@ -35,12 +35,11 @@ FIGURES_DIR = BASE_DIR / "figures" / "ep1_full"
 
 # Create subdirectories
 (FIGURES_DIR / "composite").mkdir(parents=True, exist_ok=True)
-(FIGURES_DIR / "timeseries").mkdir(parents=True, exist_ok=True)
 
 DPI = 300
 DOMAIN_SIZES = {'local': 5.0, 'mesoscale': 15.0, 'synoptic': 30.0}
 
-# Plotting style
+# Scientific Reports style
 plt.rcParams.update({
     'font.size': 10,
     'font.family': 'sans-serif',
@@ -68,16 +67,15 @@ def load_precomputed_composites():
         return None
 
 
-def plot_pv_composite_with_jet(domain_name, ds_comp, output_dir):
+def create_composite_figure(domain_name, ds_comp, output_dir):
     """
-    Create PV composite figure with 250 hPa jet overlay.
+    Create 4-panel composite figure for a domain.
     
-    Modifications:
-    - Shaded: PV at 975 hPa (baroclinic instability)
-    - Contours (green): PV at 250 hPa (upper-level dynamics)
-    - Vectors (gray): Wind at 250 hPa (jet structure)
+    Panel layout:
+    (a) ∂η/∂y 2D map at Ck level       (b) ∂η/∂y zonal mean profile
+    (c) PV composite (Ca + Ck + jet)   (d) EGR + SLP + winds
     """
-    print(f"  Creating PV composite for {domain_name}...")
+    print(f"  Creating 4-panel composite for {domain_name}...")
     
     try:
         # Load data for this domain
@@ -88,114 +86,125 @@ def plot_pv_composite_with_jet(domain_name, ds_comp, output_dir):
         # Get coordinates
         x = ds_comp[x_dim].values
         y = ds_comp[y_dim].values
-        levels = ds_comp[level_dim].values
         
-        # Get PV at different levels from pv_all
-        pv_all = ds_comp[f'{domain_name}_pv_all'].values  # (level, y, x)
+        # Get diagnostic fields (precomputed in step3)
+        deta_dy = ds_comp[f'{domain_name}_deta_dy'].values  # 2D at Ck level
+        deta_dy_zonal = ds_comp[f'{domain_name}_deta_dy_zonal'].values  # 1D zonal mean
+        pv_ca = ds_comp[f'{domain_name}_pv_ca'].values  # 2D at Ca level (975 hPa)
+        pv_ck = ds_comp[f'{domain_name}_pv_ck'].values  # 2D at Ck level (350 hPa)
+        egr = ds_comp[f'{domain_name}_egr'].values  # 2D at Ca level (975 hPa)
         
-        # Find indices for 975 and 250 hPa
-        idx_975 = np.argmin(np.abs(levels - 975))
-        idx_250 = np.argmin(np.abs(levels - 250))
-        
-        pv_975 = pv_all[idx_975] * 1e6  # Convert to PVU-like units
-        pv_250 = pv_all[idx_250] * 1e6
-        
-        # Get winds at 250 hPa from u_all/v_all
-        u_all = ds_comp[f'{domain_name}_u_all'].values
-        v_all = ds_comp[f'{domain_name}_v_all'].values
-        
-        u_250 = u_all[idx_250]
-        v_250 = v_all[idx_250]
-        
-        # Create figure
-        fig, ax = plt.subplots(figsize=(10, 8))
-        
-        # Shaded: PV at 975 hPa
-        pv_min = np.nanmin(pv_975)
-        pv_levels = np.linspace(pv_min, 0, 21)
-        im = ax.contourf(x, y, pv_975, levels=pv_levels, cmap='RdYlBu_r', extend='both')
-        
-        # Contours (green): PV at 250 hPa
-        pv250_levels = np.linspace(np.nanpercentile(pv_250, 5), np.nanpercentile(pv_250, 95), 8)
-        cs_pv250 = ax.contour(x, y, pv_250, levels=pv250_levels, colors='green', linewidths=1.3, alpha=0.8)
-        ax.clabel(cs_pv250, inline=1, fontsize=8, fmt='%1.0f')
-        
-        # Vectors (gray): Wind at 250 hPa (subsample for clarity)
-        skip = max(1, len(x) // 15)
-        ax.quiver(x[::skip], y[::skip], u_250[::skip, ::skip], v_250[::skip, ::skip],
-                 color='gray', alpha=0.6, scale=400, width=0.003)
-        
-        # Formatting
-        ax.set_xlabel('Relative Longitude (°)')
-        ax.set_ylabel('Relative Latitude (°)')
-        ax.set_title(f'EP1 Composite: PV at 975 hPa (shaded), PV at 250 hPa (green), Jet (vectors)\nDomain: {domain_name}')
-        ax.set_aspect('equal')
-        
-        # Colorbar
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='4%', pad=0.1)
-        cbar = fig.colorbar(im, cax=cax)
-        cbar.set_label('PV at 975 hPa (10$^{-6}$ K m$^2$ kg$^{-1}$ s$^{-1}$)')
-        
-        # Save
-        out_file = output_dir / f'pv_composite_{domain_name}.png'
-        fig.savefig(out_file, dpi=DPI, bbox_inches='tight')
-        plt.close(fig)
-        print(f"    ✓ Saved: {out_file}")
-        
-    except Exception as e:
-        print(f"    ❌ Error: {e}")
-        import traceback
-        traceback.print_exc()
-
-
-def plot_egr_composite_with_slp(domain_name, ds_comp, output_dir):
-    """
-    Create EGR composite figure with SLP and low-level winds.
-    
-    Modifications:
-    - Shaded: Eady Growth Rate
-    - Contours (black): SLP (mean sea level pressure)
-    - Vectors (black): Wind at 975 hPa (low-level circulation)
-    """
-    print(f"  Creating EGR composite for {domain_name}...")
-    
-    try:
-        # Load data for this domain
-        y_dim = f'y_{domain_name}'
-        x_dim = f'x_{domain_name}'
-        level_dim = f'level_{domain_name}'
-        
-        x = ds_comp[x_dim].values
-        y = ds_comp[y_dim].values
-        levels = ds_comp[level_dim].values
-        
-        # EGR (computed in step3 or needs recomputation)
-        egr = ds_comp[f'{domain_name}_egr'].values if f'{domain_name}_egr' in ds_comp else None
-        
-        # SLP
+        # Get SLP if available
         msl = ds_comp[f'{domain_name}_msl'].values if f'{domain_name}_msl' in ds_comp else None
         
-        # Winds at 975 hPa
-        u_all = ds_comp[f'{domain_name}_u_all'].values
-        v_all = ds_comp[f'{domain_name}_v_all'].values
+        # Get winds at specific levels from 3D arrays
+        if level_dim in ds_comp.coords:
+            levels = ds_comp[level_dim].values
+            u_all = ds_comp[f'{domain_name}_u'].values
+            v_all = ds_comp[f'{domain_name}_v'].values
+            
+            # Find indices
+            idx_975 = np.argmin(np.abs(levels - 975))
+            idx_250 = np.argmin(np.abs(levels - 250))
+            
+            u_975 = u_all[idx_975]
+            v_975 = v_all[idx_975]
+            u_250 = u_all[idx_250]
+            v_250 = v_all[idx_250]
+        else:
+            u_975 = v_975 = u_250 = v_250 = None
         
-        idx_975 = np.argmin(np.abs(levels - 975))
-        u_975 = u_all[idx_975]
-        v_975 = v_all[idx_975]
+        # Create figure with 4 panels
+        fig = plt.figure(figsize=(14, 10))
+        gs = gridspec.GridSpec(2, 2, hspace=0.25, wspace=0.3)
         
-        if egr is None:
-            print(f"    ⚠️  EGR not found in precomputed data")
-            return
+        # ========================================================================
+        # Panel (a): ∂η/∂y 2D map at Ck level
+        # ========================================================================
+        ax1 = fig.add_subplot(gs[0, 0])
         
-        # Create figure
-        fig, ax = plt.subplots(figsize=(10, 8))
+        # Color levels
+        deta_max = np.nanmax(np.abs(deta_dy))
+        deta_levels = np.linspace(-deta_max, deta_max, 21)
+        
+        im1 = ax1.contourf(x, y, deta_dy, levels=deta_levels, cmap='RdBu_r', extend='both')
+        ax1.contour(x, y, deta_dy, levels=[0], colors='black', linewidths=1.5)
+        
+        ax1.set_xlabel('Relative Longitude (°)')
+        ax1.set_ylabel('Relative Latitude (°)')
+        ax1.set_title('(a) ∂η/∂y at Ck level (350 hPa)')
+        ax1.set_aspect('equal')
+        
+        # Colorbar
+        divider = make_axes_locatable(ax1)
+        cax1 = divider.append_axes('right', size='4%', pad=0.1)
+        cbar1 = fig.colorbar(im1, cax=cax1)
+        cbar1.set_label('∂η/∂y (s$^{-1}$ m$^{-1}$)')
+        
+        # ========================================================================
+        # Panel (b): Zonal mean profile of ∂η/∂y
+        # ========================================================================
+        ax2 = fig.add_subplot(gs[0, 1])
+        
+        ax2.plot(deta_dy_zonal, y, 'b-', linewidth=2)
+        ax2.axvline(0, color='black', linestyle='--', linewidth=1)
+        ax2.grid(True, alpha=0.3)
+        
+        ax2.set_xlabel('∂η/∂y (s$^{-1}$ m$^{-1}$)')
+        ax2.set_ylabel('Relative Latitude (°)')
+        ax2.set_title('(b) Zonal mean ∂η/∂y')
+        
+        # ========================================================================
+        # Panel (c): PV at Ca (shaded) + PV at Ck (contours) + 250 hPa winds
+        # ========================================================================
+        ax3 = fig.add_subplot(gs[1, 0])
+        
+        # Shaded: PV at Ca level (975 hPa)
+        pv_ca_pvu = pv_ca * 1e6  # Convert to PVU
+        pv_min = np.nanmin(pv_ca_pvu)
+        pv_levels = np.linspace(pv_min, 0, 21)
+        
+        im3 = ax3.contourf(x, y, pv_ca_pvu, levels=pv_levels, cmap='RdYlBu_r', extend='both')
+        
+        # Contours: PV at Ck level (350 hPa) - green
+        pv_ck_pvu = pv_ck * 1e6
+        pv_ck_levels = np.linspace(np.nanpercentile(pv_ck_pvu, 10), np.nanpercentile(pv_ck_pvu, 90), 8)
+        cs_pv = ax3.contour(x, y, pv_ck_pvu, levels=pv_ck_levels, colors='green', linewidths=1.3, alpha=0.8)
+        ax3.clabel(cs_pv, inline=1, fontsize=8, fmt='%1.0f')
+        
+        # Vectors: 250 hPa winds (gray)
+        if u_250 is not None and v_250 is not None:
+            skip = max(1, len(x) // 15)
+            ax3.quiver(x[::skip], y[::skip], u_250[::skip, ::skip], v_250[::skip, ::skip],
+                      color='gray', alpha=0.6, scale=400, width=0.003)
+        
+        ax3.set_xlabel('Relative Longitude (°)')
+        ax3.set_ylabel('Relative Latitude (°)')
+        ax3.set_title('(c) PV at Ca (shaded), PV at Ck (green), 250 hPa wind (vectors)')
+        ax3.set_aspect('equal')
+        
+        # Colorbar
+        divider = make_axes_locatable(ax3)
+        cax3 = divider.append_axes('right', size='4%', pad=0.1)
+        cbar3 = fig.colorbar(im3, cax=cax3)
+        cbar3.set_label('PV at Ca (975 hPa) [PVU]')
+        
+        # ========================================================================
+        # Panel (d): EGR (shaded) + SLP (contours) + 975 hPa winds
+        # ========================================================================
+        ax4 = fig.add_subplot(gs[1, 1])
         
         # Shaded: EGR
         egr_levels = np.linspace(np.nanpercentile(egr, 1), np.nanpercentile(egr, 99), 21)
-        im = ax.contourf(x, y, egr, levels=egr_levels, cmap='YlOrRd', extend='both')
+        im4 = ax4.contourf(x, y, egr, levels=egr_levels, cmap='YlOrRd', extend='both')
         
-        # Contours (black): SLP
+        # Annotate domain-mean EGR
+        egr_mean = np.nanmean(egr)
+        ax4.text(0.05, 0.95, f'Mean: {egr_mean:.2f} day$^{{-1}}$',
+                transform=ax4.transAxes, fontsize=9, verticalalignment='top',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # Contours: SLP (black)
         if msl is not None:
             msl_hpa = msl / 100.0  # Convert Pa to hPa
             slp_levels = np.arange(
@@ -203,28 +212,33 @@ def plot_egr_composite_with_slp(domain_name, ds_comp, output_dir):
                 np.ceil(np.nanmax(msl_hpa) / 2) * 2 + 2,
                 2
             )
-            cs_slp = ax.contour(x, y, msl_hpa, levels=slp_levels, colors='black', linewidths=1.0, alpha=0.7)
-            ax.clabel(cs_slp, inline=1, fontsize=8, fmt='%1.0f')
+            cs_slp = ax4.contour(x, y, msl_hpa, levels=slp_levels, colors='black', linewidths=1.0, alpha=0.7)
+            ax4.clabel(cs_slp, inline=1, fontsize=8, fmt='%1.0f')
         
-        # Vectors (black): Wind at 975 hPa
-        skip = max(1, len(x) // 15)
-        ax.quiver(x[::skip], y[::skip], u_975[::skip, ::skip], v_975[::skip, ::skip],
-                 color='black', alpha=0.7, scale=300, width=0.003)
+        # Vectors: 975 hPa winds (black)
+        if u_975 is not None and v_975 is not None:
+            skip = max(1, len(x) // 15)
+            ax4.quiver(x[::skip], y[::skip], u_975[::skip, ::skip], v_975[::skip, ::skip],
+                      color='black', alpha=0.7, scale=300, width=0.003)
         
-        # Formatting
-        ax.set_xlabel('Relative Longitude (°)')
-        ax.set_ylabel('Relative Latitude (°)')
-        ax.set_title(f'EP1 Composite: EGR (shaded), SLP (contours), 975 hPa wind (vectors)\nDomain: {domain_name}')
-        ax.set_aspect('equal')
+        ax4.set_xlabel('Relative Longitude (°)')
+        ax4.set_ylabel('Relative Latitude (°)')
+        ax4.set_title('(d) EGR at Ca (shaded), SLP (contours), 975 hPa wind (vectors)')
+        ax4.set_aspect('equal')
         
         # Colorbar
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes('right', size='4%', pad=0.1)
-        cbar = fig.colorbar(im, cax=cax)
-        cbar.set_label('Eady Growth Rate (day$^{-1}$)')
+        divider = make_axes_locatable(ax4)
+        cax4 = divider.append_axes('right', size='4%', pad=0.1)
+        cbar4 = fig.colorbar(im4, cax=cax4)
+        cbar4.set_label('EGR (day$^{-1}$)')
         
-        # Save
-        out_file = output_dir / f'egr_composite_{domain_name}.png'
+        # ========================================================================
+        # Overall title and save
+        # ========================================================================
+        fig.suptitle(f'EP1 Composite Analysis - {domain_name.capitalize()} Domain ({DOMAIN_SIZES[domain_name]}°)',
+                    fontsize=13, fontweight='bold', y=0.98)
+        
+        out_file = output_dir / f'composite_{domain_name}.png'
         fig.savefig(out_file, dpi=DPI, bbox_inches='tight')
         plt.close(fig)
         print(f"    ✓ Saved: {out_file}")
@@ -233,89 +247,6 @@ def plot_egr_composite_with_slp(domain_name, ds_comp, output_dir):
         print(f"    ❌ Error: {e}")
         import traceback
         traceback.print_exc()
-
-
-def plot_timeseries_statistics(output_dir):
-    """
-    Create time series statistics plot (mean ± std across all cases).
-    """
-    print("\nCreating time series statistics...")
-    
-    instab_dir = RESULTS_DIR / "instabilities"
-    if not instab_dir.exists():
-        print("  ⚠️  Instability results not found. Run step4 first.")
-        return
-    
-    # Load all timeseries files
-    timeseries_files = list(instab_dir.glob("*_timeseries.nc"))
-    if len(timeseries_files) == 0:
-        print("  ⚠️  No timeseries files found.")
-        return
-    
-    print(f"  Found {len(timeseries_files)} cases")
-    
-    # For each domain, collect all time series (normalized to relative time)
-    for domain_name in DOMAIN_SIZES.keys():
-        egr_series_list = []
-        rk_series_list = []
-        
-        for ts_file in timeseries_files:
-            try:
-                ds = xr.open_dataset(ts_file)
-                time_dim = f'time_{domain_name}'
-                
-                if time_dim in ds.coords:
-                    egr = ds[f'{domain_name}_egr'].values
-                    rk = ds[f'{domain_name}_rk_satisfied'].values
-                    
-                    egr_series_list.append(egr)
-                    rk_series_list.append(rk)
-                
-                ds.close()
-            except Exception:
-                continue
-        
-        if len(egr_series_list) == 0:
-            continue
-        
-        # Find common length (minimum across all cases)
-        min_len = min(len(s) for s in egr_series_list)
-        
-        # Truncate all to common length
-        egr_array = np.array([s[:min_len] for s in egr_series_list])
-        rk_array = np.array([s[:min_len] for s in rk_series_list])
-        
-        # Compute mean and std
-        egr_mean = np.nanmean(egr_array, axis=0)
-        egr_std = np.nanstd(egr_array, axis=0)
-        rk_fraction = np.nanmean(rk_array, axis=0)  # Fraction of cases satisfying RK
-        
-        # Relative time (normalized)
-        rel_time = np.linspace(0, 1, min_len)
-        
-        # Plot
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8), sharex=True)
-        
-        # EGR
-        ax1.plot(rel_time, egr_mean, 'b-', linewidth=2, label='Mean')
-        ax1.fill_between(rel_time, egr_mean - egr_std, egr_mean + egr_std, alpha=0.3, color='b', label='±1σ')
-        ax1.set_ylabel('EGR (day$^{-1}$)')
-        ax1.set_title(f'EP1 Intensification Phase Evolution - {domain_name} domain')
-        ax1.legend()
-        ax1.grid(True, alpha=0.3)
-        
-        # RK
-        ax2.plot(rel_time, rk_fraction * 100, 'r-', linewidth=2)
-        ax2.set_xlabel('Normalized Time (0 = start, 1 = end of intensification)')
-        ax2.set_ylabel('RK Satisfied (%)')
-        ax2.set_ylim([0, 100])
-        ax2.grid(True, alpha=0.3)
-        
-        # Save
-        out_file = output_dir / f'timeseries_{domain_name}.png'
-        fig.savefig(out_file, dpi=DPI, bbox_inches='tight')
-        plt.close(fig)
-        print(f"  ✓ Saved: {out_file}")
 
 
 def main():
@@ -329,26 +260,22 @@ def main():
         return
     
     # Create composite figures for each domain
-    print("\nCreating composite figures...")
+    print("\nCreating 4-panel composite figures...")
     composite_dir = FIGURES_DIR / "composite"
     
     for domain_name in DOMAIN_SIZES.keys():
         print(f"\nDomain: {domain_name}")
-        plot_pv_composite_with_jet(domain_name, ds_comp, composite_dir)
-        plot_egr_composite_with_slp(domain_name, ds_comp, composite_dir)
+        create_composite_figure(domain_name, ds_comp, composite_dir)
     
     ds_comp.close()
-    
-    # Create time series plots
-    timeseries_dir = FIGURES_DIR / "timeseries"
-    plot_timeseries_statistics(timeseries_dir)
     
     print("\n" + "=" * 80)
     print("✓ FIGURES COMPLETE")
     print("=" * 80)
-    print(f"\nFigures saved in:")
-    print(f"  - {composite_dir}")
-    print(f"  - {timeseries_dir}")
+    print(f"\nFigures saved in: {composite_dir}")
+    print("\nGenerated figures:")
+    for domain in DOMAIN_SIZES.keys():
+        print(f"  - composite_{domain}.png (4-panel analysis)")
 
 
 if __name__ == '__main__':

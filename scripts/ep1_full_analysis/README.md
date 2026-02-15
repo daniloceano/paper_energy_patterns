@@ -54,31 +54,39 @@ nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py &> downlo
 - Default `--jobs 2` respects this limit
 - Higher values may cause "Number queued requests... temporarily limited" errors
 
-### Step 3: Precompute Composites
+### Step 3: Precompute Composites and Diagnostics
 ```bash
 python scripts/ep1_full_analysis/step3_precompute_composites.py
 ```
-- **PRECOMPUTES** composites of all downloaded variables
+- **PRECOMPUTES** composites of all downloaded variables AND diagnostic fields
+- Computes instability diagnostics:
+  - **EGR** (Eady Growth Rate) at Ca level (975 hPa)
+  - **∂η/∂y** (Rayleigh-Kuo gradient) at Ck level (350 hPa), both 2D and zonal mean
+  - **PV** (Potential Vorticity) at both Ca (975 hPa) and Ck (350 hPa) levels
 - Avoids reprocessing in future analyses
-- Saves spatial means by domain to `data/era5_ep1_full/composites.nc`
+- Saves spatial composites by domain to `data/era5_ep1_full/precomputed_composites.nc`
 
-### Step 4: Compute Instabilities (All Times)
+### Step 4: Compute Instabilities Time Series (Optional)
 ```bash
 python scripts/ep1_full_analysis/step4_compute_instabilities_all_times.py
 ```
-- Computes diagnostics for **ALL intensification times**
-- Rayleigh-Kuo criterion, Eady Growth Rate
+- **OPTIONAL:** Computes diagnostics for **ALL intensification times** of each individual cyclone
+- Useful for analyzing temporal evolution patterns
+- Not required for composite figures (step5) since diagnostics are already in step3
 - Saves temporal results to `results/ep1_full/instabilities/`
 
 ### Step 5: Create Figures
 ```bash
 python scripts/ep1_full_analysis/step5_create_figures.py
 ```
-- Generates composite and time series figures
-- **Modified visualizations:**
-  - PV composites: Shaded PV(975 hPa) + green contours PV(250 hPa) + gray wind vectors at 250 hPa
-  - EGR composites: Shaded EGR + black SLP contours + black wind vectors at 975 hPa
-- Saves to `figures/ep1_full/`
+- Generates 4-panel composite figures for each domain
+- **Panel layout:**
+  - **(a)** 2D map of ∂η/∂y (RK criterion) at Ck level (350 hPa)
+  - **(b)** Zonal mean profile of ∂η/∂y
+  - **(c)** PV at Ca level (975 hPa, shaded) + PV at Ck level (350 hPa, contours) + 250 hPa wind vectors
+  - **(d)** EGR at Ca level (975 hPa, shaded) + SLP contours + wind vectors at Ca level
+- Uses precomputed data from step3 for efficiency
+- Saves to `figures/ep1_full/composite/`
 
 ### Step 6: Generate Scientific Documentation
 ```bash
@@ -96,8 +104,9 @@ python scripts/ep1_full_analysis/update_scientific_notes.py
 ```bash
 python scripts/ep1_full_analysis/run_all.py
 ```
-- Executes entire pipeline automatically (steps 1-5)
-- Run step 6 separately after analysis completes
+- Executes pipeline automatically (steps 1-3, 5)
+- **Step 4 is optional** (time series analysis) - run separately if needed
+- Generates composite figures ready for publication
 
 ## Downloaded Variables
 

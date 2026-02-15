@@ -82,7 +82,13 @@ nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py &
 
 **Functionality:**
 - Precomputes spatial composites (domain averages)
-- **ALL downloaded variables** (including SLP)
+- **Computes ALL diagnostic fields:**
+  - **EGR** (Eady Growth Rate) at Ca level (975 hPa)
+  - **∂η/∂y** (Rayleigh-Kuo gradient) at Ck level (350 hPa)
+  - **∂η/∂y zonal mean** (meridional profile)
+  - **PV at Ca level** (975 hPa)
+  - **PV at Ck level** (350 hPa)
+- **ALL downloaded variables** (u, v, t, z, q, msl)
 - **ALL pressure levels**
 - Avoids reprocessing in future analyses
 - Domain-specific dimensions (avoids conflicts)
@@ -103,11 +109,12 @@ python scripts/ep1_full_analysis/step3_precompute_composites.py
 ---
 
 #### ✅ `run_all.py`
-**Status:** ✅ COMPLETE (all steps functional)
+**Status:** ✅ COMPLETE (steps 1-3, 5)
 
 **Functionality:**
-- Executes complete pipeline automatically
-- Steps 1-5 fully implemented
+- Executes pipeline automatically
+- **Step 4 is optional** (time series analysis for individual cyclones)
+- Generates composite figures ready for publication
 
 **Usage:**
 ```bash
@@ -119,8 +126,8 @@ python scripts/ep1_full_analysis/run_all.py
 #### ✅ `README.md`
 Complete documentation explaining:
 - Differences between `ep1_ibc_ibt_analysis` and `ep1_full_analysis`
-- Pipeline structure
-- Variables and pressure levels
+- Pipeline structure (4-panel composite figures)
+- Variables, pressure levels, and diagnostic fields
 - Resource usage (parallelization, storage)
 
 ---
@@ -128,29 +135,17 @@ Complete documentation explaining:
 ## ✅ All Steps Implemented
 
 ### Step 4: `step4_compute_instabilities_all_times.py`
-**Status:** ✅ COMPLETE
+**Status:** ✅ OPTIONAL (maintained for time series analysis)
+
+**Note:** With the new step3 implementation, this step is **optional**. All diagnostics needed for composite figures are already precomputed in step3. Step4 remains useful for analyzing temporal evolution of individual cyclones.
 
 **Functionality:**
 - Processes **ALL timesteps** of intensification (not just temporal center)
-- Saves time series of:
+- Saves time series for each individual cyclone:
   - Rayleigh-Kuo criterion
   - Eady Growth Rate
   - Baroclinic PV
 - Output: `results/ep1_full/instabilities/{track_id}_timeseries.nc`
-
-**Key implementation:**
-```python
-# Original (ep1_ibc_ibt_analysis):
-t_idx = len(ds.valid_time) // 2  # Temporal center only
-ds_t = ds.isel(valid_time=t_idx)
-
-# New (ep1_full_analysis):
-# Loop over ALL times
-for t_idx in range(len(ds.valid_time)):
-    ds_t = ds.isel(valid_time=t_idx)
-    # Compute instabilities...
-    # Save timeseries
-```
 
 **Usage:**
 ```bash
@@ -163,16 +158,18 @@ python scripts/ep1_full_analysis/step4_compute_instabilities_all_times.py
 **Status:** ✅ COMPLETE
 
 **Functionality:**
-- Creates spatial composites with modified overlays:
-  - **PV plots:** Shaded PV(975 hPa), green contours PV(250 hPa), gray wind vectors at 250 hPa
-  - **EGR plots:** Shaded EGR, black SLP contours, black wind vectors at 975 hPa
-- Time series statistics (mean ± std across all cases)
-- Uses precomputed composites for efficiency
+- Creates 4-panel composite figures (similar to `ep1_ibc_ibt_analysis`)
+- **Panel layout for each domain:**
+  - **(a)** 2D map of ∂η/∂y at Ck level (350 hPa)
+  - **(b)** Zonal mean profile of ∂η/∂y
+  - **(c)** PV at Ca (shaded) + PV at Ck (contours) + 250 hPa winds
+  - **(d)** EGR at Ca (shaded) + SLP contours + Ca-level winds
+- Uses precomputed diagnostics from step3 for efficiency
 
 **Generated figures:**
-- Spatial composites (all domains)
-- Time series diagnostics throughout intensification
-- Mean evolution plots
+- `figures/ep1_full/composite/composite_local.png`
+- `figures/ep1_full/composite/composite_mesoscale.png`
+- `figures/ep1_full/composite/composite_synoptic.png`
 
 **Usage:**
 ```bash
@@ -187,10 +184,11 @@ python scripts/ep1_full_analysis/step5_create_figures.py
 |---------|------------------------|---------------------|
 | **Cyclones** | 94 selected | ALL EP1 |
 | **Spatial filter** | 60°W-45°W, 45°S-30°S | None |
-| **Times analyzed** | Intensification center | ALL times |
+| **Times analyzed** | Intensification center | ALL times (composite) |
 | **SLP** | ❌ No | ✅ Yes |
 | **Parallel download** | ❌ No | ✅ Yes (customizable) |
-| **Precomputed composites** | ⚠️ Partial (exploratory) | ✅ Yes (complete) |
+| **Precomputed diagnostics** | ❌ No | ✅ Yes (step3) |
+| **Figure structure** | ✅ 4-panel composite | ✅ 4-panel composite |
 | **Data** | `data/era5_ep1/` | `data/era5_ep1_full/` |
 | **Results** | `results/ep1_vertical/` | `results/ep1_full/` |
 | **Figures** | `figures/ep1_vertical/` | `figures/ep1_full/` |

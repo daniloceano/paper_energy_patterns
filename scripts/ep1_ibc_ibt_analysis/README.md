@@ -2,12 +2,19 @@
 
 Complete analysis of **ALL** Energy Pattern 1 (EP1) cyclones during their entire intensification phase.
 
-## 📚 Key Documentation
+## 📚 Documentation
 
-- **[README.md](README.md)** (this file) - Pipeline overview and usage
-- **[STATUS.md](STATUS.md)** - Implementation status and features
-- **[VERTICAL_LEVELS.md](VERTICAL_LEVELS.md)** - ⭐ Detailed rationale for pressure level selection
-- **[SCIENTIFIC_NOTES.md](SCIENTIFIC_NOTES.md)** - Physical methodology and interpretation template
+- **[README.md](README.md)** (this file) - Pipeline overview, usage, and execution guide
+- **[SCIENTIFIC_NOTES.md](SCIENTIFIC_NOTES.md)** - Scientific methodology, vertical level rationale, and results template
+
+## ✅ Pipeline Status
+
+**All steps implemented and tested:**
+- ✅ Step 1: Select all EP1 cyclones
+- ✅ Step 2: Parallel ERA5 download (8 levels + omega, respects CDS API limits)
+- ✅ Step 3: Precompute composites and diagnostics (EGR, PV, Rayleigh-Kuo)
+- ✅ Step 4: Create 4-panel composite figures (200 hPa wind overlay)
+- ✅ Patch script: Add 200 hPa + omega to existing files
 
 ## Differences from Previous `ep1_ibc_ibt_analysis` (archived)
 
@@ -167,15 +174,40 @@ python scripts/ep1_vertical_analysis/step5_create_figures.py
 
 **Storage optimization:** Transfer only 10-15% of total data volume while maintaining full analysis capability.
 
-### Detailed Guide
+### Remote Server Tips
 
-**See [REMOTE_EXECUTION_GUIDE.md](REMOTE_EXECUTION_GUIDE.md)** for:
-- Complete nohup command examples with SSH key authentication
-- File transfer with SCP (`transfer_guide_scp.sh`)
-- SSH connection management for master.iag.usp.br
-- Two-window password authentication workflow
-- Troubleshooting common issues
-- Log file monitoring strategies
+**SSH connection:**
+```bash
+ssh -i ~/Documents/Master/id_rsa.danilocs danilocs@master.iag.usp.br
+cd /discos-varal/swell/p1-swell/danilocs/paper_energy_patterns
+conda activate paper_energy
+```
+
+**Background execution with nohup:**
+```bash
+# Download step (6-12 hours)
+nohup python scripts/ep1_ibc_ibt_analysis/step2_download_era5_parallel.py --jobs 2 > download.log 2>&1 &
+
+# Precompute step (3-6 hours)  
+nohup python scripts/ep1_ibc_ibt_analysis/step3_precompute_composites.py --jobs 4 > precompute.log 2>&1 &
+
+# Monitor progress
+tail -f logs/step2_download_*.log
+ps aux | grep step2_download
+```
+
+**File transfer (local machine):**
+```bash
+# Transfer precomputed composites (~100-300 MB)
+scp -i ~/Documents/Master/id_rsa.danilocs -C \
+    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/data/era5_ep1/precomputed_composites_*.nc \
+    ~/Documents/Programs_and_scripts/paper_energy_patterns/data/era5_ep1/
+
+# Then generate figures locally
+python scripts/ep1_ibc_ibt_analysis/step4_create_figures.py
+```
+
+**⚠️ Note:** Transfer only precomputed files (0.5% of total data) instead of raw ERA5 (~50-80 GB)
 
 ## Downloaded Variables
 
@@ -185,27 +217,23 @@ python scripts/ep1_vertical_analysis/step5_create_figures.py
 - **q**: Specific humidity
 - **msl**: Mean Sea Level Pressure
 
-## Pressure Levels
+## Pressure Levels & Variables
 
-**Targeted levels based on Ca/Ck vertical analysis** (from `ep1_ibc_ibt_analysis/step2_vertical_levels_analysis.py`):\n\n| Level Range | Purpose | Diagnostic |
+**8 targeted levels + omega** (optimized based on Ca/Ck vertical analysis):
+
+| Level Range | Purpose | Diagnostic |
 |-------------|---------|------------|
 | **1000, 975, 950 hPa** | EGR at 975 hPa | Maximum Ca (baroclinic) |
-| **400, 350, 300 hPa** | Diagnostics at 350 hPa | Minimum Ck (barotropic) |
-| **250 hPa** | Upper-level jet | Plot overlays |
+| **400, 350, 300 hPa** | PV at 350 hPa | Minimum Ck (barotropic) |
+| **200 hPa** | Dynamic tropopause | PV at 2 PVU surface |
+| **250 hPa** | Upper-level jet | Coupling with surface cyclones |
 
-**Total: 7 pressure levels + SLP**
+**Additional variable:**
+- **Omega (ω)**: Vertical velocity at all levels (required for 200 hPa PV calculation)
 
-> 📖 **See [VERTICAL_LEVELS.md](VERTICAL_LEVELS.md) for detailed rationale and comparison with full tropospheric coverage**
+**Efficiency:** ~50% data reduction (~50-85 GB vs 100-200 GB) while preserving all diagnostic capabilities.
 
-### Rationale
-
-Preliminary analysis of EP1 cyclones identified:
-- **Maximum baroclinic conversion (Ca)**: 975 hPa
-- **Minimum barotropic conversion (Ck)**: 350 hPa
-
-For calculating diagnostics at these levels, we need adjacent levels for vertical derivatives. The 250 hPa level is included for visualization of upper-level jet interactions.
-
-**Efficiency: ~50% reduction in data volume** compared to downloading all 14 standard levels.
+> 📖 Detailed rationale in [SCIENTIFIC_NOTES.md](SCIENTIFIC_NOTES.md) Section 1.2
 
 ## Analysis Domains
 

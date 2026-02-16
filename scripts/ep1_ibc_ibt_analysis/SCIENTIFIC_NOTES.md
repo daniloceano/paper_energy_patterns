@@ -33,28 +33,36 @@ of ALL Energy Pattern 1 (EP1) cyclones during their entire intensification phase
 ### 1.2 Data Sources
 
 **ERA5 Reanalysis Variables:**
-- Pressure levels: u, v, t, z, q
+- Pressure levels: u, v, t, z, q, **omega (ω)**
 - Single level: msl (Mean Sea Level Pressure)
 - Temporal resolution: 6-hourly
 - Spatial resolution: 0.25° × 0.25°
-- **Pressure levels (targeted)**: 1000, 975, 950, 400, 350, 300, 250 hPa
+- **Pressure levels (targeted)**: 1000, 975, 950, 400, 350, 300, 250, **200** hPa
 
-**Vertical Level Selection:**
+**Vertical Level Selection Rationale:**
 
-Preliminary analysis (see `ep1_ibc_ibt_analysis/step2_vertical_levels_analysis.py`) identified critical levels for EP1 cyclones:
+Preliminary vertical profile analysis of ~94 EP1 cyclones from the Zenodo LEC dataset (DOI: 10.5281/zenodo.18243447) identified critical levels where energy conversions are maximized:
 
-- **Maximum Ca (baroclinic conversion)**: 975 hPa
-  - Download levels: 1000, 975, 950 hPa (center + adjacent for vertical derivatives)
+| Energy Term | Level | Physical Interpretation |
+|-------------|-------|------------------------|
+| **Maximum Ca** | **975 hPa** | Peak baroclinic conversion (temperature gradient × vertical wind shear) |
+| **Minimum Ck** | **350 hPa** | Strongest barotropic depletion (vorticity transport by ageostrophic flow) |
+
+**Selected levels and purpose:**
+
+- **1000, 975, 950 hPa**: EGR calculation at 975 hPa (maximum Ca)
+  - Vertical derivatives of u, v, T for $\partial \vec{V}/\partial z$ and Brunt-Väisälä frequency
   
-- **Minimum Ck (barotropic conversion)**: 350 hPa  
-  - Download levels: 400, 350, 300 hPa (center + adjacent for vertical derivatives)
+- **400, 350, 300 hPa**: PV diagnostics at 350 hPa (minimum Ck)
+  - Vertical derivatives for relative vorticity and Rayleigh-Kuo criterion
   
-- **Upper-level jet**: 250 hPa
-  - For PV structure and wind vector overlays in visualization
+- **200 hPa**: Dynamic tropopause (2 PVU surface)
+  - Upper-level PV anomalies and tropopause folding during explosive cyclogenesis
+  - Requires **omega (ω)** for complete PV calculation
+  
+- **250 hPa**: Upper-level jet structure and coupling with surface cyclones
 
-This targeted approach reduces data volume from 14 levels to **7 levels** while preserving all necessary information for instability diagnostics.
-
-> 📖 **Detailed vertical level documentation**: See `VERTICAL_LEVELS.md` in this directory for comprehensive rationale, efficiency comparison, and diagnostic requirements.
+**Efficiency:** This targeted approach reduces data volume by ~50% (from 14 to **8 levels + omega**, ~50-85 GB vs 100-200 GB) while preserving all diagnostic capabilities.
 
 ---
 

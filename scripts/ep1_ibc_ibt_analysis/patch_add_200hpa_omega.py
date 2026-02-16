@@ -55,19 +55,28 @@ def check_file_needs_patch(nc_file):
     
     try:
         with xr.open_dataset(nc_file) as ds:
-            levels = ds['pressure_level'].values
+            # Check pressure levels
+            if 'pressure_level' in ds.coords:
+                levels = ds['pressure_level'].values
+            elif 'level' in ds.coords:
+                levels = ds['level'].values
+            else:
+                logging.warning(f"      No pressure level coordinate found in {nc_file.name}")
+                return True, True  # Assume needs both if no levels found
             
             # Check 200 hPa
-            if 200 not in levels:
+            if 200 not in levels and 20000 not in levels:  # Try both hPa and Pa
                 needs_200hpa = True
             
-            # Check omega  
-            if 'w' not in ds.variables and 'omega' not in ds.variables:
+            # Check omega (try multiple possible variable names)
+            omega_vars = ['w', 'omega', 'vertical_velocity', 'wz']
+            has_omega = any(var in ds.variables for var in omega_vars)
+            if not has_omega:
                 needs_omega = True
                 
         return needs_200hpa, needs_omega
     except Exception as e:
-        logging.error(f"Error checking {nc_file.name}: {e}")
+        logging.error(f"      Error checking {nc_file.name}: {e}")
         return False, False
 
 
@@ -295,14 +304,47 @@ def main():
     logging.info("="*80)
     logging.info("")
     
-    # Load cases
-    cases_file = RESULTS_DIR / "all_ep1_cases.csv"
-    if not cases_file.exists():
-        logging.error(f"Cases file not found: {cases_file}")
+    # Load cases (try multiple possible filenames)
+    possible_files = [
+        RESULTS_DIR / "all_ep1_cases.csv",
+        RESULTS_DIR / "selected_cases.csv",
+        RESULTS_DIR / "critical_levels_all_cases.csv"
+    ]
+    
+    cases_file = None
+    for f in possible_files:
+        if f.exists():
+            cases_file = f
+            break
+    
+    if cases_file is None:
+        logging.error(f"No cases file found. Tried:")
+        for f in possible_files:
+            logging.error(f"  - {f}")
+        logging.error(f"\nAvailable files in {RESULTS_DIR}:")
+        if RESULTS_DIR.exists():
+            for f in RESULTS_DIR.glob("*.csv"):
+                logging.error(f"  - {f.name}")
         return
     
+    logging.info(f"Using cases file: {cases_file.name}")
     cases = pd.read_csv(cases_file)
     logging.info(f"Found {len(cases)} cases")
+    
+    # Validate required columns
+    required_cols = ['track_id', 'intensification_start', 'intensification_end']
+    missing_cols = [col for col in required_cols if col not in cases.columns]
+    if missing_cols:
+        logging.error(f"Missing required columns: {missing_cols}")
+        logging.error(f"Available columns: {list(cases.columns)}")
+        return
+    
+    # Check data directory exists
+    if not DATA_DIR.exists():
+        logging.error(f"Data directory not found: {DATA_DIR}")
+        return
+    
+    logging.info(f"Data directory: {DATA_DIR}")
     
     # Filter to cases with existing files that need patching
     to_patch = []

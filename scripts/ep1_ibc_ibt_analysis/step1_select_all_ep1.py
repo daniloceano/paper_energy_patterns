@@ -15,7 +15,7 @@ Selection Criteria:
 - No spatial restrictions
 
 Output:
-- results/ep1_full/all_ep1_cases.csv: List of all EP1 cyclone track_ids
+- results/ep1_vertical/all_ep1_cases.csv: List of all EP1 cyclone track_ids
 
 Author: Danilo Couto de Souza
 Date: February 2026
@@ -36,9 +36,9 @@ from matplotlib.lines import Line2D
 from scripts.utils.load_data import load_tracks
 
 # Configuration
-OUTPUT_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_full"
+OUTPUT_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_vertical"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-FIGURES_DIR = Path(__file__).resolve().parents[2] / "figures" / "ep1_full" / "tracks"
+FIGURES_DIR = Path(__file__).resolve().parents[2] / "figures" / "ep1_vertical" / "tracks"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 LEC_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 DPI = 300
@@ -282,7 +282,7 @@ def main():
     print("\n" + "=" * 70)
     print("STEP 1 COMPLETE")
     print("=" * 70)
-    print(f"\nNext step: python scripts/ep1_full_analysis/step2_download_era5_parallel.py")
+    print(f"\nNext step: python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py")
 
 
 if __name__ == '__main__':

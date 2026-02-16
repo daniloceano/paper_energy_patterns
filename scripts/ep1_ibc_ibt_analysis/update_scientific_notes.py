@@ -2,7 +2,7 @@
 """
 Auto-populate SCIENTIFIC_NOTES.md with computed analysis results.
 
-This script reads results from the ep1_full_analysis pipeline and fills
+This script reads results from the ep1_vertical_analysis pipeline and fills
 in all placeholder fields in the scientific documentation.
 
 Usage:
@@ -17,7 +17,7 @@ from datetime import datetime
 
 # Directories
 SCRIPT_DIR = Path(__file__).resolve().parent
-RESULTS_DIR = SCRIPT_DIR.parents[1] / "results" / "ep1_full"
+RESULTS_DIR = SCRIPT_DIR.parents[1] / "results" / "ep1_vertical"
 DATA_DIR = SCRIPT_DIR.parents[1] / "data"
 TEMPLATE_PATH = SCRIPT_DIR / "SCIENTIFIC_NOTES.md"
 

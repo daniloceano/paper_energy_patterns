@@ -1,4 +1,4 @@
-# Remote Execution Guide: EP1 Full Analysis
+# Remote Execution Guide: EP1 Analysis
 
 Complete guide for running the analysis pipeline on a remote server (master.iag.usp.br) and transferring only necessary files to local machine for figure generation.
 
@@ -39,16 +39,16 @@ python -c "import multiprocessing; print(f'Available CPUs: {multiprocessing.cpu_
 #### Step 1: Select All EP1 Cyclones (fast, ~1 min)
 
 ```bash
-python scripts/ep1_full_analysis/step1_select_all_ep1.py
+python scripts/ep1_vertical_analysis/step1_select_all_ep1.py
 ```
 
-**Output:** `results/ep1_full/all_ep1_cases.csv`
+**Output:** `results/ep1_vertical/all_ep1_cases.csv`
 
 #### Step 2: Download ERA5 (parallelized, ~6-12 hours)
 
 ```bash
 # Run with nohup for background execution
-nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 2 > download.log 2>&1 &
+nohup python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py --jobs 2 > download.log 2>&1 &
 
 # Monitor progress
 tail -f logs/step2_download_*.log
@@ -59,13 +59,13 @@ ps aux | grep step2_download
 
 **⚠️ CDS API limits:** Use `--jobs 2` (max 4) to avoid "too many requests" errors.
 
-**Output:** `data/era5_ep1_full/*_era5.nc` (~50-80 GB total)
+**Output:** `data/era5_ep1/*_era5.nc` (~50-80 GB total)
 
 #### Step 3: Precompute Composites + Diagnostics (parallelized, ~3-6 hours)
 
 ```bash
 # Run with nohup for background execution
-nohup python scripts/ep1_full_analysis/step3_precompute_composites.py --jobs 4 > precompute.log 2>&1 &
+nohup python scripts/ep1_vertical_analysis/step3_precompute_composites.py --jobs 4 > precompute.log 2>&1 &
 
 # Monitor progress
 tail -f logs/step3_precompute_*.log
@@ -77,9 +77,9 @@ ps aux | grep step3_precompute
 **Parallelization:** Uses domain-level parallelization (3 domains: local, mesoscale, synoptic)
 
 **Output:** 
-- `data/era5_ep1_full/precomputed_composites_local.nc` (~30-100 MB)
-- `data/era5_ep1_full/precomputed_composites_mesoscale.nc` (~30-100 MB)
-- `data/era5_ep1_full/precomputed_composites_synoptic.nc` (~30-100 MB)
+- `data/era5_ep1/precomputed_composites_local.nc` (~30-100 MB)
+- `data/era5_ep1/precomputed_composites_mesoscale.nc` (~30-100 MB)
+- `data/era5_ep1/precomputed_composites_synoptic.nc` (~30-100 MB)
 - **Total: ~100-300 MB** ✅
 
 ### 3. Monitor Progress
@@ -89,13 +89,13 @@ ps aux | grep step3_precompute
 tail -f logs/step3_precompute_*.log
 
 # Check all running Python processes
-ps aux | grep python | grep ep1_full_analysis
+ps aux | grep python | grep ep1_vertical_analysis
 
 # Check disk usage
-du -sh data/era5_ep1_full/
+du -sh data/era5_ep1/
 
 # Verify output files exist
-ls -lh data/era5_ep1_full/precomputed_composites_*.nc
+ls -lh data/era5_ep1/precomputed_composites_*.nc
 ```
 
 ### 4. Troubleshooting
@@ -142,7 +142,7 @@ ls -lt logs/step*.log | head -10
 cd ~/Documents/Programs_and_scripts/paper_energy_patterns
 
 # Run transfer script (prompts for each section)
-bash scripts/ep1_full_analysis/transfer_guide_scp.sh
+bash scripts/ep1_vertical_analysis/transfer_guide_scp.sh
 ```
 
 The script will:
@@ -157,8 +157,8 @@ The script will:
 ```bash
 # Transfer precomputed composites (3 domain files)
 scp -i ~/Documents/Master/id_rsa.danilocs -C \
-    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/data/era5_ep1_full/precomputed_composites_*.nc \
-    ~/Documents/Programs_and_scripts/paper_energy_patterns/data/era5_ep1_full/
+    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/data/era5_ep1/precomputed_composites_*.nc \
+    ~/Documents/Programs_and_scripts/paper_energy_patterns/data/era5_ep1/
 ```
 
 **Note:** `-C` flag enables compression for faster transfer.
@@ -168,7 +168,7 @@ scp -i ~/Documents/Master/id_rsa.danilocs -C \
 ```bash
 # Transfer results metadata (~1-10 MB)
 scp -i ~/Documents/Master/id_rsa.danilocs -C -r \
-    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/results/ep1_full/ \
+    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/results/ep1_vertical/ \
     ~/Documents/Programs_and_scripts/paper_energy_patterns/results/
 
 # Transfer logs (~1-5 MB)
@@ -178,7 +178,7 @@ scp -i ~/Documents/Master/id_rsa.danilocs -C \
 
 # Transfer figures if generated on remote (~5-15 MB)
 scp -i ~/Documents/Master/id_rsa.danilocs -C -r \
-    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/figures/ep1_full/ \
+    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/figures/ep1_vertical/ \
     ~/Documents/Programs_and_scripts/paper_energy_patterns/figures/
 ```
 
@@ -186,7 +186,7 @@ scp -i ~/Documents/Master/id_rsa.danilocs -C -r \
 
 ```bash
 # ❌ DO NOT transfer raw ERA5 files (~50-80 GB)
-# These stay on server: data/era5_ep1_full/*_era5.nc
+# These stay on server: data/era5_ep1/*_era5.nc
 ```
 
 ---
@@ -200,7 +200,7 @@ scp -i ~/Documents/Master/id_rsa.danilocs -C -r \
 cd ~/Documents/Programs_and_scripts/paper_energy_patterns
 
 # Check precomputed composites exist
-ls -lh data/era5_ep1_full/precomputed_composites_*.nc
+ls -lh data/era5_ep1/precomputed_composites_*.nc
 
 # Expected output:
 # precomputed_composites_local.nc      (~30-100 MB)
@@ -215,19 +215,19 @@ ls -lh data/era5_ep1_full/precomputed_composites_*.nc
 conda activate paper_energy
 
 # Run figure generation (~5 minutes)
-python scripts/ep1_full_analysis/step4_create_figures.py
+python scripts/ep1_vertical_analysis/step4_create_figures.py
 ```
 
-**Output:** `figures/ep1_full/composite/composite_{local,mesoscale,synoptic}.png`
+**Output:** `figures/ep1_vertical/composite/composite_{local,mesoscale,synoptic}.png`
 
 ### 3. Check Results
 
 ```bash
 # List generated figures
-ls -lh figures/ep1_full/composite/
+ls -lh figures/ep1_vertical/composite/
 
 # Open figures (macOS)
-open figures/ep1_full/composite/composite_mesoscale.png
+open figures/ep1_vertical/composite/composite_mesoscale.png
 
 # Check log file
 tail -50 logs/step4_figures_*.log
@@ -266,7 +266,7 @@ chmod 600 ~/Documents/Master/id_rsa.danilocs
 ```bash
 # Verify remote path
 ssh -i ~/Documents/Master/id_rsa.danilocs danilocs@master.iag.usp.br \
-    "ls /discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/data/era5_ep1_full/"
+    "ls /discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/data/era5_ep1/"
 ```
 
 **Problem:** Two password prompts appearing
@@ -278,7 +278,7 @@ ssh -i ~/Documents/Master/id_rsa.danilocs danilocs@master.iag.usp.br \
 **Problem:** "File not found: precomputed_composites_*.nc"
 ```bash
 # List what you have
-ls data/era5_ep1_full/precomputed_composites_*.nc
+ls data/era5_ep1/precomputed_composites_*.nc
 
 # If missing, re-transfer from server (see transfer section)
 ```
@@ -286,7 +286,7 @@ ls data/era5_ep1_full/precomputed_composites_*.nc
 **Problem:** "Missing required variables"
 ```bash
 # Check variable contents
-python -c "import xarray as xr; ds = xr.open_dataset('data/era5_ep1_full/precomputed_composites_mesoscale.nc'); print(list(ds.data_vars))"
+python -c "import xarray as xr; ds = xr.open_dataset('data/era5_ep1/precomputed_composites_mesoscale.nc'); print(list(ds.data_vars))"
 
 # If variables are missing, you need to re-run step3 on server
 ```
@@ -303,9 +303,9 @@ cd /discos-varal/swell/p1-swell/danilocs/paper_energy_patterns
 conda activate paper_energy
 
 # 2. Run compute-intensive steps
-python scripts/ep1_full_analysis/step1_select_all_ep1.py
-nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 2 > download.log 2>&1 &
-nohup python scripts/ep1_full_analysis/step3_precompute_composites.py --jobs 4 > precompute.log 2>&1 &
+python scripts/ep1_vertical_analysis/step1_select_all_ep1.py
+nohup python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py --jobs 2 > download.log 2>&1 &
+nohup python scripts/ep1_vertical_analysis/step3_precompute_composites.py --jobs 4 > precompute.log 2>&1 &
 
 # 3. Monitor
 tail -f logs/step3_precompute_*.log
@@ -315,14 +315,14 @@ tail -f logs/step3_precompute_*.log
 ```bash
 # 1. Transfer essential files
 cd ~/Documents/Programs_and_scripts/paper_energy_patterns
-bash scripts/ep1_full_analysis/transfer_guide_scp.sh
+bash scripts/ep1_vertical_analysis/transfer_guide_scp.sh
 
 # 2. Generate figures
 conda activate paper_energy
-python scripts/ep1_full_analysis/step4_create_figures.py
+python scripts/ep1_vertical_analysis/step4_create_figures.py
 
 # 3. View results
-open figures/ep1_full/composite/composite_mesoscale.png
+open figures/ep1_vertical/composite/composite_mesoscale.png
 ```
 
 ---

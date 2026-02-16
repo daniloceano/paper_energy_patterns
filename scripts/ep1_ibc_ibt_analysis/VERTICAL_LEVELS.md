@@ -1,4 +1,4 @@
-# Vertical Level Selection for EP1 Full Analysis
+# Vertical Level Selection for EP1 Analysis
 
 ## Overview
 
@@ -31,17 +31,21 @@ A comprehensive vertical profile analysis of ~94 EP1 cyclones from the Zenodo LE
 | **300** | Lower boundary | Vertical derivative at 350 hPa |
 | **350** | **Minimum Ck** | ✅ **Potential Vorticity diagnostics** |
 | **400** | Upper boundary | Vertical derivative at 350 hPa |
-| **250** | Upper-level jet | ✅ **Plot overlays (PV contours, wind vectors)** |
+| **200** | Upper-level PV | ✅ **Dynamic tropopause identification (2 PVU surface)** |
+| **250** | Upper-level jet | ✅ **Jet stream analysis** |
 | **msl** | Surface pressure | ✅ **Plot overlays (SLP contours)** |
 
-**Total: 7 pressure levels + SLP**
+**Total: 8 pressure levels + SLP**
+
+### Additional Variable
+- **Omega (ω)** at all levels: Vertical velocity in pressure coordinates (Pa/s) for diagnosing vertical motion and computing **PV at 200 hPa** (dynamic tropopause)
 
 ### Comparison with Full Tropospheric Coverage
 
 | Approach | Levels | Data Volume | Justification |
 |----------|--------|-------------|---------------|
 | **Full troposphere** | 14 levels | ~100-200 GB | Downloads unnecessary intermediate levels |
-| **Targeted (this analysis)** | 7 levels | **~50-80 GB** | ✅ Includes only levels needed for diagnostics + visualization |
+| **Targeted (this analysis)** | 8 levels + omega | **~50-85 GB** | ✅ Includes only levels needed for diagnostics + visualization |
 
 **Efficiency gain: ~50% reduction in data volume** ⚡
 
@@ -62,6 +66,12 @@ $$\sigma_{EGR} = 0.31 \frac{|f|}{N} \left|\frac{\partial \vec{V}}{\partial z}\ri
 - Relative vorticity: $\zeta$ from u, v at **350 hPa**
 - Vertical derivative terms from **300, 350, 400 hPa**
 
+**Computation at 200 hPa (dynamic tropopause):**
+- Identifies the **2 PVU surface** (dynamical tropopause definition)
+- Diagnoses upper-level forcing via **PV anomalies**
+- Tracks **tropopause folding events** during explosive cyclogenesis
+- Requires: u, v, T, and **omega (ω)** at **200 hPa**
+
 ### Rayleigh-Kuo Criterion
 
 **Criterion:** $\partial(\zeta + f)/\partial y$ changes sign
@@ -72,17 +82,22 @@ $$\sigma_{EGR} = 0.31 \frac{|f|}{N} \left|\frac{\partial \vec{V}}{\partial z}\ri
 
 ## Visualization Requirements
 
-### Modified Plots (see step5_create_figures.py)
+### Modified Plots (see step4_create_figures.py)
 
 **PV Composite Plots:**
-- Shaded: PV at 975 hPa
-- Green contours: PV at **250 hPa** (upper-level jet signature)
-- Gray vectors: Wind at **250 hPa**
+- Shaded: PV at 975 hPa (low-level baroclinic zone)
+- Green contours: PV at 350 hPa (mid-level barotropic region)
+- Gray vectors: Wind at **200 hPa** (tropopause-level jet)
 
 **EGR Composite Plots:**
 - Shaded: EGR at 975 hPa
 - Black contours: **SLP/MSLP** (cyclone center)
 - Black vectors: Wind at 975 hPa
+
+**Rationale for 200 hPa wind overlay:**
+- Represents the **dynamical tropopause** (~200-250 hPa in extratropics)
+- Better captures **upper-level jet structure** and its coupling with surface cyclones
+- Aligns with **2 PVU surface** (standard tropopause definition)
 
 ## Alternative: Why Not Download All Levels?
 

@@ -21,7 +21,7 @@ This step:
 - Includes SLP (mean sea level pressure)
 
 Output:
-- data/era5_ep1_full/precomputed_composites.nc
+- data/era5_ep1/precomputed_composites.nc
 - logs/step3_precompute_YYYYMMDD_HHMMSS.log
 
 Usage:
@@ -69,8 +69,8 @@ MIN_N_SQUARED = 1e-6     # Minimum N² for stable stratification
 
 # Configuration
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = BASE_DIR / "data" / "era5_ep1_full"
-RESULTS_DIR = BASE_DIR / "results" / "ep1_full"
+DATA_DIR = BASE_DIR / "data" / "era5_ep1"
+RESULTS_DIR = BASE_DIR / "results" / "ep1_vertical"
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -110,8 +110,8 @@ MAX_EGR_DAY = 5.0        # Maximum reasonable EGR (day⁻¹)
 MIN_N_SQUARED = 1e-6     # Minimum N² for stable stratification
 
 # Configuration
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "era5_ep1_full"
-RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_full"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "era5_ep1"
+RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_vertical"
 
 # Domain sizes for composites
 DOMAIN_SIZES = {'local': 5.0, 'mesoscale': 15.0, 'synoptic': 30.0}
@@ -658,9 +658,9 @@ Examples:
     logging.info(f"\nLog file: {log_file}")
     logging.info("\nNext steps:")
     logging.info("  1. Transfer to local machine:")
-    logging.info(f"     rsync -avz user@server:{{remote_path}}/data/era5_ep1_full/precomputed_composites.nc ./data/era5_ep1_full/")
+    logging.info(f"     rsync -avz user@server:{{remote_path}}/data/era5_ep1/precomputed_composites.nc ./data/era5_ep1/")
     logging.info("  2. Generate figures locally:")
-    logging.info("     python scripts/ep1_full_analysis/step5_create_figures.py")
+    logging.info("     python scripts/ep1_vertical_analysis/step5_create_figures.py")
 
 
 if __name__ == '__main__':

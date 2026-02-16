@@ -1,4 +1,4 @@
-# Scientific Notes: EP1 Full Cyclones Analysis
+# Scientific Notes: EP1 Cyclones Analysis
 
 ## Overview
 
@@ -146,7 +146,7 @@ where:
 
 **Mean evolution during intensification phase:**
 
-![EGR Evolution](../figures/ep1_full/timeseries/timeseries_mesoscale.png)
+![EGR Evolution](../figures/ep1_vertical/timeseries/timeseries_mesoscale.png)
 
 **Key findings:**
 - {TEMPORAL_FINDING_1}
@@ -158,14 +158,14 @@ where:
 **Spatial patterns (mesoscale domain):**
 
 **Baroclinic PV:**
-![PV Composite](../figures/ep1_full/composite/pv_composite_mesoscale.png)
+![PV Composite](../figures/ep1_vertical/composite/pv_composite_mesoscale.png)
 
 - **975 hPa PV:** {PV_975_PATTERN}
 - **250 hPa PV:** {PV_250_PATTERN}
 - **Jet structure:** {JET_PATTERN}
 
 **Eady Growth Rate + SLP:**
-![EGR Composite](../figures/ep1_full/composite/egr_composite_mesoscale.png)
+![EGR Composite](../figures/ep1_vertical/composite/egr_composite_mesoscale.png)
 
 - **EGR spatial pattern:** {EGR_PATTERN}
 - **SLP pattern:** {SLP_PATTERN}

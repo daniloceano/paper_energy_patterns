@@ -1,43 +1,36 @@
 """
-Run All EP1 Vertical Analysis Steps
+Run All: Complete EP1 Analysis Pipeline
 
-This script executes all steps of the EP1 vertical structure and instability
-analysis in sequence.
+Executes the complete analysis pipeline for ALL EP1 cyclones.
 
 Steps:
-1. Select EP1 cyclones within specified domain
-2. Analyze LEC data to identify critical pressure levels (Ca max, Ck min)
-3. Download ERA5 data at identified levels (should be run separately on server)
-4. Compute instability diagnostics (EGR and RK)
-5. Consolidate instability results into summary tables
-6. Create publication-quality figures 
-
-EXECUTION ORDER:
-1. step1_select_cases.py
-2. step2_vertical_levels_analysis.py (analyzes existing LEC data)
-3. step3_download_era5.py (run separately on server with CDS API)
-4. step4_compute_instabilities.py
-5. consolidate_instability_results.py
-6. step5_create_figures.py 
-
-NOTE: Step 3 (ERA5 download) should be run separately on a remote server
-      with appropriate resources and CDS API credentials.
+1. Select all EP1 cyclones
+2. Download ERA5 data in parallel (with SLP)
+3. Precompute composites AND diagnostic fields
+4. Create 4-panel composite figures
 
 Author: Danilo Couto de Souza
-Date: January 2026
+Date: February 2026
 """
 
-import subprocess
 import sys
+import subprocess
 from pathlib import Path
 
-def run_step(step_number, script_name, description):
-    """Run a single analysis step."""
+SCRIPT_DIR = Path(__file__).resolve().parent
+
+
+def run_script(script_name, description):
+    """Run a Python script and handle errors."""
     print("\n" + "=" * 80)
-    print(f"RUNNING STEP {step_number}: {description}")
+    print(f"Running: {description}")
     print("=" * 80)
     
-    script_path = Path(__file__).parent / script_name
+    script_path = SCRIPT_DIR / script_name
+    if not script_path.exists():
+        print(f"❌ Script not found: {script_path}")
+        print(f"   This step needs to be implemented or adapted from ep1_ibc_ibt_analysis")
+        return False
     
     try:
         result = subprocess.run(
@@ -45,50 +38,49 @@ def run_step(step_number, script_name, description):
             check=True,
             capture_output=False
         )
-        print(f"\n✅ Step {step_number} completed successfully")
+        print(f"\n✓ {description} completed successfully")
         return True
     except subprocess.CalledProcessError as e:
-        print(f"\n❌ Step {step_number} failed with error code {e.returncode}")
+        print(f"\n❌ {description} failed with error code {e.returncode}")
         return False
 
+
 def main():
-    """Run all analysis steps."""
-    
-    print("\n" + "=" * 80)
-    print("EP1 VERTICAL STRUCTURE AND INSTABILITY ANALYSIS")
     print("=" * 80)
-    print("\nThis script will run all analysis steps in sequence.")
-    print("NOTE: Step 3 (ERA5 download) is skipped by default.")
-    print("      Run step3_download_era5.py separately on a remote server")
-    print("      AFTER step2 identifies the critical pressure levels.\n")
+    print("EP1 FULL ANALYSIS - COMPLETE PIPELINE")
+    print("=" * 80)
+    print("\nThis will run all analysis steps for ALL EP1 cyclones.")
+    print("Estimated time: Several hours (depending on download speed)")
+    print()
     
+    response = input("Continue? (y/n): ")
+    if response.lower() != 'y':
+        print("Aborted.")
+        return
+    
+    # Core steps
     steps = [
-        (1, "step1_select_cases.py", "Select EP1 Cyclones within Specified Domain"),
-        (2, "step2_vertical_levels_analysis.py", "Analyze LEC Data - Identify Critical Levels"),
-        (3, "step3_download_era5.py", "Download ERA5 Data at Identified Levels"), # Note: This step should be run separately
-        (4, "step4_compute_instabilities.py", "Compute Instability Diagnostics (EGR & RK)"),
-        (5, "consolidate_instability_results.py", "Consolidate Results into Summary Tables"),
-        (6, "step5_create_figures.py", "Create Publication-Quality Figures"),
+        ("step1_select_all_ep1.py", "Step 1: Select All EP1 Cyclones"),
+        ("step2_download_era5_parallel.py", "Step 2: Download ERA5 Data (Parallel)"),
+        ("step3_precompute_composites.py", "Step 3: Precompute Composites + Diagnostics"),
+        ("step4_create_figures.py", "Step 4: Create 4-Panel Composite Figures"),
     ]
     
-    success_count = 0
-    
-    for step_number, script_name, description in steps:
-        success = run_step(step_number, script_name, description)
-        if success:
-            success_count += 1
-        else:
-            print(f"\n⚠️  Stopping execution due to failure in step {step_number}")
-            break
+    for script, description in steps:
+        success = run_script(script, description)
+        if not success:
+            print(f"\n⚠️  Pipeline stopped at: {description}")
+            print("Fix the error and re-run this script to continue.")
+            return
     
     print("\n" + "=" * 80)
-    print(f"COMPLETED: {success_count}/{len(steps)} steps successful")
+    print("✓ PIPELINE COMPLETE")
     print("=" * 80)
-    
-    if success_count == len(steps):
-        print("\n✅ All steps completed successfully!")
-    else:
-        print(f"\n⚠️  Analysis incomplete. Please check errors above.")
+    print(f"\nResults saved in:")
+    print(f"  - data/era5_ep1/precomputed_composites_*.nc")
+    print(f"  - results/ep1_vertical/")
+    print(f"  - figures/ep1_vertical/composite/")
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()

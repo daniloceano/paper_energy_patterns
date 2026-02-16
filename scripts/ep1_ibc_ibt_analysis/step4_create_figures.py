@@ -1,12 +1,12 @@
 """
-Step 4: Create Publication-Quality Figures for EP1 Full Analysis
+Step 4: Create Publication-Quality Figures for EP1 Analysis
 
 Creates 4-panel composite figures from precomputed data.
 
 For each domain (5°, 15°, 30°):
 Panel (a): 2D map of ∂η/∂y (Rayleigh-Kuo criterion) at Ck level (350 hPa)
 Panel (b): Zonal mean profile of ∂η/∂y
-Panel (c): PV at Ca level (975 hPa, shaded) + PV at Ck level (350 hPa, contours) + 250 hPa wind vectors
+Panel (c): PV at Ca level (975 hPa, shaded) + PV at Ck level (350 hPa, contours) + 200 hPa wind vectors
 Panel (d): EGR at Ca level (975 hPa, shaded) + SLP contours + wind vectors at Ca level (975 hPa)
 
 Author: Danilo Couto de Souza
@@ -31,9 +31,9 @@ warnings.filterwarnings('ignore')
 
 # Configuration
 BASE_DIR = Path(__file__).resolve().parents[2]
-DATA_DIR = BASE_DIR / "data" / "era5_ep1_full"
-RESULTS_DIR = BASE_DIR / "results" / "ep1_full"
-FIGURES_DIR = BASE_DIR / "figures" / "ep1_full"
+DATA_DIR = BASE_DIR / "data" / "era5_ep1"
+RESULTS_DIR = BASE_DIR / "results" / "ep1_vertical"
+FIGURES_DIR = BASE_DIR / "figures" / "ep1_vertical"
 LOG_DIR = BASE_DIR / "logs"
 LOG_DIR.mkdir(exist_ok=True)
 
@@ -59,6 +59,21 @@ plt.rcParams.update({
     'axes.grid': False,
 })
 
+# Vector plotting parameters: increase size and reduce density
+# `VECTOR_SKIP` is now a mapping per domain name (step for slicing arrays)
+# Smaller step -> denser vectors; larger step -> lower density
+VECTOR_SKIP = {
+    'local': 3,
+    'mesoscale': 8,
+    'synoptic': 16,
+}
+# Scales for arrow length (smaller -> longer arrows on plot)
+VECTOR_SCALE_250 = 250
+VECTOR_SCALE_975 = 100
+# Arrow shaft width
+VECTOR_WIDTH = 0.005
+# Alpha for vectors
+VECTOR_ALPHA = 1
 
 def setup_logging():
     """Setup logging to file and console."""
@@ -142,14 +157,14 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
             
             # Find indices
             idx_975 = np.argmin(np.abs(levels - 975))
-            idx_250 = np.argmin(np.abs(levels - 250))
+            idx_200 = np.argmin(np.abs(levels - 200))
             
             u_975 = u_all[idx_975]
             v_975 = v_all[idx_975]
-            u_250 = u_all[idx_250]
-            v_250 = v_all[idx_250]
+            u_200 = u_all[idx_200]
+            v_200 = v_all[idx_200]
         else:
-            u_975 = v_975 = u_250 = v_250 = None
+            u_975 = v_975 = u_200 = v_200 = None
         
         # Create figure with 4 panels
         fig = plt.figure(figsize=(14, 10))
@@ -192,12 +207,15 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         ax2.set_title('(b) Zonal mean ∂η/∂y')
         
         # ========================================================================
-        # Panel (c): PV at Ca (shaded) + PV at Ck (contours) + 250 hPa winds
+        # Panel (c): PV at Ca (shaded) + PV at Ck (contours) + 200 hPa winds
         # ========================================================================
         ax3 = fig.add_subplot(gs[1, 0])
         
         # Shaded: PV at Ca level (975 hPa)
+        # Note: MetPy returns PV in SI units (K m^2 kg^-1 s^-1)
+        # 1 PVU = 1e-6 K m^2 kg^-1 s^-1, so multiply by 1e6 to get PVU
         pv_ca_pvu = pv_ca * 1e6  # Convert to PVU
+        logging.info(f"   PV at Ca range: [{np.nanmin(pv_ca_pvu):.2f}, {np.nanmax(pv_ca_pvu):.2f}] PVU")
         pv_min = np.nanmin(pv_ca_pvu)
         pv_levels = np.linspace(pv_min, 0, 21)
         
@@ -205,19 +223,20 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         
         # Contours: PV at Ck level (350 hPa) - green
         pv_ck_pvu = pv_ck * 1e6
+        logging.info(f"   PV at Ck range: [{np.nanmin(pv_ck_pvu):.2f}, {np.nanmax(pv_ck_pvu):.2f}] PVU")
         pv_ck_levels = np.linspace(np.nanpercentile(pv_ck_pvu, 10), np.nanpercentile(pv_ck_pvu, 90), 8)
         cs_pv = ax3.contour(x, y, pv_ck_pvu, levels=pv_ck_levels, colors='green', linewidths=1.3, alpha=0.8)
         ax3.clabel(cs_pv, inline=1, fontsize=8, fmt='%1.0f')
         
-        # Vectors: 250 hPa winds (gray)
-        if u_250 is not None and v_250 is not None:
-            skip = max(1, len(x) // 15)
-            ax3.quiver(x[::skip], y[::skip], u_250[::skip, ::skip], v_250[::skip, ::skip],
-                      color='gray', alpha=0.6, scale=400, width=0.003)
+        # Vectors: 200 hPa winds (gray)
+        if u_200 is not None and v_200 is not None:
+            skip = max(1, VECTOR_SKIP.get(domain_name, 12))
+            ax3.quiver(x[::skip], y[::skip], u_200[::skip, ::skip], v_200[::skip, ::skip],
+                      color='grey', alpha=VECTOR_ALPHA, scale=VECTOR_SCALE_250, width=VECTOR_WIDTH)
         
         ax3.set_xlabel('Relative Longitude (°)')
         ax3.set_ylabel('Relative Latitude (°)')
-        ax3.set_title('(c) PV at Ca (shaded), PV at Ck (green), 250 hPa wind (vectors)')
+        ax3.set_title('(c) PV at Ca (shaded), PV at Ck (green), 200 hPa wind (vectors)')
         ax3.set_aspect('equal')
         
         # Colorbar
@@ -254,9 +273,9 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         
         # Vectors: 975 hPa winds (black)
         if u_975 is not None and v_975 is not None:
-            skip = max(1, len(x) // 15)
+            skip = max(1, VECTOR_SKIP.get(domain_name, 12))
             ax4.quiver(x[::skip], y[::skip], u_975[::skip, ::skip], v_975[::skip, ::skip],
-                      color='black', alpha=0.7, scale=300, width=0.003)
+                      color='black', alpha=VECTOR_ALPHA, scale=VECTOR_SCALE_975, width=VECTOR_WIDTH)
         
         ax4.set_xlabel('Relative Longitude (°)')
         ax4.set_ylabel('Relative Latitude (°)')

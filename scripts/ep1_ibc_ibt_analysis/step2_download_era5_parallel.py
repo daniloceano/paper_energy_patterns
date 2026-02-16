@@ -46,8 +46,8 @@ import logging
 from scripts.utils.load_data import load_tracks
 
 # Configuration
-DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "era5_ep1_full"
-RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_full"
+DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "era5_ep1"
+RESULTS_DIR = Path(__file__).resolve().parents[2] / "results" / "ep1_vertical"
 LEC_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 LOG_DIR = Path(__file__).resolve().parents[2] / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -59,7 +59,7 @@ MAX_PARALLEL_JOBS = 10  # Conservative limit for CDS API
 
 # Variables to download (pressure levels)
 PRESSURE_VARS = ['u_component_of_wind', 'v_component_of_wind', 'temperature', 
-                 'geopotential', 'specific_humidity']
+                 'geopotential', 'specific_humidity', 'vertical_velocity']
 
 # Single level variables
 SINGLE_LEVEL_VARS = ['mean_sea_level_pressure']
@@ -68,11 +68,11 @@ SINGLE_LEVEL_VARS = ['mean_sea_level_pressure']
 # From step2_vertical_levels_analysis.py:
 #   - Maximum Ca (baroclinic): 975 hPa → need 1000, 975, 950 for EGR calculation
 #   - Minimum Ck (barotropic): 350 hPa → need 400, 350, 300 for diagnostics
-#   - Upper-level jet: 250 hPa → for PV and wind vector overlays in plots
+#   - Upper-level jet: 200 hPa → for PV and wind vector overlays in plots (updated from 250)
 PRESSURE_LEVELS = [
     1000, 975, 950,  # EGR calculation at 975 hPa (max Ca level)
     300, 350, 400,   # Diagnostics at 350 hPa (min Ck level)
-    250              # Upper-level jet for plot overlays
+    200, 250         # Upper-level jet for plot overlays (200=new PV level, 250=backup)
 ]
 
 # Domain buffer (degrees) - allows 30°×30° analysis
@@ -438,7 +438,7 @@ def main():
     
     if len(to_download) == 0:
         logging.info("\n   ✓ All files are valid and complete!")
-        logging.info(f"\n   Next step: python scripts/ep1_full_analysis/step3_precompute_composites.py")
+        logging.info(f"\n   Next step: python scripts/ep1_vertical_analysis/step3_precompute_composites.py")
         return
     
     logging.info(f"\n   Files to download: {len(to_download)}/{len(cases)}")
@@ -490,7 +490,7 @@ def main():
     
     if len(valid_files) + successful == len(cases):
         logging.info(f"\n  ✓ All files ready!")
-        logging.info(f"  Next step: python scripts/ep1_full_analysis/step3_precompute_composites.py")
+        logging.info(f"  Next step: python scripts/ep1_vertical_analysis/step3_precompute_composites.py")
     elif failed > 0:
         logging.warning(f"\n  ⚠️  Some downloads failed. Re-run this script to retry.")
         logging.warning(f"     If failures persist due to CDS API limits, try: --jobs 2")

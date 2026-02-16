@@ -1,4 +1,4 @@
-# EP1 Full Analysis - Implementation Status
+# EP1 Analysis - Implementation Status
 
 **Date:** February 13, 2026  
 **Goal:** Complete analysis of ALL EP1 cyclones with all intensification times
@@ -6,10 +6,10 @@
 ## ✅ Implemented
 
 ### Directory Structure
-- ✅ `scripts/ep1_full_analysis/` - Analysis scripts
-- ✅ `data/era5_ep1_full/` - Downloaded ERA5 data
-- ✅ `results/ep1_full/` - Analysis results
-- ✅ `figures/ep1_full/` - Generated figures
+- ✅ `scripts/ep1_vertical_analysis/` - Analysis scripts
+- ✅ `data/era5_ep1/` - Downloaded ERA5 data
+- ✅ `results/ep1_vertical/` - Analysis results
+- ✅ `figures/ep1_vertical/` - Generated figures
 
 ### Complete Scripts
 
@@ -23,12 +23,12 @@
 - Extracts intensification phase information
 
 **Output:**
-- `results/ep1_full/all_ep1_cases.csv`
-- `figures/ep1_full/tracks/all_ep1_tracks_overview.png`
+- `results/ep1_vertical/all_ep1_cases.csv`
+- `figures/ep1_vertical/tracks/all_ep1_tracks_overview.png`
 
 **Usage:**
 ```bash
-python scripts/ep1_full_analysis/step1_select_all_ep1.py
+python scripts/ep1_vertical_analysis/step1_select_all_ep1.py
 ```
 
 ---
@@ -57,19 +57,19 @@ Total: 7 levels (reduced from 14 for efficiency)
 ```
 
 **Output:**
-- `data/era5_ep1_full/{track_id}_era5.nc` (merged pressure + single-level)
-- `data/era5_ep1_full/{track_id}_metadata.csv`
+- `data/era5_ep1/{track_id}_era5.nc` (merged pressure + single-level)
+- `data/era5_ep1/{track_id}_metadata.csv`
 
 **Usage:**
 ```bash
 # Default: 2 parallel jobs (CDS API safe limit)
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py
+python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py
 
 # Custom: specify number of jobs (max 2-4 recommended)
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 2
+python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py --jobs 2
 
 # Background execution with nohup
-nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py &
+nohup python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py &
 # Logs saved to: logs/step2_download_YYYYMMDD_HHMMSS.log
 ```
 
@@ -94,7 +94,7 @@ nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py &
 - Domain-specific dimensions (avoids conflicts)
 
 **Output:**
-- `data/era5_ep1_full/precomputed_composites.nc` (~5-10 GB estimated)
+- `data/era5_ep1/precomputed_composites.nc` (~5-10 GB estimated)
 
 **Domains:**
 - Local: 5° × 5°
@@ -103,7 +103,7 @@ nohup python scripts/ep1_full_analysis/step2_download_era5_parallel.py &
 
 **Usage:**
 ```bash
-python scripts/ep1_full_analysis/step3_precompute_composites.py
+python scripts/ep1_vertical_analysis/step3_precompute_composites.py
 ```
 
 ---
@@ -118,14 +118,14 @@ python scripts/ep1_full_analysis/step3_precompute_composites.py
 
 **Usage:**
 ```bash
-python scripts/ep1_full_analysis/run_all.py
+python scripts/ep1_vertical_analysis/run_all.py
 ```
 
 ---
 
 #### ✅ `README.md`
 Complete documentation explaining:
-- Differences between `ep1_ibc_ibt_analysis` and `ep1_full_analysis`
+- Differences between `ep1_ibc_ibt_analysis` and `ep1_vertical_analysis`
 - Pipeline structure (4-panel composite figures)
 - Variables, pressure levels, and diagnostic fields
 - Resource usage (parallelization, storage)
@@ -145,11 +145,11 @@ Complete documentation explaining:
   - Rayleigh-Kuo criterion
   - Eady Growth Rate
   - Baroclinic PV
-- Output: `results/ep1_full/instabilities/{track_id}_timeseries.nc`
+- Output: `results/ep1_vertical/instabilities/{track_id}_timeseries.nc`
 
 **Usage:**
 ```bash
-python scripts/ep1_full_analysis/step4_compute_instabilities_all_times.py
+python scripts/ep1_vertical_analysis/step4_compute_instabilities_all_times.py
 ```
 
 ---
@@ -167,20 +167,20 @@ python scripts/ep1_full_analysis/step4_compute_instabilities_all_times.py
 - Uses precomputed diagnostics from step3 for efficiency
 
 **Generated figures:**
-- `figures/ep1_full/composite/composite_local.png`
-- `figures/ep1_full/composite/composite_mesoscale.png`
-- `figures/ep1_full/composite/composite_synoptic.png`
+- `figures/ep1_vertical/composite/composite_local.png`
+- `figures/ep1_vertical/composite/composite_mesoscale.png`
+- `figures/ep1_vertical/composite/composite_synoptic.png`
 
 **Usage:**
 ```bash
-python scripts/ep1_full_analysis/step5_create_figures.py
+python scripts/ep1_vertical_analysis/step5_create_figures.py
 ```
 
 ---
 
-## 📊 Comparison: ep1_ibc_ibt_analysis vs ep1_full_analysis
+## 📊 Comparison: ep1_ibc_ibt_analysis vs ep1_vertical_analysis
 
-| Aspect | `ep1_ibc_ibt_analysis` | `ep1_full_analysis` |
+| Aspect | `ep1_ibc_ibt_analysis` | `ep1_vertical_analysis` |
 |---------|------------------------|---------------------|
 | **Cyclones** | 94 selected | ALL EP1 |
 | **Spatial filter** | 60°W-45°W, 45°S-30°S | None |
@@ -189,9 +189,9 @@ python scripts/ep1_full_analysis/step5_create_figures.py
 | **Parallel download** | ❌ No | ✅ Yes (customizable) |
 | **Precomputed diagnostics** | ❌ No | ✅ Yes (step3) |
 | **Figure structure** | ✅ 4-panel composite | ✅ 4-panel composite |
-| **Data** | `data/era5_ep1/` | `data/era5_ep1_full/` |
-| **Results** | `results/ep1_vertical/` | `results/ep1_full/` |
-| **Figures** | `figures/ep1_vertical/` | `figures/ep1_full/` |
+| **Data** | `data/era5_ep1/` | `data/era5_ep1/` |
+| **Results** | `results/ep1_vertical/` | `results/ep1_vertical/` |
+| **Figures** | `figures/ep1_vertical/` | `figures/ep1_vertical/` |
 
 ---
 
@@ -201,29 +201,29 @@ python scripts/ep1_full_analysis/step5_create_figures.py
 
 ```bash
 # Run all steps automatically
-python scripts/ep1_full_analysis/run_all.py
+python scripts/ep1_vertical_analysis/run_all.py
 ```
 
 ### Individual steps:
 
 ```bash
 # 1. Select all EP1 cyclones
-python scripts/ep1_full_analysis/step1_select_all_ep1.py
+python scripts/ep1_vertical_analysis/step1_select_all_ep1.py
 
 # 2. Download ERA5 (parallel, e.g., 8 workers)
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 8
+python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py --jobs 8
 
 # 3. Precompute composites
-python scripts/ep1_full_analysis/step3_precompute_composites.py
+python scripts/ep1_vertical_analysis/step3_precompute_composites.py
 
 # 4. Compute instabilities for all timesteps
-python scripts/ep1_full_analysis/step4_compute_instabilities_all_times.py
+python scripts/ep1_vertical_analysis/step4_compute_instabilities_all_times.py
 
 # 5. Create figures
-python scripts/ep1_full_analysis/step5_create_figures.py
+python scripts/ep1_vertical_analysis/step5_create_figures.py
 
 # 6. Generate scientific documentation
-python scripts/ep1_full_analysis/update_scientific_notes.py
+python scripts/ep1_vertical_analysis/update_scientific_notes.py
 ```
 
 ---
@@ -248,10 +248,10 @@ python scripts/ep1_full_analysis/update_scientific_notes.py
 python -c "import multiprocessing as mp; print(mp.cpu_count())"
 
 # Use all minus 1
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py --jobs 15
+python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py --jobs 15
 
 # Or use default (auto-detects)
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py
+python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py
 ```
 
 ### Screen session (to avoid losing progress if disconnected):
@@ -261,7 +261,7 @@ python scripts/ep1_full_analysis/step2_download_era5_parallel.py
 screen -S ep1_download
 
 # Run download
-python scripts/ep1_full_analysis/step2_download_era5_parallel.py
+python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py
 
 # Detach: Ctrl+A, D
 # Reattach: screen -r ep1_download

@@ -29,6 +29,9 @@ data/era5_ep1
 data/ck_analysis/
 data/era5_ep1_OLD*
 
+# Exception: allow lightweight precomputed composites (~100-300 MB total)
+!data/era5_ep1/precomputed_composites_*.nc
+
 # Keep data directory structure
 !data/README.md
 !data/.gitkeep

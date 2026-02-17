@@ -327,6 +327,7 @@ def compute_composites_for_domain(cases, domain_name):
     deta_dy_zonal_list = []
     pv_ca_list = []  # PV at Ca level (975 hPa)
     pv_ck_list = []  # PV at Ck level (350 hPa)
+    pv_200_list = []  # PV at 200 hPa (dynamic tropopause)
     
     logging.info(f"\n   Processing {domain_name} domain ({domain_size}°)...")
     
@@ -382,10 +383,11 @@ def compute_composites_for_domain(cases, domain_name):
             lon_1d = ds_mean.longitude.values
             lat_2d, lon_2d = np.meshgrid(lat_1d, lon_1d, indexing='ij')
             
-            # Find levels for Ca (975 hPa) and Ck (350 hPa)
+            # Find levels for Ca (975 hPa), Ck (350 hPa), and 200 hPa
             idx_975 = np.argmin(np.abs(levels - 975))
             idx_350 = np.argmin(np.abs(levels - 350))
             idx_250 = np.argmin(np.abs(levels - 250))
+            idx_200 = np.argmin(np.abs(levels - 200))
             
             # --- COMPUTE EGR at Ca level (975 hPa) ---
             # Need 3 levels: 950, 975, 1000 hPa
@@ -437,6 +439,30 @@ def compute_composites_for_domain(cases, domain_name):
             pv_ck = compute_baroclinic_pv(u_pv_ck, v_pv_ck, T_pv_ck, q_pv_ck, p_pv_ck, z_pv_ck, lat_2d, lon_2d)
             pv_ck_list.append(pv_ck)
             
+            # --- COMPUTE PV at 200 hPa (dynamic tropopause) ---
+            # Need 3 levels around 200 hPa: 250, 200, and next lower level
+            # Try to find appropriate levels
+            available_levels = sorted(levels, reverse=True)  # Descending order
+            idx_lower_200 = None
+            for i, lev in enumerate(available_levels):
+                if lev < 200 and lev >= 150:  # Look for level between 150-200 hPa
+                    idx_lower_200 = np.argmin(np.abs(levels - lev))
+                    break
+            
+            if idx_lower_200 is None:
+                # Fallback: use 300 hPa if no level between 150-200
+                idx_lower_200 = idx_300
+            
+            u_pv_200 = np.array([u[idx_250], u[idx_200], u[idx_lower_200]])
+            v_pv_200 = np.array([v[idx_250], v[idx_200], v[idx_lower_200]])
+            T_pv_200 = np.array([T[idx_250], T[idx_200], T[idx_lower_200]])
+            q_pv_200 = np.array([q[idx_250], q[idx_200], q[idx_lower_200]])
+            p_pv_200 = np.array([levels[idx_250], levels[idx_200], levels[idx_lower_200]])
+            z_pv_200 = np.array([z[idx_250], z[idx_200], z[idx_lower_200]])
+            
+            pv_200 = compute_baroclinic_pv(u_pv_200, v_pv_200, T_pv_200, q_pv_200, p_pv_200, z_pv_200, lat_2d, lon_2d)
+            pv_200_list.append(pv_200)
+            
             ds.close()
             processed += 1
             
@@ -462,6 +488,7 @@ def compute_composites_for_domain(cases, domain_name):
     deta_dy_zonal_mean = np.nanmean(np.stack(deta_dy_zonal_list), axis=0)
     pv_ca_mean = np.nanmean(np.stack(pv_ca_list), axis=0)
     pv_ck_mean = np.nanmean(np.stack(pv_ck_list), axis=0)
+    pv_200_mean = np.nanmean(np.stack(pv_200_list), axis=0)
     
     # Create output dataset with domain-specific dimensions
     ds_out = xr.Dataset()
@@ -510,6 +537,7 @@ def compute_composites_for_domain(cases, domain_name):
         ds_out[f'{domain_name}_deta_dy_zonal'] = (y_dim, deta_dy_zonal_mean)
         ds_out[f'{domain_name}_pv_ca'] = ((y_dim, x_dim), pv_ca_mean)
         ds_out[f'{domain_name}_pv_ck'] = ((y_dim, x_dim), pv_ck_mean)
+        ds_out[f'{domain_name}_pv_200'] = ((y_dim, x_dim), pv_200_mean)
         
         # Assign coordinates
         ds_out = ds_out.assign_coords({x_dim: x, y_dim: y, level_dim: levels})
@@ -532,6 +560,7 @@ def compute_composites_for_domain(cases, domain_name):
         ds_out[f'{domain_name}_deta_dy_zonal'] = (y_dim, deta_dy_zonal_mean)
         ds_out[f'{domain_name}_pv_ca'] = ((y_dim, x_dim), pv_ca_mean)
         ds_out[f'{domain_name}_pv_ck'] = ((y_dim, x_dim), pv_ck_mean)
+        ds_out[f'{domain_name}_pv_200'] = ((y_dim, x_dim), pv_200_mean)
         
         ds_out = ds_out.assign_coords({x_dim: x, y_dim: y})
     
@@ -651,6 +680,7 @@ Examples:
     logging.info("   - ∂η/∂y zonal mean profile")
     logging.info("   - PV at Ca level (975 hPa)")
     logging.info("   - PV at Ck level (350 hPa)")
+    logging.info("   - PV at 200 hPa (dynamic tropopause)")
     
     logging.info("\n" + "=" * 80)
     logging.info("✓ STEP 3 COMPLETE")

@@ -143,7 +143,7 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         deta_dy = ds_domain[f'{domain_name}_deta_dy'].values  # 2D at Ck level
         deta_dy_zonal = ds_domain[f'{domain_name}_deta_dy_zonal'].values  # 1D zonal mean
         pv_ca = ds_domain[f'{domain_name}_pv_ca'].values  # 2D at Ca level (975 hPa)
-        pv_ck = ds_domain[f'{domain_name}_pv_ck'].values  # 2D at Ck level (350 hPa)
+        pv_200 = ds_domain[f'{domain_name}_pv_200'].values  # 2D at 200 hPa (tropopause)
         egr = ds_domain[f'{domain_name}_egr'].values  # 2D at Ca level (975 hPa)
         
         # Get SLP if available
@@ -207,7 +207,7 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         ax2.set_title('(b) Zonal mean ∂η/∂y')
         
         # ========================================================================
-        # Panel (c): PV at Ca (shaded) + PV at Ck (contours) + 200 hPa winds
+        # Panel (c): PV at Ca (shaded) + PV at 200 hPa (contours) + 200 hPa winds
         # ========================================================================
         ax3 = fig.add_subplot(gs[1, 0])
         
@@ -221,12 +221,17 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         
         im3 = ax3.contourf(x, y, pv_ca_pvu, levels=pv_levels, cmap='RdYlBu_r', extend='both')
         
-        # Contours: PV at Ck level (350 hPa) - green
-        pv_ck_pvu = pv_ck * 1e6
-        logging.info(f"   PV at Ck range: [{np.nanmin(pv_ck_pvu):.2f}, {np.nanmax(pv_ck_pvu):.2f}] PVU")
-        pv_ck_levels = np.linspace(np.nanpercentile(pv_ck_pvu, 10), np.nanpercentile(pv_ck_pvu, 90), 8)
-        cs_pv = ax3.contour(x, y, pv_ck_pvu, levels=pv_ck_levels, colors='green', linewidths=1.3, alpha=0.8)
+        # Contours: PV at 200 hPa (tropopause level) - green
+        # 2 PVU is the dynamical tropopause definition
+        pv_200_pvu = pv_200 * 1e6
+        logging.info(f"   PV at 200 hPa range: [{np.nanmin(pv_200_pvu):.2f}, {np.nanmax(pv_200_pvu):.2f}] PVU")
+        pv_200_levels = np.linspace(np.nanpercentile(pv_200_pvu, 10), np.nanpercentile(pv_200_pvu, 90), 8)
+        cs_pv = ax3.contour(x, y, pv_200_pvu, levels=pv_200_levels, colors='green', linewidths=1.3, alpha=0.8)
         ax3.clabel(cs_pv, inline=1, fontsize=8, fmt='%1.0f')
+        
+        # Add 2 PVU contour (tropopause) in black
+        cs_trop = ax3.contour(x, y, pv_200_pvu, levels=[2.0], colors='black', linewidths=2.0, linestyles='--')
+        ax3.clabel(cs_trop, inline=1, fontsize=9, fmt='%1.0f PVU')
         
         # Vectors: 200 hPa winds (gray)
         if u_200 is not None and v_200 is not None:
@@ -236,7 +241,7 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         
         ax3.set_xlabel('Relative Longitude (°)')
         ax3.set_ylabel('Relative Latitude (°)')
-        ax3.set_title('(c) PV at Ca (shaded), PV at Ck (green), 200 hPa wind (vectors)')
+        ax3.set_title('(c) PV at Ca (shaded), PV at 200 hPa (green), 2 PVU (dashed)')
         ax3.set_aspect('equal')
         
         # Colorbar
@@ -305,6 +310,120 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         traceback.print_exc()
 
 
+def create_tropopause_figure(ds_domain, domain_name, output_dir):
+    """
+    Create composite figure showing upper-level dynamics:
+    - Omega (vertical velocity) at 200 hPa (shaded)
+    - PV at 200 hPa (contours, with 2 PVU tropopause)
+    - Wind vectors at 250 hPa (jet level)
+    
+    This figure highlights the coupling between upper-level forcing (PV),
+    vertical motion (omega), and the jet stream structure.
+    """
+    domain_size = DOMAIN_SIZES[domain_name]
+    logging.info(f"  Creating tropopause figure for {domain_name}...")
+    
+    try:
+        # Load data
+        y_dim = f'y_{domain_name}'
+        x_dim = f'x_{domain_name}'
+        level_dim = f'level_{domain_name}'
+        
+        x = ds_domain[x_dim].values
+        y = ds_domain[y_dim].values
+        
+        # Get PV at 200 hPa
+        pv_200 = ds_domain[f'{domain_name}_pv_200'].values
+        pv_200_pvu = pv_200 * 1e6  # Convert to PVU
+        
+        # Get omega and winds at specific levels
+        if level_dim in ds_domain.coords:
+            levels = ds_domain[level_dim].values
+            
+            # Check if omega (w) exists
+            if f'{domain_name}_w' not in ds_domain:
+                logging.warning(f"    ⚠️  Omega (w) not found for {domain_name}, skipping tropopause figure")
+                return
+            
+            w_all = ds_domain[f'{domain_name}_w'].values
+            u_all = ds_domain[f'{domain_name}_u'].values
+            v_all = ds_domain[f'{domain_name}_v'].values
+            
+            # Find levels
+            idx_200 = np.argmin(np.abs(levels - 200))
+            idx_250 = np.argmin(np.abs(levels - 250))
+            
+            omega_200 = w_all[idx_200]  # Pa/s
+            u_250 = u_all[idx_250]
+            v_250 = v_all[idx_250]
+        else:
+            logging.warning(f"    ⚠️  No pressure levels found for {domain_name}, skipping tropopause figure")
+            return
+        
+        # Create single-panel figure
+        fig = plt.figure(figsize=(10, 8))
+        ax = fig.add_subplot(111)
+        
+        # Shaded: Omega at 200 hPa (Pa/s)
+        # Convert to hPa/h for easier interpretation: 1 Pa/s = 36 hPa/h
+        omega_hpa_h = omega_200 * 36.0
+        
+        # Symmetric scale around zero
+        vmax = np.nanpercentile(np.abs(omega_hpa_h), 95)
+        omega_levels = np.linspace(-vmax, vmax, 21)
+        
+        im = ax.contourf(x, y, omega_hpa_h, levels=omega_levels, 
+                        cmap='RdBu_r', extend='both')
+        
+        # Contours: PV at 200 hPa
+        pv_levels = np.linspace(np.nanpercentile(pv_200_pvu, 10), 
+                               np.nanpercentile(pv_200_pvu, 90), 10)
+        cs_pv = ax.contour(x, y, pv_200_pvu, levels=pv_levels, 
+                          colors='green', linewidths=1.2, alpha=0.7)
+        ax.clabel(cs_pv, inline=1, fontsize=8, fmt='%1.1f')
+        
+        # 2 PVU contour (dynamical tropopause) - thick black dashed
+        cs_trop = ax.contour(x, y, pv_200_pvu, levels=[2.0], 
+                            colors='black', linewidths=2.5, linestyles='--')
+        ax.clabel(cs_trop, inline=1, fontsize=10, fmt='%1.0f PVU', fontweight='bold')
+        
+        # Wind vectors at 250 hPa (jet level)
+        skip = max(1, VECTOR_SKIP.get(domain_name, 12))
+        ax.quiver(x[::skip], y[::skip], u_250[::skip, ::skip], v_250[::skip, ::skip],
+                 color='black', alpha=VECTOR_ALPHA, scale=VECTOR_SCALE_250, width=VECTOR_WIDTH)
+        
+        ax.set_xlabel('Relative Longitude (°)', fontsize=11)
+        ax.set_ylabel('Relative Latitude (°)', fontsize=11)
+        ax.set_title(f'Upper-Level Dynamics - {domain_name.capitalize()} Domain ({domain_size}°)\\n' +
+                    'Omega at 200 hPa (shaded), PV at 200 hPa (green), 2 PVU (dashed), 250 hPa wind (vectors)',
+                    fontsize=12, fontweight='bold')
+        ax.set_aspect('equal')
+        
+        # Colorbar
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes('right', size='4%', pad=0.1)
+        cbar = fig.colorbar(im, cax=cax)
+        cbar.set_label('Omega at 200 hPa (hPa h$^{-1}$)', fontsize=10)
+        
+        # Add annotation
+        ax.text(0.02, 0.98, 
+               'Negative omega = upward motion',
+               transform=ax.transAxes, fontsize=9,
+               verticalalignment='top',
+               bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+        
+        # Save
+        out_file = output_dir / f'tropopause_{domain_name}.png'
+        fig.savefig(out_file, dpi=DPI, bbox_inches='tight')
+        plt.close(fig)
+        logging.info(f"    ✓ Saved: {out_file.name}")
+        
+    except Exception as e:
+        logging.error(f"    ❌ Error creating tropopause figure: {e}")
+        import traceback
+        traceback.print_exc()
+
+
 def main():
     """Main execution function."""
     
@@ -325,7 +444,7 @@ def main():
     logging.info("\nVerifying data integrity...")
     for domain in DOMAIN_SIZES.keys():
         ds = domain_datasets[domain]
-        required_vars = [f'{domain}_egr', f'{domain}_deta_dy', f'{domain}_pv_ca', f'{domain}_pv_ck']
+        required_vars = [f'{domain}_egr', f'{domain}_deta_dy', f'{domain}_pv_ca', f'{domain}_pv_200']
         missing = [v for v in required_vars if v not in ds]
         
         if missing:
@@ -342,6 +461,16 @@ def main():
     for domain_name in DOMAIN_SIZES.keys():
         logging.info(f"\nDomain: {domain_name}")
         create_composite_figure(domain_name, domain_datasets[domain_name], composite_dir)
+    
+    # Create tropopause figures (omega + PV@200 + wind@250)
+    logging.info("\nCreating tropopause-level figures...")
+    
+    for domain_name in DOMAIN_SIZES.keys():
+        logging.info(f"\nDomain: {domain_name}")
+        create_tropopause_figure(domain_datasets[domain_name], domain_name, composite_dir)
+    
+    # Close datasets
+    for domain_name in DOMAIN_SIZES.keys():
         domain_datasets[domain_name].close()
     
     logging.info("\n" + "=" * 80)
@@ -350,10 +479,14 @@ def main():
     logging.info(f"\nFigures saved in: {composite_dir}")
     logging.info("\nGenerated figures:")
     for domain in DOMAIN_SIZES.keys():
-        fig_file = composite_dir / f"composite_{domain}.png"
-        if fig_file.exists():
-            size_mb = fig_file.stat().st_size / 1024**2
+        comp_file = composite_dir / f"composite_{domain}.png"
+        trop_file = composite_dir / f"tropopause_{domain}.png"
+        if comp_file.exists():
+            size_mb = comp_file.stat().st_size / 1024**2
             logging.info(f"  ✓ composite_{domain}.png ({size_mb:.2f} MB)")
+        if trop_file.exists():
+            size_mb = trop_file.stat().st_size / 1024**2
+            logging.info(f"  ✓ tropopause_{domain}.png ({size_mb:.2f} MB)")
     
     logging.info(f"\nLog file: {log_file}")
 

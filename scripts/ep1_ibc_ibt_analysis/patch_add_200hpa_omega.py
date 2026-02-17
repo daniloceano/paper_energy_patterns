@@ -175,34 +175,44 @@ def download_omega_data(track_id, start_time, end_time, domain):
 def merge_patch_data(original_file, patch_200hpa, patch_omega):
     """Merge patch data into original file."""
     
+    backup_file = None
     try:
-        # Load original
+        # Load original (load into memory to avoid lazy loading issues)
         ds_original = xr.open_dataset(original_file)
+        ds_original.load()  # Force load into memory
         
         # Merge 200 hPa if available
         if patch_200hpa and patch_200hpa.exists():
             ds_200 = xr.open_dataset(patch_200hpa)
+            ds_200.load()  # Force load into memory
             ds_original = xr.concat([ds_original, ds_200], dim='pressure_level')
             ds_200.close()
-            patch_200hpa.unlink()  # Clean up
         
         # Merge omega if available  
         if patch_omega and patch_omega.exists():
             ds_omega = xr.open_dataset(patch_omega)
+            ds_omega.load()  # Force load into memory
             # Add omega as new variable
             ds_original['w'] = ds_omega['w']
             ds_omega.close()
-            patch_omega.unlink()  # Clean up
         
-        # Save merged file
+        # Create backup before overwriting
         backup_file = original_file.parent / f"{original_file.stem}_backup.nc"
         original_file.rename(backup_file)
         
+        # Save merged file
         ds_original.to_netcdf(original_file)
         ds_original.close()
         
+        # Clean up patch files AFTER successful save
+        if patch_200hpa and patch_200hpa.exists():
+            patch_200hpa.unlink()
+        if patch_omega and patch_omega.exists():
+            patch_omega.unlink()
+        
         # Remove backup if successful
-        backup_file.unlink()
+        if backup_file and backup_file.exists():
+            backup_file.unlink()
         
         logging.info(f"      ✓ Merged patches into {original_file.name}")
         return True
@@ -210,7 +220,7 @@ def merge_patch_data(original_file, patch_200hpa, patch_omega):
     except Exception as e:
         logging.error(f"      ✗ Failed to merge patches: {e}")
         # Restore backup if it exists
-        if backup_file.exists():
+        if backup_file and backup_file.exists():
             backup_file.rename(original_file)
         return False
 

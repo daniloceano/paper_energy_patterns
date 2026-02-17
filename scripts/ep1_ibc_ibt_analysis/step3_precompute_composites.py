@@ -467,7 +467,9 @@ def compute_composites_for_domain(cases, domain_name):
             processed += 1
             
         except Exception as e:
-            logging.warning(f"      Error processing {track_id}: {e}")
+            logging.warning(f"      Error processing {track_id}: {type(e).__name__}: {str(e)}")
+            import traceback
+            logging.debug(f"      Full traceback: {traceback.format_exc()}")
             failed += 1
             continue
     
@@ -482,13 +484,39 @@ def compute_composites_for_domain(cases, domain_name):
     for var, data_list in var_lists.items():
         composites[var] = np.nanmean(np.stack(data_list), axis=0)
     
-    # Compute means for diagnostics
-    egr_mean = np.nanmean(np.stack(egr_list), axis=0)
-    deta_dy_mean = np.nanmean(np.stack(deta_dy_list), axis=0)
-    deta_dy_zonal_mean = np.nanmean(np.stack(deta_dy_zonal_list), axis=0)
-    pv_ca_mean = np.nanmean(np.stack(pv_ca_list), axis=0)
-    pv_ck_mean = np.nanmean(np.stack(pv_ck_list), axis=0)
-    pv_200_mean = np.nanmean(np.stack(pv_200_list), axis=0)
+    # Compute means for diagnostics (with safety checks)
+    if egr_list:
+        egr_mean = np.nanmean(np.stack(egr_list), axis=0)
+    else:
+        logging.warning(f"      ⚠️  No EGR data for {domain_name}")
+        egr_mean = None
+    
+    if deta_dy_list:
+        deta_dy_mean = np.nanmean(np.stack(deta_dy_list), axis=0)
+        deta_dy_zonal_mean = np.nanmean(np.stack(deta_dy_zonal_list), axis=0)
+    else:
+        logging.warning(f"      ⚠️  No deta_dy data for {domain_name}")
+        deta_dy_mean = None
+        deta_dy_zonal_mean = None
+    
+    if pv_ca_list:
+        pv_ca_mean = np.nanmean(np.stack(pv_ca_list), axis=0)
+    else:
+        logging.warning(f"      ⚠️  No PV@Ca data for {domain_name}")
+        pv_ca_mean = None
+    
+    if pv_ck_list:
+        pv_ck_mean = np.nanmean(np.stack(pv_ck_list), axis=0)
+    else:
+        logging.warning(f"      ⚠️  No PV@Ck data for {domain_name}")
+        pv_ck_mean = None
+    
+    if pv_200_list:
+        pv_200_mean = np.nanmean(np.stack(pv_200_list), axis=0)
+        logging.info(f"      ✓ PV@200hPa computed from {len(pv_200_list)} cases")
+    else:
+        logging.warning(f"      ⚠️  No PV@200 data for {domain_name} - files may not have 200 hPa level")
+        pv_200_mean = None
     
     # Create output dataset with domain-specific dimensions
     ds_out = xr.Dataset()
@@ -531,13 +559,18 @@ def compute_composites_for_domain(cases, domain_name):
             if len(data.shape) == 2:
                 ds_out[f'{domain_name}_{var}'] = ((y_dim, x_dim), data)
         
-        # Add diagnostic fields (2D)
-        ds_out[f'{domain_name}_egr'] = ((y_dim, x_dim), egr_mean)
-        ds_out[f'{domain_name}_deta_dy'] = ((y_dim, x_dim), deta_dy_mean)
-        ds_out[f'{domain_name}_deta_dy_zonal'] = (y_dim, deta_dy_zonal_mean)
-        ds_out[f'{domain_name}_pv_ca'] = ((y_dim, x_dim), pv_ca_mean)
-        ds_out[f'{domain_name}_pv_ck'] = ((y_dim, x_dim), pv_ck_mean)
-        ds_out[f'{domain_name}_pv_200'] = ((y_dim, x_dim), pv_200_mean)
+        # Add diagnostic fields (2D) - only if computed successfully
+        if egr_mean is not None:
+            ds_out[f'{domain_name}_egr'] = ((y_dim, x_dim), egr_mean)
+        if deta_dy_mean is not None:
+            ds_out[f'{domain_name}_deta_dy'] = ((y_dim, x_dim), deta_dy_mean)
+            ds_out[f'{domain_name}_deta_dy_zonal'] = (y_dim, deta_dy_zonal_mean)
+        if pv_ca_mean is not None:
+            ds_out[f'{domain_name}_pv_ca'] = ((y_dim, x_dim), pv_ca_mean)
+        if pv_ck_mean is not None:
+            ds_out[f'{domain_name}_pv_ck'] = ((y_dim, x_dim), pv_ck_mean)
+        if pv_200_mean is not None:
+            ds_out[f'{domain_name}_pv_200'] = ((y_dim, x_dim), pv_200_mean)
         
         # Assign coordinates
         ds_out = ds_out.assign_coords({x_dim: x, y_dim: y, level_dim: levels})

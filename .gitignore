@@ -26,6 +26,7 @@ data/*.hdf5
 data/lec_results/
 data/temp_lec_zenodo
 data/era5_ep1
+data/era5_ep1_full
 data/ck_analysis/
 data/era5_ep1_OLD*
 

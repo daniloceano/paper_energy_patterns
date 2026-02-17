@@ -441,6 +441,11 @@ def compute_composites_for_domain(cases, domain_name):
             
             # --- COMPUTE PV at 200 hPa (dynamic tropopause) ---
             # Need 3 levels around 200 hPa: 250, 200, and next lower level
+            # Check if 200 hPa exists in data
+            if 200 not in levels and 20000 not in levels:
+                # Skip this case - no 200 hPa data
+                continue
+            
             # Try to find appropriate levels
             available_levels = sorted(levels, reverse=True)  # Descending order
             idx_lower_200 = None
@@ -460,8 +465,15 @@ def compute_composites_for_domain(cases, domain_name):
             p_pv_200 = np.array([levels[idx_250], levels[idx_200], levels[idx_lower_200]])
             z_pv_200 = np.array([z[idx_250], z[idx_200], z[idx_lower_200]])
             
-            pv_200 = compute_baroclinic_pv(u_pv_200, v_pv_200, T_pv_200, q_pv_200, p_pv_200, z_pv_200, lat_2d, lon_2d)
-            pv_200_list.append(pv_200)
+            # Suppress warnings from MetPy for this specific calculation
+            import warnings as warn
+            with warn.catch_warnings():
+                warn.filterwarnings('ignore', category=RuntimeWarning)
+                pv_200 = compute_baroclinic_pv(u_pv_200, v_pv_200, T_pv_200, q_pv_200, p_pv_200, z_pv_200, lat_2d, lon_2d)
+            
+            # Check for valid PV values
+            if not np.all(np.isnan(pv_200)):
+                pv_200_list.append(pv_200)
             
             ds.close()
             processed += 1
@@ -513,9 +525,13 @@ def compute_composites_for_domain(cases, domain_name):
     
     if pv_200_list:
         pv_200_mean = np.nanmean(np.stack(pv_200_list), axis=0)
-        logging.info(f"      ✓ PV@200hPa computed from {len(pv_200_list)} cases")
+        pv_200_min = np.nanmin(pv_200_mean) * 1e6  # Convert to PVU for display
+        pv_200_max = np.nanmax(pv_200_mean) * 1e6
+        logging.info(f"      ✓ PV@200hPa computed from {len(pv_200_list)}/{processed} cases")
+        logging.info(f"         Range: [{pv_200_min:.2f}, {pv_200_max:.2f}] PVU")
     else:
         logging.warning(f"      ⚠️  No PV@200 data for {domain_name} - files may not have 200 hPa level")
+        logging.warning(f"         This is expected if you haven't run the patch or re-downloaded with 200 hPa")
         pv_200_mean = None
     
     # Create output dataset with domain-specific dimensions

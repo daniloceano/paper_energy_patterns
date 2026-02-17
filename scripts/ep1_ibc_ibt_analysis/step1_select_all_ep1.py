@@ -167,21 +167,12 @@ def plot_all_ep1_tracks(selected_df, tracks_df):
                    color='gray', linewidth=0.6, alpha=0.3,
                    transform=ccrs.PlateCarree(), zorder=2)
             
-            # Plot intensification phase (blue, medium line)
+            # Plot intensification phase (yellow, medium line)
             if len(track_intens) > 0:
                 ax.plot(track_intens['lon vor'].values, track_intens['lat vor'].values,
-                       color='royalblue', linewidth=1.5, alpha=0.7,
+                       color='gold', linewidth=1.5, alpha=0.9,
                        transform=ccrs.PlateCarree(), zorder=3)
-                
-                # Mark temporal center
-                t_center = t_start + (t_end - t_start) / 2
-                time_diffs = np.abs((track_intens['date'] - t_center).dt.total_seconds())
-                closest_idx = time_diffs.idxmin()
-                center_lat = track_intens.loc[closest_idx, 'lat vor']
-                center_lon = track_intens.loc[closest_idx, 'lon vor']
-                ax.plot(center_lon, center_lat, 'r*', markersize=6,
-                       markeredgecolor='k', markeredgewidth=0.5,
-                       transform=ccrs.PlateCarree(), zorder=5)
+
             
             # Mark genesis
             ax.plot(track['lon vor'].iloc[0], track['lat vor'].iloc[0],
@@ -191,11 +182,9 @@ def plot_all_ep1_tracks(selected_df, tracks_df):
     # Create legend
     legend_elements = [
         Line2D([0], [0], color='gray', linewidth=1.5, alpha=0.5, label='Complete track'),
-        Line2D([0], [0], color='royalblue', linewidth=2, alpha=0.8, label='Intensification'),
+        Line2D([0], [0], color='gold', linewidth=2, alpha=0.9, label='Intensification'),
         Line2D([0], [0], marker='o', color='w', markerfacecolor='green',
-               markersize=6, markeredgecolor='k', label='Genesis'),
-        Line2D([0], [0], marker='*', color='w', markerfacecolor='red',
-               markersize=10, markeredgecolor='k', label='Temporal center')
+               markersize=6, markeredgecolor='k', label='Genesis')
     ]
     ax.legend(handles=legend_elements, loc='upper left', framealpha=0.95, fontsize=9)
     

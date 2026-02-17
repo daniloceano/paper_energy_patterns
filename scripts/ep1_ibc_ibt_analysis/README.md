@@ -101,8 +101,8 @@ python scripts/ep1_ibc_ibt_analysis/step4_create_figures.py
 - **Panel layout:**
   - **(a)** 2D map of ∂η/∂y (RK criterion) at Ck level (350 hPa)
   - **(b)** Zonal mean profile of ∂η/∂y
-  - **(c)** PV at Ca level (975 hPa, shaded) + PV at Ck level (350 hPa, contours) + **200 hPa wind vectors** (dynamic tropopause)
-  - **(d)** EGR at Ca level (975 hPa, shaded) + SLP contours + wind vectors at Ca level
+  - **(c)** PV at Ca level (975 hPa, shaded) + PV at 200 hPa (green contours, 2 PVU tropopause) + **200 hPa wind vectors**
+  - **(d)** EGR at Ca level (975 hPa, shaded) + SLP (black contours) + PV at 200 hPa (green contours) + wind vectors at Ca level
 - Uses precomputed data from step3 for efficiency
 - Reads separate files per domain: `precomputed_composites_{domain}.nc`
 - Saves to `figures/ep1_vertical/composite/`

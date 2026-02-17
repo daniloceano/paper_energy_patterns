@@ -139,15 +139,31 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         x = ds_domain[x_dim].values
         y = ds_domain[y_dim].values
         
-        # Get diagnostic fields (precomputed in step3)
-        deta_dy = ds_domain[f'{domain_name}_deta_dy'].values  # 2D at Ck level
-        deta_dy_zonal = ds_domain[f'{domain_name}_deta_dy_zonal'].values  # 1D zonal mean
-        pv_ca = ds_domain[f'{domain_name}_pv_ca'].values  # 2D at Ca level (975 hPa)
-        pv_200 = ds_domain[f'{domain_name}_pv_200'].values  # 2D at 200 hPa (tropopause)
-        egr = ds_domain[f'{domain_name}_egr'].values  # 2D at Ca level (975 hPa)
+        # List available variables for debugging
+        available_vars = list(ds_domain.data_vars.keys())
+        logging.info(f"    Available variables in {domain_name}: {len(available_vars)} vars")
+        logging.info(f"    Variables: {', '.join(sorted(available_vars)[:10])}{'...' if len(available_vars) > 10 else ''}")
+        
+        # Get diagnostic fields (precomputed in step3) with existence checks
+        deta_dy = ds_domain[f'{domain_name}_deta_dy'].values if f'{domain_name}_deta_dy' in ds_domain else None
+        deta_dy_zonal = ds_domain[f'{domain_name}_deta_dy_zonal'].values if f'{domain_name}_deta_dy_zonal' in ds_domain else None
+        pv_ca = ds_domain[f'{domain_name}_pv_ca'].values if f'{domain_name}_pv_ca' in ds_domain else None
+        pv_200 = ds_domain[f'{domain_name}_pv_200'].values if f'{domain_name}_pv_200' in ds_domain else None
+        egr = ds_domain[f'{domain_name}_egr'].values if f'{domain_name}_egr' in ds_domain else None
         
         # Get SLP if available
         msl = ds_domain[f'{domain_name}_msl'].values if f'{domain_name}_msl' in ds_domain else None
+        
+        # Log what we found
+        logging.info(f"    Data availability: EGR={'✓' if egr is not None else '✗'}, "
+                    f"PV_Ca={'✓' if pv_ca is not None else '✗'}, "
+                    f"PV_200={'✓' if pv_200 is not None else '✗'}, "
+                    f"SLP={'✓' if msl is not None else '✗'}, "
+                    f"deta_dy={'✓' if deta_dy is not None else '✗'}")
+        
+        if deta_dy is None or pv_ca is None or egr is None:
+            logging.error(f"    ❌ Missing essential diagnostic variables for {domain_name}")
+            return
         
         # Get winds at specific levels from 3D arrays
         if level_dim in ds_domain.coords:
@@ -267,6 +283,7 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         
         # Contours: SLP (black)
         if msl is not None:
+            logging.info(f"    Plotting SLP: range [{np.nanmin(msl)/100:.1f}, {np.nanmax(msl)/100:.1f}] hPa")
             msl_hpa = msl / 100.0  # Convert Pa to hPa
             slp_levels = np.arange(
                 np.floor(np.nanmin(msl_hpa) / 2) * 2,
@@ -275,6 +292,24 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
             )
             cs_slp = ax4.contour(x, y, msl_hpa, levels=slp_levels, colors='black', linewidths=1.0, alpha=0.7)
             ax4.clabel(cs_slp, inline=1, fontsize=8, fmt='%1.0f')
+        else:
+            logging.warning(f"    ⚠️  SLP not available for {domain_name}")
+        
+        # Contours: PV at 200 hPa (green) - shows upper-level forcing
+        if pv_200 is not None:
+            pv_200_pvu = pv_200 * 1e6
+            logging.info(f"    Plotting PV@200: range [{np.nanmin(pv_200_pvu):.2f}, {np.nanmax(pv_200_pvu):.2f}] PVU")
+            pv_200_levels = np.linspace(np.nanpercentile(pv_200_pvu, 10), 
+                                         np.nanpercentile(pv_200_pvu, 90), 6)
+            cs_pv200 = ax4.contour(x, y, pv_200_pvu, levels=pv_200_levels, 
+                                   colors='green', linewidths=1.0, alpha=0.6)
+            ax4.clabel(cs_pv200, inline=1, fontsize=7, fmt='%1.0f')
+            
+            # 2 PVU contour (tropopause)
+            cs_trop = ax4.contour(x, y, pv_200_pvu, levels=[2.0], 
+                                 colors='darkgreen', linewidths=1.8, linestyles='--')
+        else:
+            logging.warning(f"    ⚠️  PV@200hPa not available for {domain_name}")
         
         # Vectors: 975 hPa winds (black)
         if u_975 is not None and v_975 is not None:
@@ -284,7 +319,7 @@ def create_composite_figure(domain_name, ds_domain, output_dir):
         
         ax4.set_xlabel('Relative Longitude (°)')
         ax4.set_ylabel('Relative Latitude (°)')
-        ax4.set_title('(d) EGR at Ca (shaded), SLP (contours), 975 hPa wind (vectors)')
+        ax4.set_title('(d) EGR (shaded), SLP (black), PV@200hPa (green), 975 hPa wind')
         ax4.set_aspect('equal')
         
         # Colorbar

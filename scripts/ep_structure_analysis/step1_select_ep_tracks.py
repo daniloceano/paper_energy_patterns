@@ -2,12 +2,16 @@
 Step 1: Select EP1 and EP2 Cyclone Tracks for Structure Analysis
 
 Selects ALL cyclones from Energy Pattern 1 (EP1, cluster 0) and Energy Pattern 2
-(EP2, cluster 2) with complete lifecycle for composite analysis during their
-entire intensification phase.
+(EP2, cluster 2) for composite analysis during their entire intensification phase.
+
+IMPORTANT: The clustering was performed on cyclones already filtered for complete
+lifecycle (incipient → intensification → mature → decay). Therefore, ALL cyclones
+in the cluster file already satisfy this criterion and should NOT be filtered again.
 
 Selection Criteria:
-- Belongs to EP1 (cluster 0) OR EP2 (cluster 2)
-- Complete lifecycle: incipient → intensification → mature → decay
+- Belongs to EP1 (cluster 0) OR EP2 (cluster 2) from kmeans_clustered_data.csv
+- ALL cyclones from these clusters are used (no additional lifecycle filtering)
+- Consistency: Same cyclones used in clustering are used here
 
 Output:
 - results/ep_structure/ep1_cases.csv
@@ -34,6 +38,7 @@ from scripts.utils.load_data import load_tracks
 
 # Configuration
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CLUSTER_FILE = PROJECT_ROOT / "results" / "cluster" / "kmeans_clustered_data.csv"
 OUTPUT_DIR = PROJECT_ROOT / "results" / "ep_structure"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR = PROJECT_ROOT / "figures" / "ep_structure" / "tracks"
@@ -43,27 +48,6 @@ DPI = 300
 
 # Cluster → EP mapping
 CLUSTER_TO_EP = {0: 1, 2: 2}  # cluster 0 → EP1, cluster 2 → EP2
-
-
-def filter_complete_lifecycle_tracks(df):
-    """
-    Filter tracks with complete lifecycle in exact order:
-    incipient → intensification → mature → decay
-    """
-    complete_tracks = []
-
-    for track_id, track_data in df.groupby("track_id"):
-        periods = track_data["period"].dropna().unique()
-        if (
-            len(periods) == 4
-            and periods[0] == "incipient"
-            and periods[1] == "intensification"
-            and periods[2] == "mature"
-            and periods[3] == "decay"
-        ):
-            complete_tracks.append(track_id)
-
-    return complete_tracks
 
 
 def _resolve_csv(path: Path):
@@ -216,19 +200,22 @@ def plot_tracks(selected_df, tracks_df, ep_label, color):
 
 
 def select_ep_cases(ep_label, cluster_id, tracks_df, clustered_df):
-    """Select cases for a single EP group and return DataFrame."""
+    """
+    Select all cases from an EP cluster.
+    
+    IMPORTANT: NO FILTERING by lifecycle - all cyclones in the cluster are used.
+    The clustering was already performed on complete-lifecycle cyclones only.
+    Re-filtering here would create inconsistency with the cluster analysis.
+    """
     print(f"\n── {ep_label} (cluster {cluster_id}) ──")
 
     ep_cyclones = clustered_df[clustered_df["cluster"] == cluster_id]
     ep_track_ids = ep_cyclones["track_id"].unique()
-    print(f"   Total {ep_label} cyclones: {len(ep_track_ids)}")
+    print(f"   Total {ep_label} cyclones from cluster: {len(ep_track_ids)}")
 
-    ep_tracks = tracks_df[tracks_df["track_id"].isin(ep_track_ids)].copy()
-    complete_ids = filter_complete_lifecycle_tracks(ep_tracks)
-    print(f"   Complete lifecycle: {len(complete_ids)}")
-
+    # Get intensification info for each track (no lifecycle filtering)
     cases = []
-    for track_id in complete_ids:
+    for track_id in ep_track_ids:
         info = get_intensification_info(track_id, tracks_df)
         if info is not None:
             start_time, end_time, n_timesteps, center_lat, center_lon = info
@@ -265,14 +252,18 @@ def main():
     print("=" * 70)
     print("STEP 1: SELECT EP1 + EP2 CYCLONE TRACKS FOR STRUCTURE ANALYSIS")
     print("=" * 70)
-
+    print()
+    print("IMPORTANT: All cyclones from the cluster were already filtered for")
+    print("complete lifecycle during the clustering analysis. NO additional")
+    print("filtering is applied here to ensure consistency.")
+    
     # 1. Load cluster assignments
     print("\n1. Loading cluster assignments...")
-    cluster_file = PROJECT_ROOT / "results" / "cluster" / "kmeans_clustered_data.csv"
-    if not cluster_file.exists():
-        raise FileNotFoundError(f"Cluster file not found: {cluster_file}")
+    if not CLUSTER_FILE.exists():
+        raise FileNotFoundError(f"Cluster file not found: {CLUSTER_FILE}")
 
-    clustered_df = pd.read_csv(cluster_file)
+    clustered_df = pd.read_csv(CLUSTER_FILE)
+    print(f"   Total clustered cyclones: {len(clustered_df)}")
     for cid, ep in CLUSTER_TO_EP.items():
         n = (clustered_df["cluster"] == cid).sum()
         print(f"   EP{ep} (cluster {cid}): {n} cyclones")
@@ -280,7 +271,7 @@ def main():
     # 2. Load tracks
     print("\n2. Loading track data...")
     tracks_df = load_tracks()
-    print(f"   Total tracks: {tracks_df['track_id'].nunique()}")
+    print(f"   Total tracks in database: {tracks_df['track_id'].nunique()}")
 
     # 3. Select cases for each EP
     print("\n3. Selecting cases per EP...")

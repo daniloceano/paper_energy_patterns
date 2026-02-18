@@ -6,6 +6,21 @@ Investigate the spatial structure of EP1 and EP2 cyclones during intensification
 using standard dynamical diagnostics to understand what distinguishes each energy
 pattern structurally.
 
+## Important: Consistency with Cluster Analysis
+
+**CRITICAL:** All cyclones used in this analysis come directly from the cluster
+assignments in `results/cluster/kmeans_clustered_data.csv`. The clustering was
+performed on cyclones already filtered for complete lifecycle (incipient →
+intensification → mature → decay). Therefore:
+
+- **NO additional lifecycle filtering** is applied in this pipeline
+- **ALL 444 EP1 cyclones** from cluster 0 are used (100% consistency)
+- **ALL 979 EP2 cyclones** from cluster 2 are used (100% consistency)
+
+This ensures that the structural analysis describes the **exact same cyclones**
+used to define the energy patterns, maintaining methodological consistency
+throughout the study.
+
 ## Diagnostic Fields
 
 | Field | Levels | Purpose | Key References |

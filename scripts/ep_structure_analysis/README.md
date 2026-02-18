@@ -70,9 +70,60 @@ throughout the study.
 |------|--------|--------|-------------|
 | 1 | `step1_select_ep_tracks.py` | Local/Remote | Select EP1 and EP2 cyclone tracks |
 | 2 | `step2_download_era5_parallel.py` | **Remote** | Download ERA5 data (parallel, with patching) |
+| 2M | `step2_monitor.py` | Local/Remote | **Monitor download progress** (see below) |
 | 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP) |
 | 4 | `step4_create_figures.py` | Local | Create EP1 vs EP2 composite figures |
 | 5 | `step5_update_scientific_notes.py` | Local | Populate SCIENTIFIC_NOTES.md |
+
+### Download monitor (`step2_monitor.py`)
+
+`step2_monitor.py` scans `data/era5_ep_structure/` and reports completeness at the
+finest available granularity: one **slot** = one (variable, pressure-level) pair.
+
+```
+Slots per case = 5 pressure vars × 8 levels  +  1 SLP  =  41 slots total
+```
+
+Two progress bars are shown (one per EP group), followed by:
+
+- **Per-variable table**: how many cases have that variable with all 8 levels.
+- **Per-level table**: how many cases have that level with all 5 variables.
+- **Composite check**: whether `precomputed_composites_ep{1,2}.nc` (step 3 output)
+  already exist.
+
+```bash
+# One-shot report (shows current state and exits)
+python scripts/ep_structure_analysis/step2_monitor.py
+
+# Live watch while step 2 is running (refresh every 60 s)
+python scripts/ep_structure_analysis/step2_monitor.py --watch
+
+# Faster refresh (every 30 s)
+python scripts/ep_structure_analysis/step2_monitor.py --watch --interval 30
+
+# No terminal clear — safe for nohup / log capture
+python scripts/ep_structure_analysis/step2_monitor.py --watch --no-clear
+```
+
+Example output:
+
+```
+══════════════════════════════════════════════════════════════════════════════
+  ERA5 EP STRUCTURE — DOWNLOAD MONITOR
+  Scanned : 2026-02-18 14:30:00  (3.2 s)
+  Dir     : …/data/era5_ep_structure
+  Slots   : 41 per case  = 5 pressure vars × 8 levels + 1 SLP
+══════════════════════════════════════════════════════════════════════════════
+
+  EP1  slots  [████████████░░░░░░░░░░░░░░░░░░]    220/18204  ( 1.2%)
+       cases  [█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]      5/444   ( 1.1%)  (fully complete)
+       detail  ✓ complete: 5  ⚑ partial: 17  ✗ missing: 422
+
+  EP2  slots  [██░░░░░░░░░░░░░░░░░░░░░░░░░░░░]    420/40139  ( 1.0%)
+       cases  [█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]     10/979   ( 1.0%)  (fully complete)
+       detail  ✓ complete: 10  ⚑ partial: 40  ✗ missing: 929
+…
+```
 
 ### Remote server execution
 

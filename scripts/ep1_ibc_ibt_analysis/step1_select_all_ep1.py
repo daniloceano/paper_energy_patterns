@@ -4,11 +4,6 @@ Step 1: Select ALL EP1 Cyclones for Full Analysis
 This script selects ALL cyclones from Energy Pattern 1 (EP1) with complete lifecycle
 for instability analysis during their entire intensification phase.
 
-Differences from ep1_ibc_ibt_analysis/step1:
-- NO spatial filtering (all EP1 cyclones regardless of location)
-- Will analyze ALL time steps during intensification (not just central time)
-- Larger sample size for comprehensive EP1 characterization
-
 Selection Criteria:
 - Belongs to EP1 (cluster 0)
 - Complete lifecycle: incipient → intensification → mature → decay

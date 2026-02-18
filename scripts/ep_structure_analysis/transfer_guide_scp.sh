@@ -1,30 +1,31 @@
 #!/bin/bash
 #
-# File Transfer Guide for EP1 Full Analysis
-# ==========================================
+# File Transfer Guide for EP Structure Analysis
+# ===============================================
 #
-# This script provides optimized file transfer commands for remote→local workflow
-# using SCP with SSH key authentication (master.iag.usp.br).
+# Transfers pipeline outputs from remote server (master.iag.usp.br) to local
+# machine using SCP with SSH key authentication.
 #
-# Authentication: Uses SSH key at ~/Documents/Master/id_rsa.danilocs
-# Note: You will be prompted for password in TWO separate windows during transfer
+# Steps run on remote:
+#   step1 (select tracks) → step2 (download ERA5) → step3 (precompute composites)
+#
+# Steps run locally:
+#   step4 (create figures) → step5 (update scientific notes)
 #
 # Author: Danilo Couto de Souza
 # Date: February 2026
 
-set -e  # Exit on error
+set -e
 
 # ==============================================================================
-# CONFIGURATION (adjust paths as needed)
+# CONFIGURATION
 # ==============================================================================
 
-# Remote server details
 REMOTE_USER="danilocs"
 REMOTE_HOST="master.iag.usp.br"
 SSH_KEY="$HOME/Documents/Master/id_rsa.danilocs"
 REMOTE_BASE="/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns"
 
-# Local base directory
 LOCAL_BASE="$HOME/Documents/Programs_and_scripts/paper_energy_patterns"
 
 # ==============================================================================
@@ -32,7 +33,7 @@ LOCAL_BASE="$HOME/Documents/Programs_and_scripts/paper_energy_patterns"
 # ==============================================================================
 
 echo "=============================================================================="
-echo "EP1 FULL ANALYSIS - FILE TRANSFER GUIDE"
+echo "EP STRUCTURE ANALYSIS – FILE TRANSFER GUIDE"
 echo "=============================================================================="
 echo ""
 echo "⚠️  IMPORTANT: You will be prompted for password in TWO separate windows!"
@@ -43,7 +44,7 @@ echo "Remote server: ${REMOTE_USER}@${REMOTE_HOST}"
 echo ""
 
 # ------------------------------------------------------------------------------
-# ESSENTIAL FILES (~100-300 MB) - Required for local figure generation
+# SECTION 1: ESSENTIAL FILES (precomputed composites)
 # ------------------------------------------------------------------------------
 
 echo ""
@@ -51,21 +52,21 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "📦 SECTION 1: ESSENTIAL FILES (Required)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "Transfer precomputed composites (3 domain files, ~100-300 MB total)"
+echo "Transfer precomputed composites (EP1 + EP2, ~100-300 MB total)"
 echo ""
 read -p "Transfer precomputed composites? [Y/n] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
-    echo "→ Transferring data/era5_ep1/precomputed_composites_*.nc..."
-    mkdir -p "${LOCAL_BASE}/data/era5_ep1"
+    echo "→ Transferring data/era5_ep_structure/precomputed_composites_*.nc..."
+    mkdir -p "${LOCAL_BASE}/data/era5_ep_structure"
     scp -i "$SSH_KEY" -C \
-        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/data/era5_ep1/precomputed_composites_\*.nc" \
-        "${LOCAL_BASE}/data/era5_ep1/"
+        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/data/era5_ep_structure/precomputed_composites_\*.nc" \
+        "${LOCAL_BASE}/data/era5_ep_structure/"
     echo "✓ Done!"
 fi
 
 # ------------------------------------------------------------------------------
-# OPTIONAL FILES
+# SECTION 2: OPTIONAL FILES
 # ------------------------------------------------------------------------------
 
 echo ""
@@ -76,13 +77,13 @@ echo ""
 
 # Log files
 echo "→ Transfer logs? (~1-5 MB)"
-read -p "Transfer logs/step*.log files? [y/N] " -n 1 -r
+read -p "Transfer log files? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "→ Transferring logs..."
     mkdir -p "${LOCAL_BASE}/logs"
     scp -i "$SSH_KEY" -C \
-        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/logs/step\*.log" \
+        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/logs/ep_structure_\*.log" \
         "${LOCAL_BASE}/logs/" || echo "⚠️  No log files found or transfer failed"
     echo "✓ Done!"
 fi
@@ -90,13 +91,13 @@ fi
 # Results metadata
 echo ""
 echo "→ Transfer results? (~1-10 MB metadata)"
-read -p "Transfer results/ep1_vertical/ directory? [y/N] " -n 1 -r
+read -p "Transfer results/ep_structure/ directory? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "→ Transferring results..."
-    mkdir -p "${LOCAL_BASE}/results/ep1_vertical"
+    mkdir -p "${LOCAL_BASE}/results/ep_structure"
     scp -i "$SSH_KEY" -C -r \
-        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/results/ep1_vertical/" \
+        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/results/ep_structure/" \
         "${LOCAL_BASE}/results/"
     echo "✓ Done!"
 fi
@@ -104,19 +105,19 @@ fi
 # Figures (if generated on remote)
 echo ""
 echo "→ Transfer figures? (~5-15 MB)"
-read -p "Transfer figures/ep1_vertical/composite/? [y/N] " -n 1 -r
+read -p "Transfer figures/ep_structure/? [y/N] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "→ Transferring figures..."
-    mkdir -p "${LOCAL_BASE}/figures/ep1_vertical"
+    mkdir -p "${LOCAL_BASE}/figures/ep_structure"
     scp -i "$SSH_KEY" -C -r \
-        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/figures/ep1_vertical/" \
+        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/figures/ep_structure/" \
         "${LOCAL_BASE}/figures/"
     echo "✓ Done!"
 fi
 
 # ------------------------------------------------------------------------------
-# FILES TO SKIP (stay on remote server)
+# SECTION 3: DO NOT TRANSFER
 # ------------------------------------------------------------------------------
 
 echo ""
@@ -124,7 +125,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo "⛔ SECTION 3: SKIP THESE FILES (keep on server)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "❌ DO NOT transfer: data/era5_ep1/*_era5.nc (~50-80 GB)"
+echo "❌ DO NOT transfer: data/era5_ep_structure/*_era5.nc (~30-60 GB)"
 echo "   → Raw ERA5 files stay on server"
 echo ""
 
@@ -139,9 +140,8 @@ echo "==========================================================================
 echo ""
 echo "Next steps on LOCAL machine:"
 echo "  1. cd ${LOCAL_BASE}"
-echo "  2. conda activate paper_energy"
-echo "  3. python scripts/ep1_ibc_ibt_analysis/step5_create_figures.py"
+echo "  2. conda activate paper_energy_patterns"
+echo "  3. python scripts/ep_structure_analysis/step4_create_figures.py"
 echo ""
-echo "Transferred data size: ~100-300 MB (vs ~50-80 GB raw ERA5)"
-echo "Storage optimization: Transferred only 0.2-0.6% of total data volume"
+echo "Transferred data size: ~100-300 MB (vs ~30-60 GB raw ERA5)"
 echo ""

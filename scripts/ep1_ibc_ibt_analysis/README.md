@@ -11,9 +11,11 @@ Complete analysis of **ALL** Energy Pattern 1 (EP1) cyclones during their entire
 
 **All steps implemented and tested:**
 - ✅ Step 1: Select all EP1 cyclones
-- ✅ Step 2: Parallel ERA5 download (8 levels + omega, respects CDS API limits)
-- ✅ Step 3: Precompute composites and diagnostics (EGR, PV, Rayleigh-Kuo)
-- ✅ Step 4: Create 4-panel composite figures (200 hPa wind overlay)
+- ✅ Step 2: Vertical levels analysis (Ca/Ck profiles from Zenodo, identify critical pressure levels)
+- ✅ Step 3: Parallel ERA5 download (8 levels + omega, respects CDS API limits)
+- ✅ Step 4: Precompute composites and diagnostics (EGR, PV, Rayleigh-Kuo)
+- ✅ Step 5: Create 4-panel composite figures (200 hPa wind overlay)
+- ✅ Step 6: Populate scientific notes, consolidate results, generate PDF
 - ✅ Patch script: Add 200 hPa + omega to existing files
 
 ## Differences from Previous `ep1_ibc_ibt_analysis` (archived)
@@ -37,23 +39,42 @@ This pipeline **REPLACES** the older `ep1_ibc_ibt_analysis` (now `ep1_ibc_ibt_an
 ```bash
 python scripts/ep1_ibc_ibt_analysis/step1_select_all_ep1.py
 ```
-- Selects ALL EP1 cyclones
-- No spatial restriction (different from previous analysis)
+- Selects ALL EP1 cyclones with complete lifecycle
+- No spatial restriction
 - Saves list to `results/ep1_vertical/all_ep1_cases.csv`
 
-### Step 2: Download ERA5 Data (Parallel)
+### Step 2: Vertical Levels Analysis (Zenodo LEC data)
+```bash
+python scripts/ep1_ibc_ibt_analysis/step2_vertical_levels_analysis.py
+
+# With correction validation (compare trapezoid integration to pre-computed)
+python scripts/ep1_ibc_ibt_analysis/step2_vertical_levels_analysis.py --validate
+```
+- Downloads Ca/Ck vertical profiles from Zenodo (DOI: 10.5281/zenodo.18243447)
+- Analyzes EP1 cyclones during intensification phase only
+- **Identifies critical pressure levels**: maximum Ca (~975 hPa), minimum Ck (~350 hPa)
+- Generates boxplots of Ca/Ck distribution by pressure level
+- **Applies validated data corrections** (old LorenzCycleToolkit quirks):
+  - Ca: sign inversion (`Ca_corrected = -Ca_raw`)
+  - Ck: gravity normalization (`Ck_corrected = Ck_raw / 9.8`)
+- Saves critical levels to `results/ep1_vertical/critical_levels.csv`
+- Saves figure to `figures/ep1_vertical/critical_levels_boxplot.png`
+
+> 📖 Detailed rationale in [SCIENTIFIC_NOTES.md](SCIENTIFIC_NOTES.md)
+
+### Step 3: Download ERA5 Data (Parallel)
 ```bash
 # Default: 2 parallel jobs (CDS API recommended limit)
-python scripts/ep1_ibc_ibt_analysis/step2_download_era5_parallel.py
+python scripts/ep1_ibc_ibt_analysis/step3_download_era5_parallel.py
 
 # Custom parallelization (not recommended > 4 due to CDS API limits)
-python scripts/ep1_ibc_ibt_analysis/step2_download_era5_parallel.py --jobs 2
+python scripts/ep1_ibc_ibt_analysis/step3_download_era5_parallel.py --jobs 2
 
 # With nohup for background execution
-nohup python scripts/ep1_ibc_ibt_analysis/step2_download_era5_parallel.py &> download.log &
-# Log file automatically created in logs/step2_download_YYYYMMDD_HHMMSS.log
+nohup python scripts/ep1_ibc_ibt_analysis/step3_download_era5_parallel.py &> download.log &
+# Log file automatically created in logs/step3_download_YYYYMMDD_HHMMSS.log
 ```
-- Downloads ERA5 for all EP1 cyclones
+- Downloads ERA5 for all EP1 cyclones at critical levels identified in Step 2
 - **Includes Sea Level Pressure (SLP)**
 - **8 pressure levels + omega**: 1000, 975, 950, 400, 350, 300, 250, 200 hPa
 - **Omega (ω)** at all levels for vertical motion and PV calculation
@@ -67,17 +88,17 @@ nohup python scripts/ep1_ibc_ibt_analysis/step2_download_era5_parallel.py &> dow
 - Default `--jobs 2` respects this limit
 - Higher values may cause "Number queued requests... temporarily limited" errors
 
-### Step 3: Precompute Composites and Diagnostics
+### Step 4: Precompute Composites and Diagnostics
 ```bash
 # Default: uses min(3, cpu_count) parallel jobs
-python scripts/ep1_ibc_ibt_analysis/step3_precompute_composites.py
+python scripts/ep1_ibc_ibt_analysis/step4_precompute_composites.py
 
 # Custom parallelization
-python scripts/ep1_ibc_ibt_analysis/step3_precompute_composites.py --jobs 4
+python scripts/ep1_ibc_ibt_analysis/step4_precompute_composites.py --jobs 4
 
 # With nohup for background execution
-nohup python scripts/ep1_ibc_ibt_analysis/step3_precompute_composites.py --jobs 4 &
-# Log file automatically created in logs/step3_precompute_YYYYMMDD_HHMMSS.log
+nohup python scripts/ep1_ibc_ibt_analysis/step4_precompute_composites.py --jobs 4 &
+# Log file automatically created in logs/step4_precompute_YYYYMMDD_HHMMSS.log
 ```
 - **PRECOMPUTES** composites of all downloaded variables AND diagnostic fields
 - **Parallel processing**: Domain-level parallelization with progress tracking (tqdm)
@@ -91,10 +112,10 @@ nohup python scripts/ep1_ibc_ibt_analysis/step3_precompute_composites.py --jobs 
 - Avoids reprocessing in future analyses
 - Saves to `data/era5_ep1/precomputed_composites_{local,mesoscale,synoptic}.nc`
 
-### Step 4: Create Figures
+### Step 5: Create Figures
 ```bash
-python scripts/ep1_ibc_ibt_analysis/step4_create_figures.py
-# Log file automatically created in logs/step4_figures_YYYYMMDD_HHMMSS.log
+python scripts/ep1_ibc_ibt_analysis/step5_create_figures.py
+# Log file automatically created in logs/step5_figures_YYYYMMDD_HHMMSS.log
 ```
 - Generates 4-panel composite figures for each domain
 - **Logging**: Timestamped logs with file sizes and generation status including PV ranges
@@ -103,27 +124,27 @@ python scripts/ep1_ibc_ibt_analysis/step4_create_figures.py
   - **(b)** Zonal mean profile of ∂η/∂y
   - **(c)** PV at Ca level (975 hPa, shaded) + PV at 200 hPa (green contours, 2 PVU tropopause) + **200 hPa wind vectors**
   - **(d)** EGR at Ca level (975 hPa, shaded) + SLP (black contours) + PV at 200 hPa (green contours) + wind vectors at Ca level
-- Uses precomputed data from step3 for efficiency
+- Uses precomputed data from step4 for efficiency
 - Reads separate files per domain: `precomputed_composites_{domain}.nc`
 - Saves to `figures/ep1_vertical/composite/`
 
-### Step 5: Generate Scientific Documentation
+### Step 6: Generate Scientific Documentation
 ```bash
-python scripts/ep1_ibc_ibt_analysis/update_scientific_notes.py
+python scripts/ep1_ibc_ibt_analysis/step6_update_scientific_notes.py             # populate MD + consolidate CSVs
+python scripts/ep1_ibc_ibt_analysis/step6_update_scientific_notes.py --pdf       # + generate PDF
+python scripts/ep1_ibc_ibt_analysis/step6_update_scientific_notes.py --no-consolidate  # skip CSV consolidation
 ```
 - **Auto-generates** scientific report with analysis results
-- Reads computed statistics from steps 4-5
-- Populates template with:
-  - EGR and Rayleigh-Kuo statistics
-  - Physical interpretations
-  - Dataset characteristics
+- **Consolidates** all `*_instabilities.csv` into `instabilities_all.csv` + `instabilities_summary.csv`
+- **Optionally generates PDF** via pandoc + xelatex (`--pdf` flag)
+- Populates template with EGR/RK statistics and physical interpretations
 - Output: `SCIENTIFIC_NOTES_POPULATED.md`
 
 ### Run All
 ```bash
-python scripts/ep1_vertical_analysis/run_all.py
+python scripts/ep1_ibc_ibt_analysis/run_all.py
 ```
-- Executes pipeline automatically (steps 1-4)
+- Executes pipeline automatically (steps 1–6)
 - Generates composite figures ready for publication
 
 ## 🚀 Remote Server Execution
@@ -138,15 +159,15 @@ python scripts/ep1_vertical_analysis/run_all.py
 cd ~/paper_energy_patterns
 conda activate paper_energy
 
-# Step 2: Download ERA5 (parallel, ~6-12 hours)
-nohup python scripts/ep1_vertical_analysis/step2_download_era5_parallel.py --jobs 2 &
+# Step 3: Download ERA5 (parallel, ~6-12 hours)
+nohup python scripts/ep1_ibc_ibt_analysis/step3_download_era5_parallel.py --jobs 2 &
 
-# Step 3: Precompute diagnostics (parallel, ~3-6 hours)
-nohup python scripts/ep1_vertical_analysis/step3_precompute_composites.py --jobs 4 &
+# Step 4: Precompute diagnostics (parallel, ~3-6 hours)
+nohup python scripts/ep1_ibc_ibt_analysis/step4_precompute_composites.py --jobs 4 &
 
 # Monitor progress
-tail -f logs/step2_download_*.log
-tail -f logs/step3_precompute_*.log
+tail -f logs/step3_download_*.log
+tail -f logs/step4_precompute_*.log
 ```
 
 2. **Transfer only processed data (~5-10 GB):**
@@ -186,25 +207,25 @@ conda activate paper_energy
 **Background execution with nohup:**
 ```bash
 # Download step (6-12 hours)
-nohup python scripts/ep1_ibc_ibt_analysis/step2_download_era5_parallel.py --jobs 2 > download.log 2>&1 &
+nohup python scripts/ep1_ibc_ibt_analysis/step3_download_era5_parallel.py --jobs 2 > download.log 2>&1 &
 
 # Precompute step (3-6 hours)  
-nohup python scripts/ep1_ibc_ibt_analysis/step3_precompute_composites.py --jobs 4 > precompute.log 2>&1 &
+nohup python scripts/ep1_ibc_ibt_analysis/step4_precompute_composites.py --jobs 4 > precompute.log 2>&1 &
 
 # Monitor progress
-tail -f logs/step2_download_*.log
-ps aux | grep step2_download
+tail -f logs/step3_download_*.log
+ps aux | grep step3_download
 ```
 
 **File transfer (local machine):**
 ```bash
 # Transfer precomputed composites (~100-300 MB)
 scp -i ~/Documents/Master/id_rsa.danilocs -C \
-    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/data/era5_ep1/precomputed_composites_*.nc \
+    "danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/data/era5_ep1/precomputed_composites_\*.nc" \
     ~/Documents/Programs_and_scripts/paper_energy_patterns/data/era5_ep1/
 
 # Then generate figures locally
-python scripts/ep1_ibc_ibt_analysis/step4_create_figures.py
+python scripts/ep1_ibc_ibt_analysis/step5_create_figures.py
 ```
 
 **⚠️ Note:** Transfer only precomputed files (0.5% of total data) instead of raw ERA5 (~50-80 GB)

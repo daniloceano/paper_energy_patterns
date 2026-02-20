@@ -5,10 +5,10 @@ Scans data/era5_ep_structure/ and reports download completeness at the
 finest available granularity: per (case, variable, pressure-level) "slot".
 
 A *slot* is defined as one (variable, pressure-level) pair:
-  5 pressure vars  ×  8 levels  =  40 pressure slots
+  5 pressure vars  ×  9 levels  =  45 pressure slots
   1 single-level var (msl)      =   1 slot
   ─────────────────────────────────────────────────────
-  Total per case                =  41 slots
+  Total per case                =  46 slots
 
 The monitor opens only the NetCDF header (no data loaded), so scanning
 1 000+ files takes only a few seconds.
@@ -46,6 +46,12 @@ import pandas as pd
 import xarray as xr
 from tqdm import tqdm
 
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
+
 # ============================================================================
 # CONFIGURATION  (must stay consistent with step2_download_era5_parallel.py)
 # ============================================================================
@@ -59,10 +65,10 @@ PRESSURE_VARS = ["u", "v", "t", "z", "q"]
 SINGLE_VARS   = ["msl"]
 
 # Target pressure levels (hPa)
-PRESSURE_LEVELS = [175, 200, 225, 250, 500, 825, 850, 875]
+PRESSURE_LEVELS = [175, 200, 225, 250, 500, 825, 850, 875, 975]
 
 # Total download "slots" per case:
-#   5 pressure vars × 8 levels  +  1 single-level var  =  41
+#   5 pressure vars × 9 levels  +  1 single-level var  =  46
 SLOTS_PER_CASE = len(PRESSURE_VARS) * len(PRESSURE_LEVELS) + len(SINGLE_VARS)
 
 # Human-readable variable labels (padded to equal width for table alignment)
@@ -77,15 +83,86 @@ VAR_LABELS = {
 
 # Purpose annotation for each pressure level
 LEVEL_PURPOSE = {
-    175: "PV@200 FD  ",
-    200: "PV@200 FD  ",
-    225: "PV@200 FD  ",
-    250: "EGR upper  ",
-    500: "mid-trop.  ",
-    825: "PV@850 FD  ",
-    850: "EGR / T_adv",
-    875: "PV@850 FD  ",
+    175: "PV@200 FD      ",
+    200: "PV@200 FD      ",
+    225: "PV@200 FD      ",
+    250: "EGR upper      ",
+    500: "mid-trop.      ",
+    825: "PV@850 FD      ",
+    850: "EGR / T_adv    ",
+    875: "PV@850 FD      ",
+    975: "moisture flux  ",
 }
+
+# ============================================================================
+# PROCESS DETECTION
+# ============================================================================
+
+def detect_download_process():
+    """
+    Detect if step2_download_era5_parallel.py is currently running.
+    
+    Returns:
+        dict with keys:
+            - running: bool
+            - pid: int or None
+            - cpu_percent: float or None
+            - memory_mb: float or None
+            - runtime_seconds: float or None
+    """
+    if not HAS_PSUTIL:
+        return {"running": False, "pid": None, "cpu_percent": None, 
+                "memory_mb": None, "runtime_seconds": None}
+    
+    script_name = "step2_download_era5_parallel.py"
+    
+    for proc in psutil.process_iter(['pid', 'name', 'cmdline', 'create_time']):
+        try:
+            cmdline = proc.info.get('cmdline') or []
+            # Check if this is a Python process running our script
+            if any(script_name in arg for arg in cmdline):
+                # Get process details
+                pid = proc.info['pid']
+                runtime = time.time() - proc.info['create_time']
+                
+                # Get CPU and memory (may take a moment)
+                try:
+                    cpu = proc.cpu_percent(interval=0.1)
+                    mem_mb = proc.memory_info().rss / 1024 / 1024
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    cpu = None
+                    mem_mb = None
+                
+                return {
+                    "running": True,
+                    "pid": pid,
+                    "cpu_percent": cpu,
+                    "memory_mb": mem_mb,
+                    "runtime_seconds": runtime,
+                }
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            continue
+    
+    return {"running": False, "pid": None, "cpu_percent": None,
+            "memory_mb": None, "runtime_seconds": None}
+
+
+def format_runtime(seconds):
+    """Format runtime in human-readable format."""
+    if seconds is None:
+        return "N/A"
+    
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    
+    if hours > 0:
+        return f"{hours}h {minutes}m {secs}s"
+    elif minutes > 0:
+        return f"{minutes}m {secs}s"
+    else:
+        return f"{secs}s"
+
 
 # ============================================================================
 # FILE SCANNING
@@ -281,6 +358,7 @@ def print_report(
     ep1_stats: dict,
     ep2_stats: dict,
     scan_elapsed: float,
+    proc_info: dict,
 ) -> None:
     """Render the full monitor report to stdout."""
 
@@ -295,6 +373,21 @@ def print_report(
     print(f"  Slots   : {SLOTS_PER_CASE} per case  "
           f"= {len(PRESSURE_VARS)} pressure vars × {len(PRESSURE_LEVELS)} levels "
           f"+ {len(SINGLE_VARS)} SLP")
+    
+    # Download process status
+    if proc_info["running"]:
+        runtime_str = format_runtime(proc_info["runtime_seconds"])
+        status = f"  ⬇ DOWNLOAD ACTIVE  PID={proc_info['pid']}  Runtime={runtime_str}"
+        if proc_info["cpu_percent"] is not None:
+            status += f"  CPU={proc_info['cpu_percent']:.1f}%"
+        if proc_info["memory_mb"] is not None:
+            status += f"  RAM={proc_info['memory_mb']:.0f}MB"
+        print(status)
+    elif HAS_PSUTIL:
+        print("  ⏸  Download process: not running")
+    else:
+        print("  ⏸  Download process: unknown (install psutil for detection)")
+    
     print("═" * W)
 
     # ── Per-EP overview: slots bar + cases bar ────────────────────────────
@@ -372,6 +465,14 @@ def print_report(
             print(f"    ✗  {cf.name:<44}  (not yet generated — run step3)")
 
     print()
+    
+    # ── Footer notes ──────────────────────────────────────────────────────
+    if not HAS_PSUTIL:
+        print("  " + "─" * (W - 2))
+        print("  Note: Install psutil for download process detection:")
+        print("        pip install psutil")
+        print()
+    
     print("═" * W)
 
 
@@ -416,6 +517,7 @@ def main() -> None:
 
     def _run_once() -> None:
         t0 = time.monotonic()
+        proc_info = detect_download_process()
         ep1_scan  = scan_group(ep1_cases, desc="Scanning EP1")
         ep2_scan  = scan_group(ep2_cases, desc="Scanning EP2")
         ep1_stats = aggregate(ep1_cases, ep1_scan)
@@ -424,7 +526,7 @@ def main() -> None:
 
         if args.watch and not args.no_clear:
             os.system("clear")
-        print_report(ep1_cases, ep2_cases, ep1_stats, ep2_stats, elapsed)
+        print_report(ep1_cases, ep2_cases, ep1_stats, ep2_stats, elapsed, proc_info)
 
     if args.watch:
         print(f"  Monitoring every {args.interval} s  (Ctrl+C to stop)…", flush=True)

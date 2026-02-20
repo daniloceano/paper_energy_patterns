@@ -94,14 +94,18 @@ finest available granularity: one **slot** = one (variable, pressure-level) pair
 Slots per case = 5 pressure vars × 9 levels  +  1 SLP  =  46 slots total
 ```
 
-Two progress bars are shown (one per EP group), followed by:
-
-- **Per-variable table**: how many cases have that variable with all 8 levels.
-- **Per-level table**: how many cases have that level with all 5 variables.
+**Features:**
+- **Process detection**: Automatically detects if `step2_download_era5_parallel.py` 
+  is running and shows PID, runtime, CPU%, and memory usage (requires `psutil`)
+- **Per-variable table**: how many cases have that variable with all 9 levels
+- **Per-level table**: how many cases have that level with all 5 variables
 - **Composite check**: whether `precomputed_composites_ep{1,2}.nc` (step 3 output)
-  already exist.
+  already exist
 
 ```bash
+# Install psutil for process detection (optional but recommended)
+pip install psutil
+
 # One-shot report (shows current state and exits)
 python scripts/ep_structure_analysis/step2_monitor.py
 
@@ -115,23 +119,26 @@ python scripts/ep_structure_analysis/step2_monitor.py --watch --interval 30
 python scripts/ep_structure_analysis/step2_monitor.py --watch --no-clear
 ```
 
-Example output:
+Example output (with download process active):
 
 ```
 ══════════════════════════════════════════════════════════════════════════════
   ERA5 EP STRUCTURE — DOWNLOAD MONITOR
-  Scanned : 2026-02-18 14:30:00  (3.2 s)
+  Scanned : 2026-02-20 14:30:00  (3.2 s)
   Dir     : …/data/era5_ep_structure
-  Slots   : 41 per case  = 5 pressure vars × 8 levels + 1 SLP
+  Slots   : 46 per case  = 5 pressure vars × 9 levels + 1 SLP
+  ⬇ DOWNLOAD ACTIVE  PID=12345  Runtime=2h 15m 30s  CPU=45.2%  RAM=512MB
 ══════════════════════════════════════════════════════════════════════════════
 
-  EP1  slots  [████████████░░░░░░░░░░░░░░░░░░]    220/18204  ( 1.2%)
-       cases  [█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]      5/444   ( 1.1%)  (fully complete)
-       detail  ✓ complete: 5  ⚑ partial: 17  ✗ missing: 422
+  EP1  slots  [████████████░░░░░░░░░░░░░░░░░░]    5520/20424  (27.0%)
+       cases  [███░░░░░░░░░░░░░░░░░░░░░░░░░░░]     120/444   (27.0%)  (fully complete)
+       detail  ✓ complete: 120  ⚑ partial: 150  ✗ missing: 174
+       disk    45.2 GB
 
-  EP2  slots  [██░░░░░░░░░░░░░░░░░░░░░░░░░░░░]    420/40139  ( 1.0%)
-       cases  [█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]     10/979   ( 1.0%)  (fully complete)
-       detail  ✓ complete: 10  ⚑ partial: 40  ✗ missing: 929
+  EP2  slots  [███░░░░░░░░░░░░░░░░░░░░░░░░░░░]   12150/45034  (27.0%)
+       cases  [███░░░░░░░░░░░░░░░░░░░░░░░░░░░]     264/979   (27.0%)  (fully complete)
+       detail  ✓ complete: 264  ⚑ partial: 330  ✗ missing: 385
+       disk    98.5 GB
 …
 ```
 
@@ -148,6 +155,9 @@ python scripts/ep_structure_analysis/step1_select_ep_tracks.py
 
 # Step 2 – download ERA5 (use nohup for long-running download)
 nohup python scripts/ep_structure_analysis/step2_download_era5_parallel.py --jobs 4 &
+
+# Monitor download progress in another terminal
+python scripts/ep_structure_analysis/step2_monitor.py --watch
 
 # Step 3 – precompute composites
 nohup python scripts/ep_structure_analysis/step3_precompute_composites.py &

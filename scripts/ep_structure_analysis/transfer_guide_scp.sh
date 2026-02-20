@@ -60,7 +60,7 @@ if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
     echo "→ Transferring data/era5_ep_structure/precomputed_composites_*.nc..."
     mkdir -p "${LOCAL_BASE}/data/era5_ep_structure"
     scp -i "$SSH_KEY" -C \
-        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/data/era5_ep_structure/precomputed_composites_\*.nc" \
+        "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_BASE}/data/era5_ep_structure/precomputed_composites_*.nc" \
         "${LOCAL_BASE}/data/era5_ep_structure/"
     echo "✓ Done!"
 fi

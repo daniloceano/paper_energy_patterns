@@ -69,12 +69,13 @@ PRESSURE_VARS = [
 
 SINGLE_LEVEL_VARS = ["mean_sea_level_pressure"]
 
-# Pressure levels (hPa) — targeted for EGR(250-850), PV@200, PV@850, T_adv@850
+# Pressure levels (hPa) — targeted for EGR(250-850), PV@200, PV@850, T_adv@850, moisture flux@975
 PRESSURE_LEVELS = [
     175, 200, 225,   # PV at 200 hPa (centred FD)
     250,             # EGR upper bound + jet
     500,             # Mid-troposphere reference
     825, 850, 875,   # PV at 850 hPa (centred FD) + EGR lower bound + T advection
+    975,             # Moisture flux divergence (low-level moisture transport)
 ]
 
 DOMAIN_BUFFER = 15  # degrees → 30° × 30° domain

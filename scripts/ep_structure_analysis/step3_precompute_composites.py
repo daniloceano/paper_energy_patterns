@@ -33,8 +33,9 @@ import logging
 from datetime import datetime
 from tqdm import tqdm
 
-from metpy.calc import potential_temperature, potential_vorticity_baroclinic
+from metpy.calc import potential_temperature, potential_vorticity_baroclinic, divergence
 from metpy.units import units
+import metpy.constants as mpconstants
 
 # ============================================================================
 # PHYSICAL CONSTANTS
@@ -200,6 +201,50 @@ def temperature_advection_850(u_850, v_850, T_850, lat_2d, lon_2d):
     return advT
 
 
+def moisture_flux_divergence_975(u_975, v_975, q_975, lat_1d, lon_1d):
+    """
+    Moisture flux divergence at 975 hPa using MetPy:
+      div_q = ∇·(q*V) = ∂(q*u)/∂x + ∂(q*v)/∂y
+    
+    Uses MetPy for proper unit handling and physical constants.
+    Returns in g kg⁻¹ s⁻¹.
+    """
+    # Convert to MetPy quantities with units
+    u_q = u_975 * units('m/s')
+    v_q = v_975 * units('m/s')
+    q_q = q_975 * units('kg/kg')  # specific humidity as mass fraction
+    
+    # Create coordinate arrays with units
+    lat_q = lat_1d * units.degrees_north
+    lon_q = lon_1d * units.degrees_east
+    
+    # Calculate moisture fluxes (q*u and q*v)
+    qu = (q_q * u_q).to('kg/kg * m/s')
+    qv = (q_q * v_q).to('kg/kg * m/s')
+    
+    # Create DataArrays for MetPy calculations
+    qu_da = xr.DataArray(
+        qu.magnitude,
+        coords={'latitude': lat_1d, 'longitude': lon_1d},
+        dims=['latitude', 'longitude']
+    ) * qu.units
+    
+    qv_da = xr.DataArray(
+        qv.magnitude,
+        coords={'latitude': lat_1d, 'longitude': lon_1d},
+        dims=['latitude', 'longitude']
+    ) * qv.units
+    
+    # Calculate divergence using MetPy (handles spherical geometry)
+    dx, dy = xr.DataArray(lon_q), xr.DataArray(lat_q)
+    div_q = divergence(qu_da, qv_da, dx=dx, dy=dy)
+    
+    # Convert to g kg⁻¹ s⁻¹ for easier interpretation
+    div_q_gkg = (div_q * 1000.0 * units('g/kg')).metpy.dequantify()
+    
+    return div_q_gkg.values
+
+
 # ============================================================================
 # SUBDOMAIN EXTRACTION
 # ============================================================================
@@ -246,6 +291,10 @@ def compute_composite(cases, ep_label):
     v250_list = []
     u850_list = []
     v850_list = []
+    u975_list = []
+    v975_list = []
+    q975_list = []
+    div_q975_list = []
 
     processed = 0
     failed = 0
@@ -291,6 +340,7 @@ def compute_composite(cases, ep_label):
 
             i250 = _idx(250)
             i850 = _idx(850)
+            i975 = _idx(975)
 
             # ── EGR (250–850 hPa layer) ──────────────────────────────
             egr = eady_growth_rate(
@@ -335,6 +385,15 @@ def compute_composite(cases, ep_label):
             u850_list.append(u[i850])
             v850_list.append(v[i850])
 
+            # ── Moisture fields at 975 hPa ────────────────────────────
+            u975_list.append(u[i975])
+            v975_list.append(v[i975])
+            q975_list.append(q[i975])
+            
+            # ── Moisture flux divergence at 975 hPa ───────────────────
+            div_q = moisture_flux_divergence_975(u[i975], v[i975], q[i975], lat_1d, lon_1d)
+            div_q975_list.append(div_q)
+
             ds.close()
             processed += 1
 
@@ -358,6 +417,10 @@ def compute_composite(cases, ep_label):
             "v_250": (["y", "x"], np.nanmean(np.stack(v250_list), axis=0)),
             "u_850": (["y", "x"], np.nanmean(np.stack(u850_list), axis=0)),
             "v_850": (["y", "x"], np.nanmean(np.stack(v850_list), axis=0)),
+            "u_975": (["y", "x"], np.nanmean(np.stack(u975_list), axis=0)),
+            "v_975": (["y", "x"], np.nanmean(np.stack(v975_list), axis=0)),
+            "q_975": (["y", "x"], np.nanmean(np.stack(q975_list), axis=0)),
+            "div_q_975": (["y", "x"], np.nanmean(np.stack(div_q975_list), axis=0)),
         },
         coords={"x": x, "y": y},
     )

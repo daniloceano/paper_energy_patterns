@@ -323,6 +323,108 @@ def figure_advT850(datasets):
     logging.info(f"    ✓ {out.name}")
 
 
+def figure_moisture(datasets):
+    """Moisture and moisture flux divergence at 975 hPa: EP1 vs EP2."""
+    logging.info("  Creating moisture flux composite figure...")
+
+    fig, axes = plt.subplots(2, 2, figsize=(16, 14))
+
+    # Row 1: Specific humidity (g/kg) with wind vectors
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[0, i]
+        ds = datasets[ep]
+        x, y = ds.x.values, ds.y.values
+
+        if "q_975" not in ds:
+            ax.text(0.5, 0.5, "q_975 not available", transform=ax.transAxes,
+                    ha="center", va="center", fontsize=12)
+            continue
+
+        # Convert to g/kg
+        q975_gkg = ds["q_975"].values * 1000.0
+        
+        # Determine common color scale
+        if i == 0:
+            q_min = np.nanpercentile(q975_gkg, 5)
+            q_max = np.nanpercentile(q975_gkg, 95)
+        
+        q_levels = np.linspace(q_min, q_max, 21)
+        
+        im = ax.contourf(x, y, q975_gkg, levels=q_levels, cmap="YlGnBu", extend="both")
+        
+        # 975 hPa wind vectors
+        if "u_975" in ds and "v_975" in ds:
+            s = VECTOR_SKIP
+            ax.quiver(x[::s], y[::s], ds["u_975"].values[::s, ::s], ds["v_975"].values[::s, ::s],
+                      color="black", alpha=0.7, scale=80, width=VECTOR_WIDTH)
+        
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{ep} — Specific Humidity at 975 hPa  [n={n}]", ylabel=(i == 0))
+        _add_cbar(fig, ax, im, "q (g kg⁻¹)")
+        
+        q_mean = np.nanmean(q975_gkg)
+        ax.text(0.03, 0.97, f"Mean: {q_mean:.2f} g/kg",
+                transform=ax.transAxes, fontsize=9, va="top",
+                bbox=dict(boxstyle="round", fc="white", alpha=0.8))
+    
+    # Row 2: Moisture flux divergence (g kg⁻¹ s⁻¹)
+    # Symmetric color scale
+    absmax_div = 0
+    for ep in ["EP1", "EP2"]:
+        if "div_q_975" in datasets[ep]:
+            d = datasets[ep]["div_q_975"].values
+            absmax_div = max(absmax_div, np.nanpercentile(np.abs(d), 95))
+    
+    div_levels = np.linspace(-absmax_div, absmax_div, 21)
+    
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[1, i]
+        ds = datasets[ep]
+        x, y = ds.x.values, ds.y.values
+
+        if "div_q_975" not in ds:
+            ax.text(0.5, 0.5, "div_q_975 not available", transform=ax.transAxes,
+                    ha="center", va="center", fontsize=12)
+            continue
+
+        div_q = ds["div_q_975"].values
+        
+        im = ax.contourf(x, y, div_q, levels=div_levels, cmap="RdBu_r", extend="both")
+        
+        # Contour convergence zones (negative divergence)
+        cs_conv = ax.contour(x, y, div_q, levels=[-absmax_div*0.5, -absmax_div*0.25],
+                             colors="blue", linewidths=1.5, linestyles="--")
+        ax.clabel(cs_conv, inline=True, fontsize=8, fmt="%.1e")
+        
+        # Contour divergence zones (positive divergence)
+        cs_div = ax.contour(x, y, div_q, levels=[absmax_div*0.25, absmax_div*0.5],
+                            colors="red", linewidths=1.5, linestyles="--")
+        ax.clabel(cs_div, inline=True, fontsize=8, fmt="%.1e")
+        
+        # 975 hPa wind vectors
+        if "u_975" in ds and "v_975" in ds:
+            s = VECTOR_SKIP
+            ax.quiver(x[::s], y[::s], ds["u_975"].values[::s, ::s], ds["v_975"].values[::s, ::s],
+                      color="black", alpha=0.6, scale=80, width=VECTOR_WIDTH)
+        
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{ep} — Moisture Flux Divergence at 975 hPa  [n={n}]", ylabel=(i == 0))
+        _add_cbar(fig, ax, im, "∇·(qV) (g kg⁻¹ s⁻¹)")
+        
+        # Note on convergence/divergence
+        ax.text(0.03, 0.03, "Blue dashed: convergence\nRed dashed: divergence",
+                transform=ax.transAxes, fontsize=8, va="bottom",
+                bbox=dict(boxstyle="round", fc="white", alpha=0.8))
+    
+    fig.suptitle("Low-Level Moisture Transport at 975 hPa — EP1 vs EP2", 
+                 fontsize=13, fontweight="bold", y=0.995)
+    plt.tight_layout(rect=[0, 0, 1, 0.99])
+    out = FIGURES_DIR / "composite_moisture_flux.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
 def figure_slp(datasets):
     """SLP composite: EP1 vs EP2, with 850 hPa wind vectors."""
     logging.info("  Creating SLP composite figure...")
@@ -403,6 +505,7 @@ def main():
     figure_pv200(datasets)
     figure_pv850(datasets)
     figure_advT850(datasets)
+    figure_moisture(datasets)
     figure_slp(datasets)
 
     # Close datasets

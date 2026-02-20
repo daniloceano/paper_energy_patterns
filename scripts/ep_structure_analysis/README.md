@@ -29,6 +29,8 @@ throughout the study.
 | **PV** (Potential Vorticity) | 200 hPa | Upper-level tropopause dynamics and stratospheric intrusions | Hoskins et al. (1985); Davis & Emanuel (1991); Rossa et al. (2000) |
 | **PV** (Potential Vorticity) | 850 hPa | Low-level PV anomaly associated with surface cyclone | Hoskins et al. (1985); Davis (1992); Čampa & Wernli (2012) |
 | **Temperature advection** | 850 hPa | Warm/cold advection patterns linked to QG forcing for ascent | Sutcliffe (1947); Sanders & Gyakum (1980); Sinclair (1994) |
+| **Specific humidity** | 975 hPa | Low-level moisture distribution | Bao et al. (2002); Schär & Wernli (1993) |
+| **Moisture flux divergence** | 975 hPa | Moisture convergence/divergence → convective potential | Banacos & Schultz (2005); Lackmann (2011) |
 | **SLP** (Sea Level Pressure) | Surface | Cyclone position, intensity and horizontal structure | Hoskins & Hodges (2005); Reboita et al. (2010) |
 
 ### Level selection rationale
@@ -62,6 +64,14 @@ throughout the study.
 - **SLP:** Standard field for cyclone tracking and composite analysis (Hoskins &
   Hodges, 2005; Reboita et al., 2010).
 
+- **Moisture fields at 975 hPa:** The 975 hPa level captures near-surface moisture
+  transport while remaining above the planetary boundary layer turbulence. Moisture
+  flux divergence (∇·(qV)) identifies regions of moisture convergence (negative
+  values) associated with convective potential and latent heat release, a key
+  diabatic process in cyclone intensification (Banacos & Schultz, 2005; Lackmann,
+  2011). The calculation uses MetPy's spherical geometry-aware gradient operators
+  and physical constants to ensure consistency.
+
 ## Pipeline Structure
 
 ### Steps
@@ -81,7 +91,7 @@ throughout the study.
 finest available granularity: one **slot** = one (variable, pressure-level) pair.
 
 ```
-Slots per case = 5 pressure vars × 8 levels  +  1 SLP  =  41 slots total
+Slots per case = 5 pressure vars × 9 levels  +  1 SLP  =  46 slots total
 ```
 
 Two progress bars are shown (one per EP group), followed by:
@@ -169,15 +179,16 @@ python scripts/ep_structure_analysis/step5_update_scientific_notes.py
 
 ## ERA5 Variables Downloaded
 
-**Pressure levels (hPa):** 175, 200, 225, 250, 500, 825, 850, 875
+**Pressure levels (hPa):** 175, 200, 225, 250, 500, 825, 850, 875, 975
 
 | Levels | Purpose |
-|--------|---------|
+|--------|---------||
 | 250, 850 | EGR layer bounds (vertical wind shear + static stability) |
 | 175, 200, 225 | PV at 200 hPa (centered finite difference for ∂θ/∂p) |
 | 825, 850, 875 | PV at 850 hPa (centered finite difference for ∂θ/∂p) |
 | 850 | Temperature advection (u, v, T at 850 hPa) |
 | 500 | Mid-tropospheric reference for stability profile |
+| 975 | Low-level moisture flux (u, v, q at 975 hPa) |
 
 **Pressure-level variables:** u, v, t, z (geopotential), q (specific humidity)
 
@@ -193,6 +204,12 @@ python scripts/ep_structure_analysis/step5_update_scientific_notes.py
 
 ### Figures
 - `figures/ep_structure/` — EP1 vs EP2 composite comparison panels
+  - `composite_egr.png` — Eady Growth Rate (250–850 hPa)
+  - `composite_pv200.png` — Potential Vorticity at 200 hPa
+  - `composite_pv850.png` — Potential Vorticity at 850 hPa
+  - `composite_advT850.png` — Temperature Advection at 850 hPa
+  - `composite_moisture_flux.png` — Specific Humidity & Moisture Flux Divergence at 975 hPa
+  - `composite_slp.png` — Sea Level Pressure
   - Each figure shows EP1 (left) vs EP2 (right) for a given field
   - 15° × 15° box overlay marks the LEC computation domain
 
@@ -219,6 +236,8 @@ From `scripts/exploratory/analyze_ep_characteristics.py`:
 
 ## References
 
+- Banacos, P. C., & Schultz, D. M. (2005). The use of moisture flux convergence in forecasting convective initiation: Historical and operational perspectives. *Weather and Forecasting*, 20(3), 351–366.
+- Bao, J.-W., Michelson, S. A., Persson, P. O. G., Djalalova, I. V., & Wilczak, J. M. (2002). Observed and WRF-simulated low-level winds in a high-ozone episode during the Central California Ozone Study. *Journal of Applied Meteorology and Climatology*, 41(9), 941–961.
 - Čampa, J., & Wernli, H. (2012). A PV perspective on the vertical structure of mature midlatitude cyclones in the Northern Hemisphere. *Journal of the Atmospheric Sciences*, 69(2), 725–740.
 - Catto, J. L., Shaffrey, L. C., & Hodges, K. I. (2010). Can climate models capture the structure of extratropical cyclones? *Journal of Climate*, 23(7), 1621–1635.
 - Dacre, H. F., Hawcroft, M. K., Stringer, M. A., & Hodges, K. I. (2012). An extratropical cyclone atlas. *Bulletin of the American Meteorological Society*, 93(10), 1497–1502.
@@ -228,11 +247,13 @@ From `scripts/exploratory/analyze_ep_characteristics.py`:
 - Hoskins, B. J., McIntyre, M. E., & Robertson, A. W. (1985). On the use and significance of isentropic potential vorticity maps. *Quarterly Journal of the Royal Meteorological Society*, 111(470), 877–946.
 - Hoskins, B. J., & Valdes, P. J. (1990). On the existence of storm-tracks. *Journal of the Atmospheric Sciences*, 47(15), 1854–1864.
 - Hoskins, B. J., & Hodges, K. I. (2005). A new perspective on Southern Hemisphere storm tracks. *Journal of Climate*, 18(20), 4108–4129.
+- Lackmann, G. M. (2011). *Midlatitude Synoptic Meteorology: Dynamics, Analysis, and Forecasting*. American Meteorological Society.
 - Lindzen, R. S., & Farrell, B. (1980). A simple approximate result for the maximum growth rate of baroclinic instabilities. *Journal of the Atmospheric Sciences*, 37(7), 1648–1654.
 - Martínez-Alvarado, O., Gray, S. L., & Methven, J. (2016). Diabatic processes and the evolution of two contrasting extratropical cyclones. *Monthly Weather Review*, 144(9), 3251–3276.
 - Reboita, M. S., da Rocha, R. P., Ambrizzi, T., & Sugahara, S. (2010). South Atlantic Ocean cyclogenesis climatology simulated by regional climate model (RegCM3). *Climate Dynamics*, 35, 1331–1347.
 - Rossa, A. M., Wernli, H., & Davies, H. C. (2000). Growth and decay of an extra-tropical cyclone's PV-tower. *Meteorology and Atmospheric Physics*, 73, 139–156.
 - Sanders, F., & Gyakum, J. R. (1980). Synoptic-dynamic climatology of the "bomb." *Monthly Weather Review*, 108(10), 1589–1606.
+- Schär, C., & Wernli, H. (1993). Structure and evolution of an isolated semi-geostrophic cyclone. *Quarterly Journal of the Royal Meteorological Society*, 119(514), 57–90.
 - Simmonds, I., & Lim, E.-P. (2009). Biases in the calculation of Southern Hemisphere mean baroclinic eddy growth rate. *Geophysical Research Letters*, 36(1), L01707.
 - Sinclair, M. R. (1994). An objective cyclone climatology for the Southern Hemisphere. *Monthly Weather Review*, 122(10), 2239–2256.
 - Sutcliffe, R. C. (1947). A contribution to the problem of development. *Quarterly Journal of the Royal Meteorological Society*, 73(317–318), 370–383.

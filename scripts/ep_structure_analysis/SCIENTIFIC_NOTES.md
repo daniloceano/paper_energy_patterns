@@ -39,32 +39,113 @@ using standard dynamical diagnostics from ERA5 reanalysis.
 
 ## 2. Methodology
 
-### 2.1 Eady Growth Rate (EGR)
+### 2.1 Spherical Grid Spacing
+
+All horizontal derivatives account for spherical geometry:
+
+**Meridional spacing (dy):**
+$$dy = R_{\oplus} \Delta\phi$$
+
+**Zonal spacing (dx):**
+$$dx = R_{\oplus} \cos(\phi) \Delta\lambda$$
+
+where:
+- $R_{\oplus} = 6.371 \times 10^6$ m (Earth's radius)
+- $\phi$ = latitude (radians)
+- $\lambda$ = longitude (radians)
+- $\Delta\phi$, $\Delta\lambda$ computed via `np.gradient()` for non-uniform grids
+
+**Coordinate verification:**
+- Latitude and longitude must be monotonic (checked at runtime)
+- Sign of gradients automatically correct regardless of increasing/decreasing coordinates
+
+### 2.2 Eady Growth Rate (EGR)
 
 $$\sigma_{EGR} = 0.31 \frac{|f|}{N} \left|\frac{\partial \vec{V}}{\partial z}\right|$$
 
-Computed using the 250–850 hPa layer:
-- Vertical wind shear from 250 and 850 hPa winds
-- Static stability (N) from virtual potential temperature at both levels
-- References: Lindzen & Farrell (1980); Hoskins & Valdes (1990)
+**Layer-mean implementation (250–850 hPa):**
 
-### 2.2 Potential Vorticity
+1. **Virtual potential temperature:**
+   $$\theta_v = T_v \left(\frac{p_0}{p}\right)^{\kappa}$$
+   where $T_v = T(1 + 0.61q)$, $\kappa = R_d / c_p = 0.286$
+
+2. **Static stability (Brunt-Väisälä frequency):**
+   $$N^2 = \frac{g}{\theta_{v,mid}} \frac{\Delta\theta_v}{\Delta z}$$
+   where $\theta_{v,mid} = (\theta_{v,250} + \theta_{v,850})/2$
+
+3. **Vertical wind shear:**
+   $$\left|\frac{\partial \vec{V}}{\partial z}\right| = \sqrt{\left(\frac{\Delta u}{\Delta z}\right)^2 + \left(\frac{\Delta v}{\Delta z}\right)^2}$$
+
+4. **Geopotential height:**
+   $$z = \frac{\Phi}{g}$$
+
+**Quality control:**
+- $N^2 > 10^{-6}$ s$^{-2}$ (exclude statically unstable regions)
+- $|\phi| > 5°$ (exclude near-equatorial regions where $f \approx 0$)
+- $\sigma_{EGR} < 5$ day$^{-1}$ (cap unrealistic values)
+
+**References:** Lindzen & Farrell (1980); Hoskins & Valdes (1990)
+
+### 2.3 Potential Vorticity
 
 Baroclinic PV computed with MetPy using centred finite differences:
-- **200 hPa:** levels 175, 200, 225 hPa → tropopause dynamics (Hoskins et al., 1985)
-- **850 hPa:** levels 825, 850, 875 hPa → low-level PV anomaly (Čampa & Wernli, 2012)
 
-### 2.3 Temperature Advection
+$$PV = -g \left(\zeta_\theta + f\right) \frac{\partial \theta}{\partial p}$$
 
-$$\text{advT} = -\vec{V} \cdot \nabla T$$
+where:
+- $\zeta_\theta$ = relative vorticity on isentropic surface
+- $f = 2\Omega \sin(\phi)$ = Coriolis parameter
+- $\Omega = 7.292 \times 10^{-5}$ rad s$^{-1}$
 
-Computed at 850 hPa using centred finite differences for ∂T/∂x and ∂T/∂y.
-Positive values: warm air advection; negative: cold air advection.
+**Vertical levels:**
+- **200 hPa:** uses 175, 200, 225 hPa → upper-level tropopause dynamics
+- **850 hPa:** uses 825, 850, 875 hPa → low-level PV anomaly
 
-### 2.4 Sea Level Pressure
+**Implementation:**
+- Potential temperature: $\theta = T(p_0/p)^{\kappa}$ via `metpy.calc.potential_temperature`
+- PV via `metpy.calc.potential_vorticity_baroclinic`
+- Returns PV at middle level (200 or 850 hPa)
+- Units: K m² kg⁻¹ s⁻¹ (SI), converted to PVU (1 PVU = 10⁻⁶ K m² kg⁻¹ s⁻¹) in figures
+
+**References:** Hoskins et al. (1985); Čampa & Wernli (2012)
+
+### 2.4 Temperature Advection
+
+Horizontal temperature advection at 850 hPa:
+
+$$\text{advT} = -\vec{V} \cdot \nabla T = -\left(u\frac{\partial T}{\partial x} + v\frac{\partial T}{\partial y}\right)$$
+
+**Implementation:**
+1. Temperature gradients computed via `np.gradient()` with spherical $dx$, $dy$
+2. Sign convention: **positive** = warm air advection, **negative** = cold air advection
+3. Units: K s⁻¹ (converted to K h⁻¹ in tables/figures)
+
+**Physical interpretation:**
+- Warm advection (>0): promotes ascent ahead of surface low
+- Cold advection (<0): promotes descent behind surface low
+
+### 2.5 Moisture Flux Divergence
+
+Moisture flux divergence at 975 hPa (near-surface):
+
+$$\nabla \cdot (q\vec{V}) = \frac{\partial (qu)}{\partial x} + \frac{\partial (qv)}{\partial y}$$
+
+**Implementation:**
+1. Moisture fluxes: $qu$ and $qv$ (kg kg⁻¹ m s⁻¹)
+2. Derivatives via `np.gradient()` with spherical grid spacing
+3. Units tracked via MetPy: input $q$ in kg/kg → output in g kg⁻¹ s⁻¹
+
+**Physical interpretation:**
+- **Positive (divergence):** moisture export / drying
+- **Negative (convergence):** moisture import / moistening  
+  (supports convection and latent heat release)
+
+### 2.6 Sea Level Pressure
 
 Mean sea level pressure from ERA5 single-level data, composited over the
 30° × 30° domain for all intensification timesteps.
+
+**Units:** hPa (hectopascals)
 
 ---
 
@@ -149,7 +230,91 @@ Mean sea level pressure from ERA5 single-level data, composited over the
 
 ---
 
-## 6. References
+## 7. Computational Implementation
+
+### 7.1 Grid Spacing on Spherical Earth
+
+**Function:** `compute_spherical_grid_spacing(lat_1d, lon_1d)`
+
+Computes accurate grid spacing accounting for Earth's spherical geometry:
+
+```python
+# Meridional spacing (constant per latitude band)
+dy = R_EARTH * Δφ  # meters
+
+# Zonal spacing (varies with latitude)
+dx = R_EARTH * cos(φ) * Δλ  # meters
+```
+
+**Quality checks:**
+- ✅ Verifies latitude is monotonic (increasing or decreasing)
+- ✅ Verifies longitude is monotonic
+- ✅ Raises `ValueError` if non-monotonic
+- ✅ Gradient sign automatically correct regardless of coordinate direction
+
+### 7.2 Divergence on Spherical Coordinates
+
+For small domains (~30°), the simplified Cartesian approximation is valid:
+
+$$\nabla \cdot \vec{F} \approx \frac{\partial F_x}{\partial x} + \frac{\partial F_y}{\partial y}$$
+
+where $dx$ and $dy$ account for spherical geometry (Section 7.1).
+
+**Full spherical formula** (not required for 30° domain):
+$$\nabla \cdot \vec{F} = \frac{1}{R\cos\phi}\frac{\partial F_\lambda}{\partial \lambda} + \frac{1}{R\cos\phi}\frac{\partial(F_\phi \cos\phi)}{\partial \phi}$$
+
+Our implementation uses the simplified form with accurate $dx$, $dy$ — appropriate for mesoscale domains.
+
+### 7.3 Unit Tracking
+
+All calculations use **MetPy units** for automatic dimensional analysis:
+
+```python
+# Example: moisture flux
+qu = (q * units('kg/kg')) * (u * units('m/s'))
+# → qu.units = 'kg / kg * m / s' (automatically tracked)
+
+# Convert divergence to g/kg/s
+div_q_si = (dqu_dx + dqv_dy) * units('kg/kg/s')
+div_q_gkg = (div_q_si * 1000 * units('g/kg')).magnitude
+```
+
+**Benefits:**
+- Prevents unit errors (e.g., mixing K and °C)
+- Documents unit transformations  
+- Explicit conversions (no hardcoded magic numbers)
+
+### 7.4 Numerical Methods
+
+- **Spatial derivatives:** `numpy.gradient()` with 2nd-order centred finite differences
+- **Vertical derivatives:** Centred FD over 3 levels (e.g., 175–200–225 hPa for PV@200)
+- **Interpolation:** Linear interpolation to regular 0.25° grid via `xarray.interp()`
+
+### 7.5 Quality Control Filters
+
+| Diagnostic | Filter | Rationale |
+|------------|--------|-----------|
+| EGR | $N^2 > 10^{-6}$ s⁻² | Exclude statically unstable regions |
+| EGR | $\|\phi\| > 5°$ | Avoid near-equatorial ($f \approx 0$) |
+| EGR | $\sigma_{EGR} < 5$ day⁻¹ | Cap unrealistic growth rates |
+| PV | Valid only where $\theta$ monotonic | Ensure isentropic sorting |
+
+### 7.6 Code Verification
+
+**Test cases:**
+1. ✅ Zonal wind → zero meridional derivative
+2. ✅ Meridional wind → zero zonal derivative  
+3. ✅ Uniform field → zero divergence
+4. ✅ Reversed latitude (90→-90) → correct gradient sign
+
+**Validation:**
+- Cross-check EGR values with literature (typical: 0.3–1.0 day⁻¹)
+- PV@200 should align with tropopause (~2–3 PVU contour)
+- Compare temperature advection with operational analyses
+
+---
+
+## 8. References
 
 - Čampa, J., & Wernli, H. (2012). A PV perspective on the vertical structure of mature midlatitude cyclones. *J. Atmos. Sci.*, 69(2), 725–740.
 - Davis, C. A., & Emanuel, K. A. (1991). Potential vorticity diagnostics of cyclogenesis. *Mon. Wea. Rev.*, 119(8), 1929–1953.

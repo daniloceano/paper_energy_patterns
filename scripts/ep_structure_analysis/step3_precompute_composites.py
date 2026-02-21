@@ -33,7 +33,7 @@ import logging
 from datetime import datetime
 from tqdm import tqdm
 
-from metpy.calc import potential_temperature, potential_vorticity_baroclinic, divergence
+from metpy.calc import potential_temperature, potential_vorticity_baroclinic
 from metpy.units import units
 import metpy.constants as mpconstants
 
@@ -92,6 +92,100 @@ def setup_logging():
 # ============================================================================
 # DIAGNOSTICS
 # ============================================================================
+
+def compute_spherical_grid_spacing(lat_1d, lon_1d):
+    """
+    Compute grid spacing (dx, dy) on a spherical Earth.
+    
+    Following spherical geometry:
+    - dy = R * Δφ (constant in latitude)
+    - dx = R * cos(φ) * Δλ (latitude-dependent)
+    
+    Parameters
+    ----------
+    lat_1d : array_like
+        1D latitude array in degrees (must be monotonic)
+    lon_1d : array_like
+        1D longitude array in degrees (must be monotonic)
+    
+    Returns
+    -------
+    dx : ndarray (2D)
+        Grid spacing in x-direction (meters)
+    dy : ndarray (2D)
+        Grid spacing in y-direction (meters)
+    lat_2d : ndarray (2D)
+        2D latitude grid
+    lon_2d : ndarray (2D)
+        2D longitude grid
+    
+    Notes
+    -----
+    Latitude should be monotonically increasing (South to North).
+    If decreasing, gradients will have correct sign automatically.
+    """
+    # Verify monotonicity
+    lat_diff = np.diff(lat_1d)
+    lon_diff = np.diff(lon_1d)
+    
+    if not (np.all(lat_diff > 0) or np.all(lat_diff < 0)):
+        raise ValueError("Latitude must be monotonic (all increasing or all decreasing)")
+    if not (np.all(lon_diff > 0) or np.all(lon_diff < 0)):
+        raise ValueError("Longitude must be monotonic (all increasing or all decreasing)")
+    
+    # Create 2D grids
+    lat_2d, lon_2d = np.meshgrid(lat_1d, lon_1d, indexing='ij')
+    
+    # Compute grid spacing
+    # dy: spacing in meridional direction (constant per latitude band)
+    dlat = np.gradient(lat_1d)  # degrees
+    dy = R_EARTH * np.deg2rad(dlat)  # meters
+    
+    # dx: spacing in zonal direction (varies with latitude)
+    dlon = np.gradient(lon_1d)  # degrees
+    dx = R_EARTH * np.cos(np.deg2rad(lat_2d)) * np.deg2rad(
+        np.broadcast_to(dlon[np.newaxis, :], lat_2d.shape)
+    )  # meters
+    
+    return dx, dy, lat_2d, lon_2d
+
+
+def spherical_divergence(u, v, lat_1d, lon_1d):
+    """
+    Compute horizontal divergence on a spherical Earth.
+    
+    Uses the correct spherical divergence formula:
+    ∇·F = (1/(R cos φ)) * ∂Fλ/∂λ + (1/(R cos φ)) * ∂(Fφ cos φ)/∂φ
+    
+    Simplified for small domains:
+    ∇·F ≈ ∂u/∂x + ∂v/∂y
+    
+    where dx and dy are computed accounting for spherical geometry.
+    
+    Parameters
+    ----------
+    u : ndarray (2D)
+        Zonal wind component (m/s)
+    v : ndarray (2D)
+        Meridional wind component (m/s)
+    lat_1d : array_like
+        1D latitude array (degrees)
+    lon_1d : array_like
+        1D longitude array (degrees)
+    
+    Returns
+    -------
+    divergence : ndarray (2D)
+        Horizontal divergence (s⁻¹)
+    """
+    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
+    
+    # Compute derivatives
+    du_dx = np.gradient(u, axis=1) / dx
+    dv_dy = np.gradient(v, axis=0) / dy[:, np.newaxis]
+    
+    return du_dx + dv_dy
+
 
 def coriolis(lat):
     return 2.0 * OMEGA * np.sin(np.deg2rad(lat))
@@ -182,67 +276,90 @@ def compute_pv_at_level(u_3lev, v_3lev, T_3lev, p_3lev, lat_1d, lon_1d):
     return pv.isel(level=1).metpy.unit_array.magnitude
 
 
-def temperature_advection_850(u_850, v_850, T_850, lat_2d, lon_2d):
+def temperature_advection_850(u_850, v_850, T_850, lat_1d, lon_1d):
     """
     Horizontal temperature advection at 850 hPa:
-      advT = -(u ∂T/∂x + v ∂T/∂y)
-    Returns in K/s.
+      advT = -V · ∇T = -(u ∂T/∂x + v ∂T/∂y)
+    
+    Parameters
+    ----------
+    u_850 : ndarray (2D)
+        Zonal wind at 850 hPa (m/s)
+    v_850 : ndarray (2D)
+        Meridional wind at 850 hPa (m/s)
+    T_850 : ndarray (2D)
+        Temperature at 850 hPa (K)
+    lat_1d : array_like
+        1D latitude array (degrees)
+    lon_1d : array_like
+        1D longitude array (degrees)
+    
+    Returns
+    -------
+    advT : ndarray (2D)
+        Temperature advection (K/s)
+        Positive: warm air advection
+        Negative: cold air advection
     """
-    dlat = np.gradient(lat_2d[:, 0])
-    dlon = np.gradient(lon_2d[0, :])
-
-    dy = R_EARTH * np.deg2rad(dlat)
-    dx = R_EARTH * np.cos(np.deg2rad(lat_2d)) * np.deg2rad(np.broadcast_to(dlon[np.newaxis, :], lat_2d.shape))
-
+    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
+    
+    # Temperature gradients
     dT_dx = np.gradient(T_850, axis=1) / dx
     dT_dy = np.gradient(T_850, axis=0) / dy[:, np.newaxis]
-
+    
+    # Advection: -V · ∇T
     advT = -(u_850 * dT_dx + v_850 * dT_dy)
+    
     return advT
 
 
 def moisture_flux_divergence_975(u_975, v_975, q_975, lat_1d, lon_1d):
     """
-    Moisture flux divergence at 975 hPa using MetPy:
+    Moisture flux divergence at 975 hPa:
       div_q = ∇·(q*V) = ∂(q*u)/∂x + ∂(q*v)/∂y
     
-    Uses MetPy for proper unit handling and physical constants.
-    Returns in g kg⁻¹ s⁻¹.
+    Parameters
+    ----------
+    u_975 : ndarray (2D)
+        Zonal wind at 975 hPa (m/s)
+    v_975 : ndarray (2D)
+        Meridional wind at 975 hPa (m/s)
+    q_975 : ndarray (2D)
+        Specific humidity at 975 hPa (kg/kg)
+    lat_1d : array_like
+        1D latitude array (degrees)
+    lon_1d : array_like
+        1D longitude array (degrees)
+    
+    Returns
+    -------
+    div_q_gkg : ndarray (2D)
+        Moisture flux divergence (g kg⁻¹ s⁻¹)
+        Positive: divergence (drying)
+        Negative: convergence (moistening)
+    
+    Notes
+    -----
+    Uses spherical grid spacing. Units are tracked and converted:
+    - Input q in kg/kg
+    - Output in g/kg/s for easier interpretation
     """
-    # Convert to MetPy quantities with units
-    u_q = u_975 * units('m/s')
-    v_q = v_975 * units('m/s')
-    q_q = q_975 * units('kg/kg')  # specific humidity as mass fraction
+    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
     
-    # Create coordinate arrays with units
-    lat_q = lat_1d * units.degrees_north
-    lon_q = lon_1d * units.degrees_east
+    # Moisture fluxes with MetPy units for tracking
+    qu = (q_975 * units('kg/kg')) * (u_975 * units('m/s'))
+    qv = (q_975 * units('kg/kg')) * (v_975 * units('m/s'))
     
-    # Calculate moisture fluxes (q*u and q*v)
-    qu = (q_q * u_q).to('kg/kg * m/s')
-    qv = (q_q * v_q).to('kg/kg * m/s')
+    # Compute divergence: ∂(qu)/∂x + ∂(qv)/∂y
+    dqu_dx = np.gradient(qu.magnitude, axis=1) / dx
+    dqv_dy = np.gradient(qv.magnitude, axis=0) / dy[:, np.newaxis]
     
-    # Create DataArrays for MetPy calculations
-    qu_da = xr.DataArray(
-        qu.magnitude,
-        coords={'latitude': lat_1d, 'longitude': lon_1d},
-        dims=['latitude', 'longitude']
-    ) * qu.units
+    div_q = (dqu_dx + dqv_dy) * qu.units / units('m')  # kg/kg/m * m/s / m = kg/kg/s
     
-    qv_da = xr.DataArray(
-        qv.magnitude,
-        coords={'latitude': lat_1d, 'longitude': lon_1d},
-        dims=['latitude', 'longitude']
-    ) * qv.units
+    # Convert to g kg⁻¹ s⁻¹
+    div_q_gkg = (div_q * 1000.0 * units('g/kg')).magnitude
     
-    # Calculate divergence using MetPy (handles spherical geometry)
-    dx, dy = xr.DataArray(lon_q), xr.DataArray(lat_q)
-    div_q = divergence(qu_da, qv_da, dx=dx, dy=dy)
-    
-    # Convert to g kg⁻¹ s⁻¹ for easier interpretation
-    div_q_gkg = (div_q * 1000.0 * units('g/kg')).metpy.dequantify()
-    
-    return div_q_gkg.values
+    return div_q_gkg
 
 
 # ============================================================================
@@ -372,7 +489,7 @@ def compute_composite(cases, ep_label):
             pv850_list.append(pv850)
 
             # ── Temperature advection at 850 hPa ─────────────────────
-            advT = temperature_advection_850(u[i850], v[i850], T[i850], lat_2d, lon_2d)
+            advT = temperature_advection_850(u[i850], v[i850], T[i850], lat_1d, lon_1d)
             advT_list.append(advT)
 
             # ── SLP ───────────────────────────────────────────────────

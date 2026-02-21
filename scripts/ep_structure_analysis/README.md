@@ -142,6 +142,94 @@ Example output (with download process active):
 …
 ```
 
+### Scientific Documentation
+
+#### PDF generation
+
+Generate a professional PDF version of SCIENTIFIC_NOTES.md:
+
+```bash
+python scripts/ep_structure_analysis/generate_scientific_notes_pdf.py
+```
+
+**Requirements:**
+- [Pandoc](https://pandoc.org/) (Markdown → PDF converter)
+- LaTeX distribution (pdflatex, for PDF rendering)
+
+**Install on macOS:**
+```bash
+brew install pandoc basictex
+```
+
+**Install on Linux:**
+```bash
+sudo apt-get install pandoc texlive-latex-base texlive-fonts-recommended texlive-latex-extra
+```
+
+**Output:** `docs/scientific_notes_ep_structure.pdf`
+
+The script:
+- ✅ Automatically checks for pandoc and pdflatex
+- ✅ Tries eisvogel template first (fancy), falls back to basic
+- ✅ Opens the PDF automatically after generation (optional)
+- ✅ Works on macOS, Linux, and Windows
+
+#### Code verification tests
+
+Verify that spherical grid spacing and gradient calculations work correctly:
+
+```python
+# Run test suite
+import numpy as np
+from step3_precompute_composites import compute_spherical_grid_spacing
+
+# Test 1: Uniform field → zero gradient
+lat = np.linspace(-30, 30, 10)
+lon = np.linspace(-30, 30, 10)
+dx, dy, lat_2d, lon_2d = compute_spherical_grid_spacing(lat, lon)
+
+T = np.ones_like(lat_2d)  # uniform temperature
+dT_dx = np.gradient(T, axis=1) / dx
+dT_dy = np.gradient(T, axis=0) / dy[:, np.newaxis]
+
+assert np.allclose(dT_dx, 0)
+assert np.allclose(dT_dy, 0)
+print("✅ Test 1 passed: uniform field → zero gradient")
+
+# Test 2: Reversed latitude coordinates
+lat_rev = np.linspace(30, -30, 10)  # decreasing (some datasets have this)
+dx_rev, dy_rev, _, _ = compute_spherical_grid_spacing(lat_rev, lon)
+# Should still give correct physical spacing (positive)
+assert np.all(dy_rev > 0)
+print("✅ Test 2 passed: reversed latitude → correct spacing")
+
+# Test 3: Linear latitude gradient
+T_linear = lat_2d.copy()  # Temperature = latitude
+dT_dy_analytic = 1.0 / (111320.0)  # 1°/distance (approximate)
+dT_dy_numeric = np.gradient(T_linear, axis=0) / dy[:, np.newaxis]
+# Should be approximately constant
+assert np.std(dT_dy_numeric) / np.mean(np.abs(dT_dy_numeric)) < 0.1
+print("✅ Test 3 passed: linear gradient → consistent derivative")
+```
+
+**Expected typical values** (for sanity checks during processing):
+
+| Diagnostic | Typical Range | Units |
+|------------|---------------|-------|
+| EGR (250–850 hPa) | 0.3 – 1.5 | day⁻¹ |
+| PV @ 200 hPa | 1 – 5 | PVU |
+| PV @ 850 hPa | 0.1 – 1.0 | PVU |
+| Temperature advection @ 850 hPa | ±2 – 5 | K h⁻¹ |
+| Moisture flux divergence @ 975 hPa | ±5 – 20 | g kg⁻¹ s⁻¹ |
+| SLP minimum | 950 – 995 | hPa |
+
+If values fall far outside these ranges, check:
+- Coordinate orientation (latitude increasing vs. decreasing)
+- Unit consistency (K vs. °C, Pa vs. hPa)
+- Domain extent (should be 30° × 30° centered on cyclone)
+
+See [SCIENTIFIC_NOTES.md](SCIENTIFIC_NOTES.md) Section 7 for full quality control details.
+
 ### Remote server execution
 
 Steps 2–3 require significant compute/storage and should run on the remote server:

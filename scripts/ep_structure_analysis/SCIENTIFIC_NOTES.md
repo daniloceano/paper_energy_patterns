@@ -13,7 +13,7 @@ using standard dynamical diagnostics from ERA5 reanalysis.
 - Temperature advection at 850 hPa  
 - Sea Level Pressure (SLP)
 
-**Generated:** {GENERATION_DATE}
+**Generated:** 2026-02-21 18:29
 
 ---
 
@@ -24,7 +24,7 @@ using standard dynamical diagnostics from ERA5 reanalysis.
 | | EP1 | EP2 |
 |---|-----|-----|
 | Cluster | 0 | 2 |
-| Cases analysed | {EP1_N_CASES} | {EP2_N_CASES} |
+| Cases analysed | 444 | 979 |
 
 ### 1.2 ERA5 Variables
 
@@ -155,38 +155,38 @@ Mean sea level pressure from ERA5 single-level data, composited over the
 
 | | EP1 | EP2 |
 |---|-----|-----|
-| Mean (day⁻¹) | {EP1_EGR_MEAN} ± {EP1_EGR_STD} | {EP2_EGR_MEAN} ± {EP2_EGR_STD} |
-| Median (day⁻¹) | {EP1_EGR_MEDIAN} | {EP2_EGR_MEDIAN} |
-| Range (day⁻¹) | [{EP1_EGR_MIN}, {EP1_EGR_MAX}] | [{EP2_EGR_MIN}, {EP2_EGR_MAX}] |
+| Mean (day⁻¹) | 0.56 ± 0.09 | 0.56 ± 0.10 |
+| Median (day⁻¹) | 0.57 | 0.58 |
+| Range (day⁻¹) | [0.37, 0.73] | [0.36, 0.72] |
 
 ### 3.2 Potential Vorticity at 200 hPa
 
 | | EP1 | EP2 |
 |---|-----|-----|
-| Mean (PVU) | {EP1_PV200_MEAN} | {EP2_PV200_MEAN} |
-| Range (PVU) | [{EP1_PV200_MIN}, {EP1_PV200_MAX}] | [{EP2_PV200_MIN}, {EP2_PV200_MAX}] |
+| Mean (PVU) | -4.54 | -4.42 |
+| Range (PVU) | [-7.08, -1.26] | [-6.86, -1.18] |
 
 ### 3.3 Potential Vorticity at 850 hPa
 
 | | EP1 | EP2 |
 |---|-----|-----|
-| Mean (PVU) | {EP1_PV850_MEAN} | {EP2_PV850_MEAN} |
-| Range (PVU) | [{EP1_PV850_MIN}, {EP1_PV850_MAX}] | [{EP2_PV850_MIN}, {EP2_PV850_MAX}] |
+| Mean (PVU) | -0.50 | -0.52 |
+| Range (PVU) | [-0.74, -0.30] | [-0.75, -0.31] |
 
 ### 3.4 Temperature Advection at 850 hPa
 
 | | EP1 | EP2 |
 |---|-----|-----|
-| Domain mean (K h⁻¹) | {EP1_ADVT_MEAN} | {EP2_ADVT_MEAN} |
-| Max warm advection (K h⁻¹) | {EP1_ADVT_MAX_WARM} | {EP2_ADVT_MAX_WARM} |
-| Max cold advection (K h⁻¹) | {EP1_ADVT_MAX_COLD} | {EP2_ADVT_MAX_COLD} |
+| Domain mean (K h⁻¹) | -0.031 | -0.003 |
+| Max warm advection (K h⁻¹) | 0.071 | 0.111 |
+| Max cold advection (K h⁻¹) | -0.132 | -0.119 |
 
 ### 3.5 Sea Level Pressure
 
 | | EP1 | EP2 |
 |---|-----|-----|
-| Min (hPa) | {EP1_SLP_MIN} | {EP2_SLP_MIN} |
-| Max (hPa) | {EP1_SLP_MAX} | {EP2_SLP_MAX} |
+| Min (hPa) | 996.5 | 994.8 |
+| Max (hPa) | 1018.3 | 1019.2 |
 
 ---
 
@@ -326,5 +326,5 @@ div_q_gkg = (div_q_si * 1000 * units('g/kg')).magnitude
 
 ---
 
-**Document auto-generated:** {GENERATION_DATE}  
+**Document auto-generated:** 2026-02-21 18:29  
 **Author:** Danilo Couto de Souza

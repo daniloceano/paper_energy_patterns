@@ -494,7 +494,11 @@ def compute_composite(cases, ep_label):
 
             # ── SLP ───────────────────────────────────────────────────
             if "msl" in ds_mean.data_vars:
-                slp_list.append(ds_mean["msl"].values)
+                # MSL is a surface variable - drop pressure dimension if present
+                msl_data = ds_mean["msl"]
+                if pc in msl_data.dims:
+                    msl_data = msl_data.isel({pc: 0})  # Take first level (all should be identical)
+                slp_list.append(msl_data.values.squeeze())
 
             # ── Winds for overlays ────────────────────────────────────
             u250_list.append(u[i250])

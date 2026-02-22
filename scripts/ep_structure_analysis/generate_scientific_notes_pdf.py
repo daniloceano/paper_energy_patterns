@@ -1,14 +1,18 @@
 """
 Generate PDF from Scientific Notes (SCIENTIFIC_NOTES.md)
 
-Uses pandoc with LaTeX for high-quality mathematical typesetting.
+Uses pandoc with XeLaTeX for high-quality mathematical typesetting
+and native Unicode support (handles superscripts like ⁻¹, ², etc.).
 
 Requirements:
   - pandoc (https://pandoc.org/)
-  - LaTeX distribution (e.g., TeX Live, MiKTeX)
+  - XeLaTeX (part of TeX Live or BasicTeX)
 
 Install on macOS:
   brew install pandoc basictex
+
+Install on Linux:
+  sudo apt install pandoc texlive-xetex
 
 Usage:
   python generate_scientific_notes_pdf.py
@@ -41,8 +45,7 @@ OUTPUT_PDF = DOCS_DIR / "scientific_notes_ep_structure.pdf"
 PANDOC_OPTIONS = [
     "--from=markdown",
     "--to=pdf",
-    "--pdf-engine=pdflatex",
-    "--template=eisvogel",  # clean modern template (install with: pandoc --list-templates)
+    "--pdf-engine=xelatex",  # xelatex supports Unicode natively
     "--number-sections",
     "--toc",
     "--toc-depth=2",
@@ -54,7 +57,6 @@ PANDOC_OPTIONS = [
     "-V", "linkcolor=blue",
     "-V", "urlcolor=blue",
     "-V", "citecolor=blue",
-    "--highlight-style=tango",
     "--metadata", f"date={datetime.now().strftime('%B %d, %Y')}",
 ]
 
@@ -81,16 +83,16 @@ def check_dependencies():
 
     try:
         subprocess.run(
-            ["pdflatex", "--version"],
+            ["xelatex", "--version"],
             check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
-        print("❌ Error: pdflatex (LaTeX) is not installed.")
+        print("❌ Error: xelatex (LaTeX) is not installed.")
         print("\nInstall LaTeX:")
-        print("  macOS:   brew install basictex")
-        print("  Ubuntu:  sudo apt install texlive-latex-base texlive-latex-extra")
+        print("  macOS:   brew install basictex  (includes xelatex)")
+        print("  Ubuntu:  sudo apt install texlive-xetex")
         print("  Windows: https://miktex.org/")
         sys.exit(1)
 
@@ -107,7 +109,7 @@ def generate_pdf():
     # Build pandoc command
     cmd = ["pandoc", str(SCIENTIFIC_NOTES_MD)] + PANDOC_OPTIONS + ["-o", str(OUTPUT_PDF)]
 
-    # Run pandoc
+    # Run pandoc from the script directory so relative image paths work
     try:
         result = subprocess.run(
             cmd,
@@ -115,6 +117,7 @@ def generate_pdf():
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            cwd=str(SCRIPT_DIR),  # Run from script directory for relative paths
         )
         
         print(f"\n✅ PDF generated successfully!")
@@ -127,14 +130,14 @@ def generate_pdf():
         print(f"\n❌ Error generating PDF:")
         print(f"   {e.stderr}")
         
-        # Fallback: try without eisvogel template
-        print("\n⚠️  Retrying without template...")
+        # Fallback: try minimal options
+        print("\n⚠️  Retrying with minimal options...")
         cmd_fallback = [
             "pandoc",
             str(SCIENTIFIC_NOTES_MD),
             "--from=markdown",
             "--to=pdf",
-            "--pdf-engine=pdflatex",
+            "--pdf-engine=xelatex",
             "--number-sections",
             "--toc",
             "-o",
@@ -142,7 +145,12 @@ def generate_pdf():
         ]
         
         try:
-            subprocess.run(cmd_fallback, check=True, stderr=subprocess.PIPE)
+            subprocess.run(
+                cmd_fallback, 
+                check=True, 
+                stderr=subprocess.PIPE,
+                cwd=str(SCRIPT_DIR),
+            )
             print(f"✅ PDF generated (basic formatting)")
             print(f"   Location: {OUTPUT_PDF}")
             return OUTPUT_PDF

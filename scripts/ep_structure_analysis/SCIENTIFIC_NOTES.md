@@ -1,238 +1,250 @@
-# Scientific Notes: EP Structure Analysis – EP1 vs EP2
+# Scientific Notes: Spatial Structure Analysis of Energy Patterns
 
-## Overview
+**Objective:** Investigate the spatial structure and dynamical characteristics of Energy Pattern 1 (EP1) and Energy Pattern 2 (EP2) cyclones during intensification phase.
 
-This document presents the spatial structure comparison between Energy Pattern 1
-(EP1) and Energy Pattern 2 (EP2) cyclones during their intensification phase,
-using standard dynamical diagnostics from ERA5 reanalysis.
-
-**Key Diagnostics:**
-- Eady Growth Rate (EGR, 250–850 hPa layer)  
-- Potential Vorticity at 200 hPa (upper-level)  
-- Potential Vorticity at 850 hPa (low-level)  
-- Temperature advection at 850 hPa  
-- Sea Level Pressure (SLP)
-
-**Generated:** 2026-02-21 18:29
+**Author:** Danilo Couto de Souza  
+**Date:** February 2026
 
 ---
 
-## 1. Dataset
+## 1. Introduction
 
-### 1.1 Sample Composition
+### 1.1 Motivation
 
-| | EP1 | EP2 |
-|---|-----|-----|
-| Cluster | 0 | 2 |
-| Cases analysed | 444 | 979 |
+Following the identification of three distinct energy patterns in South Atlantic cyclones through PCA-based K-Means clustering (see `cluster_analysis_energy_patterns/SCIENTIFIC_NOTES.md`), this analysis investigates the **spatial structure** of the most energetically active patterns.
 
-### 1.2 ERA5 Variables
+**Energy Pattern Characteristics** (from cluster analysis):
+- **EP1 (11.6%):** Large barotropic and baroclinic conversions; **exports energy** to surroundings
+- **EP2 (25.6%):** Moderate balanced conversions; **imports energy** from large-scale environment  
+- **EP3 (62.7%):** Weak energetics representing typical "day-to-day" cyclones
 
-- **Pressure levels (hPa):** 175, 200, 225, 250, 500, 825, 850, 875
-- **Pressure-level variables:** u, v, t, z, q
+**Rationale for EP1 and EP2 focus:**  
+EP3 cyclones exhibit weak energy budget activity and represent the climatological background. EP1 and EP2 cyclones, being energetically distinct and more intense, are the primary focus for understanding what structural characteristics differentiate high-impact systems from typical cyclones.
+
+### 1.2 Research Questions
+
+1. What are the spatial structures of baroclinic instability (EGR) in EP1 vs EP2?
+2. How do upper-level (200 hPa) and low-level (850 hPa) PV anomalies differ between patterns?
+3. What thermal advection patterns characterize each energy pattern?
+4. How does near-surface moisture distribution and convergence differ?
+
+**Approach:** Composite analysis of ERA5 reanalysis fields during the intensification phase of all EP1 (N=444) and EP2 (N=979) cyclones.
+
+---
+
+## 2. Dataset
+
+### 2.1 Sample Composition
+
+| Energy Pattern | Cluster ID | Cases Analyzed | Percentage |
+|----------------|------------|----------------|------------|
+| **EP1** | 0 | 444 | 11.6% |
+| **EP2** | 2 | 979 | 25.6% |
+
+**Source:** All EP1 and EP2 cyclones from cluster analysis with complete lifecycle phases.
+
+**Temporal Coverage:** Intensification phase only (6-hourly timesteps during deepening period)
+
+### 2.2 ERA5 Reanalysis Data
+
+**Variables Downloaded:**
+- **Pressure levels (hPa):** 175, 200, 225, 250, 500, 825, 850, 875, 975
+- **Pressure-level variables:** u, v, t, z, q (winds, temperature, geopotential, specific humidity)
 - **Single-level variables:** msl (mean sea level pressure)
-- **Temporal resolution:** 6-hourly
-- **Spatial resolution:** 0.25° × 0.25°
-- **Domain:** 30° × 30° centred on cyclone track centre
+
+**Spatial Configuration:**
+- **Resolution:** 0.25° × 0.25°
+- **Domain:** 30° × 30° centered on cyclone track center
+- **Composite domain:** 15° × 15° (marked in figures)
+
+**Temporal Resolution:** 6-hourly
 
 ---
 
-## 2. Methodology
+## 3. Methodology
 
-### 2.1 Spherical Grid Spacing
+### 3.1 Diagnostic Fields Computed
 
-All horizontal derivatives account for spherical geometry:
+| Diagnostic | Level(s) | Purpose | Key Reference |
+|------------|----------|---------|---------------|
+| **Eady Growth Rate** | 250–850 hPa | Baroclinic instability measure | Lindzen & Farrell (1980) |
+| **Potential Vorticity** | 200 hPa | Upper-level dynamics, tropopause folding | Hoskins et al. (1985) |
+| **Potential Vorticity** | 850 hPa | Low-level PV anomaly, diabatic effects | Čampa & Wernli (2012) |
+| **Temperature Advection** | 850 hPa | Warm/cold advection patterns | Sanders & Gyakum (1980) |
+| **Specific Humidity** | 975 hPa | Near-surface moisture distribution | - |
+| **Moisture Flux Divergence** | 975 hPa | Moisture convergence (convective potential) | Banacos & Schultz (2005) |
+| **Sea Level Pressure** | Surface | Cyclone intensity and position | - |
 
-**Meridional spacing (dy):**
+### 3.2 Spherical Grid Spacing
+
+All horizontal derivatives account for Earth's spherical geometry:
+
+**Meridional spacing:**
 $$dy = R_{\oplus} \Delta\phi$$
 
-**Zonal spacing (dx):**
+**Zonal spacing:**
 $$dx = R_{\oplus} \cos(\phi) \Delta\lambda$$
 
-where:
-- $R_{\oplus} = 6.371 \times 10^6$ m (Earth's radius)
-- $\phi$ = latitude (radians)
-- $\lambda$ = longitude (radians)
-- $\Delta\phi$, $\Delta\lambda$ computed via `np.gradient()` for non-uniform grids
+where $R_{\oplus} = 6.371 \times 10^6$ m, $\phi$ = latitude, $\lambda$ = longitude.
 
-**Coordinate verification:**
-- Latitude and longitude must be monotonic (checked at runtime)
-- Sign of gradients automatically correct regardless of increasing/decreasing coordinates
+**Implementation:** `compute_spherical_grid_spacing(lat_1d, lon_1d)`
+- ✅ Verifies coordinate monotonicity  
+- ✅ Correct gradient signs regardless of coordinate direction
+- ✅ Uses `numpy.gradient()` for non-uniform grids
 
-### 2.2 Eady Growth Rate (EGR)
+### 3.3 Eady Growth Rate (EGR)
 
+**Formula:**
 $$\sigma_{EGR} = 0.31 \frac{|f|}{N} \left|\frac{\partial \vec{V}}{\partial z}\right|$$
 
-**Layer-mean implementation (250–850 hPa):**
+where:
+- $f = 2\Omega \sin(\phi)$ = Coriolis parameter
+- $N^2 = \frac{g}{\theta_v} \frac{\partial \theta_v}{\partial z}$ = static stability (Brunt-Väisälä frequency)
+- $\left|\frac{\partial \vec{V}}{\partial z}\right|$ = vertical wind shear magnitude
 
-1. **Virtual potential temperature:**
-   $$\theta_v = T_v \left(\frac{p_0}{p}\right)^{\kappa}$$
-   where $T_v = T(1 + 0.61q)$, $\kappa = R_d / c_p = 0.286$
+**Layer:** 250–850 hPa (captures main tropospheric baroclinic zone)
 
-2. **Static stability (Brunt-Väisälä frequency):**
-   $$N^2 = \frac{g}{\theta_{v,mid}} \frac{\Delta\theta_v}{\Delta z}$$
-   where $\theta_{v,mid} = (\theta_{v,250} + \theta_{v,850})/2$
+**Quality Control:**
+- $N^2 > 10^{-6}$ s⁻² (exclude statically unstable regions)
+- $|\phi| > 5°$ (avoid equatorial singularity)
+- $\sigma_{EGR} < 5$ day⁻¹ (cap unrealistic values)
 
-3. **Vertical wind shear:**
-   $$\left|\frac{\partial \vec{V}}{\partial z}\right| = \sqrt{\left(\frac{\Delta u}{\Delta z}\right)^2 + \left(\frac{\Delta v}{\Delta z}\right)^2}$$
+### 3.4 Potential Vorticity
 
-4. **Geopotential height:**
-   $$z = \frac{\Phi}{g}$$
-
-**Quality control:**
-- $N^2 > 10^{-6}$ s$^{-2}$ (exclude statically unstable regions)
-- $|\phi| > 5°$ (exclude near-equatorial regions where $f \approx 0$)
-- $\sigma_{EGR} < 5$ day$^{-1}$ (cap unrealistic values)
-
-**References:** Lindzen & Farrell (1980); Hoskins & Valdes (1990)
-
-### 2.3 Potential Vorticity
-
-Baroclinic PV computed with MetPy using centred finite differences:
-
+**Formula:**
 $$PV = -g \left(\zeta_\theta + f\right) \frac{\partial \theta}{\partial p}$$
 
-where:
-- $\zeta_\theta$ = relative vorticity on isentropic surface
-- $f = 2\Omega \sin(\phi)$ = Coriolis parameter
-- $\Omega = 7.292 \times 10^{-5}$ rad s$^{-1}$
+where $\zeta_\theta$ = relative vorticity on isentropic surface, $\theta$ = potential temperature.
 
-**Vertical levels:**
-- **200 hPa:** uses 175, 200, 225 hPa → upper-level tropopause dynamics
-- **850 hPa:** uses 825, 850, 875 hPa → low-level PV anomaly
+**Levels:**
+- **200 hPa:** Uses 175, 200, 225 hPa (upper-level tropopause dynamics)
+- **850 hPa:** Uses 825, 850, 875 hPa (low-level diabatic PV anomaly)
 
-**Implementation:**
-- Potential temperature: $\theta = T(p_0/p)^{\kappa}$ via `metpy.calc.potential_temperature`
-- PV via `metpy.calc.potential_vorticity_baroclinic`
-- Returns PV at middle level (200 or 850 hPa)
-- Units: K m² kg⁻¹ s⁻¹ (SI), converted to PVU (1 PVU = 10⁻⁶ K m² kg⁻¹ s⁻¹) in figures
+**Units:** K m² kg⁻¹ s⁻¹ (SI), converted to PVU (1 PVU = 10⁻⁶ K m² kg⁻¹ s⁻¹) in figures
 
-**References:** Hoskins et al. (1985); Čampa & Wernli (2012)
+### 3.5 Temperature Advection
 
-### 2.4 Temperature Advection
-
-Horizontal temperature advection at 850 hPa:
-
+**Formula:**
 $$\text{advT} = -\vec{V} \cdot \nabla T = -\left(u\frac{\partial T}{\partial x} + v\frac{\partial T}{\partial y}\right)$$
 
-**Implementation:**
-1. Temperature gradients computed via `np.gradient()` with spherical $dx$, $dy$
-2. Sign convention: **positive** = warm air advection, **negative** = cold air advection
-3. Units: K s⁻¹ (converted to K h⁻¹ in tables/figures)
+**Level:** 850 hPa  
+**Sign Convention:** Positive = warm air advection; Negative = cold air advection  
+**Units:** K h⁻¹ (converted from K s⁻¹)
 
-**Physical interpretation:**
-- Warm advection (>0): promotes ascent ahead of surface low
-- Cold advection (<0): promotes descent behind surface low
+### 3.6 Moisture Flux Divergence
 
-### 2.5 Moisture Flux Divergence
-
-Moisture flux divergence at 975 hPa (near-surface):
-
+**Formula:**
 $$\nabla \cdot (q\vec{V}) = \frac{\partial (qu)}{\partial x} + \frac{\partial (qv)}{\partial y}$$
 
-**Implementation:**
-1. Moisture fluxes: $qu$ and $qv$ (kg kg⁻¹ m s⁻¹)
-2. Derivatives via `np.gradient()` with spherical grid spacing
-3. Units tracked via MetPy: input $q$ in kg/kg → output in g kg⁻¹ s⁻¹
-
-**Physical interpretation:**
-- **Positive (divergence):** moisture export / drying
-- **Negative (convergence):** moisture import / moistening  
-  (supports convection and latent heat release)
-
-### 2.6 Sea Level Pressure
-
-Mean sea level pressure from ERA5 single-level data, composited over the
-30° × 30° domain for all intensification timesteps.
-
-**Units:** hPa (hectopascals)
-
+**Level:** 975 hPa (near-surface)  
 ---
 
-## 3. Results
+## 4. Results
 
-### 3.1 Eady Growth Rate
+**Note:** Statistical summaries presented below are computed from spatial composites. Physical interpretation of spatial patterns and EP1 vs EP2 differences is currently under analysis.
 
-| | EP1 | EP2 |
-|---|-----|-----|
-| Mean (day⁻¹) | 0.56 ± 0.09 | 0.56 ± 0.10 |
+### 4.1 Summary Statistics
+
+#### Eady Growth Rate (250–850 hPa)
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Mean ± SD (day⁻¹) | 0.56 ± 0.09 | 0.56 ± 0.10 |
 | Median (day⁻¹) | 0.57 | 0.58 |
 | Range (day⁻¹) | [0.37, 0.73] | [0.36, 0.72] |
 
-### 3.2 Potential Vorticity at 200 hPa
+#### Potential Vorticity at 200 hPa
 
-| | EP1 | EP2 |
-|---|-----|-----|
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
 | Mean (PVU) | -4.54 | -4.42 |
 | Range (PVU) | [-7.08, -1.26] | [-6.86, -1.18] |
 
-### 3.3 Potential Vorticity at 850 hPa
+#### Potential Vorticity at 850 hPa
 
-| | EP1 | EP2 |
-|---|-----|-----|
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
 | Mean (PVU) | -0.50 | -0.52 |
 | Range (PVU) | [-0.74, -0.30] | [-0.75, -0.31] |
 
-### 3.4 Temperature Advection at 850 hPa
+#### Temperature Advection at 850 hPa
 
-| | EP1 | EP2 |
-|---|-----|-----|
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
 | Domain mean (K h⁻¹) | -0.031 | -0.003 |
 | Max warm advection (K h⁻¹) | 0.071 | 0.111 |
 | Max cold advection (K h⁻¹) | -0.132 | -0.119 |
 
-### 3.5 Sea Level Pressure
+#### Sea Level Pressure
 
-| | EP1 | EP2 |
-|---|-----|-----|
-| Min (hPa) | 996.5 | 994.8 |
-| Max (hPa) | 1018.3 | 1019.2 |
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Minimum (hPa) | 996.5 | 994.8 |
+| Maximum (hPa) | 1018.3 | 1019.2 |
 
----
+### 4.2 Spatial Composite Figures
 
-## 4. Composite Figures
-
-### 4.1 EGR (250–850 hPa)
+#### Eady Growth Rate (Baroclinic Instability)
 
 ![EGR Composite](../../figures/ep_structure/composite_egr.png)
 
-### 4.2 PV at 200 hPa
+*Figure: Eady growth rate composite (250–850 hPa layer) for EP1 (left) and EP2 (right). Contours show growth rate in day⁻¹. The 15° × 15° box marks the LEC computation domain.*
+
+#### Upper-Level Dynamics (200 hPa PV)
 
 ![PV@200 Composite](../../figures/ep_structure/composite_pv200.png)
 
-### 4.3 PV at 850 hPa
+*Figure: Potential vorticity at 200 hPa for EP1 (left) and EP2 (right). Units: PVU (10⁻⁶ K m² kg⁻¹ s⁻¹). Shows tropopause dynamics and stratospheric intrusions.*
+
+#### Low-Level PV Anomaly (850 hPa)
 
 ![PV@850 Composite](../../figures/ep_structure/composite_pv850.png)
 
-### 4.4 Temperature Advection at 850 hPa
+*Figure: Potential vorticity at 850 hPa for EP1 (left) and EP2 (right). Units: PVU. Indicates diabatic PV generation and low-level cyclonic circulation.*
+
+#### Temperature Advection Pattern
 
 ![Temp Advection Composite](../../figures/ep_structure/composite_advT850.png)
 
-### 4.5 Sea Level Pressure
+*Figure: Temperature advection at 850 hPa for EP1 (left) and EP2 (right). Units: K h⁻¹. Positive (red) = warm advection; Negative (blue) = cold advection.*
+
+#### Moisture Distribution and Convergence
+
+![Moisture Composite](../../figures/ep_structure/composite_moisture.png)
+
+*Figure: Specific humidity (shading, g kg⁻¹) and moisture flux divergence (contours, g kg⁻¹ s⁻¹) at 975 hPa for EP1 (left) and EP2 (right). Negative divergence (dashed contours) indicates moisture convergence.*
+
+#### Sea Level Pressure
 
 ![SLP Composite](../../figures/ep_structure/composite_slp.png)
+
+*Figure: Mean sea level pressure for EP1 (left) and EP2 (right). Units: hPa. Shows cyclone intensity and horizontal structure.*
 
 ---
 
 ## 5. Physical Interpretation
 
-### 5.1 EP1 Structure
+**Status:** Analysis of spatial patterns and physical mechanisms is ongoing. Preliminary observations include:
 
-{EP1_INTERPRETATION}
+### 5.1 EP1 Characteristics
 
-### 5.2 EP2 Structure
+- {EP1_INTERPRETATION}
 
-{EP2_INTERPRETATION}
+### 5.2 EP2 Characteristics
 
-### 5.3 Key Differences
+- {EP2_INTERPRETATION}
 
-{KEY_DIFFERENCES}
+### 5.3 Key Structural Differences
+
+- {KEY_DIFFERENCES}
+
+**Future Work:** Detailed analysis of spatial patterns, vertical coupling mechanisms, and relationship between energetics (from cluster analysis) and structural characteristics.
 
 ---
 
-## 7. Computational Implementation
+## 6. Computational Implementation
 
-### 7.1 Grid Spacing on Spherical Earth
+### 6.1 Grid Spacing on Spherical Earth
 
 **Function:** `compute_spherical_grid_spacing(lat_1d, lon_1d)`
 
@@ -252,20 +264,20 @@ dx = R_EARTH * cos(φ) * Δλ  # meters
 - ✅ Raises `ValueError` if non-monotonic
 - ✅ Gradient sign automatically correct regardless of coordinate direction
 
-### 7.2 Divergence on Spherical Coordinates
+### 6.2 Divergence on Spherical Coordinates
 
 For small domains (~30°), the simplified Cartesian approximation is valid:
 
 $$\nabla \cdot \vec{F} \approx \frac{\partial F_x}{\partial x} + \frac{\partial F_y}{\partial y}$$
 
-where $dx$ and $dy$ account for spherical geometry (Section 7.1).
+where $dx$ and $dy$ account for spherical geometry (Section 6.1).
 
 **Full spherical formula** (not required for 30° domain):
 $$\nabla \cdot \vec{F} = \frac{1}{R\cos\phi}\frac{\partial F_\lambda}{\partial \lambda} + \frac{1}{R\cos\phi}\frac{\partial(F_\phi \cos\phi)}{\partial \phi}$$
 
 Our implementation uses the simplified form with accurate $dx$, $dy$ — appropriate for mesoscale domains.
 
-### 7.3 Unit Tracking
+### 6.3 Unit Tracking
 
 All calculations use **MetPy units** for automatic dimensional analysis:
 
@@ -284,13 +296,13 @@ div_q_gkg = (div_q_si * 1000 * units('g/kg')).magnitude
 - Documents unit transformations  
 - Explicit conversions (no hardcoded magic numbers)
 
-### 7.4 Numerical Methods
+### 6.4 Numerical Methods
 
 - **Spatial derivatives:** `numpy.gradient()` with 2nd-order centred finite differences
 - **Vertical derivatives:** Centred FD over 3 levels (e.g., 175–200–225 hPa for PV@200)
 - **Interpolation:** Linear interpolation to regular 0.25° grid via `xarray.interp()`
 
-### 7.5 Quality Control Filters
+### 6.5 Quality Control Filters
 
 | Diagnostic | Filter | Rationale |
 |------------|--------|-----------|
@@ -299,7 +311,7 @@ div_q_gkg = (div_q_si * 1000 * units('g/kg')).magnitude
 | EGR | $\sigma_{EGR} < 5$ day⁻¹ | Cap unrealistic growth rates |
 | PV | Valid only where $\theta$ monotonic | Ensure isentropic sorting |
 
-### 7.6 Code Verification
+### 6.6 Code Verification
 
 **Test cases:**
 1. ✅ Zonal wind → zero meridional derivative
@@ -314,7 +326,7 @@ div_q_gkg = (div_q_si * 1000 * units('g/kg')).magnitude
 
 ---
 
-## 8. References
+## 7. References
 
 - Čampa, J., & Wernli, H. (2012). A PV perspective on the vertical structure of mature midlatitude cyclones. *J. Atmos. Sci.*, 69(2), 725–740.
 - Davis, C. A., & Emanuel, K. A. (1991). Potential vorticity diagnostics of cyclogenesis. *Mon. Wea. Rev.*, 119(8), 1929–1953.

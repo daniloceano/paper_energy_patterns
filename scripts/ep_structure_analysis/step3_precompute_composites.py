@@ -313,6 +313,107 @@ def temperature_advection_850(u_850, v_850, T_850, lat_1d, lon_1d):
     return advT
 
 
+def kinetic_energy_advection_250(u_250, v_250, lat_1d, lon_1d):
+    """
+    Kinetic energy advection at 250 hPa (jet level).
+    
+    KE_adv = -V · ∇(KE) = -V · ∇(0.5 * (u² + v²))
+            = -(u * ∂KE/∂x + v * ∂KE/∂y)
+    
+    Parameters
+    ----------
+    u_250 : ndarray (2D)
+        Zonal wind at 250 hPa (m/s)
+    v_250 : ndarray (2D)
+        Meridional wind at 250 hPa (m/s)
+    lat_1d : array_like
+        1D latitude array (degrees)
+    lon_1d : array_like
+        1D longitude array (degrees)
+    
+    Returns
+    -------
+    ke_adv : ndarray (2D)
+        Kinetic energy advection (m² s⁻³ = W kg⁻¹)
+        Positive: KE increasing (gaining energy)
+        Negative: KE decreasing (losing energy)
+    """
+    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
+    
+    # Kinetic energy
+    KE = 0.5 * (u_250**2 + v_250**2)
+    
+    # KE gradients
+    dKE_dx = np.gradient(KE, axis=1) / dx
+    dKE_dy = np.gradient(KE, axis=0) / dy[:, np.newaxis]
+    
+    # Advection: -V · ∇KE
+    ke_adv = -(u_250 * dKE_dx + v_250 * dKE_dy)
+    
+    return ke_adv
+
+
+def rayleigh_kuo_criterion_250(u_250, v_250, lat_1d, lon_1d, lat_2d):
+    """
+    Simplified Rayleigh-Kuo instability criterion at 250 hPa.
+    
+    The classical RK criterion states that a necessary condition for
+    barotropic/baroclinic instability is:
+        ∂q/∂y changes sign in the domain
+    
+    where q is the quasi-geostrophic potential vorticity.
+    
+    Simplified version used here:
+        q ≈ f + ζ = f + (∂v/∂x - ∂u/∂y)
+    
+    The criterion is satisfied where:
+        ∂q/∂y = β - ∂²u/∂y² + ∂²v/∂x∂y < 0
+    
+    For simplicity, we compute:
+        ∂q/∂y ≈ β - ∂²u/∂y²
+    
+    where β ≈ 2Ω*cosφ/R_earth (meridional gradient of Coriolis)
+    
+    Parameters
+    ----------
+    u_250 : ndarray (2D)
+        Zonal wind at 250 hPa (m/s)
+    v_250 : ndarray (2D)
+        Meridional wind at 250 hPa (m/s)
+    lat_1d : array_like
+        1D latitude array (degrees)
+    lon_1d : array_like
+        1D longitude array (degrees)
+    lat_2d : ndarray (2D)
+        2D latitude field (degrees)
+    
+    Returns
+    -------
+    rk_criterion : ndarray (2D)
+        ∂q/∂y field (s⁻¹ m⁻¹)
+        Regions where RK_criterion < 0 satisfy necessary condition for instability
+    """
+    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
+    
+    # Beta (df/dy on sphere)
+    lat_rad = np.deg2rad(lat_2d)
+    beta = (2.0 * OMEGA * np.cos(lat_rad)) / R_EARTH  # s⁻¹ m⁻¹
+    
+    # Relative vorticity: ζ = ∂v/∂x - ∂u/∂y
+    dv_dx = np.gradient(v_250, axis=1) / dx
+    du_dy = np.gradient(u_250, axis=0) / dy[:, np.newaxis]
+    zeta = dv_dx - du_dy
+    
+    # Second derivative: ∂²u/∂y²
+    d2u_dy2 = np.gradient(du_dy, axis=0) / dy[:, np.newaxis]
+    
+    # RK criterion: ∂q/∂y = β - ∂²u/∂y²
+    # Negative values indicate regions where instability condition is satisfied
+    rk_criterion = beta - d2u_dy2
+    
+    return rk_criterion
+
+
 def moisture_flux_divergence_975(u_975, v_975, q_975, lat_1d, lon_1d):
     """
     Moisture flux divergence at 975 hPa:
@@ -412,6 +513,8 @@ def compute_composite(cases, ep_label):
     v975_list = []
     q975_list = []
     div_q975_list = []
+    ke_adv_list = []
+    rk_criterion_list = []
 
     processed = 0
     failed = 0
@@ -515,6 +618,14 @@ def compute_composite(cases, ep_label):
             div_q = moisture_flux_divergence_975(u[i975], v[i975], q[i975], lat_1d, lon_1d)
             div_q975_list.append(div_q)
 
+            # ── Kinetic energy advection at 250 hPa ───────────────────
+            ke_adv = kinetic_energy_advection_250(u[i250], v[i250], lat_1d, lon_1d)
+            ke_adv_list.append(ke_adv)
+
+            # ── Rayleigh-Kuo criterion at 250 hPa ────────────────────
+            rk_crit = rayleigh_kuo_criterion_250(u[i250], v[i250], lat_1d, lon_1d, lat_2d)
+            rk_criterion_list.append(rk_crit)
+
             ds.close()
             processed += 1
 
@@ -542,6 +653,8 @@ def compute_composite(cases, ep_label):
             "v_975": (["y", "x"], np.nanmean(np.stack(v975_list), axis=0)),
             "q_975": (["y", "x"], np.nanmean(np.stack(q975_list), axis=0)),
             "div_q_975": (["y", "x"], np.nanmean(np.stack(div_q975_list), axis=0)),
+            "ke_adv_250": (["y", "x"], np.nanmean(np.stack(ke_adv_list), axis=0)),
+            "rk_criterion_250": (["y", "x"], np.nanmean(np.stack(rk_criterion_list), axis=0)),
         },
         coords={"x": x, "y": y},
     )

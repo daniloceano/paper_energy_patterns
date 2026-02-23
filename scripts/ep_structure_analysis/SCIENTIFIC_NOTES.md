@@ -74,6 +74,8 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 | **Specific Humidity** | 975 hPa | Near-surface moisture distribution | - |
 | **Moisture Flux Divergence** | 975 hPa | Moisture convergence (convective potential) | Banacos & Schultz (2005) |
 | **Sea Level Pressure** | Surface | Cyclone intensity and position | - |
+| **RK criterion** (Rayleigh-Kuo) | 250 hPa | Barotropic/baroclinic instability condition | Rayleigh (1880); Kuo (1949) |
+| **KE Advection** | 250 hPa | Kinetic energy tendency from advection | - |
 
 ### 3.2 Spherical Grid Spacing
 
@@ -131,21 +133,64 @@ $$\text{advT} = -\vec{V} \cdot \nabla T = -\left(u\frac{\partial T}{\partial x} 
 **Sign Convention:** Positive = warm air advection; Negative = cold air advection  
 **Units:** K h⁻¹ (converted from K s⁻¹)
 
-### 3.6 Moisture Flux Divergence
+### 3.6 Moisture Fields at 975 hPa
 
-**Formula:**
+**Specific Humidity (q):**
+- Direct measure of atmospheric moisture content
+- Units: g kg⁻¹ (converted from kg kg⁻¹)
+- Level: 975 hPa (near-surface, above boundary layer)
+
+**Moisture Flux Divergence:**
 $$\nabla \cdot (q\vec{V}) = \frac{\partial (qu)}{\partial x} + \frac{\partial (qv)}{\partial y}$$
 
-**Level:** 975 hPa (near-surface)  
+- **Negative values** → Moisture convergence (convective potential, latent heat release)
+- **Positive values** → Moisture divergence (evaporation/drying)
+- Units: g kg⁻¹ h⁻¹ (converted from kg kg⁻¹ s⁻¹)
+- Key diabatic process in cyclone intensification (Banacos & Schultz, 2005)
+
+### 3.7 Rayleigh-Kuo Stability Criterion (250 hPa)
+
+**Formula:**
+$$RK = \beta - \frac{\partial^2 u}{\partial y^2}$$
+
+where:
+- $\beta = \frac{\partial f}{\partial y} = \frac{2\Omega \cos(\phi)}{R_{\oplus}}$ = Rossby parameter
+- $\frac{\partial^2 u}{\partial y^2}$ = meridional curvature of zonal wind
+
+**Physical Interpretation:**
+- **Negative values** → Necessary condition for barotropic/baroclinic instability satisfied
+- **Combined criterion:** Incorporates planetary vorticity gradient and wind shear curvature
+- Level: 250 hPa (jet stream level, maximum barotropic effects)
+
+**References:** Rayleigh (1880), Kuo (1949), Charney & Stern (1962)
+
+### 3.8 Kinetic Energy Advection (250 hPa)
+
+**Formula:**
+$$\text{KE\_adv} = -\vec{V} \cdot \nabla(KE) = -\vec{V} \cdot \nabla\left(\frac{1}{2}(u^2 + v^2)\right)$$
+
+**Physical Interpretation:**
+- **Positive values** → KE advection causes local acceleration (energy gain)
+- **Negative values** → KE advection causes local deceleration (energy loss)
+- Level: 250 hPa (jet stream level)
+- Units: m² s⁻³
+
+**Significance:**  
+Quantifies energy transport within the jet stream. Positive advection indicates regions where the flow pattern favors kinetic energy accumulation, potentially intensifying upper-level divergence and cyclone development.
+
 ---
 
 ## 4. Results
 
-**Note:** Statistical summaries presented below are computed from spatial composites. Physical interpretation of spatial patterns and EP1 vs EP2 differences is currently under analysis.
+**Note:** Statistical summaries presented below are computed from spatial composites centered on cyclone genesis locations. Each subsection presents the composite figure followed by quantitative statistics. Physical interpretation of spatial patterns and EP1 vs EP2 differences is currently under analysis.
 
-### 4.1 Summary Statistics
+### 4.1 Eady Growth Rate (Baroclinic Instability)
 
-#### Eady Growth Rate (250–850 hPa)
+![EGR Composite](figures/ep_structure/composite_egr.png)
+
+*Figure: Eady growth rate composite (250–850 hPa layer) for EP1 (left) and EP2 (right). Contours show growth rate in day⁻¹. The 15° × 15° box marks the LEC computation domain.*
+
+**Summary Statistics:**
 
 | Statistic | EP1 | EP2 |
 |-----------|-----|-----|
@@ -153,72 +198,127 @@ $$\nabla \cdot (q\vec{V}) = \frac{\partial (qu)}{\partial x} + \frac{\partial (q
 | Median (day⁻¹) | 0.57 | 0.58 |
 | Range (day⁻¹) | [0.37, 0.73] | [0.36, 0.72] |
 
-#### Potential Vorticity at 200 hPa
+### 4.2 Upper-Level Dynamics (200 hPa PV)
+
+![PV@200 Composite](figures/ep_structure/composite_pv200.png)
+
+*Figure: Potential vorticity at 200 hPa for EP1 (left) and EP2 (right). Units: PVU (10⁻⁶ K m² kg⁻¹ s⁻¹). Shows tropopause dynamics and stratospheric intrusions.*
+
+**Summary Statistics:**
 
 | Statistic | EP1 | EP2 |
 |-----------|-----|-----|
 | Mean (PVU) | -4.54 | -4.42 |
 | Range (PVU) | [-7.08, -1.26] | [-6.86, -1.18] |
 
-#### Potential Vorticity at 850 hPa
+### 4.3 Low-Level PV Anomaly (850 hPa)
+
+![PV@850 Composite](figures/ep_structure/composite_pv850.png)
+
+*Figure: Potential vorticity at 850 hPa for EP1 (left) and EP2 (right). Units: PVU. Indicates diabatic PV generation and low-level cyclonic circulation.*
+
+**Summary Statistics:**
 
 | Statistic | EP1 | EP2 |
 |-----------|-----|-----|
 | Mean (PVU) | -0.50 | -0.52 |
 | Range (PVU) | [-0.74, -0.30] | [-0.75, -0.31] |
 
-#### Temperature Advection at 850 hPa
+### 4.4 Temperature Advection (850 hPa)
+
+![Temp Advection Composite](figures/ep_structure/composite_advT850.png)
+
+*Figure: Temperature advection at 850 hPa for EP1 (left) and EP2 (right). Units: K h⁻¹. Positive (red) = warm advection; Negative (blue) = cold advection.*
+
+**Summary Statistics:**
 
 | Statistic | EP1 | EP2 |
 |-----------|-----|-----|
 | Domain mean (K h⁻¹) | -0.031 | -0.003 |
 | Max warm advection (K h⁻¹) | 0.071 | 0.111 |
 | Max cold advection (K h⁻¹) | -0.132 | -0.119 |
+| LEC 15×15° mean (K h⁻¹) | -0.070 | -0.021 |
+| Full 30×30° mean (K h⁻¹) | -0.031 | -0.003 |
 
-#### Sea Level Pressure
+**Lateral boundaries (flux assessment):**
+
+| Boundary | EP1 | EP2 |
+|----------|-----|-----|
+| North (+7.5°) | -0.025 | 0.020 |
+| South (-7.5°) | -0.081 | -0.037 |
+| East (+7.5°) | -0.008 | 0.068 |
+| West (-7.5°) | -0.095 | -0.074 |
+
+### 4.5 Sea Level Pressure
+
+![SLP Composite](figures/ep_structure/composite_slp.png)
+
+*Figure: Mean sea level pressure for EP1 (left) and EP2 (right). Units: hPa. Shows cyclone intensity and horizontal structure.*
+
+**Summary Statistics:**
 
 | Statistic | EP1 | EP2 |
 |-----------|-----|-----|
 | Minimum (hPa) | 996.5 | 994.8 |
 | Maximum (hPa) | 1018.3 | 1019.2 |
+| LEC 15×15° mean (hPa) | 1008.1 | 1005.2 |
+| Full 30×30° mean (hPa) | 1009.3 | 1006.4 |
 
-### 4.2 Spatial Composite Figures
+### 4.6 Specific Humidity (975 hPa)
 
-#### Eady Growth Rate (Baroclinic Instability)
+![Moisture Composite](figures/ep_structure/composite_moisture_flux.png)
 
-![EGR Composite](../../figures/ep_structure/composite_egr.png)
+*Figure: Specific humidity (shading, g kg⁻¹) and moisture flux vectors at 975 hPa for EP1 (left) and EP2 (right).*
 
-*Figure: Eady growth rate composite (250–850 hPa layer) for EP1 (left) and EP2 (right). Contours show growth rate in day⁻¹. The 15° × 15° box marks the LEC computation domain.*
+**Summary Statistics:**
 
-#### Upper-Level Dynamics (200 hPa PV)
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Mean (g kg⁻¹) | 6.37 | 6.52 |
+| Range (g kg⁻¹) | [2.79, 11.14] | [3.13, 11.16] |
+| LEC 15×15° mean (g kg⁻¹) | 6.31 | 6.58 |
+| Full 30×30° mean (g kg⁻¹) | 6.37 | 6.52 |
 
-![PV@200 Composite](../../figures/ep_structure/composite_pv200.png)
+### 4.7 Rayleigh-Kuo Stability Criterion (250 hPa)
 
-*Figure: Potential vorticity at 200 hPa for EP1 (left) and EP2 (right). Units: PVU (10⁻⁶ K m² kg⁻¹ s⁻¹). Shows tropopause dynamics and stratospheric intrusions.*
+![RK Criterion Composite](figures/ep_structure/composite_rk_criterion.png)
 
-#### Low-Level PV Anomaly (850 hPa)
+*Figure: Rayleigh-Kuo criterion at 250 hPa for EP1 (left) and EP2 (right). Units: s⁻¹. Negative values (blue) indicate regions satisfying the necessary condition for barotropic/baroclinic instability. Wind vectors show 250 hPa flow.*
 
-![PV@850 Composite](../../figures/ep_structure/composite_pv850.png)
+**Summary Statistics:**
 
-*Figure: Potential vorticity at 850 hPa for EP1 (left) and EP2 (right). Units: PVU. Indicates diabatic PV generation and low-level cyclonic circulation.*
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Mean (s⁻¹) | 2.242e-11 | 2.271e-11 |
+| Range (s⁻¹) | [-2.427e-11, 6.908e-11] | [-7.869e-12, 6.445e-11] |
+| LEC 15×15° mean | 2.814e-11 | 2.818e-11 |
+| Full 30×30° mean | 2.242e-11 | 2.271e-11 |
 
-#### Temperature Advection Pattern
+*Negative values indicate regions satisfying the necessary condition for barotropic/baroclinic instability.*
 
-![Temp Advection Composite](../../figures/ep_structure/composite_advT850.png)
+### 4.8 Kinetic Energy Advection (250 hPa)
 
-*Figure: Temperature advection at 850 hPa for EP1 (left) and EP2 (right). Units: K h⁻¹. Positive (red) = warm advection; Negative (blue) = cold advection.*
+![KE Advection Composite](figures/ep_structure/composite_ke_advection.png)
 
-#### Moisture Distribution and Convergence
+*Figure: Kinetic energy advection at 250 hPa for EP1 (left) and EP2 (right). Units: m² s⁻³. Positive values (purple) indicate KE gain through advection; negative values (orange) indicate KE loss. Wind vectors show 250 hPa flow.*
 
-![Moisture Composite](../../figures/ep_structure/composite_moisture.png)
+**Summary Statistics:**
 
-*Figure: Specific humidity (shading, g kg⁻¹) and moisture flux divergence (contours, g kg⁻¹ s⁻¹) at 975 hPa for EP1 (left) and EP2 (right). Negative divergence (dashed contours) indicates moisture convergence.*
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Mean (m² s⁻³) | -1.760e-03 | -4.142e-04 |
+| Range (m² s⁻³) | [-1.241e-02, 4.948e-03] | [-7.759e-03, 7.122e-03] |
+| LEC 15×15° mean | -2.622e-03 | -1.380e-03 |
+| Full 30×30° mean | -1.760e-03 | -4.142e-04 |
 
-#### Sea Level Pressure
+**Lateral boundaries (flux assessment):**
 
-![SLP Composite](../../figures/ep_structure/composite_slp.png)
-
-*Figure: Mean sea level pressure for EP1 (left) and EP2 (right). Units: hPa. Shows cyclone intensity and horizontal structure.*
+| Boundary | EP1 | EP2 |
+|----------|-----|-----|
+| North (+7.5°) | 1.207e-03 | 3.303e-03 |
+| South (-7.5°) | -7.365e-03 | -5.867e-03 |
+| East (+7.5°) | -1.957e-03 | 1.570e-03 |
+| West (-7.5°) | -1.308e-03 | -1.924e-03 |
 
 ---
 
@@ -328,11 +428,15 @@ div_q_gkg = (div_q_si * 1000 * units('g/kg')).magnitude
 
 ## 7. References
 
+- Banacos, P. C., & Schultz, D. M. (2005). The use of moisture flux convergence in forecasting convective initiation: Historical and operational perspectives. *Weather and Forecasting*, 20(3), 351–366.
 - Čampa, J., & Wernli, H. (2012). A PV perspective on the vertical structure of mature midlatitude cyclones. *J. Atmos. Sci.*, 69(2), 725–740.
+- Charney, J. G., & Stern, M. E. (1962). On the stability of internal baroclinic jets in a rotating atmosphere. *Journal of the Atmospheric Sciences*, 19(2), 159–172.
 - Davis, C. A., & Emanuel, K. A. (1991). Potential vorticity diagnostics of cyclogenesis. *Mon. Wea. Rev.*, 119(8), 1929–1953.
 - Hoskins, B. J., McIntyre, M. E., & Robertson, A. W. (1985). On the use and significance of isentropic potential vorticity maps. *Q. J. R. Meteorol. Soc.*, 111(470), 877–946.
 - Hoskins, B. J., & Valdes, P. J. (1990). On the existence of storm-tracks. *J. Atmos. Sci.*, 47(15), 1854–1864.
+- Kuo, H. L. (1949). Dynamic instability of two-dimensional nondivergent flow in a barotropic atmosphere. *Journal of Meteorology*, 6(2), 105–122.
 - Lindzen, R. S., & Farrell, B. (1980). A simple approximate result for the maximum growth rate of baroclinic instabilities. *J. Atmos. Sci.*, 37(7), 1648–1654.
+- Rayleigh, Lord (1880). On the stability, or instability, of certain fluid motions. *Proceedings of the London Mathematical Society*, s1-11(1), 57–72.
 - Sanders, F., & Gyakum, J. R. (1980). Synoptic-dynamic climatology of the "bomb." *Mon. Wea. Rev.*, 108(10), 1589–1606.
 - Simmonds, I., & Lim, E.-P. (2009). Biases in the calculation of Southern Hemisphere mean baroclinic eddy growth rate. *Geophys. Res. Lett.*, 36(1), L01707.
 

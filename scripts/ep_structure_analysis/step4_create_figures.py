@@ -6,20 +6,19 @@ For each diagnostic field, creates a side-by-side composite figure:
   Right panel: EP2
 
 Fields plotted:
-  1. EGR (250–850 hPa)        — shaded
-  2. PV at 200 hPa            — shaded + 2 PVU contour
-  3. PV at 850 hPa            — shaded
-  4. Temperature advection 850 — shaded (warm red / cold blue)
-  5. SLP                      — contours
+  1. EGR (250–850 hPa)              — shaded
+  2. PV at 200 hPa                  — shaded + 2 PVU contour
+  3. PV at 850 hPa                  — shaded
+  4. Temperature advection 850      — shaded (warm red / cold blue)
+  5. Moisture flux + divergence 975 — panels with specific humidity and divergence
+  6. SLP                            — contours
+  7. RK criterion at 250 hPa        — shaded (negative = unstable)
+  8. KE advection at 250  hPa       — shaded (positive = acceleration)
 
 Each panel includes a 15°×15° dashed box indicating the LEC computation domain.
 
 Output:
-  figures/ep_structure/composite_egr.png
-  figures/ep_structure/composite_pv200.png
-  figures/ep_structure/composite_pv850.png
-  figures/ep_structure/composite_advT850.png
-  figures/ep_structure/composite_slp.png
+  figures/ep_structure/composite_*.png
 
 Author: Danilo Couto de Souza
 Date: February 2026
@@ -477,6 +476,114 @@ def figure_slp(datasets):
     logging.info(f"    ✓ {out.name}")
 
 
+def figure_rk_criterion(datasets):
+    """Rayleigh-Kuo criterion at 250 hPa: EP1 vs EP2."""
+    logging.info("  Creating RK criterion @250 hPa composite figure...")
+    
+    # Check if RK criterion exists
+    if "rk_criterion_250" not in datasets["EP1"]:
+        logging.warning("    ⚠️  RK criterion not in composites - skipping")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+    # Symmetric color scale around zero
+    absmax = 0
+    for ep in ["EP1", "EP2"]:
+        data = datasets[ep]["rk_criterion_250"].values
+        absmax = max(absmax, np.nanmax(np.abs(data)))
+    clevels = np.linspace(-absmax, absmax, 21)
+
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[i]
+        ds = datasets[ep]
+        
+        rk = ds["rk_criterion_250"].values
+        x = ds.coords["x"].values
+        y = ds.coords["y"].values
+        
+        # Shaded: RK criterion (negative = unstable)
+        im = ax.contourf(x, y, rk, levels=clevels, cmap="RdBu_r", extend="both")
+        
+        # Zero contour
+        ax.contour(x, y, rk, levels=[0], colors="black", linewidths=1.5, linestyles="-")
+        
+        # Wind vectors at 250 hPa
+        u = ds["u_250"].values
+        v = ds["v_250"].values
+        skip = slice(None, None, VECTOR_SKIP)
+        ax.quiver(
+            x[skip], y[skip], u[skip, skip], v[skip, skip],
+            scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5
+        )
+        
+        _decorate_ax(ax, f"{EP_LABELS[ep]}", xlabel=(i == 0), ylabel=(i == 0))
+        if i == 1:
+            _add_cbar(fig, ax, im, "RK criterion (s⁻¹ m⁻¹)")
+
+    fig.suptitle("Rayleigh-Kuo Instability Criterion at 250 hPa — EP1 vs EP2", 
+                 fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    out = FIGURES_DIR / "composite_rk_criterion.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
+def figure_ke_advection(datasets):
+    """Kinetic energy advection at 250 hPa: EP1 vs EP2."""
+    logging.info("  Creating KE advection @250 hPa composite figure...")
+    
+    # Check if KE advection exists
+    if "ke_adv_250" not in datasets["EP1"]:
+        logging.warning("    ⚠️  KE advection not in composites - skipping")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+    # Symmetric color scale
+    absmax = 0
+    for ep in ["EP1", "EP2"]:
+        data = datasets[ep]["ke_adv_250"].values
+        absmax = max(absmax, np.nanmax(np.abs(data)))
+    clevels = np.linspace(-absmax, absmax, 21)
+
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[i]
+        ds = datasets[ep]
+        
+        ke_adv = ds["ke_adv_250"].values
+        x = ds.coords["x"].values
+        y = ds.coords["y"].values
+        
+        # Shaded: KE advection
+        im = ax.contourf(x, y, ke_adv, levels=clevels, cmap="PuOr_r", extend="both")
+        
+        # Zero contour
+        ax.contour(x, y, ke_adv, levels=[0], colors="black", linewidths=1.5, linestyles="-")
+        
+        # Wind vectors at 250 hPa
+        u = ds["u_250"].values
+        v = ds["v_250"].values
+        skip = slice(None, None, VECTOR_SKIP)
+        ax.quiver(
+            x[skip], y[skip], u[skip, skip], v[skip, skip],
+            scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5
+        )
+        
+        _decorate_ax(ax, f"{EP_LABELS[ep]}", xlabel=(i == 0), ylabel=(i == 0))
+        if i == 1:
+            _add_cbar(fig, ax, im, "KE advection (m² s⁻³)")
+
+    fig.suptitle("Kinetic Energy Advection at 250 hPa — EP1 vs EP2", 
+                 fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    out = FIGURES_DIR / "composite_ke_advection.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -507,6 +614,8 @@ def main():
     figure_advT850(datasets)
     figure_moisture(datasets)
     figure_slp(datasets)
+    figure_rk_criterion(datasets)
+    figure_ke_advection(datasets)
 
     # Close datasets
     for ds in datasets.values():

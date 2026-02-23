@@ -46,6 +46,7 @@ PANDOC_OPTIONS = [
     "--from=markdown",
     "--to=pdf",
     "--pdf-engine=xelatex",  # xelatex supports Unicode natively
+    "--resource-path=.:scripts/cluster_analysis_energy_patterns",  # Allows pandoc to find figures/
     "--number-sections",
     "--toc",
     "--toc-depth=2",

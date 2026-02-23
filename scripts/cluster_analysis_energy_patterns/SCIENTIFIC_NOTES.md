@@ -43,22 +43,44 @@ This study focuses on **7 energy terms** characterizing cyclone energetics:
 ### 2.2 Key Conversion Terms
 
 **Baroclinic Conversion (Ca):**
-$$C_a = -\frac{R}{p} \int \omega' T' \, dp$$
+$$C_a = \int_{p_b}^{p_t} \frac{R}{p\sigma} \left[ (\omega)_\lambda (T)_\lambda \frac{\partial \langle T \rangle_\lambda}{\partial \phi} + \frac{1}{\sigma} \left[ (\omega)_\lambda (T)_\lambda \frac{\partial \langle \theta \rangle_\lambda}{\partial p} \right]_{\lambda \phi} \right] dp$$
 
-where $\omega'$ = vertical velocity anomaly, $T'$ = temperature anomaly, $R$ = gas constant, $p$ = pressure.
+where:
+- $\omega$ = vertical velocity (Pa s⁻¹)
+- $T$ = temperature (K)
+- $\theta$ = potential temperature (K)
+- $\sigma = -\frac{R T}{p} \frac{\partial \ln \theta}{\partial p}$ = static stability parameter
+- $()_\lambda$ denotes deviation from zonal mean
+- $\langle \rangle_\lambda$ denotes zonal mean
+- $p_t, p_b$ = top and bottom pressure levels
 
-- **Ca > 0**: Conversion from zonal APE to eddy APE (baroclinic energy extraction)
+**Physical Interpretation:**
+- **Ca > 0**: Conversion from zonal APE to eddy APE (baroclinic energy extraction from mean temperature gradients)
 - **Ca < 0**: Conversion from eddy APE to zonal APE (baroclinic damping)
 
 **Barotropic Conversion (Ck):**
-$$C_k = -\int \left[ u'v' \frac{\partial \bar{u}}{\partial y} + u'v' \frac{\partial \bar{v}}{\partial x} \right] dp$$
+$$
+\begin{aligned}
+C_k = \int_{p_b}^{p_t} \frac{1}{\sigma} \Bigg[ & \left[ \frac{\cos \phi}{a} (u)_\lambda (v)_\lambda \frac{\partial}{\partial \phi} \left( \frac{\langle u \rangle_\lambda}{\cos \phi} \right) \right]_{\lambda \phi} \\
+& + \left[ \frac{(u)_\lambda^2 \partial [u]_\lambda}{a \partial \phi} \right]_{\lambda \phi} \\
+& + \left[ \frac{\tan \phi}{a} (u)_\lambda^2 [v]_\lambda \right]_{\lambda \phi} \\
+& + \left[ (\omega)_\lambda (u)_\lambda \frac{\partial [u]_\lambda}{\partial p} \right]_{\lambda \phi} \\
+& + \left[ (\omega)_\lambda (v)_\lambda \frac{\partial [v]_\lambda}{\partial p} \right]_{\lambda \phi} \Bigg] dp
+\end{aligned}
+$$
 
-where $u'$, $v'$ = wind anomalies, $\bar{u}$, $\bar{v}$ = mean winds.
-
-- **Ck < 0**: Conversion from zonal KE to eddy KE (barotropic energy extraction)
-- **Ck > 0**: Conversion from eddy KE to zonal KE (barotropic damping)
+where:
+- $u, v$ = zonal and meridional wind components (m s⁻¹)
+- $a$ = Earth's radius
+- $\phi$ = latitude
+- $[]_\lambda$ denotes deviation from area mean within LEC domain
+- $()_\lambda$ denotes deviation from zonal mean
 
 **Physical Interpretation:**
+- **Ck < 0**: Conversion from zonal KE to eddy KE (barotropic energy extraction from mean flow shear)
+- **Ck > 0**: Conversion from eddy KE to zonal KE (barotropic damping)
+
+**Note on sign convention:**
 - More **negative Ck** → stronger barotropic extraction (eddy gains energy from mean flow)
 - More **positive Ca** → stronger baroclinic extraction (eddy gains energy from temperature gradients)
 
@@ -262,7 +284,7 @@ The **Conversion LPS** reveals the relationship between baroclinic (Ca) and baro
 
 **Results:**
 
-![Conversion LPS](../../figures/cluster/lps_conversion_zoom.png)
+![Conversion LPS](figures/cluster/lps_conversion_zoom.png)
 
 **Key Findings:**
 - **EP1** clusters in Quadrant II with large |Ck| and large Ca → intense baroclinic cyclones
@@ -287,7 +309,7 @@ The **Imports LPS** reveals energy import/export through domain boundaries.
 
 **Results:**
 
-![Imports LPS](../../figures/cluster/lps_imports_zoom.png)
+![Imports LPS](figures/cluster/lps_imports_zoom.png)
 
 **Key Findings:**
 - **EP1** shows **negative boundary fluxes** (Quadrant III/IV) → exports energy to downstream regions
@@ -308,25 +330,29 @@ The **Imports LPS** reveals energy import/export through domain boundaries.
 **Cross-Phase Consistency:**
 EP assignment remains stable across lifecycle phases for most cyclones, indicating robust pattern identification.
 
-### 7.2 Physical Consistency
-
-**Energy Conservation:**
-All cluster centroids satisfy energy budget closure within numerical precision:
-
-$$\frac{dA_e}{dt} + \frac{dK_e}{dt} = C_a + C_k + G_e + BA_e + BK_e - D$$
-
-where D = dissipation (computed as residual).
-
-### 7.3 Climatological Relevance
+### 7.2 Climatological Relevance
 
 **Spatial Distribution:**
-- EP1: Concentrated in regions of strong SST gradients (Brazil-Malvinas Confluence)
-- EP2: Widespread across South Atlantic
-- EP3: Ubiquitous, highest frequency in subtropical latitudes
+
+Based on composite analysis of cyclone genesis locations and tracks (see `scripts/main/06_figure_genesis_density_kde.py`):
+
+- **EP1**: Concentrated in two primary regions:
+  1. **Brazil-Malvinas Confluence (BMC):** Most frequent region, associated with strong SST gradients and ocean fronts
+  2. **Southeast Brazil coast:** Secondary maximum, potentially including subtropical transition cases
+  
+- **EP2**: More widespread distribution across South Atlantic, present in both subtropical and extratropical regions
+
+- **EP3**: Ubiquitous distribution with highest frequency in subtropical latitudes
 
 **Seasonal Variation:**
-- EP1: Peak in austral winter (JJA) when baroclinicity is strongest
-- EP3: Year-round occurrence with slight summer (DJF) maximum
+
+Based on intensity and seasonality analysis (see `scripts/main/05_figure_intensity_seasonality_trends.py`):
+
+- **EP1**: Peak in austral winter (JJA) when baroclinicity is strongest
+- **EP2**: Year-round occurrence with slight seasonal modulation
+- **EP3**: Year-round occurrence with slight summer (DJF) maximum
+
+**Note:** Detailed spatial and temporal distribution figures are available in `figures/main/`.
 
 ---
 

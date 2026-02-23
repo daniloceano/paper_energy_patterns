@@ -32,6 +32,8 @@ throughout the study.
 | **Specific humidity** | 975 hPa | Low-level moisture distribution | Bao et al. (2002); Schär & Wernli (1993) |
 | **Moisture flux divergence** | 975 hPa | Moisture convergence/divergence → convective potential | Banacos & Schultz (2005); Lackmann (2011) |
 | **SLP** (Sea Level Pressure) | Surface | Cyclone position, intensity and horizontal structure | Hoskins & Hodges (2005); Reboita et al. (2010) |
+| **RK criterion** (Rayleigh-Kuo) | 250 hPa | Barotropic/baroclinic instability necessary condition | Rayleigh (1880); Kuo (1949); Charney & Stern (1962) |
+| **KE advection** | 250 hPa | Kinetic energy tendency from advection in jet stream | - |
 
 ### Level selection rationale
 
@@ -72,6 +74,18 @@ throughout the study.
   2011). The calculation uses MetPy's spherical geometry-aware gradient operators
   and physical constants to ensure consistency.
 
+- **RK criterion at 250 hPa:** The Rayleigh-Kuo stability criterion provides a
+  necessary condition for barotropic and baroclinic instability. Computed as
+  ∂q/∂y = β - ∂²u/∂y², where negative values indicate regions satisfying the
+  instability criterion. The 250 hPa level is chosen as representative of the
+  jet stream, where barotropic processes are strongest.
+
+- **KE advection at 250 hPa:** Kinetic energy advection (-V · ∇KE) quantifies
+  the tendency for KE to increase or decrease due to advection within the jet
+  stream. Positive values indicate regions where the flow is accelerating, while
+  negative values indicate deceleration. Computed at 250 hPa to capture jet-level
+  dynamics.
+
 ## Pipeline Structure
 
 ### Steps
@@ -81,9 +95,9 @@ throughout the study.
 | 1 | `step1_select_ep_tracks.py` | Local/Remote | Select EP1 and EP2 cyclone tracks |
 | 2 | `step2_download_era5_parallel.py` | **Remote** | Download ERA5 data (parallel, with patching) |
 | 2M | `step2_monitor.py` | Local/Remote | **Monitor download progress** (see below) |
-| 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP) |
+| 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP, RK, KE_adv) |
 | 4 | `step4_create_figures.py` | Local | Create EP1 vs EP2 composite figures |
-| 5 | `step5_update_scientific_notes.py` | Local | Populate SCIENTIFIC_NOTES.md |
+| 5 | `step5_update_scientific_notes.py` | Local | Populate SCIENTIFIC_NOTES.md with regional statistics + generate PDF |
 
 ### Download monitor (`step2_monitor.py`)
 
@@ -271,9 +285,18 @@ scp -i ~/Documents/Master/id_rsa.danilocs -C \
 # Step 4 – create figures
 python scripts/ep_structure_analysis/step4_create_figures.py
 
-# Step 5 – update scientific notes
+# Step 5 – update scientific notes with regional statistics
 python scripts/ep_structure_analysis/step5_update_scientific_notes.py
+
+# Step 5 – with PDF generation (requires pandoc + xelatex)
+python scripts/ep_structure_analysis/step5_update_scientific_notes.py --pdf
 ```
+
+**Step 5 computes:**
+- Global statistics (mean, std, min, max)
+- Regional statistics: Full 30×30° domain, Central 15×15° LEC domain, NW/NE/SW/SE quadrants  
+- Populates all `{PLACEHOLDER}` variables in SCIENTIFIC_NOTES.md
+- Optionally generates PDF via pandoc
 
 ## ERA5 Variables Downloaded
 
@@ -303,13 +326,15 @@ python scripts/ep_structure_analysis/step5_update_scientific_notes.py
 ### Figures
 - `figures/ep_structure/` — EP1 vs EP2 composite comparison panels
   - `composite_egr.png` — Eady Growth Rate (250–850 hPa)
-  - `composite_pv200.png` — Potential Vorticity at 200 hPa
-  - `composite_pv850.png` — Potential Vorticity at 850 hPa
-  - `composite_advT850.png` — Temperature Advection at 850 hPa
-  - `composite_moisture_flux.png` — Specific Humidity & Moisture Flux Divergence at 975 hPa
-  - `composite_slp.png` — Sea Level Pressure
+  - `composite_pv200.png` — PV at 200 hPa + 250 hPa wind vectors
+  - `composite_pv850.png` — PV at 850 hPa + 850 hPa wind vectors
+  - `composite_advT850.png` — Temperature advection at 850 hPa
+  - `composite_moisture.png` — Specific humidity + moisture flux divergence at 975 hPa
+  - `composite_slp.png` — Sea level pressure
+  - `composite_rk_criterion.png` — Rayleigh-Kuo criterion at 250 hPa
+  - `composite_ke_advection.png` — Kinetic energy advection at 250 hPa
   - Each figure shows EP1 (left) vs EP2 (right) for a given field
-  - 15° × 15° box overlay marks the LEC computation domain
+  - 15° × 15° dashed box overlay marks the LEC computation domain
 
 ### Logs
 - `logs/ep_structure_*.log` — detailed execution logs
@@ -338,6 +363,7 @@ From `scripts/exploratory/analyze_ep_characteristics.py`:
 - Bao, J.-W., Michelson, S. A., Persson, P. O. G., Djalalova, I. V., & Wilczak, J. M. (2002). Observed and WRF-simulated low-level winds in a high-ozone episode during the Central California Ozone Study. *Journal of Applied Meteorology and Climatology*, 41(9), 941–961.
 - Čampa, J., & Wernli, H. (2012). A PV perspective on the vertical structure of mature midlatitude cyclones in the Northern Hemisphere. *Journal of the Atmospheric Sciences*, 69(2), 725–740.
 - Catto, J. L., Shaffrey, L. C., & Hodges, K. I. (2010). Can climate models capture the structure of extratropical cyclones? *Journal of Climate*, 23(7), 1621–1635.
+- Charney, J. G., & Stern, M. E. (1962). On the stability of internal baroclinic jets in a rotating atmosphere. *Journal of the Atmospheric Sciences*, 19(2), 159–172.
 - Dacre, H. F., Hawcroft, M. K., Stringer, M. A., & Hodges, K. I. (2012). An extratropical cyclone atlas. *Bulletin of the American Meteorological Society*, 93(10), 1497–1502.
 - Davis, C. A. (1992). A potential-vorticity diagnosis of the importance of initial structure and condensational heating in observed extratropical cyclogenesis. *Monthly Weather Review*, 120(11), 2409–2428.
 - Davis, C. A., & Emanuel, K. A. (1991). Potential vorticity diagnostics of cyclogenesis. *Monthly Weather Review*, 119(8), 1929–1953.
@@ -345,9 +371,11 @@ From `scripts/exploratory/analyze_ep_characteristics.py`:
 - Hoskins, B. J., McIntyre, M. E., & Robertson, A. W. (1985). On the use and significance of isentropic potential vorticity maps. *Quarterly Journal of the Royal Meteorological Society*, 111(470), 877–946.
 - Hoskins, B. J., & Valdes, P. J. (1990). On the existence of storm-tracks. *Journal of the Atmospheric Sciences*, 47(15), 1854–1864.
 - Hoskins, B. J., & Hodges, K. I. (2005). A new perspective on Southern Hemisphere storm tracks. *Journal of Climate*, 18(20), 4108–4129.
+- Kuo, H. L. (1949). Dynamic instability of two-dimensional nondivergent flow in a barotropic atmosphere. *Journal of Meteorology*, 6(2), 105–122.
 - Lackmann, G. M. (2011). *Midlatitude Synoptic Meteorology: Dynamics, Analysis, and Forecasting*. American Meteorological Society.
 - Lindzen, R. S., & Farrell, B. (1980). A simple approximate result for the maximum growth rate of baroclinic instabilities. *Journal of the Atmospheric Sciences*, 37(7), 1648–1654.
 - Martínez-Alvarado, O., Gray, S. L., & Methven, J. (2016). Diabatic processes and the evolution of two contrasting extratropical cyclones. *Monthly Weather Review*, 144(9), 3251–3276.
+- Rayleigh, Lord (1880). On the stability, or instability, of certain fluid motions. *Proceedings of the London Mathematical Society*, s1-11(1), 57–72.
 - Reboita, M. S., da Rocha, R. P., Ambrizzi, T., & Sugahara, S. (2010). South Atlantic Ocean cyclogenesis climatology simulated by regional climate model (RegCM3). *Climate Dynamics*, 35, 1331–1347.
 - Rossa, A. M., Wernli, H., & Davies, H. C. (2000). Growth and decay of an extra-tropical cyclone's PV-tower. *Meteorology and Atmospheric Physics*, 73, 139–156.
 - Sanders, F., & Gyakum, J. R. (1980). Synoptic-dynamic climatology of the "bomb." *Monthly Weather Review*, 108(10), 1589–1606.

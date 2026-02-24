@@ -156,29 +156,32 @@ def format_eta(seconds):
 # FILE SCANNING
 # ============================================================================
 
-def is_cyclone_complete(track_id: str) -> bool:
+def get_cyclone_status(track_id: str) -> str:
     """
-    Check if LEC analysis is complete for a cyclone.
+    Check the processing status of a cyclone.
     
-    A cyclone is considered complete if its result directory exists and
-    contains the required output files.
+    Returns:
+        'completed' - directory exists with final output files
+        'in_progress' - directory exists but no final files yet
+        'pending' - directory doesn't exist yet
     """
     result_dir = RESULTS_DIR / f"{track_id}_ERA5_track"
     
     if not result_dir.exists():
-        return False
+        return 'pending'
     
     # Check for any required file
     for fname in REQUIRED_FILES:
         if (result_dir / fname).exists():
-            return True
+            return 'completed'
     
-    # Also check for any *_level.csv files (alternative indicator)
+    # Also check for any *_level.csv files (indicator of completion)
     level_files = list(result_dir.glob("*_level.csv"))
     if len(level_files) > 0:
-        return True
+        return 'completed'
     
-    return False
+    # Directory exists but no final files yet
+    return 'in_progress'
 
 
 def get_processing_time(track_id: str) -> float | None:
@@ -263,6 +266,7 @@ def scan_all_cyclones():
     Returns dict with:
         - total: total number of cyclones
         - completed: list of completed track_ids
+        - in_progress: list of in-progress track_ids
         - pending: list of pending track_ids
         - processing_times: dict of track_id -> processing time (seconds)
         - total_size_bytes: total disk usage
@@ -274,12 +278,14 @@ def scan_all_cyclones():
         return {
             "total": 0,
             "completed": [],
+            "in_progress": [],
             "pending": [],
             "processing_times": {},
             "total_size_bytes": 0,
         }
     
     completed = []
+    in_progress = []
     pending = []
     processing_times = {}
     total_size_bytes = 0
@@ -288,7 +294,9 @@ def scan_all_cyclones():
         # Extract track ID: track_19790205.txt -> 19790205
         track_id = track_file.stem.replace('track_', '')
         
-        if is_cyclone_complete(track_id):
+        status = get_cyclone_status(track_id)
+        
+        if status == 'completed':
             completed.append(track_id)
             
             # Get processing time
@@ -299,12 +307,21 @@ def scan_all_cyclones():
             # Get disk usage
             size_info = get_cyclone_size_info(track_id)
             total_size_bytes += size_info["total_bytes"]
-        else:
+            
+        elif status == 'in_progress':
+            in_progress.append(track_id)
+            
+            # Get disk usage (partial)
+            size_info = get_cyclone_size_info(track_id)
+            total_size_bytes += size_info["total_bytes"]
+            
+        else:  # pending
             pending.append(track_id)
     
     return {
         "total": len(track_files),
         "completed": completed,
+        "in_progress": in_progress,
         "pending": pending,
         "processing_times": processing_times,
         "total_size_bytes": total_size_bytes,
@@ -345,7 +362,7 @@ def compute_statistics(scan_data: dict):
     max_time = max(times)
     
     # ETA calculation
-    n_pending = len(scan_data["pending"])
+    n_pending = len(scan_data["pending"]) + len(scan_data["in_progress"])
     eta_seconds = mean_time * n_pending if n_pending > 0 else 0
     
     return {
@@ -423,16 +440,44 @@ def print_report(
     
     # Progress bar
     n_completed = len(scan_data["completed"])
+    n_in_progress = len(scan_data["in_progress"])
+    n_pending = len(scan_data["pending"])
     n_total = scan_data["total"]
     
     print()
     print(f"  Progress  {_bar(n_completed, n_total)}")
     print()
-    print(f"  ✓ Completed: {n_completed}")
-    print(f"  ⏳ Pending:  {len(scan_data['pending'])}")
-    print(f"  📁 Total:    {n_total} cyclones")
+    print(f"  ✅ Completed:   {n_completed:>4}")
+    print(f"  ⚙️  Processing:  {n_in_progress:>4}  (directory created, awaiting final files)")
+    print(f"  ⏳ Pending:     {n_pending:>4}  (not started yet)")
+    print(f"  {'─' * 20}")
+    print(f"  📁 Total:       {n_total:>4} cyclones")
     print()
-    print(f"  💾 Disk:     {_fmt_bytes(scan_data['total_size_bytes'])}")
+    print(f"  💾 Disk:        {_fmt_bytes(scan_data['total_size_bytes'])}")
+    print()
+    
+    # If there are in-progress cyclones, show current activity
+    if n_in_progress > 0:
+        print(f"  ⚙️  Currently processing {n_in_progress} cyclone(s):")
+        for track_id in scan_data["in_progress"][:10]:
+            result_dir = RESULTS_DIR / f"{track_id}_ERA5_track"
+            if result_dir.exists():
+                # Count files in directory
+                n_files = len(list(result_dir.glob("*.*")))
+                dir_size = get_cyclone_size_info(track_id)["total_bytes"]
+                
+                # Check age (how long directory has existed)
+                dir_age = time.time() - result_dir.stat().st_ctime
+                age_str = format_runtime(dir_age)
+                
+                # Warn if taking too long (>6 hours = potential issue)
+                warning = " ⚠️ SLOW" if dir_age > 6 * 3600 else ""
+                
+                print(f"     {track_id}  ({n_files} files, {_fmt_bytes(dir_size)}, age: {age_str}){warning}")
+        
+        if n_in_progress > 10:
+            print(f"     ... and {n_in_progress - 10} more")
+        print()
     
     # Processing time statistics
     print()
@@ -454,12 +499,14 @@ def print_report(
             eta_time = datetime.now() + timedelta(seconds=stats["eta_seconds"])
             eta_time_str = eta_time.strftime("%Y-%m-%d %H:%M")
             
+            n_remaining = n_in_progress + n_pending
+            
             print(f"  ⏱  Estimated time remaining: {eta_str}")
             print(f"  🎯 Expected completion:     {eta_time_str}")
             print()
-            print(f"     (Based on mean processing time of {format_runtime(stats['mean_time'])})")
+            print(f"     (Based on {n_remaining} remaining cyclones × mean time {format_runtime(stats['mean_time'])})")
             print(f"     (Cyclones taking >{MAX_PROCESSING_HOURS}h are excluded as likely interrupted)")
-        elif len(scan_data["pending"]) == 0:
+        elif n_in_progress + n_pending == 0:
             print(f"  ✅ All cyclones completed!")
         else:
             print(f"  ⏱  ETA: Not yet available (need more completed cyclones)")
@@ -498,7 +545,7 @@ def print_report(
     if len(scan_data["pending"]) > 0:
         print()
         print("  " + "─" * (W - 2))
-        print("  PENDING (next 5 to process)")
+        print("  PENDING (next 5 not yet started)")
         print("  " + "─" * (W - 2))
         
         for track_id in scan_data["pending"][:5]:
@@ -508,6 +555,25 @@ def print_report(
             print(f"  ... and {len(scan_data['pending']) - 5} more")
     
     print()
+    
+    # Check for failed cyclones file
+    failed_file = RESULTS_DIR / "failed_cyclones.txt"
+    if failed_file.exists():
+        try:
+            with open(failed_file, 'r') as f:
+                failed_ids = [line.strip() for line in f if line.strip()]
+            if len(failed_ids) > 0:
+                print("  " + "─" * (W - 2))
+                print(f"  ⚠️  FAILED CYCLONES ({len(failed_ids)} total)")
+                print("  " + "─" * (W - 2))
+                for track_id in failed_ids[:5]:
+                    print(f"  {track_id}")
+                if len(failed_ids) > 5:
+                    print(f"  ... and {len(failed_ids) - 5} more")
+                print(f"\n  See: {failed_file}")
+                print()
+        except Exception:
+            pass
     
     # Footer notes
     if not HAS_PSUTIL:

@@ -32,6 +32,7 @@ Date: February 2026
 import sys
 import os
 import time
+import re
 import argparse
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -58,8 +59,9 @@ CYCLONE_LOG_DIR = LOG_DIR / "cyclones"
 # Cyclones taking longer are considered stalled/interrupted
 MAX_PROCESSING_HOURS = 24
 
-# Key files that indicate successful completion
-REQUIRED_FILES = ["results.csv", "periods.csv"]
+# Key patterns that indicate successful completion
+# LorenzCycleToolkit creates files like: {track_id}_ERA5_track_results.csv
+RESULT_FILE_PATTERNS = ["*_results.csv", "*_trackfile"]
 
 # ============================================================================
 # PROCESS DETECTION
@@ -170,15 +172,24 @@ def get_cyclone_status(track_id: str) -> str:
     if not result_dir.exists():
         return 'pending'
     
-    # Check for any required file
-    for fname in REQUIRED_FILES:
-        if (result_dir / fname).exists():
+    # Check for result file patterns (LorenzCycleToolkit naming)
+    for pattern in RESULT_FILE_PATTERNS:
+        matching_files = list(result_dir.glob(pattern))
+        if len(matching_files) > 0:
             return 'completed'
     
-    # Also check for any *_level.csv files (indicator of completion)
-    level_files = list(result_dir.glob("*_level.csv"))
-    if len(level_files) > 0:
-        return 'completed'
+    # Also check for log completion message
+    log_file = result_dir / f"log.{track_id}_ERA5"
+    if log_file.exists():
+        try:
+            # Check last 5 lines for completion message
+            with open(log_file, 'r') as f:
+                lines = f.readlines()
+                for line in lines[-5:]:
+                    if 'Analysis complete' in line or 'ran in' in line:
+                        return 'completed'
+        except Exception:
+            pass
     
     # Directory exists but no final files yet
     return 'in_progress'
@@ -186,49 +197,42 @@ def get_cyclone_status(track_id: str) -> str:
 
 def get_processing_time(track_id: str) -> float | None:
     """
-    Estimate processing time for a cyclone by checking log timestamps.
+    Extract processing time from LorenzCycleToolkit log file.
     
     Returns processing time in seconds, or None if cannot determine.
+    Looks for line like: "Analysis complete! Moving framework ran in 953.41 seconds"
     """
-    # Try to get time from result directory modification time
     result_dir = RESULTS_DIR / f"{track_id}_ERA5_track"
     
     if not result_dir.exists():
         return None
     
-    # Get the modification time of results.csv (last file written)
-    results_file = result_dir / "results.csv"
-    if not results_file.exists():
-        # Try any level file
-        level_files = list(result_dir.glob("*_level.csv"))
-        if len(level_files) == 0:
-            return None
-        results_file = level_files[0]
+    # Check the toolkit log file
+    log_file = result_dir / f"log.{track_id}_ERA5"
     
-    # Get creation time from stdout log (start time)
-    stdout_log = CYCLONE_LOG_DIR / f"{track_id}_stdout.log"
-    
-    if not stdout_log.exists():
-        # Fallback: estimate from directory creation time
+    if not log_file.exists():
         return None
     
     try:
-        # Start time = log file creation time
-        start_time = stdout_log.stat().st_ctime
-        # End time = result file modification time
-        end_time = results_file.stat().st_mtime
+        # Read last 20 lines to find completion message
+        with open(log_file, 'r') as f:
+            lines = f.readlines()
+            
+        for line in reversed(lines[-20:]):
+            if 'ran in' in line and 'seconds' in line:
+                # Extract time from pattern: "ran in 953.41 seconds"
+
+                match = re.search(r'ran in ([0-9.]+) seconds', line)
+                if match:
+                    processing_time = float(match.group(1))
+                    
+                    # Sanity check: ignore if > 24 hours (likely error in log)
+                    if processing_time > MAX_PROCESSING_HOURS * 3600:
+                        return None
+                    
+                    return processing_time
         
-        processing_time = end_time - start_time
-        
-        # Sanity check: ignore if > 24 hours (likely interrupted)
-        if processing_time > MAX_PROCESSING_HOURS * 3600:
-            return None
-        
-        # Sanity check: ignore if negative (clock issues)
-        if processing_time < 0:
-            return None
-        
-        return processing_time
+        return None
         
     except Exception:
         return None
@@ -458,25 +462,22 @@ def print_report(
     
     # If there are in-progress cyclones, show current activity
     if n_in_progress > 0:
-        print(f"  ⚙️  Currently processing {n_in_progress} cyclone(s):")
-        for track_id in scan_data["in_progress"][:10]:
+        print(f"  ⚙️  Processing (not yet complete): {n_in_progress} cyclone(s)")
+        print(f"     (Directory exists but missing final result files)")
+        print()
+        
+        # Show just first 5 in-progress cyclones
+        for track_id in scan_data["in_progress"][:5]:
             result_dir = RESULTS_DIR / f"{track_id}_ERA5_track"
             if result_dir.exists():
                 # Count files in directory
                 n_files = len(list(result_dir.glob("*.*")))
                 dir_size = get_cyclone_size_info(track_id)["total_bytes"]
                 
-                # Check age (how long directory has existed)
-                dir_age = time.time() - result_dir.stat().st_ctime
-                age_str = format_runtime(dir_age)
-                
-                # Warn if taking too long (>6 hours = potential issue)
-                warning = " ⚠️ SLOW" if dir_age > 6 * 3600 else ""
-                
-                print(f"     {track_id}  ({n_files} files, {_fmt_bytes(dir_size)}, age: {age_str}){warning}")
+                print(f"     {track_id}  ({n_files} files, {_fmt_bytes(dir_size)})")
         
-        if n_in_progress > 10:
-            print(f"     ... and {n_in_progress - 10} more")
+        if n_in_progress > 5:
+            print(f"     ... and {n_in_progress - 5} more")
         print()
     
     # Processing time statistics
@@ -521,13 +522,21 @@ def print_report(
         print("  RECENT COMPLETIONS (last 5)")
         print("  " + "─" * (W - 2))
         
-        # Get last 5 completed (by result directory mtime)
+        # Get last 5 completed (by log file mtime or result directory mtime)
         completed_with_time = []
         for track_id in scan_data["completed"]:
             result_dir = RESULTS_DIR / f"{track_id}_ERA5_track"
-            if result_dir.exists():
+            
+            # Try to get completion time from log file
+            log_file = result_dir / f"log.{track_id}_ERA5"
+            if log_file.exists():
+                mtime = log_file.stat().st_mtime
+            elif result_dir.exists():
                 mtime = result_dir.stat().st_mtime
-                completed_with_time.append((track_id, mtime))
+            else:
+                continue
+            
+            completed_with_time.append((track_id, mtime))
         
         completed_with_time.sort(key=lambda x: x[1], reverse=True)
         

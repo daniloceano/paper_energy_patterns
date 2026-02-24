@@ -492,6 +492,13 @@ def print_report(
         print(f"  Min:         {format_runtime(stats['min_time'])}")
         print(f"  Max:         {format_runtime(stats['max_time'])}")
         print(f"  Sample size: {stats['n_with_time']}/{n_completed} completed cyclones")
+        
+        # Show percentage of completed cyclones with valid timing data
+        if n_completed > 0:
+            pct_with_time = 100.0 * stats['n_with_time'] / n_completed
+            if pct_with_time < 90:
+                print(f"               ({pct_with_time:.1f}% of completed have timing data)")
+        
         print()
         
         # ETA
@@ -569,19 +576,44 @@ def print_report(
     failed_file = RESULTS_DIR / "failed_cyclones.txt"
     if failed_file.exists():
         try:
+            # Check if file is old (more than 7 days)
+            file_age_days = (time.time() - failed_file.stat().st_mtime) / 86400
+            
             with open(failed_file, 'r') as f:
-                failed_ids = [line.strip() for line in f if line.strip()]
+                lines = f.readlines()
+            
+            # Extract track IDs from failed file (format: "19790205: Failed...")
+            failed_ids = []
+            for line in lines:
+                line = line.strip()
+                if line and not line.startswith('#'):
+                    # Extract track_id from start of line
+                    parts = line.split(':')
+                    if len(parts) > 0:
+                        track_id = parts[0].strip()
+                        # Only count as failed if NOT completed
+                        if track_id in scan_data["pending"] or track_id in scan_data["in_progress"]:
+                            failed_ids.append(track_id)
+            
             if len(failed_ids) > 0:
                 print("  " + "─" * (W - 2))
-                print(f"  ⚠️  FAILED CYCLONES ({len(failed_ids)} total)")
+                print(f"  ⚠️  FAILED CYCLONES ({len(failed_ids)} still unresolved)")
                 print("  " + "─" * (W - 2))
+                print(f"  (Cyclones that failed and have NOT been successfully reprocessed)")
+                print()
                 for track_id in failed_ids[:5]:
                     print(f"  {track_id}")
                 if len(failed_ids) > 5:
                     print(f"  ... and {len(failed_ids) - 5} more")
                 print(f"\n  See: {failed_file}")
                 print()
-        except Exception:
+            elif file_age_days > 7:
+                print("  " + "─" * (W - 2))
+                print(f"  ℹ️  Note: Old failed_cyclones.txt found (age: {file_age_days:.1f} days)")
+                print(f"     All listed failures have been successfully reprocessed.")
+                print("  " + "─" * (W - 2))
+                print()
+        except Exception as e:
             pass
     
     # Footer notes

@@ -338,15 +338,27 @@ def scan_all_cyclones():
 
 def compute_statistics(scan_data: dict):
     """
-    Compute statistics from scan data.
+    Compute statistics from scan data, excluding outliers.
+    
+    Uses IQR (Interquartile Range) method to identify outliers:
+    - Outliers are values < Q1 - 1.5*IQR or > Q3 + 1.5*IQR
+    - Statistics are computed from filtered data (without outliers)
+    - Outliers provide confidence margin (best/worst case scenarios)
     
     Returns dict with:
-        - mean_time: mean processing time (seconds)
+        - mean_time: mean processing time (seconds, without outliers)
         - median_time: median processing time (seconds)
-        - min_time: minimum processing time (seconds)
-        - max_time: maximum processing time (seconds)
+        - min_time: minimum processing time (seconds, without outliers)
+        - max_time: maximum processing time (seconds, without outliers)
         - n_with_time: number of cyclones with valid processing time
+        - n_outliers: number of outliers excluded
+        - outliers_low: list of low outliers (fast completions)
+        - outliers_high: list of high outliers (slow completions)
+        - margin_low: best case time (min of low outliers or min_time)
+        - margin_high: worst case time (max of high outliers or max_time)
         - eta_seconds: estimated time remaining (seconds)
+        - eta_best: best case ETA (seconds)
+        - eta_worst: worst case ETA (seconds)
     """
     times = list(scan_data["processing_times"].values())
     
@@ -357,17 +369,95 @@ def compute_statistics(scan_data: dict):
             "min_time": None,
             "max_time": None,
             "n_with_time": 0,
+            "n_outliers": 0,
+            "outliers_low": [],
+            "outliers_high": [],
+            "margin_low": None,
+            "margin_high": None,
             "eta_seconds": None,
+            "eta_best": None,
+            "eta_worst": None,
         }
     
-    mean_time = sum(times) / len(times)
-    median_time = sorted(times)[len(times) // 2]
-    min_time = min(times)
-    max_time = max(times)
+    # Need at least 4 samples for IQR to be meaningful
+    if len(times) < 4:
+        # Not enough data for outlier detection, use all values
+        mean_time = sum(times) / len(times)
+        sorted_times = sorted(times)
+        median_time = sorted_times[len(times) // 2]
+        min_time = min(times)
+        max_time = max(times)
+        
+        n_pending = len(scan_data["pending"]) + len(scan_data["in_progress"])
+        eta_seconds = mean_time * n_pending if n_pending > 0 else 0
+        
+        return {
+            "mean_time": mean_time,
+            "median_time": median_time,
+            "min_time": min_time,
+            "max_time": max_time,
+            "n_with_time": len(times),
+            "n_outliers": 0,
+            "outliers_low": [],
+            "outliers_high": [],
+            "margin_low": min_time,
+            "margin_high": max_time,
+            "eta_seconds": eta_seconds,
+            "eta_best": min_time * n_pending if n_pending > 0 else 0,
+            "eta_worst": max_time * n_pending if n_pending > 0 else 0,
+        }
     
-    # ETA calculation
+    # Sort times for quartile calculation
+    sorted_times = sorted(times)
+    n = len(sorted_times)
+    
+    # Calculate quartiles
+    q1_idx = n // 4
+    q3_idx = (3 * n) // 4
+    q1 = sorted_times[q1_idx]
+    q3 = sorted_times[q3_idx]
+    iqr = q3 - q1
+    
+    # Define outlier thresholds
+    lower_bound = q1 - 1.5 * iqr
+    upper_bound = q3 + 1.5 * iqr
+    
+    # Separate inliers and outliers
+    inliers = []
+    outliers_low = []
+    outliers_high = []
+    
+    for t in times:
+        if t < lower_bound:
+            outliers_low.append(t)
+        elif t > upper_bound:
+            outliers_high.append(t)
+        else:
+            inliers.append(t)
+    
+    # If outlier detection removed too many points, disable it
+    if len(inliers) < max(3, len(times) * 0.5):
+        # More than 50% marked as outliers - probably not real outliers
+        inliers = times
+        outliers_low = []
+        outliers_high = []
+    
+    # Compute statistics from inliers
+    mean_time = sum(inliers) / len(inliers)
+    sorted_inliers = sorted(inliers)
+    median_time = sorted_inliers[len(sorted_inliers) // 2]
+    min_time = min(inliers)
+    max_time = max(inliers)
+    
+    # Confidence margins from outliers
+    margin_low = min(outliers_low) if outliers_low else min_time
+    margin_high = max(outliers_high) if outliers_high else max_time
+    
+    # ETA calculations
     n_pending = len(scan_data["pending"]) + len(scan_data["in_progress"])
     eta_seconds = mean_time * n_pending if n_pending > 0 else 0
+    eta_best = margin_low * n_pending if n_pending > 0 else 0
+    eta_worst = margin_high * n_pending if n_pending > 0 else 0
     
     return {
         "mean_time": mean_time,
@@ -375,7 +465,14 @@ def compute_statistics(scan_data: dict):
         "min_time": min_time,
         "max_time": max_time,
         "n_with_time": len(times),
+        "n_outliers": len(outliers_low) + len(outliers_high),
+        "outliers_low": sorted(outliers_low),
+        "outliers_high": sorted(outliers_high),
+        "margin_low": margin_low,
+        "margin_high": margin_high,
         "eta_seconds": eta_seconds,
+        "eta_best": eta_best,
+        "eta_worst": eta_worst,
     }
 
 
@@ -483,21 +580,47 @@ def print_report(
     # Processing time statistics
     print()
     print("  " + "─" * (W - 2))
-    print("  PROCESSING TIME STATISTICS")
+    print("  PROCESSING TIME STATISTICS (from log files)")
     print("  " + "─" * (W - 2))
     
     if stats["mean_time"] is not None:
+        # Show if outliers were excluded
+        n_used = stats['n_with_time'] - stats['n_outliers']
+        
         print(f"  Mean:        {format_runtime(stats['mean_time'])}")
         print(f"  Median:      {format_runtime(stats['median_time'])}")
         print(f"  Min:         {format_runtime(stats['min_time'])}")
         print(f"  Max:         {format_runtime(stats['max_time'])}")
-        print(f"  Sample size: {stats['n_with_time']}/{n_completed} completed cyclones")
+        print(f"  Sample size: {n_used}/{n_completed} completed cyclones")
+        
+        # Show outlier information
+        if stats['n_outliers'] > 0:
+            print(f"  Outliers:    {stats['n_outliers']} excluded from statistics")
+            
+            if stats['outliers_low']:
+                low_str = ", ".join([format_runtime(t) for t in stats['outliers_low'][:3]])
+                if len(stats['outliers_low']) > 3:
+                    low_str += f", ... ({len(stats['outliers_low'])} total)"
+                print(f"    • Fast:    {low_str}")
+            
+            if stats['outliers_high']:
+                high_str = ", ".join([format_runtime(t) for t in stats['outliers_high'][:3]])
+                if len(stats['outliers_high']) > 3:
+                    high_str += f", ... ({len(stats['outliers_high'])} total)"
+                print(f"    • Slow:    {high_str}")
+        
+        # Show confidence margins
+        if stats['margin_low'] != stats['min_time'] or stats['margin_high'] != stats['max_time']:
+            print()
+            print(f"  Confidence margin (from outliers):")
+            print(f"    • Best case:  {format_runtime(stats['margin_low'])}")
+            print(f"    • Worst case: {format_runtime(stats['margin_high'])}")
         
         # Show percentage of completed cyclones with valid timing data
         if n_completed > 0:
             pct_with_time = 100.0 * stats['n_with_time'] / n_completed
             if pct_with_time < 90:
-                print(f"               ({pct_with_time:.1f}% of completed have timing data)")
+                print(f"  ({pct_with_time:.1f}% of completed have timing data)")
         
         print()
         
@@ -511,16 +634,31 @@ def print_report(
             
             print(f"  ⏱  Estimated time remaining: {eta_str}")
             print(f"  🎯 Expected completion:     {eta_time_str}")
+            
+            # Show confidence interval for ETA
+            if stats["eta_best"] is not None and stats["eta_worst"] is not None:
+                eta_best_str = format_eta(stats["eta_best"])
+                eta_worst_str = format_eta(stats["eta_worst"])
+                
+                if stats['n_outliers'] > 0:
+                    print(f"     Confidence interval:    {eta_best_str} to {eta_worst_str}")
+            
             print()
-            print(f"     (Based on {n_remaining} remaining cyclones × mean time {format_runtime(stats['mean_time'])})")
-            print(f"     (Cyclones taking >{MAX_PROCESSING_HOURS}h are excluded as likely interrupted)")
+            print(f"     (Based on {n_remaining} remaining × mean {format_runtime(stats['mean_time'])})")
+            
+            if stats['n_outliers'] > 0:
+                print(f"     ({stats['n_outliers']} outliers excluded; used for confidence margin)")
+            else:
+                print(f"     (No outliers detected in timing data)")
+                
+            print(f"     (Cyclones taking >{MAX_PROCESSING_HOURS}h excluded as likely interrupted)")
         elif n_in_progress + n_pending == 0:
             print(f"  ✅ All cyclones completed!")
         else:
             print(f"  ⏱  ETA: Not yet available (need more completed cyclones)")
     else:
         print(f"  No timing data available yet.")
-        print(f"  (Processing times will appear after first cyclone completes)")
+        print(f"  (Processing times extracted from log files after completion)")
     
     # Recent completions
     if n_completed > 0:

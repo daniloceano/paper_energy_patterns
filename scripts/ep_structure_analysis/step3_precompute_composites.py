@@ -33,21 +33,33 @@ import logging
 from datetime import datetime
 from tqdm import tqdm
 
-from metpy.calc import potential_temperature, potential_vorticity_baroclinic
+from metpy.calc import (
+    potential_temperature,
+    potential_vorticity_baroclinic,
+    virtual_temperature,
+    brunt_vaisala_frequency,
+    advection as metpy_advection,
+    divergence as metpy_divergence,
+    mixing_ratio_from_specific_humidity,
+    lat_lon_grid_deltas,
+    coriolis_parameter
+)
 from metpy.units import units
 import metpy.constants as mpconstants
 
 # ============================================================================
-# PHYSICAL CONSTANTS
+# PHYSICAL CONSTANTS  (sourced from metpy.constants for consistency)
 # ============================================================================
+# All constants are kept as pint.Quantity so that derived expressions
+# (e.g. z / G) carry correct units automatically.
 
-G = 9.80665           # m s⁻²
-OMEGA = 7.292e-5      # rad s⁻¹
-R_d = 287.0           # J kg⁻¹ K⁻¹
-C_p = 1004.0          # J kg⁻¹ K⁻¹
-KAPPA = R_d / C_p
-P_0 = 100000.0        # Pa
-R_EARTH = 6.371e6     # m
+G       = mpconstants.earth_gravity            # pint.Quantity  9.80665 m s⁻²
+OMEGA   = mpconstants.earth_avg_angular_vel    # pint.Quantity  7.2921e-5 rad s⁻¹
+R_d     = mpconstants.dry_air_gas_constant     # pint.Quantity  287.058 J kg⁻¹ K⁻¹
+C_p     = mpconstants.dry_air_spec_heat_press  # pint.Quantity  1004.709 J kg⁻¹ K⁻¹
+KAPPA   = mpconstants.poisson_exponent         # pint.Quantity  Rd / Cp_d  ≈ 0.2854
+P_0     = mpconstants.pot_temp_ref_press       # pint.Quantity  100000 Pa
+R_EARTH = mpconstants.earth_avg_radius         # pint.Quantity  6.3712e6 m
 
 # ============================================================================
 # CONFIGURATION
@@ -139,56 +151,79 @@ def compute_spherical_grid_spacing(lat_1d, lon_1d):
     # Compute grid spacing
     # dy: spacing in meridional direction (constant per latitude band)
     dlat = np.gradient(lat_1d)  # degrees
-    dy = R_EARTH * np.deg2rad(dlat)  # meters
-    
+    dy = R_EARTH.m * np.deg2rad(dlat)  # meters
+
     # dx: spacing in zonal direction (varies with latitude)
     dlon = np.gradient(lon_1d)  # degrees
-    dx = R_EARTH * np.cos(np.deg2rad(lat_2d)) * np.deg2rad(
+    dx = R_EARTH.m * np.cos(np.deg2rad(lat_2d)) * np.deg2rad(
         np.broadcast_to(dlon[np.newaxis, :], lat_2d.shape)
     )  # meters
     
     return dx, dy, lat_2d, lon_2d
 
 
-def spherical_divergence(u, v, lat_1d, lon_1d):
+def _metpy_grid_deltas(lat_1d, lon_1d):
     """
-    Compute horizontal divergence on a spherical Earth.
-    
-    Uses the correct spherical divergence formula:
-    ∇·F = (1/(R cos φ)) * ∂Fλ/∂λ + (1/(R cos φ)) * ∂(Fφ cos φ)/∂φ
-    
-    Simplified for small domains:
-    ∇·F ≈ ∂u/∂x + ∂v/∂y
-    
-    where dx and dy are computed accounting for spherical geometry.
-    
+    Return MetPy-compatible 2D grid spacing via metpy.calc.lat_lon_grid_deltas.
+
+    MetPy's divergence / advection require spacing arrays with one element
+    *fewer* than the data along the applicable axis:
+      dx  →  shape (ny, nx-1)   spacing in the x (longitude) direction
+      dy  →  shape (ny-1, nx)   spacing in the y (latitude)  direction
+
+    Using lat_lon_grid_deltas ensures that spherical (ellipsoidal) geometry
+    is accounted for consistently with MetPy internals.
+
     Parameters
     ----------
-    u : ndarray (2D)
+    lat_1d : array_like, shape (ny,)
+        1-D latitude array in degrees.
+    lon_1d : array_like, shape (nx,)
+        1-D longitude array in degrees.
+
+    Returns
+    -------
+    dx : pint.Quantity, shape (ny, nx-1)  [metres]
+    dy : pint.Quantity, shape (ny-1, nx)  [metres]
+    """
+    lon_2d, lat_2d = np.meshgrid(lon_1d, lat_1d)   # both (ny, nx)
+    return lat_lon_grid_deltas(
+        lon_2d * units.degree,
+        lat_2d * units.degree,
+    )
+
+
+def spherical_divergence(u, v):
+    """
+    Compute horizontal divergence on a spherical Earth using MetPy.
+
+    Uses metpy.calc.divergence with grid spacing derived from
+    compute_spherical_grid_spacing to account for spherical geometry.
+
+    Parameters
+    ----------
+    u : xr.DataArray (2D, latitude × longitude)
         Zonal wind component (m/s)
-    v : ndarray (2D)
+    v : xr.DataArray (2D, latitude × longitude)
         Meridional wind component (m/s)
-    lat_1d : array_like
-        1D latitude array (degrees)
-    lon_1d : array_like
-        1D longitude array (degrees)
-    
+
     Returns
     -------
     divergence : ndarray (2D)
         Horizontal divergence (s⁻¹)
     """
-    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
-    
-    # Compute derivatives
-    du_dx = np.gradient(u, axis=1) / dx
-    dv_dy = np.gradient(v, axis=0) / dy[:, np.newaxis]
-    
-    return du_dx + dv_dy
+    lat_1d = u.latitude.values
+    lon_1d = u.longitude.values
+    dx, dy = _metpy_grid_deltas(lat_1d, lon_1d)  # (ny, nx-1), (ny-1, nx)
+
+    # u and v are unit-tagged DataArrays — pass directly.
+    result = metpy_divergence(u, v, dx=dx, dy=dy)
+    return result.magnitude
 
 
 def coriolis(lat):
-    return 2.0 * OMEGA * np.sin(np.deg2rad(lat))
+    """Coriolis parameter f = 2Ω sin(φ), returns plain ndarray (s⁻¹)."""
+    return 2.0 * OMEGA.m * np.sin(np.deg2rad(lat))
 
 
 def geopotential_height(phi):
@@ -196,42 +231,99 @@ def geopotential_height(phi):
 
 
 def eady_growth_rate(u_250, v_250, u_850, v_850, T_250, T_850,
-                     q_250, q_850, z_250, z_850, lat_2d):
+                     q_250, q_850, z_250, z_850,
+                     T_500, q_500, z_500):
     """
     Layer-mean EGR between 250 and 850 hPa.
 
     σ_EGR = 0.31 · |f| / N · |∂V/∂z|
-    where the vertical wind shear and static stability are estimated
-    from the 250−850 hPa layer.
+    where N is the Brunt–Väisälä frequency (computed on 3 real pressure
+    levels: 850, 500, 250 hPa) and the wind shear spans the full 250–850 hPa
+    layer.
+
+    Uses MetPy's virtual_temperature, potential_temperature, and
+    brunt_vaisala_frequency.
+
+    Parameters
+    ----------
+    All arguments are xr.DataArray (2D, latitude × longitude).
+    The *_500 arguments provide the actual 500 hPa midpoint — no
+    linear interpolation needed.
     """
-    f = np.abs(coriolis(lat_2d))
+    # ── Coordinates ──────────────────────────────────────────────────────────
+    lat_2d = T_250.latitude
 
-    # Virtual potential temperature at each level
-    def _theta_v(T, q, p_pa):
-        Tv = T * (1.0 + 0.61 * q)
-        return Tv * (P_0 / p_pa) ** KAPPA
+    f = coriolis_parameter(T_250.latitude) # plain ndarray, s⁻¹
 
-    theta_v_250 = _theta_v(T_250, q_250, 25000.0)
-    theta_v_850 = _theta_v(T_850, q_850, 85000.0)
-    theta_v_mid = 0.5 * (theta_v_250 + theta_v_850)
+    # ── Mixing ratio (q → w) ─────────────────────────────────────────────────
+    # q is already a unit-tagged DataArray (kg/kg); pass directly.
+    # mixing_ratio_from_specific_humidity returns a pint.Quantity.
+    w_250 = mixing_ratio_from_specific_humidity(q_250)
+    w_500 = mixing_ratio_from_specific_humidity(q_500)
+    w_850 = mixing_ratio_from_specific_humidity(q_850)
 
-    dz = z_250 - z_850
+    # ── Virtual temperature ───────────────────────────────────────────────────
+    # T is a unit-tagged DataArray (K); pass directly.
+    Tv_250 = virtual_temperature(T_250, w_250)   # pint.Quantity [K]
+    Tv_500 = virtual_temperature(T_500, w_500)
+    Tv_850 = virtual_temperature(T_850, w_850)
+
+    # ── Virtual potential temperature ─────────────────────────────────────────
+    # potential_temperature(pressure, temperature) — both must carry units.
+    # Using P_0 (pint.Quantity, 100000 Pa) ensures the reference pressure is
+    # in SI; passing 250 hPa as Pa avoids any hPa/Pa mix-up.
+    theta_v_250 = potential_temperature(25000.0 * units.pascal, Tv_250)  # [K]
+    theta_v_500 = potential_temperature(50000.0 * units.pascal, Tv_500)
+    theta_v_850 = potential_temperature(85000.0 * units.pascal, Tv_850)
+
+    # ── Geopotential → geopotential height ───────────────────────────────────
+    # z_* arrive as unit-tagged DataArrays in m² s⁻².  Dividing by G
+    # (pint.Quantity, m s⁻²) yields metres automatically.
+    z_h_250 = z_250 / G   # [m]
+    z_h_500 = z_500 / G
+    z_h_850 = z_850 / G
+
+    # ── Brunt–Väisälä frequency ───────────────────────────────────────────────
+    # Build 3-level xr.DataArrays using xr.concat — preserves xarray structure
+    # (lat/lon coords) and pint units.  Real 500 hPa data as the middle level.
+    level_hpa = [850.0, 500.0, 250.0]
+    concat_kw = dict(compat="override", coords="minimal")
+
+    height_layer = xr.concat(
+        [z_h_850, z_h_500, z_h_250],
+        dim=xr.Variable("level", level_hpa), **concat_kw,
+    )                                                               # (level, lat, lon)
+    theta_v_layer = xr.concat(
+        [theta_v_850, theta_v_500, theta_v_250],
+        dim=xr.Variable("level", level_hpa), **concat_kw,
+    )                                                               # (level, lat, lon)
+
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        N_qty = brunt_vaisala_frequency(height_layer, theta_v_layer,
+                                        vertical_dim=0)
+    # Central (500 hPa) value is the centred-FD estimate for the layer.
+    # Extract plain ndarray for the subsequent manual EGR formula.
+    N = N_qty.isel(level=1).metpy.unit_array.magnitude              # s⁻¹
+    N = np.where(N ** 2 > MIN_N_SQUARED, N, np.nan)
+
+    # ── Vertical wind shear ──────────────────────────────────────────────────
+    # Subtraction of unit-tagged DataArrays preserves xarray structure + units;
+    # extract magnitudes for numpy operations (np.where).
+    dz = (z_h_250 - z_h_850).metpy.unit_array.magnitude             # m
     dz_safe = np.where(np.abs(dz) > 1.0, dz, np.nan)
 
-    dtheta_dz = (theta_v_250 - theta_v_850) / dz_safe
-    N_sq = (G / theta_v_mid) * dtheta_dz
+    du_dz = (u_250 - u_850).metpy.unit_array.magnitude / dz_safe    # s⁻¹
+    dv_dz = (v_250 - v_850).metpy.unit_array.magnitude / dz_safe
+    shear = np.sqrt(du_dz ** 2 + dv_dz ** 2)                        # s⁻¹
 
-    with np.errstate(invalid="ignore"):
-        N = np.where(N_sq > MIN_N_SQUARED, np.sqrt(N_sq), np.nan)
-
-    du_dz = (u_250 - u_850) / dz_safe
-    dv_dz = (v_250 - v_850) / dz_safe
-    shear = np.sqrt(du_dz ** 2 + dv_dz ** 2)
+    # f from coriolis_parameter is pint.Quantity — extract plain ndarray
+    f_abs = np.abs(f.magnitude) if hasattr(f, 'magnitude') else np.abs(np.asarray(f))
 
     with np.errstate(invalid="ignore"):
         egr = np.where(
             (N > 0) & (np.abs(lat_2d) > MIN_LAT),
-            0.31 * (f / N) * shear,
+            0.31 * (f_abs / N) * shear,
             np.nan,
         )
 
@@ -240,31 +332,32 @@ def eady_growth_rate(u_250, v_250, u_850, v_850, T_250, T_850,
     return egr_day
 
 
-def compute_pv_at_level(u_3lev, v_3lev, T_3lev, p_3lev, lat_1d, lon_1d):
+def compute_pv_at_level(u_low, u_mid, u_high,
+                         v_low, v_mid, v_high,
+                         T_low, T_mid, T_high,
+                         p_3lev_pa):
     """
     Baroclinic PV using MetPy with 3 vertical levels (centred FD).
     Returns PV at the middle level in SI units (K m² kg⁻¹ s⁻¹).
+
+    Parameters
+    ----------
+    u_low/mid/high, v_low/mid/high, T_low/mid/high : xr.DataArray (2D)
+        Fields at the lower, middle, and upper surrounding levels.
+    p_3lev_pa : array_like, shape (3,)
+        Pressure values [low, mid, high] in Pa.
     """
-    p_hpa = p_3lev / 100.0
+    p_hpa = np.asarray(p_3lev_pa) / 100.0
 
-    T_da = xr.DataArray(
-        T_3lev,
-        coords={"level": p_hpa, "latitude": lat_1d, "longitude": lon_1d},
-        dims=["level", "latitude", "longitude"],
-    ) * units.kelvin
+    # Build 3-level DataArrays via xr.concat — no .values, no np.stack,
+    # preserves xarray structure (lat/lon coords) and pint units from
+    # compute_composite.
+    level_coord = xr.Variable("level", p_hpa)
+    concat_kw   = dict(compat="override", coords="minimal")
 
-    u_da = xr.DataArray(
-        u_3lev,
-        coords={"level": p_hpa, "latitude": lat_1d, "longitude": lon_1d},
-        dims=["level", "latitude", "longitude"],
-    ) * units("m/s")
-
-    v_da = xr.DataArray(
-        v_3lev,
-        coords={"level": p_hpa, "latitude": lat_1d, "longitude": lon_1d},
-        dims=["level", "latitude", "longitude"],
-    ) * units("m/s")
-
+    T_da = xr.concat([T_low, T_mid, T_high], dim=level_coord, **concat_kw)
+    u_da = xr.concat([u_low, u_mid, u_high], dim=level_coord, **concat_kw)
+    v_da = xr.concat([v_low, v_mid, v_high], dim=level_coord, **concat_kw)
     p_da = xr.DataArray(p_hpa, coords={"level": p_hpa}, dims=["level"]) * units.hPa
 
     theta = potential_temperature(p_da, T_da)
@@ -276,190 +369,132 @@ def compute_pv_at_level(u_3lev, v_3lev, T_3lev, p_3lev, lat_1d, lon_1d):
     return pv.isel(level=1).metpy.unit_array.magnitude
 
 
-def temperature_advection_850(u_850, v_850, T_850, lat_1d, lon_1d):
+def temperature_advection_850(u_850, v_850, T_850):
     """
-    Horizontal temperature advection at 850 hPa:
+    Horizontal temperature advection at 850 hPa via MetPy:
       advT = -V · ∇T = -(u ∂T/∂x + v ∂T/∂y)
-    
+
     Parameters
     ----------
-    u_850 : ndarray (2D)
-        Zonal wind at 850 hPa (m/s)
-    v_850 : ndarray (2D)
-        Meridional wind at 850 hPa (m/s)
-    T_850 : ndarray (2D)
-        Temperature at 850 hPa (K)
-    lat_1d : array_like
-        1D latitude array (degrees)
-    lon_1d : array_like
-        1D longitude array (degrees)
-    
+    u_850, v_850, T_850 : xr.DataArray (2D, latitude × longitude)
+        Winds (m/s) and temperature (K) at 850 hPa.
+
     Returns
     -------
     advT : ndarray (2D)
-        Temperature advection (K/s)
-        Positive: warm air advection
-        Negative: cold air advection
+        Temperature advection (K/s).
+        Positive: warm air advection; Negative: cold air advection.
     """
-    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
-    
-    # Temperature gradients
-    dT_dx = np.gradient(T_850, axis=1) / dx
-    dT_dy = np.gradient(T_850, axis=0) / dy[:, np.newaxis]
-    
-    # Advection: -V · ∇T
-    advT = -(u_850 * dT_dx + v_850 * dT_dy)
-    
-    return advT
+    lat_1d = T_850.latitude.values
+    lon_1d = T_850.longitude.values
+    dx, dy = _metpy_grid_deltas(lat_1d, lon_1d)  # (ny, nx-1), (ny-1, nx)
+
+    # All three are unit-tagged DataArrays — pass directly.
+    result = metpy_advection(T_850, u=u_850, v=v_850, dx=dx, dy=dy)
+    return result.magnitude
 
 
-def kinetic_energy_advection_250(u_250, v_250, lat_1d, lon_1d):
+def kinetic_energy_advection_250(u_250, v_250):
     """
-    Kinetic energy advection at 250 hPa (jet level).
-    
-    KE_adv = -V · ∇(KE) = -V · ∇(0.5 * (u² + v²))
-            = -(u * ∂KE/∂x + v * ∂KE/∂y)
-    
+    Kinetic energy advection at 250 hPa (jet level) via MetPy.
+
+    KE_adv = -V · ∇(KE) = -V · ∇(0.5·(u² + v²))
+
     Parameters
     ----------
-    u_250 : ndarray (2D)
-        Zonal wind at 250 hPa (m/s)
-    v_250 : ndarray (2D)
-        Meridional wind at 250 hPa (m/s)
-    lat_1d : array_like
-        1D latitude array (degrees)
-    lon_1d : array_like
-        1D longitude array (degrees)
-    
+    u_250, v_250 : xr.DataArray (2D, latitude × longitude)
+        Zonal and meridional wind at 250 hPa (m/s).
+
     Returns
     -------
     ke_adv : ndarray (2D)
-        Kinetic energy advection (m² s⁻³ = W kg⁻¹)
-        Positive: KE increasing (gaining energy)
-        Negative: KE decreasing (losing energy)
+        Kinetic energy advection (m² s⁻³ = W kg⁻¹).
+        Positive: KE increasing; Negative: KE decreasing.
     """
-    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
-    
-    # Kinetic energy
-    KE = 0.5 * (u_250**2 + v_250**2)
-    
-    # KE gradients
-    dKE_dx = np.gradient(KE, axis=1) / dx
-    dKE_dy = np.gradient(KE, axis=0) / dy[:, np.newaxis]
-    
-    # Advection: -V · ∇KE
-    ke_adv = -(u_250 * dKE_dx + v_250 * dKE_dy)
-    
-    return ke_adv
+    lat_1d = u_250.latitude.values
+    lon_1d = u_250.longitude.values
+    dx, dy = _metpy_grid_deltas(lat_1d, lon_1d)  # (ny, nx-1), (ny-1, nx)
+
+    # u_250 and v_250 are unit-tagged DataArrays (m/s); arithmetic preserves units.
+    KE = 0.5 * (u_250 ** 2 + v_250 ** 2)         # DataArray [m² s⁻²]
+
+    result = metpy_advection(KE, u=u_250, v=v_250, dx=dx, dy=dy)  # [m² s⁻³]
+    return result.magnitude
 
 
-def rayleigh_kuo_criterion_250(u_250, v_250, lat_1d, lon_1d, lat_2d):
+def rayleigh_kuo_criterion_250(u_250, v_250):
     """
     Simplified Rayleigh-Kuo instability criterion at 250 hPa.
-    
-    The classical RK criterion states that a necessary condition for
-    barotropic/baroclinic instability is:
-        ∂q/∂y changes sign in the domain
-    
-    where q is the quasi-geostrophic potential vorticity.
-    
-    Simplified version used here:
-        q ≈ f + ζ = f + (∂v/∂x - ∂u/∂y)
-    
-    The criterion is satisfied where:
-        ∂q/∂y = β - ∂²u/∂y² + ∂²v/∂x∂y < 0
-    
-    For simplicity, we compute:
-        ∂q/∂y ≈ β - ∂²u/∂y²
-    
-    where β ≈ 2Ω*cosφ/R_earth (meridional gradient of Coriolis)
-    
+
+    ∂q/∂y ≈ β - ∂²u/∂y²
+
+    where β = 2Ω cosφ / R_earth (meridional gradient of Coriolis).
+    Regions where ∂q/∂y < 0 satisfy the necessary condition for instability.
+
     Parameters
     ----------
-    u_250 : ndarray (2D)
-        Zonal wind at 250 hPa (m/s)
-    v_250 : ndarray (2D)
-        Meridional wind at 250 hPa (m/s)
-    lat_1d : array_like
-        1D latitude array (degrees)
-    lon_1d : array_like
-        1D longitude array (degrees)
-    lat_2d : ndarray (2D)
-        2D latitude field (degrees)
-    
+    u_250, v_250 : xr.DataArray (2D, latitude × longitude)
+        Zonal and meridional wind at 250 hPa (m/s).
+
     Returns
     -------
     rk_criterion : ndarray (2D)
         ∂q/∂y field (s⁻¹ m⁻¹)
-        Regions where RK_criterion < 0 satisfy necessary condition for instability
     """
-    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
-    
-    # Beta (df/dy on sphere)
+    lat_1d = u_250.latitude.values
+    lon_1d = u_250.longitude.values
+    dx, dy, lat_2d, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
+
+    # .values: np.gradient operates on plain arrays
+    u_np = u_250.values
+    v_np = v_250.values
+
+    # Beta (df/dy on sphere) — use .m to keep result as plain ndarray
     lat_rad = np.deg2rad(lat_2d)
-    beta = (2.0 * OMEGA * np.cos(lat_rad)) / R_EARTH  # s⁻¹ m⁻¹
-    
+    beta = (2.0 * OMEGA.m * np.cos(lat_rad)) / R_EARTH.m  # s⁻¹ m⁻¹
+
     # Relative vorticity: ζ = ∂v/∂x - ∂u/∂y
-    dv_dx = np.gradient(v_250, axis=1) / dx
-    du_dy = np.gradient(u_250, axis=0) / dy[:, np.newaxis]
-    zeta = dv_dx - du_dy
-    
+    dv_dx = np.gradient(v_np, axis=1) / dx
+    du_dy = np.gradient(u_np, axis=0) / dy[:, np.newaxis]
+
     # Second derivative: ∂²u/∂y²
     d2u_dy2 = np.gradient(du_dy, axis=0) / dy[:, np.newaxis]
-    
-    # RK criterion: ∂q/∂y = β - ∂²u/∂y²
-    # Negative values indicate regions where instability condition is satisfied
+
     rk_criterion = beta - d2u_dy2
-    
     return rk_criterion
 
 
-def moisture_flux_divergence_975(u_975, v_975, q_975, lat_1d, lon_1d):
+def moisture_flux_divergence_975(u_975, v_975, q_975):
     """
-    Moisture flux divergence at 975 hPa:
-      div_q = ∇·(q*V) = ∂(q*u)/∂x + ∂(q*v)/∂y
-    
+    Moisture flux divergence at 975 hPa via MetPy:
+      div_q = ∇·(q·V) = ∂(q·u)/∂x + ∂(q·v)/∂y
+
     Parameters
     ----------
-    u_975 : ndarray (2D)
-        Zonal wind at 975 hPa (m/s)
-    v_975 : ndarray (2D)
-        Meridional wind at 975 hPa (m/s)
-    q_975 : ndarray (2D)
-        Specific humidity at 975 hPa (kg/kg)
-    lat_1d : array_like
-        1D latitude array (degrees)
-    lon_1d : array_like
-        1D longitude array (degrees)
-    
+    u_975, v_975 : xr.DataArray (2D, latitude × longitude)
+        Winds at 975 hPa (m/s).
+    q_975 : xr.DataArray (2D, latitude × longitude)
+        Specific humidity at 975 hPa (kg/kg).
+
     Returns
     -------
     div_q_gkg : ndarray (2D)
-        Moisture flux divergence (g kg⁻¹ s⁻¹)
-        Positive: divergence (drying)
-        Negative: convergence (moistening)
-    
-    Notes
-    -----
-    Uses spherical grid spacing. Units are tracked and converted:
-    - Input q in kg/kg
-    - Output in g/kg/s for easier interpretation
+        Moisture flux divergence (g kg⁻¹ s⁻¹).
+        Positive: divergence (drying); Negative: convergence (moistening).
     """
-    dx, dy, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
-    
-    # Moisture fluxes with MetPy units for tracking
-    qu = (q_975 * units('kg/kg')) * (u_975 * units('m/s'))
-    qv = (q_975 * units('kg/kg')) * (v_975 * units('m/s'))
-    
-    # Compute divergence: ∂(qu)/∂x + ∂(qv)/∂y
-    dqu_dx = np.gradient(qu.magnitude, axis=1) / dx
-    dqv_dy = np.gradient(qv.magnitude, axis=0) / dy[:, np.newaxis]
-    
-    div_q = (dqu_dx + dqv_dy) * qu.units / units('m')  # kg/kg/m * m/s / m = kg/kg/s
-    
+    lat_1d = u_975.latitude.values
+    lon_1d = u_975.longitude.values
+    dx, dy = _metpy_grid_deltas(lat_1d, lon_1d)  # (ny, nx-1), (ny-1, nx)
+
+    # q_975, u_975, v_975 are unit-tagged DataArrays; arithmetic preserves units.
+    # Moisture flux components: [kg kg⁻¹ · m s⁻¹]
+    qu = q_975 * u_975   # DataArray [kg kg⁻¹ m s⁻¹]
+    qv = q_975 * v_975
+
+    div_q = metpy_divergence(qu, qv, dx=dx, dy=dy)  # [kg kg⁻¹ s⁻¹]
+
     # Convert to g kg⁻¹ s⁻¹
-    div_q_gkg = (div_q * 1000.0 * units('g/kg')).magnitude
-    
+    div_q_gkg = (div_q * 1000.0).magnitude
     return div_q_gkg
 
 
@@ -490,7 +525,13 @@ def compute_composite(cases, ep_label):
     """
     Compute composite fields for one EP group.
 
-    Returns xr.Dataset with composite means.
+    Per-case 2-D arrays are accumulated into a dict keyed by variable name.
+    After all cases are processed, each variable is assembled into an
+    xr.DataArray with dimensions (track_id, level, y, x) – or (track_id, y, x)
+    for single-level/derived fields – so that the composite mean (and any
+    further per-member diagnostics) can be computed or inspected easily.
+
+    Returns xr.Dataset with composite means over the track_id dimension.
     """
     logging.info(f"\n   Computing composites for {ep_label} ({len(cases)} cases)...")
 
@@ -499,23 +540,32 @@ def compute_composite(cases, ep_label):
     x = np.linspace(-half, half, n_pts)
     y = np.linspace(half, -half, n_pts)
 
-    # Accumulators
-    egr_list = []
-    pv200_list = []
-    pv850_list = []
-    advT_list = []
-    slp_list = []
-    u250_list = []
-    v250_list = []
-    u850_list = []
-    v850_list = []
-    u975_list = []
-    v975_list = []
-    q975_list = []
-    div_q975_list = []
-    ke_adv_list = []
-    rk_criterion_list = []
+    # ── Per-case accumulator ──────────────────────────────────────────────
+    # Keys that are single-level 2-D fields (y, x):
+    #   "egr", "pv_200", "pv_850", "adv_T_850",
+    #   "div_q_975", "ke_adv_250", "rk_criterion_250", "msl"
+    # Keys that are wind/humidity fields stored with an explicit level label
+    # to allow multi-level extension in the future; here we use a dict of
+    # {var_name: {level_label: [2-D arrays]}} for wind/q fields and
+    # a simple {var_name: [2-D arrays]} for derived scalars.
+    scalar_accum: dict[str, list] = {
+        "egr":              [],
+        "pv_200":           [],
+        "pv_850":           [],
+        "adv_T_850":        [],
+        "div_q_975":        [],
+        "ke_adv_250":       [],
+        "rk_criterion_250": [],
+        "msl":              [],
+    }
+    # Wind / humidity at specific levels:  {var: {level_hPa: [arrays]}}
+    level_accum: dict[str, dict[int, list]] = {
+        "u": {250: [], 850: [], 975: []},
+        "v": {250: [], 850: [], 975: []},
+        "q": {975: []},
+    }
 
+    track_ids_ok: list[int] = []
     processed = 0
     failed = 0
 
@@ -543,90 +593,95 @@ def compute_composite(cases, ep_label):
             pc = "pressure_level" if "pressure_level" in ds_mean.coords else "level"
             levels = ds_mean[pc].values
 
-            u = ds_mean["u"].values
-            v = ds_mean["v"].values
-            T = ds_mean["t"].values
-            z_geo = ds_mean["z"].values
-            q = ds_mean["q"].values
-            z = geopotential_height(z_geo)
+            # ── Keep DataArrays so lat/lon coords are visible during debugging ──
+            # z_da stays as raw geopotential (m² s⁻²); conversion to height
+            # happens inside eady_growth_rate via division by G.
+            u_da = ds_mean["u"]
+            v_da = ds_mean["v"]
+            T_da = ds_mean["t"]
+            z_da = ds_mean["z"]
+            q_da = ds_mean["q"]
 
-            lat_1d = ds_mean.latitude.values
-            lon_1d = ds_mean.longitude.values
-            lat_2d, lon_2d = np.meshgrid(lat_1d, lon_1d, indexing="ij")
+            def _idx(target_hPa):
+                """Index of the pressure level nearest to target_hPa."""
+                return int(np.argmin(np.abs(levels - target_hPa)))
 
-            # Level indices
-            def _idx(target):
-                return int(np.argmin(np.abs(levels - target)))
+            def _sel(da, target_hPa):
+                """2-D DataArray (lat × lon) at the nearest pressure level."""
+                return da.isel({pc: _idx(target_hPa)})
 
-            i250 = _idx(250)
-            i850 = _idx(850)
-            i975 = _idx(975)
+            # ── 2-D DataArrays with physical units attached ───────────────────
+            # Units are assigned once here so every downstream function receives
+            # unit-tagged arrays and never needs to re-attach them internally.
+            u_250 = _sel(u_da, 250)  * units("m/s");  u_850 = _sel(u_da, 850) * units("m/s");  u_975 = _sel(u_da, 975) * units("m/s")
+            v_250 = _sel(v_da, 250)  * units("m/s");  v_850 = _sel(v_da, 850) * units("m/s");  v_975 = _sel(v_da, 975) * units("m/s")
+            T_250 = _sel(T_da, 250)  * units.kelvin;  T_500 = _sel(T_da, 500) * units.kelvin;  T_850 = _sel(T_da, 850) * units.kelvin
+            z_250 = _sel(z_da, 250)  * units("m**2/s**2");  z_500 = _sel(z_da, 500) * units("m**2/s**2");  z_850 = _sel(z_da, 850) * units("m**2/s**2")
+            q_250 = _sel(q_da, 250)  * units("kg/kg");  q_500 = _sel(q_da, 500) * units("kg/kg");  q_850 = _sel(q_da, 850) * units("kg/kg");  q_975 = _sel(q_da, 975) * units("kg/kg")
 
-            # ── EGR (250–850 hPa layer) ──────────────────────────────
-            egr = eady_growth_rate(
-                u[i250], v[i250], u[i850], v[i850],
-                T[i250], T[i850], q[i250], q[i850],
-                z[i250], z[i850], lat_2d,
+            # ── EGR (250–850 hPa layer, N via real 500 hPa midpoint) ─
+            scalar_accum["egr"].append(
+                eady_growth_rate(u_250, v_250, u_850, v_850,
+                                 T_250, T_850, q_250, q_850, z_250, z_850,
+                                 T_500, q_500, z_500)
             )
-            egr_list.append(egr)
 
             # ── PV at 200 hPa (needs 175, 200, 225) ──────────────────
-            i175 = _idx(175)
-            i200 = _idx(200)
-            i225 = _idx(225)
-            u3 = np.array([u[i175], u[i200], u[i225]])
-            v3 = np.array([v[i175], v[i200], v[i225]])
-            T3 = np.array([T[i175], T[i200], T[i225]])
-            p3 = np.array([levels[i175], levels[i200], levels[i225]]) * 100.0  # hPa→Pa
-            pv200 = compute_pv_at_level(u3, v3, T3, p3, lat_1d, lon_1d)
-            pv200_list.append(pv200)
+            scalar_accum["pv_200"].append(compute_pv_at_level(
+                _sel(u_da, 175) * units("m/s"), _sel(u_da, 200) * units("m/s"), _sel(u_da, 225) * units("m/s"),
+                _sel(v_da, 175) * units("m/s"), _sel(v_da, 200) * units("m/s"), _sel(v_da, 225) * units("m/s"),
+                _sel(T_da, 175) * units.kelvin, _sel(T_da, 200) * units.kelvin, _sel(T_da, 225) * units.kelvin,
+                np.array([levels[_idx(175)], levels[_idx(200)], levels[_idx(225)]]) * 100.0,
+            ))
 
             # ── PV at 850 hPa (needs 825, 850, 875) ──────────────────
-            i825 = _idx(825)
-            i875 = _idx(875)
-            u3b = np.array([u[i825], u[i850], u[i875]])
-            v3b = np.array([v[i825], v[i850], v[i875]])
-            T3b = np.array([T[i825], T[i850], T[i875]])
-            p3b = np.array([levels[i825], levels[i850], levels[i875]]) * 100.0
-            pv850 = compute_pv_at_level(u3b, v3b, T3b, p3b, lat_1d, lon_1d)
-            pv850_list.append(pv850)
+            scalar_accum["pv_850"].append(compute_pv_at_level(
+                _sel(u_da, 825) * units("m/s"), _sel(u_da, 850) * units("m/s"), _sel(u_da, 875) * units("m/s"),
+                _sel(v_da, 825) * units("m/s"), _sel(v_da, 850) * units("m/s"), _sel(v_da, 875) * units("m/s"),
+                _sel(T_da, 825) * units.kelvin, _sel(T_da, 850) * units.kelvin, _sel(T_da, 875) * units.kelvin,
+                np.array([levels[_idx(825)], levels[_idx(850)], levels[_idx(875)]]) * 100.0,
+            ))
 
             # ── Temperature advection at 850 hPa ─────────────────────
-            advT = temperature_advection_850(u[i850], v[i850], T[i850], lat_1d, lon_1d)
-            advT_list.append(advT)
+            scalar_accum["adv_T_850"].append(
+                temperature_advection_850(u_850, v_850, T_850)
+            )
 
             # ── SLP ───────────────────────────────────────────────────
             if "msl" in ds_mean.data_vars:
-                # MSL is a surface variable - drop pressure dimension if present
                 msl_data = ds_mean["msl"]
                 if pc in msl_data.dims:
-                    msl_data = msl_data.isel({pc: 0})  # Take first level (all should be identical)
-                slp_list.append(msl_data.values.squeeze())
+                    msl_data = msl_data.isel({pc: 0})
+                scalar_accum["msl"].append(msl_data.values.squeeze())
 
-            # ── Winds for overlays ────────────────────────────────────
-            u250_list.append(u[i250])
-            v250_list.append(v[i250])
-            u850_list.append(u[i850])
-            v850_list.append(v[i850])
+            # ── Winds / humidity for overlays ──────────────────────────────
+            # Accumulator holds plain numpy arrays (for np.stack at assembly);
+            # .values strips the pint wrapper from the unit-tagged DataArrays.
+            level_accum["u"][250].append(u_250.values)
+            level_accum["u"][850].append(u_850.values)
+            level_accum["u"][975].append(u_975.values)
+            level_accum["v"][250].append(v_250.values)
+            level_accum["v"][850].append(v_850.values)
+            level_accum["v"][975].append(v_975.values)
+            level_accum["q"][975].append(q_975.values)
 
-            # ── Moisture fields at 975 hPa ────────────────────────────
-            u975_list.append(u[i975])
-            v975_list.append(v[i975])
-            q975_list.append(q[i975])
-            
             # ── Moisture flux divergence at 975 hPa ───────────────────
-            div_q = moisture_flux_divergence_975(u[i975], v[i975], q[i975], lat_1d, lon_1d)
-            div_q975_list.append(div_q)
+            scalar_accum["div_q_975"].append(
+                moisture_flux_divergence_975(u_975, v_975, q_975)
+            )
 
             # ── Kinetic energy advection at 250 hPa ───────────────────
-            ke_adv = kinetic_energy_advection_250(u[i250], v[i250], lat_1d, lon_1d)
-            ke_adv_list.append(ke_adv)
+            scalar_accum["ke_adv_250"].append(
+                kinetic_energy_advection_250(u_250, v_250)
+            )
 
             # ── Rayleigh-Kuo criterion at 250 hPa ────────────────────
-            rk_crit = rayleigh_kuo_criterion_250(u[i250], v[i250], lat_1d, lon_1d, lat_2d)
-            rk_criterion_list.append(rk_crit)
+            scalar_accum["rk_criterion_250"].append(
+                rayleigh_kuo_criterion_250(u_250, v_250)
+            )
 
             ds.close()
+            track_ids_ok.append(track_id)
             processed += 1
 
         except Exception as e:
@@ -638,29 +693,88 @@ def compute_composite(cases, ep_label):
 
     logging.info(f"      {ep_label}: processed={processed}, failed={failed}")
 
-    # ── Build output dataset ──────────────────────────────────────────────
-    ds_out = xr.Dataset(
-        {
-            "egr": (["y", "x"], np.nanmean(np.stack(egr_list), axis=0)),
-            "pv_200": (["y", "x"], np.nanmean(np.stack(pv200_list), axis=0)),
-            "pv_850": (["y", "x"], np.nanmean(np.stack(pv850_list), axis=0)),
-            "adv_T_850": (["y", "x"], np.nanmean(np.stack(advT_list), axis=0)),
-            "u_250": (["y", "x"], np.nanmean(np.stack(u250_list), axis=0)),
-            "v_250": (["y", "x"], np.nanmean(np.stack(v250_list), axis=0)),
-            "u_850": (["y", "x"], np.nanmean(np.stack(u850_list), axis=0)),
-            "v_850": (["y", "x"], np.nanmean(np.stack(v850_list), axis=0)),
-            "u_975": (["y", "x"], np.nanmean(np.stack(u975_list), axis=0)),
-            "v_975": (["y", "x"], np.nanmean(np.stack(v975_list), axis=0)),
-            "q_975": (["y", "x"], np.nanmean(np.stack(q975_list), axis=0)),
-            "div_q_975": (["y", "x"], np.nanmean(np.stack(div_q975_list), axis=0)),
-            "ke_adv_250": (["y", "x"], np.nanmean(np.stack(ke_adv_list), axis=0)),
-            "rk_criterion_250": (["y", "x"], np.nanmean(np.stack(rk_criterion_list), axis=0)),
-        },
-        coords={"x": x, "y": y},
-    )
+    # ── Assemble xr.DataArrays with track_id dimension ────────────────────
+    coords_yx = {"track_id": track_ids_ok, "y": y, "x": x}
 
-    if slp_list:
-        ds_out["msl"] = (["y", "x"], np.nanmean(np.stack(slp_list), axis=0))
+    def _make_da(arrays, name, long_name, units_str):
+        """Stack a list of 2-D (y, x) arrays → DataArray (track_id, y, x)."""
+        data = np.stack(arrays, axis=0)          # (n_cases, ny, nx)
+        return xr.DataArray(
+            data,
+            dims=["track_id", "y", "x"],
+            coords=coords_yx,
+            name=name,
+            attrs={"long_name": long_name, "units": units_str},
+        )
+
+    # Scalar / single-level derived fields
+    scalar_specs = {
+        "egr":              ("Eady Growth Rate",                     "day-1"),
+        "pv_200":           ("Potential Vorticity at 200 hPa",       "K m2 kg-1 s-1"),
+        "pv_850":           ("Potential Vorticity at 850 hPa",       "K m2 kg-1 s-1"),
+        "adv_T_850":        ("Temperature Advection at 850 hPa",     "K s-1"),
+        "div_q_975":        ("Moisture Flux Divergence at 975 hPa",  "g kg-1 s-1"),
+        "ke_adv_250":       ("KE Advection at 250 hPa",              "m2 s-3"),
+        "rk_criterion_250": ("Rayleigh-Kuo Criterion at 250 hPa",    "s-1 m-1"),
+    }
+    da_scalars: dict[str, xr.DataArray] = {}
+    for var, (lname, ustr) in scalar_specs.items():
+        if scalar_accum[var]:
+            da_scalars[var] = _make_da(scalar_accum[var], var, lname, ustr)
+
+    # Wind / humidity: build DataArray with an extra "level" dim  (track_id, level, y, x)
+    wind_specs = {
+        "u": ("Zonal Wind",         "m s-1"),
+        "v": ("Meridional Wind",    "m s-1"),
+        "q": ("Specific Humidity",  "kg kg-1"),
+    }
+    da_levels: dict[str, xr.DataArray] = {}
+    for var, (lname, ustr) in wind_specs.items():
+        lev_dict = level_accum[var]
+        levs = sorted(lev_dict.keys())
+        stacked = np.stack(
+            [np.stack(lev_dict[lv], axis=0) for lv in levs],
+            axis=1,
+        )   # (n_cases, n_levels, ny, nx)
+        da_levels[var] = xr.DataArray(
+            stacked,
+            dims=["track_id", "level", "y", "x"],
+            coords={
+                "track_id": track_ids_ok,
+                "level": levs,
+                "y": y,
+                "x": x,
+            },
+            name=var,
+            attrs={"long_name": lname, "units": ustr},
+        )
+
+    # ── Build output dataset (composite means) ────────────────────────────
+    data_vars: dict = {}
+
+    for var, da in da_scalars.items():
+        data_vars[var] = (["y", "x"],
+                          da.mean(dim="track_id").values,
+                          da.attrs)
+
+    # Wind means at each level stored as e.g. u_250, u_850, u_975
+    for var, da in da_levels.items():
+        for lv in da.level.values:
+            key = f"{var}_{lv}"
+            data_vars[key] = (
+                ["y", "x"],
+                da.sel(level=lv).mean(dim="track_id").values,
+                {"long_name": f"{da.attrs['long_name']} at {lv} hPa",
+                 "units": da.attrs["units"]},
+            )
+
+    ds_out = xr.Dataset(data_vars, coords={"x": x, "y": y})
+
+    if scalar_accum["msl"]:
+        msl_da = _make_da(scalar_accum["msl"], "msl",
+                          "Mean Sea Level Pressure", "Pa")
+        ds_out["msl"] = (["y", "x"], msl_da.mean(dim="track_id").values,
+                         msl_da.attrs)
 
     ds_out.attrs["ep_label"] = ep_label
     ds_out.attrs["n_cases"] = processed

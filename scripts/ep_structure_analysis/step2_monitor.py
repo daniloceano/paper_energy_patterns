@@ -94,6 +94,15 @@ LEVEL_PURPOSE = {
     975: "moisture flux  ",
 }
 
+# Step 2.1: ERA5 monthly means climatology for AFC
+CLIM_RAW_FILE  = DATA_DIR / "era5_monthly_means_250hPa_raw.nc"   # CDS download
+CLIM_FILE      = DATA_DIR / "era5_climatology_250hPa.nc"         # 30-yr monthly mean
+CLIM_N_YEARS   = 30    # 1991–2020
+CLIM_N_MONTHS  = 12
+# Expected approximate size of raw file (30 years × 12 months × 3 vars × 0.25°
+# regional domain ~ 85°×120° → ~ 250 MB).  Used only for a rough progress hint.
+CLIM_RAW_EXPECTED_MB = 250.0
+
 # ============================================================================
 # PROCESS DETECTION
 # ============================================================================
@@ -449,6 +458,56 @@ def print_report(
         purpose = LEVEL_PURPOSE.get(lvl, "")
         lbl = f"{lvl:>4} hPa  {purpose}"
         print(f"  {lbl:<{cV}}  {_pct(n1, t1):>{cN}}  {_pct(n2, t2):>{cN}}  {_pct(nb, tb):>{cN}}")
+
+    # ── Step 2.1: ERA5 monthly means / AFC climatology ───────────────────
+    print()
+    print("  " + "─" * (W - 2))
+    print("  ERA5 MONTHLY MEANS — STEP 2.1 (AFC climatology):")
+
+    # Raw CDS download file
+    if CLIM_RAW_FILE.exists():
+        raw_sz_mb = CLIM_RAW_FILE.stat().st_size / 1024 ** 2
+        raw_pct   = min(100.0, 100.0 * raw_sz_mb / CLIM_RAW_EXPECTED_MB)
+        raw_mtim  = datetime.fromtimestamp(
+            CLIM_RAW_FILE.stat().st_mtime
+        ).strftime("%Y-%m-%d %H:%M")
+        raw_bar   = _bar(int(raw_pct), 100)
+        print(f"    ⬇  {CLIM_RAW_FILE.name:<44}  "
+              f"{_fmt_bytes(CLIM_RAW_FILE.stat().st_size)}")
+        print(f"       size progress  {raw_bar}  "
+              f"(~{CLIM_RAW_EXPECTED_MB:.0f} MB expected)")
+        print(f"       last modified  {raw_mtim}")
+    else:
+        print(f"    ✗  {CLIM_RAW_FILE.name:<44}  "
+              "(not started — run step2_1)")
+
+    # Processed climatology
+    if CLIM_FILE.exists():
+        clim_sz   = _fmt_bytes(CLIM_FILE.stat().st_size)
+        clim_mtim = datetime.fromtimestamp(
+            CLIM_FILE.stat().st_mtime
+        ).strftime("%Y-%m-%d %H:%M")
+        # Try to read month count for extra validation
+        try:
+            import xarray as _xr
+            with _xr.open_dataset(CLIM_FILE) as _ds:
+                n_months  = _ds.sizes.get("month", "?")
+                clim_vars = list(_ds.data_vars)
+            detail = (
+                f"months={n_months}/{CLIM_N_MONTHS}  "
+                f"vars={clim_vars}"
+            )
+            ok = n_months == CLIM_N_MONTHS
+            icon = "✓" if ok else "⚑"
+        except Exception:
+            detail = "(could not open — may be corrupted)"
+            icon = "⚠"
+        print(f"    {icon}  {CLIM_FILE.name:<44}  "
+              f"{clim_sz}   modified {clim_mtim}")
+        print(f"       {detail}")
+    else:
+        print(f"    ✗  {CLIM_FILE.name:<44}  "
+              "(not yet generated — run step2_1)")
 
     # ── Composite files (step 3 output) ───────────────────────────────────
     print()

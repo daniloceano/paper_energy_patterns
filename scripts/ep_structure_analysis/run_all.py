@@ -6,6 +6,7 @@ Executes the complete analysis comparing EP1 and EP2 cyclone structures.
 Steps:
 1. Select EP1 and EP2 cyclone tracks
 2. Download ERA5 data in parallel (EGR/PV/advection levels + SLP)
+2.1. Download ERA5 monthly means and compute climatology (for AFC)
 3. Precompute composites for all diagnostic fields
 4. Create composite comparison figures (EP1 vs EP2)
 5. Update scientific notes
@@ -61,6 +62,7 @@ def main():
     steps = [
         ("step1_select_ep_tracks.py",          "Step 1: Select EP1 + EP2 Cyclone Tracks"),
         ("step2_download_era5_parallel.py",     "Step 2: Download ERA5 Data (Parallel)"),
+        ("step2_1_download_era5_monthly_means.py", "Step 2.1: ERA5 Monthly Means → AFC Climatology"),
         ("step3_precompute_composites.py",      "Step 3: Precompute Composites"),
         ("step4_create_figures.py",             "Step 4: Create Composite Figures (EP1 vs EP2)"),
         ("step5_update_scientific_notes.py",    "Step 5: Update Scientific Notes"),

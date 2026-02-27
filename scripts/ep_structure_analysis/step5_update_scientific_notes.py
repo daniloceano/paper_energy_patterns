@@ -270,6 +270,24 @@ def load_stats():
             stats[f"{label}_RK_FULL30"] = f"{rk_regional['full30']:.3e}"
             stats[f"{label}_RK_LEC15"] = f"{rk_regional['lec15']:.3e}"
 
+        # === AFC @ 250 hPa (if available; requires step2_1 climatology) ===
+        if "afc_250" in ds:
+            afc = ds["afc_250"].values
+            stats[f"{label}_AFC_MEAN"] = f"{np.nanmean(afc):.3e}"
+            stats[f"{label}_AFC_MIN"] = f"{np.nanmin(afc):.3e}"
+            stats[f"{label}_AFC_MAX"] = f"{np.nanmax(afc):.3e}"
+
+            afc_regional = compute_regional_stats(afc, x_2d, y_2d)
+            stats[f"{label}_AFC_FULL30"] = f"{afc_regional['full30']:.3e}"
+            stats[f"{label}_AFC_LEC15"] = f"{afc_regional['lec15']:.3e}"
+
+            # Boundary values for AFC (flux divergence field)
+            afc_boundary = compute_boundary_stats(afc, x_2d, y_2d)
+            stats[f"{label}_AFC_NORTH"] = f"{afc_boundary['north']:.3e}"
+            stats[f"{label}_AFC_SOUTH"] = f"{afc_boundary['south']:.3e}"
+            stats[f"{label}_AFC_EAST"] = f"{afc_boundary['east']:.3e}"
+            stats[f"{label}_AFC_WEST"] = f"{afc_boundary['west']:.3e}"
+
         ds.close()
 
     stats["GENERATION_DATE"] = datetime.now().strftime("%Y-%m-%d %H:%M")

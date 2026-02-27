@@ -25,7 +25,7 @@ throughout the study.
 
 | Field | Levels | Purpose | Key References |
 |-------|--------|---------|----------------|
-| **EGR** (Eady Growth Rate) | 250–850 hPa layer | Measures baroclinic instability of the background flow | Lindzen & Farrell (1980); Hoskins & Valdes (1990); Simmonds & Lim (2009) |
+| **EGR** (Eady Growth Rate) | 500–850 hPa layer | Measures baroclinic instability of the background flow | Lindzen & Farrell (1980); Besson et al. (2021) |
 | **PV** (Potential Vorticity) | 200 hPa | Upper-level tropopause dynamics and stratospheric intrusions | Hoskins et al. (1985); Davis & Emanuel (1991); Rossa et al. (2000) |
 | **PV** (Potential Vorticity) | 850 hPa | Low-level PV anomaly associated with surface cyclone | Hoskins et al. (1985); Davis (1992); Čampa & Wernli (2012) |
 | **Temperature advection** | 850 hPa | Warm/cold advection patterns linked to QG forcing for ascent | Sutcliffe (1947); Sanders & Gyakum (1980); Sinclair (1994) |
@@ -34,6 +34,7 @@ throughout the study.
 | **SLP** (Sea Level Pressure) | Surface | Cyclone position, intensity and horizontal structure | Hoskins & Hodges (2005); Reboita et al. (2010) |
 | **RK criterion** (Rayleigh-Kuo) | 250 hPa | Barotropic/baroclinic instability necessary condition | Rayleigh (1880); Kuo (1949); Charney & Stern (1962) |
 | **KE advection** | 250 hPa | Kinetic energy tendency from advection in jet stream | - |
+| **AFC** (Ageostrophic Flux Convergence) | 250 hPa | Eddy KE source/sink from ageostrophic pressure work | Orlanski & Katzfey (1991); Orlanski & Sheldon (1993) |
 
 ### Level selection rationale
 
@@ -86,6 +87,15 @@ throughout the study.
   negative values indicate deceleration. Computed at 250 hPa to capture jet-level
   dynamics.
 
+- **AFC at 250 hPa:** Ageostrophic Flux Convergence (Orlanski & Katzfey, 1991;
+  Orlanski & Sheldon, 1993) quantifies how ageostrophic pressure work
+  redistributes eddy kinetic energy. A **temporal decomposition** is used:
+  the 30-year monthly climatology (1991–2020, WMO standard) serves as the base
+  state (V_m, Φ_m), and the instantaneous departure is the eddy perturbation.
+  This is deliberately independent of the area-mean decomposition used in the
+  Lorenz Energy Cycle analysis to avoid circular validation. Positive AFC
+  indicates an eddy KE source; negative values indicate a sink.
+
 ## Pipeline Structure
 
 ### Steps
@@ -94,6 +104,7 @@ throughout the study.
 |------|--------|--------|-------------|
 | 1 | `step1_select_ep_tracks.py` | Local/Remote | Select EP1 and EP2 cyclone tracks |
 | 2 | `step2_download_era5_parallel.py` | **Remote** | Download ERA5 data (parallel, with patching) |
+| 2.1 | `step2_1_download_era5_monthly_means.py` | **Remote** | Download ERA5 monthly means → 30-year climatology for AFC |
 | 2M | `step2_monitor.py` | Local/Remote | **Monitor download progress** (see below) |
 | 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP, RK, KE_adv) |
 | 4 | `step4_create_figures.py` | Local | Create EP1 vs EP2 composite figures |

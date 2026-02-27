@@ -67,7 +67,7 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 
 | Diagnostic | Level(s) | Purpose | Key Reference |
 |------------|----------|---------|---------------|
-| **Eady Growth Rate** | 250–850 hPa | Baroclinic instability measure | Lindzen & Farrell (1980) |
+| **Eady Growth Rate** | 500–850 hPa | Baroclinic instability measure | Lindzen & Farrell (1980); Besson et al. (2021) |
 | **Potential Vorticity** | 200 hPa | Upper-level dynamics, tropopause folding | Hoskins et al. (1985) |
 | **Potential Vorticity** | 850 hPa | Low-level PV anomaly, diabatic effects | Čampa & Wernli (2012) |
 | **Temperature Advection** | 850 hPa | Warm/cold advection patterns | Sanders & Gyakum (1980) |
@@ -76,6 +76,7 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 | **Sea Level Pressure** | Surface | Cyclone intensity and position | - |
 | **RK criterion** (Rayleigh-Kuo) | 250 hPa | Barotropic/baroclinic instability condition | Rayleigh (1880); Kuo (1949) |
 | **KE Advection** | 250 hPa | Kinetic energy tendency from advection | - |
+| **AFC** (Ageostrophic Flux Convergence) | 250 hPa | Eddy KE redistribution via ageostrophic pressure work | Orlanski & Katzfey (1991); Orlanski & Sheldon (1993) |
 
 ### 3.2 Spherical Grid Spacing
 
@@ -104,7 +105,7 @@ where:
 - $N^2 = \frac{g}{\theta_v} \frac{\partial \theta_v}{\partial z}$ = static stability (Brunt-Väisälä frequency)
 - $\left|\frac{\partial \vec{V}}{\partial z}\right|$ = vertical wind shear magnitude
 
-**Layer:** 250–850 hPa (captures main tropospheric baroclinic zone)
+**Layer:** 500–850 hPa (following Besson et al. 2021, Eq. 5: this layer encompasses the main lower-to-mid tropospheric baroclinic zone while avoiding contamination from the jet-level wind maximum at 250 hPa)
 
 **Quality Control:**
 - $N^2 > 10^{-6}$ s⁻² (exclude statically unstable regions)
@@ -178,6 +179,34 @@ $$\text{KE\_adv} = -\vec{V} \cdot \nabla(KE) = -\vec{V} \cdot \nabla\left(\frac{
 **Significance:**  
 Quantifies energy transport within the jet stream. Positive advection indicates regions where the flow pattern favors kinetic energy accumulation, potentially intensifying upper-level divergence and cyclone development.
 
+### 3.9 Ageostrophic Flux Convergence — AFC (250 hPa)
+
+The AFC diagnostic quantifies the redistribution of **eddy kinetic energy** through pressure work by the ageostrophic component of the eddy wind, following Orlanski & Katzfey (1991) and Orlanski & Sheldon (1993).
+
+**Temporal decomposition (Solman & Menéndez 1998; Decker & Martin 2005):**
+$$\vec{V} = \vec{V}_m + \vec{v}' \qquad \Phi = \Phi_m + \phi'$$
+
+where $\vec{V}_m$, $\Phi_m$ are the **30-year monthly climatological means** (1991–2020, WMO standard period) and $\vec{v}'$, $\phi'$ are the instantaneous eddy perturbations.  This base state is independent of the area-mean decomposition used in the Lorenz Energy Cycle, providing an independent validation of the energy pathways.
+
+**Geostrophic eddy wind:**
+$$u_g' = -\frac{1}{f}\frac{\partial \phi'}{\partial y}, \qquad v_g' = \frac{1}{f}\frac{\partial \phi'}{\partial x}$$
+
+**Ageostrophic eddy wind:**
+$$\vec{v}_{ag}' = \vec{v}' - \vec{v}_g'$$
+
+**AFC (Ageostrophic Geopotential Flux Convergence):**
+$$AFC = -\nabla \cdot (\vec{v}_{ag}' \, \phi')$$
+
+**Sign convention:**
+- **Positive (AFC > 0):** Convergence of ageostrophic geopotential flux → **source** of eddy KE
+- **Negative (AFC < 0):** Divergence of flux → **sink** of eddy KE
+
+**Units:** m² s⁻³ (≡ W kg⁻¹)
+
+**Climatology source:** ERA5 monthly averaged reanalysis (`reanalysis-era5-pressure-levels-monthly-means`), downloaded via CDS API. See `step2_1_download_era5_monthly_means.py`.
+
+**References:** Orlanski & Katzfey (1991), Orlanski & Sheldon (1993), Solman & Menéndez (1998)
+
 ---
 
 ## 4. Results
@@ -188,7 +217,7 @@ Quantifies energy transport within the jet stream. Positive advection indicates 
 
 ![EGR Composite](figures/ep_structure/composite_egr.png)
 
-*Figure: Eady growth rate composite (250–850 hPa layer) for EP1 (left) and EP2 (right). Contours show growth rate in day⁻¹. The 15° × 15° box marks the LEC computation domain.*
+*Figure: Eady growth rate composite (500–850 hPa layer, Besson et al. 2021) for EP1 (left) and EP2 (right). Contours show growth rate in day⁻¹. The 15° × 15° box marks the LEC computation domain.*
 
 **Summary Statistics:**
 
@@ -320,6 +349,30 @@ Quantifies energy transport within the jet stream. Positive advection indicates 
 | East (+7.5°) | -1.957e-03 | 1.570e-03 |
 | West (-7.5°) | -1.308e-03 | -1.924e-03 |
 
+### 4.9 Ageostrophic Flux Convergence (250 hPa)
+
+![AFC Composite](figures/ep_structure/composite_afc_250.png)
+
+*Figure: Ageostrophic Flux Convergence at 250 hPa for EP1 (left) and EP2 (right). Units: m² s⁻³. Positive values (red) indicate eddy KE sources; negative values (blue) indicate eddy KE sinks. Base state: ERA5 30-year monthly climatology (1991–2020). Wind vectors show eddy perturbation wind $\vec{v}'$ at 250 hPa.*
+
+**Summary Statistics:**
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Mean (m² s⁻³) | {EP1_AFC_MEAN} | {EP2_AFC_MEAN} |
+| Range (m² s⁻³) | [{EP1_AFC_MIN}, {EP1_AFC_MAX}] | [{EP2_AFC_MIN}, {EP2_AFC_MAX}] |
+| LEC 15×15° mean | {EP1_AFC_LEC15} | {EP2_AFC_LEC15} |
+| Full 30×30° mean | {EP1_AFC_FULL30} | {EP2_AFC_FULL30} |
+
+**Lateral boundaries (flux assessment):**
+
+| Boundary | EP1 | EP2 |
+|----------|-----|-----|
+| North (+7.5°) | {EP1_AFC_NORTH} | {EP2_AFC_NORTH} |
+| South (-7.5°) | {EP1_AFC_SOUTH} | {EP2_AFC_SOUTH} |
+| East (+7.5°) | {EP1_AFC_EAST} | {EP2_AFC_EAST} |
+| West (-7.5°) | {EP1_AFC_WEST} | {EP2_AFC_WEST} |
+
 ---
 
 ## 5. Physical Interpretation
@@ -428,6 +481,7 @@ div_q_gkg = (div_q_si * 1000 * units('g/kg')).magnitude
 
 ## 7. References
 
+- Besson, P., Fischer, L. J., Schemm, S., & Sprenger, M. (2021). A global analysis of the dry-dynamic forcing during cyclone growth and propagation. *Weather and Climate Dynamics*, 2(4), 991–1009. https://doi.org/10.5194/wcd-2-991-2021
 - Banacos, P. C., & Schultz, D. M. (2005). The use of moisture flux convergence in forecasting convective initiation: Historical and operational perspectives. *Weather and Forecasting*, 20(3), 351–366.
 - Čampa, J., & Wernli, H. (2012). A PV perspective on the vertical structure of mature midlatitude cyclones. *J. Atmos. Sci.*, 69(2), 725–740.
 - Charney, J. G., & Stern, M. E. (1962). On the stability of internal baroclinic jets in a rotating atmosphere. *Journal of the Atmospheric Sciences*, 19(2), 159–172.
@@ -436,9 +490,12 @@ div_q_gkg = (div_q_si * 1000 * units('g/kg')).magnitude
 - Hoskins, B. J., & Valdes, P. J. (1990). On the existence of storm-tracks. *J. Atmos. Sci.*, 47(15), 1854–1864.
 - Kuo, H. L. (1949). Dynamic instability of two-dimensional nondivergent flow in a barotropic atmosphere. *Journal of Meteorology*, 6(2), 105–122.
 - Lindzen, R. S., & Farrell, B. (1980). A simple approximate result for the maximum growth rate of baroclinic instabilities. *J. Atmos. Sci.*, 37(7), 1648–1654.
+- Orlanski, I., & Katzfey, J. (1991). The life cycle of a cyclone wave in the Southern Hemisphere. Part I: Eddy energy budget. *J. Atmos. Sci.*, 48(17), 1972–1998.
+- Orlanski, I., & Sheldon, J. P. (1993). A case of downstream baroclinic development over western North America. *Mon. Wea. Rev.*, 121(11), 2929–2950.
 - Rayleigh, Lord (1880). On the stability, or instability, of certain fluid motions. *Proceedings of the London Mathematical Society*, s1-11(1), 57–72.
 - Sanders, F., & Gyakum, J. R. (1980). Synoptic-dynamic climatology of the "bomb." *Mon. Wea. Rev.*, 108(10), 1589–1606.
 - Simmonds, I., & Lim, E.-P. (2009). Biases in the calculation of Southern Hemisphere mean baroclinic eddy growth rate. *Geophys. Res. Lett.*, 36(1), L01707.
+- Solman, S. A., & Menéndez, C. G. (1998). Eddy kinetic energy budget in a limited area model. *Atmósfera*, 11(3), 163–181.
 
 ---
 

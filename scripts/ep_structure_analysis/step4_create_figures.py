@@ -6,14 +6,15 @@ For each diagnostic field, creates a side-by-side composite figure:
   Right panel: EP2
 
 Fields plotted:
-  1. EGR (250–850 hPa)              — shaded
-  2. PV at 200 hPa                  — shaded + 2 PVU contour
-  3. PV at 850 hPa                  — shaded
-  4. Temperature advection 850      — shaded (warm red / cold blue)
-  5. Moisture flux + divergence 975 — panels with specific humidity and divergence
-  6. SLP                            — contours
-  7. RK criterion at 250 hPa        — shaded (negative = unstable)
-  8. KE advection at 250  hPa       — shaded (positive = acceleration)
+  1. EGR (500–850 hPa, Besson et al. 2021) — shaded
+  2. PV at 200 hPa                         — shaded + 2 PVU contour
+  3. PV at 850 hPa                         — shaded
+  4. Temperature advection 850             — shaded (warm red / cold blue)
+  5. Moisture flux + divergence 975        — panels with specific humidity and divergence
+  6. SLP                                   — contours
+  7. RK criterion at 250 hPa              — shaded (negative = unstable)
+  8. KE advection at 250 hPa              — shaded (positive = acceleration)
+  9. AFC at 250 hPa (Orlanski & Katzfey 1991) — shaded (positive = eddy KE source)
 
 Each panel includes a 15°×15° dashed box indicating the LEC computation domain.
 
@@ -151,8 +152,15 @@ def _add_cbar(fig, ax, im, label):
 # ============================================================================
 
 def figure_egr(datasets):
-    """EGR composite: EP1 vs EP2, with 850 hPa wind vectors."""
-    logging.info("  Creating EGR composite figure...")
+    """EGR composite: EP1 vs EP2, with 850 hPa wind vectors.
+
+    EGR is computed over the 500–850 hPa layer following Besson et al. (2021).
+    """
+    logging.info("  Creating EGR composite figure (500–850 hPa layer)...")
+
+    if "egr" not in datasets["EP1"]:
+        logging.warning("    ⚠  EGR not in composites — skipping")
+        return
 
     fig, axes = plt.subplots(1, 2, figsize=(16, 7))
 
@@ -165,7 +173,7 @@ def figure_egr(datasets):
         vmin = lo if vmin is None else min(vmin, lo)
         vmax = hi if vmax is None else max(vmax, hi)
 
-    clevels = np.linspace(vmin, vmax, 21)
+    clevels = np.linspace(max(vmin, 0), vmax, 21)  # EGR ≥ 0
 
     for i, ep in enumerate(["EP1", "EP2"]):
         ax = axes[i]
@@ -174,14 +182,14 @@ def figure_egr(datasets):
 
         im = ax.contourf(x, y, ds["egr"].values, levels=clevels, cmap="YlOrRd", extend="both")
 
-        # 850 hPa winds
+        # 850 hPa winds (lower boundary of the EGR layer)
         if "u_850" in ds and "v_850" in ds:
             s = VECTOR_SKIP
             ax.quiver(x[::s], y[::s], ds["u_850"].values[::s, ::s], ds["v_850"].values[::s, ::s],
                       color="black", alpha=0.8, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — EGR (250–850 hPa)  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — EGR 500–850 hPa  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, "EGR (day⁻¹)")
 
         mean_val = np.nanmean(ds["egr"].values)
@@ -189,7 +197,8 @@ def figure_egr(datasets):
                 transform=ax.transAxes, fontsize=9, va="top",
                 bbox=dict(boxstyle="round", fc="white", alpha=0.8))
 
-    fig.suptitle("Eady Growth Rate — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Eady Growth Rate (500–850 hPa, Besson et al. 2021) — EP1 vs EP2",
+                 fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = FIGURES_DIR / "composite_egr.png"
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
@@ -584,6 +593,83 @@ def figure_ke_advection(datasets):
     logging.info(f"    ✓ {out.name}")
 
 
+def figure_afc(datasets):
+    """AFC at 250 hPa: EP1 vs EP2, with 250 hPa wind vectors.
+
+    AFC = −∇·(v_ag' φ')  where v_ag' is the ageostrophic eddy wind and
+    φ' = Φ − Φm is the geopotential departure from the monthly climatology.
+    Positive values indicate a local source of eddy kinetic energy.
+
+    Reference: Orlanski & Katzfey (1991), Orlanski & Sheldon (1993).
+    """
+    logging.info("  Creating AFC @250 hPa composite figure...")
+
+    if "afc_250" not in datasets["EP1"]:
+        logging.warning(
+            "    ⚠  afc_250 not in composites — skipping.\n"
+            "      Run step2_1 (download climatology) then re-run step3."
+        )
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+    # Symmetric colour scale: use 98th-percentile of |AFC| across both EPs
+    absmax = 0.0
+    for ep in ["EP1", "EP2"]:
+        d = datasets[ep]["afc_250"].values
+        absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
+    clevels = np.linspace(-absmax, absmax, 21)
+
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[i]
+        ds = datasets[ep]
+        x = ds.coords["x"].values
+        y = ds.coords["y"].values
+        afc = ds["afc_250"].values
+
+        # Shaded AFC
+        im = ax.contourf(x, y, afc, levels=clevels, cmap="RdBu_r", extend="both")
+
+        # Zero contour
+        ax.contour(x, y, afc, levels=[0], colors="black", linewidths=1.5, linestyles="-")
+
+        # 250 hPa wind vectors
+        if "u_250" in ds and "v_250" in ds:
+            skip = slice(None, None, VECTOR_SKIP)
+            ax.quiver(
+                x[skip], y[skip],
+                ds["u_250"].values[skip, skip], ds["v_250"].values[skip, skip],
+                scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5,
+            )
+
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{EP_LABELS[ep]} — AFC 250 hPa  [n={n}]",
+                     xlabel=True, ylabel=(i == 0))
+        _add_cbar(fig, ax, im, "AFC (m² s⁻³)")
+
+        mean_val = np.nanmean(afc)
+        ax.text(
+            0.03, 0.97, f"Mean: {mean_val:.2e} m² s⁻³",
+            transform=ax.transAxes, fontsize=9, va="top",
+            bbox=dict(boxstyle="round", fc="white", alpha=0.8),
+        )
+        ax.text(
+            0.03, 0.03, "+  eddy source\n−  eddy sink",
+            transform=ax.transAxes, fontsize=8, va="bottom",
+            bbox=dict(boxstyle="round", fc="white", alpha=0.8),
+        )
+
+    fig.suptitle(
+        "Ageostrophic Flux Convergence at 250 hPa (Orlanski & Katzfey 1991) — EP1 vs EP2",
+        fontsize=13, fontweight="bold", y=1.02,
+    )
+    plt.tight_layout()
+    out = FIGURES_DIR / "composite_afc_250.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -598,13 +684,20 @@ def main():
     if datasets is None:
         return
 
-    # Verify required variables
+    # Verify required (always-present) variables
     for ep, ds in datasets.items():
         required = ["egr", "pv_200", "pv_850", "adv_T_850"]
         missing = [v for v in required if v not in ds]
         if missing:
             logging.error(f"❌ Missing variables in {ep}: {missing}")
             return
+
+    # Optional diagnostics — warn but continue
+    optional = ["rk_criterion_250", "ke_adv_250", "afc_250"]
+    for ep, ds in datasets.items():
+        absent = [v for v in optional if v not in ds]
+        if absent:
+            logging.warning(f"   ⚠  {ep}: optional fields absent (will be skipped): {absent}")
 
     logging.info("\nCreating figures...")
 
@@ -616,6 +709,7 @@ def main():
     figure_slp(datasets)
     figure_rk_criterion(datasets)
     figure_ke_advection(datasets)
+    figure_afc(datasets)
 
     # Close datasets
     for ds in datasets.values():

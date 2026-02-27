@@ -95,13 +95,17 @@ LEVEL_PURPOSE = {
 }
 
 # Step 2.1: ERA5 monthly means climatology for AFC
-CLIM_RAW_FILE  = DATA_DIR / "era5_monthly_means_250hPa_raw.nc"   # CDS download
-CLIM_FILE      = DATA_DIR / "era5_climatology_250hPa.nc"         # 30-yr monthly mean
+# New strategy: 12 small CDS requests (one per calendar month), saved in
+# data/era5_ep_structure/era5_monthly_raw/era5_raw_month{MM}.nc
+CLIM_RAW_DIR   = DATA_DIR / "era5_monthly_raw"                 # Per-month raw files
+CLIM_FILE      = DATA_DIR / "era5_climatology_250hPa.nc"       # 30-yr monthly mean
 CLIM_N_YEARS   = 30    # 1991–2020
 CLIM_N_MONTHS  = 12
-# Expected approximate size of raw file (30 years × 12 months × 3 vars × 0.25°
-# regional domain ~ 85°×120° → ~ 250 MB).  Used only for a rough progress hint.
-CLIM_RAW_EXPECTED_MB = 250.0
+MONTH_NAMES    = ["Jan","Feb","Mar","Apr","May","Jun",
+                   "Jul","Aug","Sep","Oct","Nov","Dec"]
+# Expected approximate size per monthly raw file
+# (30 years × 3 vars × 1 level × regional domain ~85°×120° @ 0.25° ≈ 20 MB each)
+CLIM_RAW_EXPECTED_MB_EACH = 20.0
 
 # ============================================================================
 # PROCESS DETECTION
@@ -463,23 +467,52 @@ def print_report(
     print()
     print("  " + "─" * (W - 2))
     print("  ERA5 MONTHLY MEANS — STEP 2.1 (AFC climatology):")
+    print(f"   Strategy: 12 separate CDS requests (one per calendar month,"
+          f" {CLIM_N_YEARS} years each)")
 
-    # Raw CDS download file
-    if CLIM_RAW_FILE.exists():
-        raw_sz_mb = CLIM_RAW_FILE.stat().st_size / 1024 ** 2
-        raw_pct   = min(100.0, 100.0 * raw_sz_mb / CLIM_RAW_EXPECTED_MB)
-        raw_mtim  = datetime.fromtimestamp(
-            CLIM_RAW_FILE.stat().st_mtime
-        ).strftime("%Y-%m-%d %H:%M")
-        raw_bar   = _bar(int(raw_pct), 100)
-        print(f"    ⬇  {CLIM_RAW_FILE.name:<44}  "
-              f"{_fmt_bytes(CLIM_RAW_FILE.stat().st_size)}")
-        print(f"       size progress  {raw_bar}  "
-              f"(~{CLIM_RAW_EXPECTED_MB:.0f} MB expected)")
-        print(f"       last modified  {raw_mtim}")
-    else:
-        print(f"    ✗  {CLIM_RAW_FILE.name:<44}  "
+    # Per-month raw files
+    month_files  = [CLIM_RAW_DIR / f"era5_raw_month{m:02d}.nc"
+                    for m in range(1, CLIM_N_MONTHS + 1)]
+    good_months  = []
+    bad_months   = []
+    for m, f in enumerate(month_files, start=1):
+        if f.exists() and f.stat().st_size > 1024:
+            good_months.append(m)
+        else:
+            bad_months.append(m)
+
+    n_good = len(good_months)
+    bar    = _bar(n_good, CLIM_N_MONTHS)
+    total_mb = (sum(month_files[m-1].stat().st_size
+                    for m in good_months) / 1024**2 if good_months else 0.0)
+
+    if n_good == 0:
+        print(f"    ✗  era5_monthly_raw/era5_raw_month*.nc   "
               "(not started — run step2_1)")
+    else:
+        print(f"    ⬇  era5_monthly_raw/   {bar}  "
+              f"{n_good}/{CLIM_N_MONTHS} months  ({total_mb:.0f} MB total)")
+        # Show which months are done / missing
+        if n_good < CLIM_N_MONTHS:
+            done_str    = " ".join(MONTH_NAMES[m-1] for m in good_months)
+            missing_str = " ".join(MONTH_NAMES[m-1] for m in bad_months)
+            print(f"       ✓ done   : {done_str}")
+            print(f"       ✗ missing: {missing_str}")
+            # Show size of most-recent download for live progress
+            latest = max(
+                (month_files[m-1] for m in good_months),
+                key=lambda p: p.stat().st_mtime,
+            )
+            latest_mtime = datetime.fromtimestamp(
+                latest.stat().st_mtime
+            ).strftime("%Y-%m-%d %H:%M")
+            latest_sz    = _fmt_bytes(latest.stat().st_size)
+            print(f"       last downloaded: {latest.name}  ({latest_sz})  at {latest_mtime}")
+        else:
+            newest_mtime = datetime.fromtimestamp(
+                max(month_files[m-1].stat().st_mtime for m in good_months)
+            ).strftime("%Y-%m-%d %H:%M")
+            print(f"       All 12 months downloaded ✓   last: {newest_mtime}")
 
     # Processed climatology
     if CLIM_FILE.exists():
@@ -487,7 +520,6 @@ def print_report(
         clim_mtim = datetime.fromtimestamp(
             CLIM_FILE.stat().st_mtime
         ).strftime("%Y-%m-%d %H:%M")
-        # Try to read month count for extra validation
         try:
             import xarray as _xr
             with _xr.open_dataset(CLIM_FILE) as _ds:
@@ -497,11 +529,11 @@ def print_report(
                 f"months={n_months}/{CLIM_N_MONTHS}  "
                 f"vars={clim_vars}"
             )
-            ok = n_months == CLIM_N_MONTHS
+            ok   = n_months == CLIM_N_MONTHS
             icon = "✓" if ok else "⚑"
         except Exception:
             detail = "(could not open — may be corrupted)"
-            icon = "⚠"
+            icon   = "⚠"
         print(f"    {icon}  {CLIM_FILE.name:<44}  "
               f"{clim_sz}   modified {clim_mtim}")
         print(f"       {detail}")

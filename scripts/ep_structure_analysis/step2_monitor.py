@@ -94,18 +94,51 @@ LEVEL_PURPOSE = {
     975: "moisture flux  ",
 }
 
-# Step 2.1: ERA5 monthly means climatology for AFC
-# New strategy: 12 small CDS requests (one per calendar month), saved in
-# data/era5_ep_structure/era5_monthly_raw/era5_raw_month{MM}.nc
-CLIM_RAW_DIR   = DATA_DIR / "era5_monthly_raw"                 # Per-month raw files
-CLIM_FILE      = DATA_DIR / "era5_climatology_250hPa.nc"       # 30-yr monthly mean
-CLIM_N_YEARS   = 30    # 1991–2020
-CLIM_N_MONTHS  = 12
-MONTH_NAMES    = ["Jan","Feb","Mar","Apr","May","Jun",
-                   "Jul","Aug","Sep","Oct","Nov","Dec"]
-# Expected approximate size per monthly raw file
-# (30 years × 3 vars × 1 level × regional domain ~85°×120° @ 0.25° ≈ 20 MB each)
-CLIM_RAW_EXPECTED_MB_EACH = 20.0
+# Step 2.1: ERA5 monthly means climatology — all anomaly diagnostic groups
+CLIM_RAW_DIR  = DATA_DIR / "era5_monthly_raw"    # Per-month raw files
+CLIM_N_YEARS  = 30    # 1991–2020
+CLIM_N_MONTHS = 12
+MONTH_NAMES   = ["Jan","Feb","Mar","Apr","May","Jun",
+                  "Jul","Aug","Sep","Oct","Nov","Dec"]
+
+# One entry per download group — mirrors step2_1_download_era5_monthly_means.py
+CLIM_GROUPS = {
+    "250hPa": {
+        "raw_prefix":  "era5_raw_month",           # legacy — no group tag
+        "clim_file":   DATA_DIR / "era5_climatology_250hPa.nc",
+        "nc_vars":     ["u", "v", "z"],
+        "levels":      [250],
+        "description": "u,v,z @250 hPa  →  AFC + KE_adv anomaly",
+    },
+    "pv200": {
+        "raw_prefix":  "era5_raw_pv200_month",
+        "clim_file":   DATA_DIR / "era5_climatology_pv200.nc",
+        "nc_vars":     ["u", "v", "t"],
+        "levels":      [175, 200, 225],
+        "description": "u,v,t @175/200/225 hPa  →  PV@200 anomaly",
+    },
+    "pv850": {
+        "raw_prefix":  "era5_raw_pv850_month",
+        "clim_file":   DATA_DIR / "era5_climatology_pv850.nc",
+        "nc_vars":     ["u", "v", "t"],
+        "levels":      [825, 850, 875],
+        "description": "u,v,t @825/850/875 hPa  →  PV@850 + T_adv anomaly",
+    },
+    "mfd975": {
+        "raw_prefix":  "era5_raw_mfd975_month",
+        "clim_file":   DATA_DIR / "era5_climatology_mfd975.nc",
+        "nc_vars":     ["u", "v", "q"],
+        "levels":      [975],
+        "description": "u,v,q @975 hPa  →  moisture flux div anomaly",
+    },
+    "slp": {
+        "raw_prefix":  "era5_raw_slp_month",
+        "clim_file":   DATA_DIR / "era5_climatology_slp.nc",
+        "nc_vars":     ["msl"],
+        "levels":      [],
+        "description": "msl (surface)  →  SLP anomaly",
+    },
+}
 
 # ============================================================================
 # PROCESS DETECTION
@@ -463,83 +496,77 @@ def print_report(
         lbl = f"{lvl:>4} hPa  {purpose}"
         print(f"  {lbl:<{cV}}  {_pct(n1, t1):>{cN}}  {_pct(n2, t2):>{cN}}  {_pct(nb, tb):>{cN}}")
 
-    # ── Step 2.1: ERA5 monthly means / AFC climatology ───────────────────
+    # ── Step 2.1: ERA5 monthly means — all anomaly climatology groups ─────
     print()
     print("  " + "─" * (W - 2))
-    print("  ERA5 MONTHLY MEANS — STEP 2.1 (AFC climatology):")
-    print(f"   Strategy: 12 separate CDS requests (one per calendar month,"
-          f" {CLIM_N_YEARS} years each)")
+    print("  ERA5 MONTHLY MEANS — STEP 2.1 (anomaly climatologies, 5 groups):")
+    print(f"   {CLIM_N_YEARS}-year monthly climatologies (1991–2020)  │  "
+          f"raw files in era5_monthly_raw/")
+    print()
 
-    # Per-month raw files
-    month_files  = [CLIM_RAW_DIR / f"era5_raw_month{m:02d}.nc"
-                    for m in range(1, CLIM_N_MONTHS + 1)]
-    good_months  = []
-    bad_months   = []
-    for m, f in enumerate(month_files, start=1):
-        if f.exists() and f.stat().st_size > 1024:
-            good_months.append(m)
+    _missing_groups = []
+    for gname, gcfg in CLIM_GROUPS.items():
+        raw_files = [
+            CLIM_RAW_DIR / f"{gcfg['raw_prefix']}{m:02d}.nc"
+            for m in range(1, CLIM_N_MONTHS + 1)
+        ]
+        good = [m for m, f in enumerate(raw_files, 1)
+                if f.exists() and f.stat().st_size > 1024]
+        bad  = [m for m in range(1, CLIM_N_MONTHS + 1) if m not in good]
+        n_good   = len(good)
+        raw_mb   = sum(raw_files[m - 1].stat().st_size for m in good) / 1024 ** 2
+        raw_icon = "✓" if n_good == CLIM_N_MONTHS else ("⚑" if n_good > 0 else "✗")
+        raw_mb_str = f"{raw_mb:6.1f} MB" if n_good > 0 else "         "
+
+        # Climatology file status
+        cf = gcfg["clim_file"]
+        if cf.exists():
+            try:
+                with xr.open_dataset(cf) as _ds:
+                    n_mo = _ds.sizes.get("month", 0)
+                clim_ok   = n_mo == CLIM_N_MONTHS
+                clim_icon = "✓" if clim_ok else "⚑"
+                clim_det  = _fmt_bytes(cf.stat().st_size)
+            except Exception:
+                clim_ok   = False
+                clim_icon = "⚠"
+                clim_det  = "corrupted"
         else:
-            bad_months.append(m)
+            clim_ok   = False
+            clim_icon = "✗"
+            clim_det  = "not generated"
 
-    n_good = len(good_months)
-    bar    = _bar(n_good, CLIM_N_MONTHS)
-    total_mb = (sum(month_files[m-1].stat().st_size
-                    for m in good_months) / 1024**2 if good_months else 0.0)
+        if n_good < CLIM_N_MONTHS or not clim_ok:
+            _missing_groups.append(gname)
 
-    if n_good == 0:
-        print(f"    ✗  era5_monthly_raw/era5_raw_month*.nc   "
-              "(not started — run step2_1)")
-    else:
-        print(f"    ⬇  era5_monthly_raw/   {bar}  "
-              f"{n_good}/{CLIM_N_MONTHS} months  ({total_mb:.0f} MB total)")
-        # Show which months are done / missing
-        if n_good < CLIM_N_MONTHS:
-            done_str    = " ".join(MONTH_NAMES[m-1] for m in good_months)
-            missing_str = " ".join(MONTH_NAMES[m-1] for m in bad_months)
-            print(f"       ✓ done   : {done_str}")
-            print(f"       ✗ missing: {missing_str}")
-            # Show size of most-recent download for live progress
-            latest = max(
-                (month_files[m-1] for m in good_months),
-                key=lambda p: p.stat().st_mtime,
+        # Two-line display per group
+        print(f"  {gname:<8}  raw  {raw_icon} {_bar(n_good, CLIM_N_MONTHS, 14)}  {raw_mb_str}")
+        print(f"           clim {clim_icon} {cf.name:<42}  {clim_det}")
+
+        # Missing-months detail (only when partially downloaded)
+        if bad and n_good > 0:
+            miss_str = " ".join(MONTH_NAMES[m - 1] for m in bad)
+            print(f"                ✗ missing months: {miss_str}")
+            last_f = max((raw_files[m - 1] for m in good),
+                         key=lambda p: p.stat().st_mtime)
+            last_t = datetime.fromtimestamp(last_f.stat().st_mtime).strftime(
+                "%Y-%m-%d %H:%M"
             )
-            latest_mtime = datetime.fromtimestamp(
-                latest.stat().st_mtime
-            ).strftime("%Y-%m-%d %H:%M")
-            latest_sz    = _fmt_bytes(latest.stat().st_size)
-            print(f"       last downloaded: {latest.name}  ({latest_sz})  at {latest_mtime}")
-        else:
-            newest_mtime = datetime.fromtimestamp(
-                max(month_files[m-1].stat().st_mtime for m in good_months)
-            ).strftime("%Y-%m-%d %H:%M")
-            print(f"       All 12 months downloaded ✓   last: {newest_mtime}")
+            print(f"                last downloaded: {last_f.name}"
+                  f"  ({_fmt_bytes(last_f.stat().st_size)})  at {last_t}")
+        elif n_good == 0:
+            print(f"                → not started;  run step2_1 --groups {gname}")
+        print()
 
-    # Processed climatology
-    if CLIM_FILE.exists():
-        clim_sz   = _fmt_bytes(CLIM_FILE.stat().st_size)
-        clim_mtim = datetime.fromtimestamp(
-            CLIM_FILE.stat().st_mtime
-        ).strftime("%Y-%m-%d %H:%M")
-        try:
-            import xarray as _xr
-            with _xr.open_dataset(CLIM_FILE) as _ds:
-                n_months  = _ds.sizes.get("month", "?")
-                clim_vars = list(_ds.data_vars)
-            detail = (
-                f"months={n_months}/{CLIM_N_MONTHS}  "
-                f"vars={clim_vars}"
-            )
-            ok   = n_months == CLIM_N_MONTHS
-            icon = "✓" if ok else "⚑"
-        except Exception:
-            detail = "(could not open — may be corrupted)"
-            icon   = "⚠"
-        print(f"    {icon}  {CLIM_FILE.name:<44}  "
-              f"{clim_sz}   modified {clim_mtim}")
-        print(f"       {detail}")
+    # Summary line
+    if _missing_groups:
+        miss_str = " ".join(_missing_groups)
+        print(f"   ✗ Incomplete groups: {miss_str}")
+        print(f"     python scripts/ep_structure_analysis/"
+              "step2_1_download_era5_monthly_means.py"
+              f" --groups {miss_str}")
     else:
-        print(f"    ✗  {CLIM_FILE.name:<44}  "
-              "(not yet generated — run step2_1)")
+        print("   ✓ All 5 climatology groups complete.")
 
     # ── Composite files (step 3 output) ───────────────────────────────────
     print()

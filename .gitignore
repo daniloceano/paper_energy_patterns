@@ -33,6 +33,18 @@ data/era5_ep1_OLD*
 data/era5_ep1/*.nc
 data/era5_ep1/*_metadata.csv
 !data/era5_ep1/precomputed_composites_*.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month01.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month02.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month03.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month04.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month05.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month06.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month07.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month08.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month09.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month10.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month11.nc
+data/era5_ep_structure/era5_monthly_raw/era5_raw_month12.nc
 
 # era5_ep_structure: exclude per-case downloaded files (large, remote-only)
 # Covers: *_era5.nc, *_era5_pressure.nc, *_era5_single.nc,
@@ -90,3 +102,4 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+

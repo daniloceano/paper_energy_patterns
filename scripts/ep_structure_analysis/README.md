@@ -36,6 +36,20 @@ throughout the study.
 | **KE advection** | 250 hPa | Kinetic energy tendency from advection in jet stream | - |
 | **AFC** (Ageostrophic Flux Convergence) | 250 hPa | Eddy KE source/sink from ageostrophic pressure work | Orlanski & Katzfey (1991); Orlanski & Sheldon (1993) |
 
+**Anomaly diagnostics** (departure from 1991–2020 WMO climatology — same decomposition as AFC):
+
+| Anomaly Field | Level | Output variable | Climatology group |
+|---------------|-------|-----------------|-------------------|
+| **PV′** | 200 hPa | `pv_200_anom` | `pv200` (175/200/225 hPa, u,v,t) |
+| **PV′** | 850 hPa | `pv_850_anom` | `pv850` (825/850/875 hPa, u,v,t) |
+| **Temp advection′** | 850 hPa | `adv_T_850_anom` | `pv850` (u,v,t at 850 hPa) |
+| **Moisture flux div′** | 975 hPa | `div_q_975_anom` | `mfd975` (975 hPa, u,v,q) |
+| **KE advection′** | 250 hPa | `ke_adv_250_anom` | `250hPa` (u,v at 250 hPa) |
+| **SLP′** | Surface | `msl_anom` | `slp` (msl, single-level) |
+
+> **Note:** EGR is not decomposed (layer-mean nature makes eddy decomposition ill-defined).
+> AFC is already an anomaly field by construction (uses $\phi'$ and $\vec{v}'$).
+
 ### Level selection rationale
 
 - **EGR (250–850 hPa):** The 250–850 hPa layer captures the main tropospheric
@@ -104,11 +118,39 @@ throughout the study.
 |------|--------|--------|-------------|
 | 1 | `step1_select_ep_tracks.py` | Local/Remote | Select EP1 and EP2 cyclone tracks |
 | 2 | `step2_download_era5_parallel.py` | **Remote** | Download ERA5 data (parallel, with patching) |
-| 2.1 | `step2_1_download_era5_monthly_means.py` | **Remote** | Download ERA5 monthly means → 30-year climatology for AFC |
+| 2.1 | `step2_1_download_era5_monthly_means.py` | **Remote** | Download ERA5 monthly means → 30-year climatologies for all anomaly diagnostics (4 variable groups: 250hPa, pv200, pv850, mfd975). Smart completeness check automatically skips already-downloaded months. |
 | 2M | `step2_monitor.py` | Local/Remote | **Monitor download progress** (see below) |
 | 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP, RK, KE_adv) |
 | 4 | `step4_create_figures.py` | Local | Create EP1 vs EP2 composite figures |
 | 5 | `step5_update_scientific_notes.py` | Local | Populate SCIENTIFIC_NOTES.md with regional statistics + generate PDF |
+
+### Monthly climatology download (`step2_1_download_era5_monthly_means.py`)
+
+Downloads 12-month ERA5 climatologies (1991–2020) for all anomaly diagnostics, organized into four groups:
+
+| Group | Levels (hPa) | Variables | Output file |
+|-------|-------------|-----------|-------------|
+| `250hPa` | 250 | u, v, z | `era5_climatology_250hPa.nc` |
+| `pv200` | 175, 200, 225 | u, v, t | `era5_climatology_pv200.nc` |
+| `pv850` | 825, 850, 875 | u, v, t | `era5_climatology_pv850.nc` |
+| `mfd975` | 975 | u, v, q | `era5_climatology_mfd975.nc` |
+| `slp` | surface | msl | `era5_climatology_slp.nc` |
+
+```bash
+# Download all groups (auto-skips valid existing files)
+python scripts/ep_structure_analysis/step2_1_download_era5_monthly_means.py
+
+# Download specific groups only
+python scripts/ep_structure_analysis/step2_1_download_era5_monthly_means.py --groups pv200 pv850 mfd975
+
+# Only recompute climatology files from already-downloaded raw data
+python scripts/ep_structure_analysis/step2_1_download_era5_monthly_means.py --clim-only
+
+# Force re-download of specific months (e.g. June and July)
+python scripts/ep_structure_analysis/step2_1_download_era5_monthly_means.py --force-months 6 7
+```
+
+> The `250hPa` group reuses existing `era5_raw_month{MM}.nc` files without re-downloading, preserving backward compatibility.
 
 ### Download monitor (`step2_monitor.py`)
 
@@ -336,16 +378,27 @@ python scripts/ep_structure_analysis/step5_update_scientific_notes.py --pdf
 
 ### Figures
 - `figures/ep_structure/` — EP1 vs EP2 composite comparison panels
+
+  **Total-field figures:**
   - `composite_egr.png` — Eady Growth Rate (250–850 hPa)
   - `composite_pv200.png` — PV at 200 hPa + 250 hPa wind vectors
   - `composite_pv850.png` — PV at 850 hPa + 850 hPa wind vectors
   - `composite_advT850.png` — Temperature advection at 850 hPa
-  - `composite_moisture.png` — Specific humidity + moisture flux divergence at 975 hPa
+  - `composite_moisture_flux.png` — Specific humidity + moisture flux divergence at 975 hPa
   - `composite_slp.png` — Sea level pressure
   - `composite_rk_criterion.png` — Rayleigh-Kuo criterion at 250 hPa
   - `composite_ke_advection.png` — Kinetic energy advection at 250 hPa
-  - Each figure shows EP1 (left) vs EP2 (right) for a given field
-  - 15° × 15° dashed box overlay marks the LEC computation domain
+  - `composite_afc_250.png` — AFC at 250 hPa (eddy by construction)
+
+  **Anomaly figures** (departure from 1991–2020 climatology; require `step2_1` multi-group download):
+  - `composite_pv200_anom.png` — PV′ at 200 hPa + 250 hPa wind vectors
+  - `composite_pv850_anom.png` — PV′ at 850 hPa + 850 hPa wind vectors
+  - `composite_advT850_anom.png` — Temperature advection anomaly at 850 hPa
+  - `composite_moisture_flux_anom.png` — Moisture flux divergence anomaly at 975 hPa
+  - `composite_ke_advection_anom.png` — KE advection anomaly at 250 hPa
+  - `composite_slp_anom.png` — SLP anomaly + 850 hPa wind vectors
+
+  Each figure shows EP1 (left) vs EP2 (right). 15°×15° dashed box marks the LEC domain.
 
 ### Logs
 - `logs/ep_structure_*.log` — detailed execution logs

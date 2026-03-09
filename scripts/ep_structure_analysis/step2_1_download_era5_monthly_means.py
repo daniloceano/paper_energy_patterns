@@ -1,46 +1,77 @@
 """
-Step 2.1: Download ERA5 Monthly Means for AFC Climatology
+Step 2.1: Download ERA5 Monthly Means for Anomaly Diagnostics
 
 Downloads ERA5 monthly averaged data on pressure levels and computes
-a 30-year climatological mean (1991–2020) for use in the Ageostrophic
-Flux Convergence (AFC) diagnostic.
+30-year climatological means (1991–2020) for ALL anomaly diagnostics
+used in step 3.
 
-The AFC diagnostic (Orlanski & Katzfey 1991; Orlanski & Chang 1993)
-requires a temporal decomposition of the flow into a base state (Vm)
-and an eddy perturbation (v'):
+Download groups and their purposes
+------------------------------------
+  "250hPa"  : u, v, z  at 250 hPa
+              → AFC (Orlanski & Katzfey 1991)  +  KE advection anomaly
+  "pv200"   : u, v, t  at 175 / 200 / 225 hPa
+              → PV@200 hPa anomaly
+  "pv850"   : u, v, t  at 825 / 850 / 875 hPa
+              → PV@850 hPa anomaly  +  temperature advection@850 anomaly
+  "mfd975"  : u, v, q  at 975 hPa
+              → Moisture flux divergence@975 hPa anomaly
+  "slp"     : msl  (single-level, no pressure_level key)
+              → Sea level pressure anomaly
 
-    V = Vm + v'       Φ = Φm + φ'
+Download strategy
+-----------------
+  12 monthly CDS requests per group (one per calendar month, 30 years
+  each).  Per-month raw files are reused across runs — only missing or
+  invalid files are downloaded.
 
-where Vm, Φm are the climatological mean state and v', φ' are the
-instantaneous departures.  Using a 30-year monthly climatology as
-the base state is standard practice (e.g., Solman & Menéndez 1998;
-Decker & Martin 2005; Jiang et al. 2013).
+  The "250hPa" group reuses existing files (era5_raw_month{MM}.nc) for
+  backward compatibility with already-downloaded data.  All other groups
+  use group-specific filename prefixes.
 
-Download strategy — one CDS request per calendar month:
-  Instead of a single large request (360 time steps), the download is
-  split into 12 smaller requests (one per calendar month, 30 years each,
-  ~30 time steps per request).  This avoids CDS queue timeouts,
-  enables automatic resume (already-downloaded months are skipped),
-  and makes progress easy to track.
+Output climatology files (saved to data/era5_ep_structure/)
+------------------------------------------------------------
+  era5_climatology_250hPa.nc
+      Variables : u_clim, v_clim, z_clim
+      Dimensions: (month: 12, latitude, longitude)          ← no level dim
 
-  Per-month raw files: data/era5_ep_structure/era5_raw_month{MM}.nc
-  Final climatology:   data/era5_ep_structure/era5_climatology_250hPa.nc
+  era5_climatology_pv200.nc
+      Variables : u_clim, v_clim, t_clim
+      Dimensions: (month: 12, pressure_level: 3, latitude, longitude)
 
-Variables Downloaded:
-  - u_component_of_wind  (u)  at 250 hPa
-  - v_component_of_wind  (v)  at 250 hPa
-  - geopotential          (z) at 250 hPa
+  era5_climatology_pv850.nc
+      Variables : u_clim, v_clim, t_clim
+      Dimensions: (month: 12, pressure_level: 3, latitude, longitude)
 
-Climatological Period: 1991–2020 (WMO standard)
+  era5_climatology_mfd975.nc
+      Variables : u_clim, v_clim, q_clim
+      Dimensions: (month: 12, pressure_level: 1, latitude, longitude)
+
+  era5_climatology_slp.nc
+      Variables : msl_clim
+      Dimensions: (month: 12, latitude, longitude)          ← single-level
+
+Climatological Period: 1991–2020 (WMO standard 30-year normal)
 Domain: South Atlantic + buffer  (80°S–5°S, 80°W–40°E)
 
-Output:
-  data/era5_ep_structure/era5_climatology_250hPa.nc
-    → Dimensions: (month: 12, latitude, longitude)
-    → Variables:  u_clim, v_clim, z_clim  (30-year monthly means)
+Usage
+-----
+  # Smart run — only downloads what is missing
+  python scripts/ep_structure_analysis/step2_1_download_era5_monthly_means.py
+
+  # Force re-download and recompute everything
+  python … --force
+
+  # Process specific groups only
+  python … --groups pv200 pv850 mfd975 slp
+
+  # Recompute climatologies from existing raw files (skip CDS)
+  python … --clim-only
+
+  # Force re-download for specific calendar months (all groups)
+  python … --force-months 6 7 8
 
 Author: Danilo Couto de Souza
-Date: February 2026
+Date: March 2026
 """
 
 import sys
@@ -60,9 +91,9 @@ import argparse
 # ============================================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DATA_DIR = PROJECT_ROOT / "data" / "era5_ep_structure"
-RAW_DIR  = DATA_DIR / "era5_monthly_raw"      # intermediate per-month files
-LOG_DIR  = PROJECT_ROOT / "logs"
+DATA_DIR     = PROJECT_ROOT / "data" / "era5_ep_structure"
+RAW_DIR      = DATA_DIR / "era5_monthly_raw"
+LOG_DIR      = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -71,20 +102,6 @@ RAW_DIR.mkdir(parents=True, exist_ok=True)
 CLIM_YEARS  = list(range(1991, 2021))   # 1991–2020 inclusive (30 years)
 CLIM_MONTHS = list(range(1, 13))        # All 12 calendar months
 
-# Pressure level for AFC
-PRESSURE_LEVEL = 250   # hPa
-
-# Variables (CDS API names → NetCDF short names)
-CDS_VARIABLES = [
-    "u_component_of_wind",
-    "v_component_of_wind",
-    "geopotential",
-]
-NC_SHORT_NAMES = {
-    "u_component_of_wind": "u",
-    "v_component_of_wind": "v",
-    "geopotential": "z",
-}
 MONTH_NAMES = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -100,173 +117,287 @@ DOMAIN = {
     "east":   40,
 }
 
-# Final output
-OUTPUT_FILE = DATA_DIR / "era5_climatology_250hPa.nc"
+
+# ============================================================================
+# DOWNLOAD GROUP DEFINITIONS
+# ============================================================================
+#
+# Each entry defines one download group:
+#   levels      : pressure levels to request [hPa]  (empty for single-level vars)
+#   cds_vars    : CDS API variable names
+#   nc_vars     : corresponding short names in the downloaded NetCDF
+#   raw_prefix  : per-month raw file prefix  →  raw_prefix{MM}.nc
+#   clim_vars   : mapping  nc_short → climatology variable name
+#   output      : Path to the final climatology NetCDF file
+#   squeeze_lev : if True, squeeze singleton pressure_level dim (backward compat)
+#   cds_dataset : CDS dataset name (default: pressure-levels; override for single-level)
+#   description : human-readable description for logging
+#
+# NOTE: "250hPa" uses the legacy prefix (era5_raw_month{MM}.nc) so that
+#       already-downloaded files are reused without modification.
+# NOTE: "slp" uses the single-level CDS dataset (no pressure_level key in request).
+
+DOWNLOAD_GROUPS: dict = {
+    "250hPa": {
+        "levels":      [250],
+        "cds_vars":    ["u_component_of_wind",
+                        "v_component_of_wind",
+                        "geopotential"],
+        "nc_vars":     ["u", "v", "z"],
+        "raw_prefix":  "era5_raw_month",           # legacy — no group tag
+        "clim_vars":   {"u": "u_clim", "v": "v_clim", "z": "z_clim"},
+        "output":      DATA_DIR / "era5_climatology_250hPa.nc",
+        "squeeze_lev": True,                        # backward compat: no level dim
+        "description": "u, v, z at 250 hPa  →  AFC + KE_adv anomaly",
+    },
+    "pv200": {
+        "levels":      [175, 200, 225],
+        "cds_vars":    ["u_component_of_wind",
+                        "v_component_of_wind",
+                        "temperature"],
+        "nc_vars":     ["u", "v", "t"],
+        "raw_prefix":  "era5_raw_pv200_month",
+        "clim_vars":   {"u": "u_clim", "v": "v_clim", "t": "t_clim"},
+        "output":      DATA_DIR / "era5_climatology_pv200.nc",
+        "squeeze_lev": False,
+        "description": "u, v, t at 175/200/225 hPa  →  PV@200 anomaly",
+    },
+    "pv850": {
+        "levels":      [825, 850, 875],
+        "cds_vars":    ["u_component_of_wind",
+                        "v_component_of_wind",
+                        "temperature"],
+        "nc_vars":     ["u", "v", "t"],
+        "raw_prefix":  "era5_raw_pv850_month",
+        "clim_vars":   {"u": "u_clim", "v": "v_clim", "t": "t_clim"},
+        "output":      DATA_DIR / "era5_climatology_pv850.nc",
+        "squeeze_lev": False,
+        "description": "u, v, t at 825/850/875 hPa  →  PV@850 + T_adv@850 anomaly",
+    },
+    "mfd975": {
+        "levels":      [975],
+        "cds_vars":    ["u_component_of_wind",
+                        "v_component_of_wind",
+                        "specific_humidity"],
+        "nc_vars":     ["u", "v", "q"],
+        "raw_prefix":  "era5_raw_mfd975_month",
+        "clim_vars":   {"u": "u_clim", "v": "v_clim", "q": "q_clim"},
+        "output":      DATA_DIR / "era5_climatology_mfd975.nc",
+        "squeeze_lev": False,
+        "description": "u, v, q at 975 hPa  →  moisture flux div anomaly",
+    },
+    "slp": {
+        "levels":      [],                           # no pressure_level in request
+        "cds_vars":    ["mean_sea_level_pressure"],
+        "nc_vars":     ["msl"],
+        "raw_prefix":  "era5_raw_slp_month",
+        "clim_vars":   {"msl": "msl_clim"},
+        "output":      DATA_DIR / "era5_climatology_slp.nc",
+        "squeeze_lev": True,                        # no level dim (surface variable)
+        "cds_dataset": "reanalysis-era5-single-levels-monthly-means",
+        "description": "msl at surface  →  SLP anomaly",
+    },
+}
 
 
 # ============================================================================
 # HELPERS
 # ============================================================================
 
-def _raw_file(month: int) -> Path:
-    """Return path for the per-month CDS download file."""
-    return RAW_DIR / f"era5_raw_month{month:02d}.nc"
+def _raw_file(group_name: str, month: int) -> Path:
+    """Return the per-month raw NetCDF path for a given download group."""
+    prefix = DOWNLOAD_GROUPS[group_name]["raw_prefix"]
+    return RAW_DIR / f"{prefix}{month:02d}.nc"
 
 
-def _validate_raw(f: Path) -> bool:
-    """Quick check that a raw file is a complete, readable NetCDF."""
+def _validate_raw(f: Path, expected_vars: list, expected_levels: list) -> bool:
+    """
+    Check that a raw file exists, is non-empty, and contains expected content.
+
+    For multi-level groups (len(expected_levels) > 1) the pressure_level
+    coordinate is also validated.
+    """
     if not f.exists() or f.stat().st_size < 1024:
         return False
     try:
         with xr.open_dataset(f) as ds:
-            return len(ds.data_vars) > 0
+            for v in expected_vars:
+                if v not in ds.data_vars:
+                    return False
+            if len(expected_levels) > 1:
+                pc = "pressure_level" if "pressure_level" in ds.dims else "level"
+                if pc not in ds.dims:
+                    return False
+                found = {float(x) for x in ds[pc].values}
+                for lv in expected_levels:
+                    if float(lv) not in found:
+                        return False
+        return True
     except Exception:
         return False
 
 
-# ============================================================================
-# DOWNLOAD — one request per calendar month
-# ============================================================================
-
-def download_month(month: int, c: cdsapi.Client, force: bool = False) -> Path:
+def _check_group_status(group_name: str) -> tuple:
     """
-    Download ERA5 monthly means for one calendar month across all CLIM_YEARS.
+    Return (n_valid, missing_months) for a download group.
 
-    Each request covers:
-      - 1 calendar month  ×  30 years  =  30 time steps
-      - 3 variables  ×  1 pressure level  ×  regional domain
-
-    Parameters
-    ----------
-    month : int
-        Calendar month (1–12).
-    c : cdsapi.Client
-        Authenticated CDS client (shared across calls to avoid repeated auth).
-    force : bool
-        If True, re-download even if the file already exists.
-
-    Returns
-    -------
-    raw_file : Path
+    n_valid        : months already downloaded and valid.
+    missing_months : list of calendar months (1-based) that need downloading.
     """
-    raw_file = _raw_file(month)
+    cfg     = DOWNLOAD_GROUPS[group_name]
+    n_valid = 0
+    missing = []
+    for month in CLIM_MONTHS:
+        f = _raw_file(group_name, month)
+        if _validate_raw(f, cfg["nc_vars"], cfg["levels"]):
+            n_valid += 1
+        else:
+            missing.append(month)
+    return n_valid, missing
+
+
+# ============================================================================
+# DOWNLOAD — one CDS request per (group, calendar month)
+# ============================================================================
+
+def download_group_month(
+    group_name: str,
+    month: int,
+    c: cdsapi.Client,
+    force: bool = False,
+) -> Path:
+    """
+    Download ERA5 monthly means for one group and one calendar month.
+
+    Each request: 30 years × N levels × M variables.
+    The raw file is saved to era5_monthly_raw/ and reused on subsequent runs.
+    """
+    cfg      = DOWNLOAD_GROUPS[group_name]
+    raw_file = _raw_file(group_name, month)
     mname    = MONTH_NAMES[month - 1]
 
-    if not force and _validate_raw(raw_file):
-        logging.info(f"   [{month:02d}/{len(CLIM_MONTHS)}] {mname} — already downloaded"
-                     f" ({raw_file.stat().st_size / 1024**2:.1f} MB), skipping.")
+    if not force and _validate_raw(raw_file, cfg["nc_vars"], cfg["levels"]):
+        sz = raw_file.stat().st_size / 1024**2
+        logging.info(
+            f"   [{group_name}] {mname} ({month:02d}) — already downloaded "
+            f"({sz:.1f} MB), skipping."
+        )
         return raw_file
 
-    logging.info(f"   [{month:02d}/{len(CLIM_MONTHS)}] {mname} — submitting CDS request "
-                 f"({len(CLIM_YEARS)} years × {len(CDS_VARIABLES)} vars × 1 level)...")
-
-    c.retrieve(
-        "reanalysis-era5-pressure-levels-monthly-means",
-        {
-            "product_type": "monthly_averaged_reanalysis",
-            "format":        "netcdf",
-            "variable":      CDS_VARIABLES,
-            "pressure_level": [str(PRESSURE_LEVEL)],
-            "year":          [str(y) for y in CLIM_YEARS],
-            "month":         [f"{month:02d}"],
-            "time":          "00:00",
-            "area": [DOMAIN["north"], DOMAIN["west"],
-                     DOMAIN["south"], DOMAIN["east"]],
-        },
-        str(raw_file),
+    logging.info(
+        f"   [{group_name}] {mname} ({month:02d}) — submitting CDS request "
+        f"({len(CLIM_YEARS)} years × {len(cfg['cds_vars'])} vars "
+        f"× {len(cfg['levels'])} level(s))..."
     )
 
+    cds_dataset = cfg.get(
+        "cds_dataset", "reanalysis-era5-pressure-levels-monthly-means"
+    )
+    request: dict = {
+        "product_type": "monthly_averaged_reanalysis",
+        "format":        "netcdf",
+        "variable":      cfg["cds_vars"],
+        "year":          [str(y) for y in CLIM_YEARS],
+        "month":         [f"{month:02d}"],
+        "time":          "00:00",
+        "area": [DOMAIN["north"], DOMAIN["west"],
+                 DOMAIN["south"], DOMAIN["east"]],
+    }
+    # Pressure-level groups include the level list; single-level groups do not.
+    if cfg["levels"]:
+        request["pressure_level"] = [str(lv) for lv in cfg["levels"]]
+
+    c.retrieve(cds_dataset, request, str(raw_file))
+
     sz = raw_file.stat().st_size / 1024**2
-    logging.info(f"   [{month:02d}/{len(CLIM_MONTHS)}] {mname} ✓  {sz:.1f} MB → {raw_file.name}")
+    logging.info(
+        f"   [{group_name}] {mname} ({month:02d}) ✓  {sz:.1f} MB → {raw_file.name}"
+    )
     return raw_file
 
 
-def download_all_months(force_months: list[int] | None = None) -> list[Path]:
+def download_group(
+    group_name: str,
+    force_months: list | None = None,
+) -> list:
     """
-    Download all 12 calendar months, skipping those already on disk.
+    Download all 12 calendar months for one group, skipping valid files.
 
-    Parameters
-    ----------
-    force_months : list[int] or None
-        If given, force re-download for these specific months (1-based).
-
-    Returns
-    -------
-    raw_files : list[Path]  — one file per calendar month, in order.
+    Returns list of 12 raw file paths (one per month, in calendar order).
     """
-    force_months = set(force_months or [])
+    cfg       = DOWNLOAD_GROUPS[group_name]
+    force_set = set(force_months or [])
+    n_valid, _ = _check_group_status(group_name)
 
-    logging.info(f"\n   Downloading {len(CLIM_MONTHS)} months "
-                 f"({CLIM_YEARS[0]}–{CLIM_YEARS[-1]}) — one CDS request per month.")
-    logging.info(f"   Variables : {CDS_VARIABLES}")
-    logging.info(f"   Level     : {PRESSURE_LEVEL} hPa")
-    logging.info(f"   Domain    : N={DOMAIN['north']}, S={DOMAIN['south']}, "
-                 f"W={DOMAIN['west']}, E={DOMAIN['east']}")
-    logging.info(f"   Output dir: {RAW_DIR}")
-
-    # Check which months already exist
-    n_exist = sum(1 for m in CLIM_MONTHS if _validate_raw(_raw_file(m)))
-    logging.info(f"   Already downloaded: {n_exist}/{len(CLIM_MONTHS)} months")
+    logging.info(f"\n   Group '{group_name}': {cfg['description']}")
+    logging.info(
+        f"   Levels: {cfg['levels']}  |  Vars: {cfg['nc_vars']}  |  "
+        f"Already downloaded: {n_valid}/{len(CLIM_MONTHS)} months"
+    )
 
     c = cdsapi.Client()
     raw_files = []
     for month in CLIM_MONTHS:
-        raw_files.append(download_month(month, c, force=month in force_months))
+        raw_files.append(
+            download_group_month(group_name, month, c, force=month in force_set)
+        )
 
-    logging.info(f"\n   ✓ All {len(CLIM_MONTHS)} months downloaded.")
     total_mb = sum(f.stat().st_size for f in raw_files) / 1024**2
-    logging.info(f"   Total size: {total_mb:.1f} MB")
+    logging.info(
+        f"   ✓ Group '{group_name}': all {len(CLIM_MONTHS)} months ready "
+        f"({total_mb:.1f} MB total)."
+    )
     return raw_files
 
 
 # ============================================================================
-# COMPUTE CLIMATOLOGY
+# COMPUTE CLIMATOLOGY  (generic — works for all groups)
 # ============================================================================
 
-def compute_climatology(raw_files: list[Path]) -> xr.Dataset:
+def compute_group_climatology(group_name: str, raw_files: list) -> xr.Dataset:
     """
-    Compute 12-month climatological means from the per-month raw files.
+    Compute 30-year monthly climatological means for one download group.
 
-    For each calendar month the downloaded file already contains only
-    one month's data across all 30 years — average those 30 time steps
-    to get the monthly climatological mean, then concatenate along a
-    new ``month`` dimension.
+    Strategy
+    --------
+    Each raw file contains one calendar month across all 30 CLIM_YEARS.
+    Steps:
+      1. Average over the 30-year time axis → one monthly mean.
+      2. Optionally squeeze singleton pressure_level (single-level groups).
+      3. Rename variables: u → u_clim, v → v_clim, etc.
+      4. Concatenate 12 monthly means along a new ``month`` dimension.
 
-    Parameters
-    ----------
-    raw_files : list[Path]
-        12 per-month NetCDF files (one per calendar month), in order 1→12.
-
-    Returns
-    -------
-    ds_clim : xr.Dataset  — dims (month: 12, latitude, longitude)
+    Output dimensions
+    -----------------
+    squeeze_lev=True  (250hPa group): (month, latitude, longitude)
+    squeeze_lev=False (all others)  : (month, pressure_level, latitude, longitude)
     """
-    logging.info("\n   Computing 30-year climatological means (12 months)...")
+    cfg = DOWNLOAD_GROUPS[group_name]
+    logging.info(
+        f"\n   Computing 30-year climatology for group '{group_name}'..."
+    )
 
     monthly_means = []
     for month, f in zip(CLIM_MONTHS, raw_files):
         mname = MONTH_NAMES[month - 1]
-        ds = xr.open_dataset(f)
+        ds    = xr.open_dataset(f)
+        tc    = "valid_time" if "valid_time" in ds.dims else "time"
 
-        # Identify time coordinate
-        tc = "valid_time" if "valid_time" in ds.dims else "time"
+        ds_mean = ds.mean(dim=tc)   # average over 30-year time axis
 
-        # Mean over the 30-year time axis
-        ds_mean = ds.mean(dim=tc)
+        # Squeeze singleton pressure_level for single-level backward-compat groups
+        if cfg["squeeze_lev"]:
+            pc = "pressure_level" if "pressure_level" in ds_mean.dims else "level"
+            if pc in ds_mean.dims and ds_mean.sizes[pc] == 1:
+                ds_mean = ds_mean.squeeze(pc, drop=True)
 
-        # Drop singleton pressure-level dim if present
-        pc = "pressure_level" if "pressure_level" in ds_mean.dims else "level"
-        if pc in ds_mean.dims and ds_mean.sizes[pc] == 1:
-            ds_mean = ds_mean.squeeze(pc, drop=True)
-
-        # Rename: u → u_clim, v → v_clim, z → z_clim
-        rename_map = {}
-        for nc_name in NC_SHORT_NAMES.values():
-            if nc_name in ds_mean:
-                rename_map[nc_name] = f"{nc_name}_clim"
+        # Rename variables to climatology names (u → u_clim, etc.)
+        rename_map = {
+            v: cfg["clim_vars"][v]
+            for v in cfg["nc_vars"]
+            if v in ds_mean
+        }
         ds_mean = ds_mean.rename(rename_map)
-
-        # Attach month coordinate
         ds_mean = ds_mean.expand_dims({"month": [month]})
 
         logging.info(f"     {mname} ({month:02d}): mean over {ds.sizes[tc]} years ✓")
@@ -275,27 +406,16 @@ def compute_climatology(raw_files: list[Path]) -> xr.Dataset:
 
     ds_clim = xr.concat(monthly_means, dim="month")
 
-    # Global metadata
     ds_clim.attrs.update({
-        "description":          (f"ERA5 monthly climatological means at {PRESSURE_LEVEL} hPa "
-                                 f"({CLIM_YEARS[0]}–{CLIM_YEARS[-1]})"),
+        "description": (
+            f"ERA5 30-year monthly climatological means — {cfg['description']} "
+            f"({CLIM_YEARS[0]}–{CLIM_YEARS[-1]})"
+        ),
         "climatological_period": f"{CLIM_YEARS[0]}-{CLIM_YEARS[-1]}",
-        "pressure_level_hPa":    PRESSURE_LEVEL,
-        "purpose":               ("Base state for AFC (Ageostrophic Flux Convergence) "
-                                  "temporal decomposition (Orlanski & Katzfey 1991)"),
-        "created":               datetime.now().isoformat(),
+        "pressure_levels_hPa":   str(cfg["levels"]),
+        "purpose":                cfg["description"],
+        "created":                datetime.now().isoformat(),
     })
-
-    # Variable metadata
-    var_meta = {
-        "u_clim": ("Climatological zonal wind at 250 hPa",      "m s-1"),
-        "v_clim": ("Climatological meridional wind at 250 hPa", "m s-1"),
-        "z_clim": ("Climatological geopotential at 250 hPa",    "m2 s-2"),
-    }
-    for var, (lname, ustr) in var_meta.items():
-        if var in ds_clim:
-            ds_clim[var].attrs.update(long_name=lname, units=ustr)
-
     return ds_clim
 
 
@@ -306,25 +426,39 @@ def compute_climatology(raw_files: list[Path]) -> xr.Dataset:
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Download ERA5 monthly means (one CDS request per calendar month) "
-            "and compute a 30-year climatology for the AFC diagnostic."
-        )
+            "Download ERA5 monthly means (1991–2020) and compute 30-year "
+            "climatologies for all anomaly diagnostics used in step 3."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Groups and output files:
+  250hPa  → era5_climatology_250hPa.nc   (u, v, z at 250 hPa)
+  pv200   → era5_climatology_pv200.nc    (u, v, t at 175/200/225 hPa)
+  pv850   → era5_climatology_pv850.nc    (u, v, t at 825/850/875 hPa)
+  mfd975  → era5_climatology_mfd975.nc   (u, v, q at 975 hPa)
+  slp     → era5_climatology_slp.nc      (msl at surface)
+        """,
     )
     parser.add_argument(
         "--force", action="store_true",
-        help="Force re-download and re-computation of all months.",
+        help="Force re-download and re-computation for ALL groups.",
     )
     parser.add_argument(
         "--force-months", type=int, nargs="+", metavar="M",
-        help="Force re-download for specific months only (e.g. --force-months 3 7).",
+        help="Force re-download for specific calendar months (all groups).",
+    )
+    parser.add_argument(
+        "--groups", nargs="+", choices=list(DOWNLOAD_GROUPS),
+        default=list(DOWNLOAD_GROUPS),
+        help="Process only these groups (default: all four).",
     )
     parser.add_argument(
         "--clim-only", action="store_true",
-        help="Skip download; recompute climatology from existing raw files.",
+        help="Skip CDS download; recompute climatologies from existing raw files.",
     )
     args = parser.parse_args()
 
-    # ── Logging ──────────────────────────────────────────────────────────
+    # ── Logging ───────────────────────────────────────────────────────────
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file  = LOG_DIR / f"era5_monthly_means_{timestamp}.log"
     logging.basicConfig(
@@ -337,59 +471,106 @@ def main():
     )
 
     logging.info("=" * 70)
-    logging.info("STEP 2.1: ERA5 MONTHLY MEANS → CLIMATOLOGY FOR AFC")
+    logging.info("STEP 2.1: ERA5 MONTHLY MEANS → CLIMATOLOGIES FOR ANOMALY DIAGNOSTICS")
     logging.info("=" * 70)
     logging.info(f"   Log: {log_file}")
 
-    # ── Check if final output already exists ─────────────────────────────
-    if OUTPUT_FILE.exists() and not args.force and not args.force_months and not args.clim_only:
-        logging.info(f"\n   ✓ Climatology already exists: {OUTPUT_FILE.name}")
-        logging.info("   Use --force to re-download everything, or")
-        logging.info("   --force-months M to re-download specific months, or")
-        logging.info("   --clim-only to recompute from existing raw files.")
-        with xr.open_dataset(OUTPUT_FILE) as ds:
-            logging.info(f"   Variables : {list(ds.data_vars)}")
-            logging.info(f"   Dimensions: {dict(ds.dims)}")
-            logging.info(f"   Period    : {ds.attrs.get('climatological_period', '?')}")
+    groups_to_process = args.groups
+    force_months      = list(CLIM_MONTHS) if args.force else (args.force_months or [])
+
+    # ── Status report ─────────────────────────────────────────────────────
+    logging.info("\n   CURRENT STATUS:")
+    any_missing = False
+    for gname in groups_to_process:
+        cfg          = DOWNLOAD_GROUPS[gname]
+        n_valid, missing_m = _check_group_status(gname)
+        clim_exists  = cfg["output"].exists()
+        status       = "✓" if (n_valid == 12 and clim_exists) else "⚠"
+        missing_str  = f"  missing months: {missing_m}" if missing_m else ""
+        sz_str       = (f" ({cfg['output'].stat().st_size/1024**2:.1f} MB)"
+                        if clim_exists else "")
+        logging.info(
+            f"   {status} {gname:12s}: "
+            f"{n_valid}/12 raw months valid  |  "
+            f"clim={'yes' if clim_exists else 'NO'}{sz_str}{missing_str}"
+        )
+        if n_valid < 12 or not clim_exists:
+            any_missing = True
+
+    if not any_missing and not args.force and not args.force_months:
+        logging.info(
+            "\n   ✓ All groups complete.  "
+            "Use --force to re-download or --clim-only to recompute."
+        )
         return
 
-    # ── Download ─────────────────────────────────────────────────────────
-    if not args.clim_only:
-        force_months = list(CLIM_MONTHS) if args.force else (args.force_months or [])
-        raw_files = download_all_months(force_months=force_months)
-    else:
-        raw_files = [_raw_file(m) for m in CLIM_MONTHS]
-        missing   = [m for m, f in zip(CLIM_MONTHS, raw_files) if not _validate_raw(f)]
-        if missing:
-            logging.error(f"   ❌ Missing/invalid raw files for months: {missing}")
-            logging.error("   Run without --clim-only to download them.")
-            sys.exit(1)
-        logging.info("   --clim-only: using existing raw files.")
+    # ── Process each group ────────────────────────────────────────────────
+    completed: list = []
+    failed:    list = []
 
-    # ── Compute climatology ───────────────────────────────────────────────
-    ds_clim = compute_climatology(raw_files)
+    for gname in groups_to_process:
+        cfg = DOWNLOAD_GROUPS[gname]
+        logging.info(f"\n{'='*60}")
+        logging.info(f"   Group: {gname}  ({cfg['description']})")
+        logging.info(f"{'='*60}")
 
-    # ── Save ─────────────────────────────────────────────────────────────
-    ds_clim.to_netcdf(OUTPUT_FILE)
-    logging.info(f"\n   ✓ Saved: {OUTPUT_FILE.name} "
-                 f"({OUTPUT_FILE.stat().st_size / 1024**2:.1f} MB)")
+        try:
+            # Download (or use existing)
+            if not args.clim_only:
+                raw_files = download_group(gname, force_months=force_months)
+            else:
+                raw_files = [_raw_file(gname, m) for m in CLIM_MONTHS]
+                missing   = [
+                    m for m, f in zip(CLIM_MONTHS, raw_files)
+                    if not _validate_raw(f, cfg["nc_vars"], cfg["levels"])
+                ]
+                if missing:
+                    logging.error(
+                        f"   ❌ [{gname}] Missing/invalid raw files for months: {missing}"
+                    )
+                    logging.error("   Run without --clim-only to download them.")
+                    failed.append(gname)
+                    continue
+                logging.info(f"   [{gname}] --clim-only: using existing raw files.")
 
-    logging.info("\n   Summary:")
-    for var in ds_clim.data_vars:
-        d = ds_clim[var].values
-        logging.info(f"     {var}: shape={d.shape}, "
-                     f"range=[{np.nanmin(d):.2f}, {np.nanmax(d):.2f}]")
+            # Compute and save climatology
+            ds_clim = compute_group_climatology(gname, raw_files)
+            ds_clim.to_netcdf(cfg["output"])
+            sz = cfg["output"].stat().st_size / 1024**2
+            logging.info(f"\n   ✓ [{gname}] Saved: {cfg['output'].name} ({sz:.1f} MB)")
+            for var in ds_clim.data_vars:
+                d = ds_clim[var].values
+                logging.info(
+                    f"     {var}: shape={d.shape}, "
+                    f"range=[{np.nanmin(d):.4g}, {np.nanmax(d):.4g}]"
+                )
+            completed.append(gname)
 
-    logging.info(f"\n   Per-month raw files kept in: {RAW_DIR}")
-    logging.info("   (Delete the directory manually if disk space is a concern.)")
+        except Exception as exc:
+            logging.error(f"   ❌ [{gname}] Failed: {exc}")
+            failed.append(gname)
 
+    # ── Final summary ─────────────────────────────────────────────────────
     logging.info("\n" + "=" * 70)
-    logging.info("✓ STEP 2.1 COMPLETE")
+    logging.info("STEP 2.1 " + ("COMPLETE" if not failed else "PARTIALLY COMPLETE"))
     logging.info("=" * 70)
     logging.info(f"   Log: {log_file}")
-    logging.info("\n   Next: python scripts/ep_structure_analysis/"
-                 "step3_precompute_composites.py")
+    if completed:
+        logging.info(f"\n   Completed ({len(completed)}):")
+        for g in completed:
+            logging.info(f"     ✓ {g:12s} → {DOWNLOAD_GROUPS[g]['output'].name}")
+    if failed:
+        logging.warning(f"\n   Failed groups: {failed}")
+    logging.info(
+        f"\n   Raw files kept in: {RAW_DIR}\n"
+        "   (Delete manually if disk space is a concern.)"
+    )
+    logging.info(
+        "\n   Next step:  "
+        "python scripts/ep_structure_analysis/step3_precompute_composites.py"
+    )
 
 
 if __name__ == "__main__":
     main()
+

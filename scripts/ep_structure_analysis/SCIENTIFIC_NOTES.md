@@ -78,6 +78,19 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 | **KE Advection** | 250 hPa | Kinetic energy tendency from advection | - |
 | **AFC** (Ageostrophic Flux Convergence) | 250 hPa | Eddy KE redistribution via ageostrophic pressure work | Orlanski & Katzfey (1991); Orlanski & Sheldon (1993) |
 
+**Anomaly diagnostics** (departure from 1991–2020 climatology — same temporal decomposition as AFC):
+
+| Anomaly Diagnostic | Level | Base Field Primed | Output Variable |
+|--------------------|-------|-------------------|-----------------|
+| **PV anomaly** | 200 hPa | u′, v′, T′ at 175/200/225 hPa | `pv_200_anom` |
+| **PV anomaly** | 850 hPa | u′, v′, T′ at 825/850/875 hPa | `pv_850_anom` |
+| **Temp advection anomaly** | 850 hPa | u′, v′, T′ at 850 hPa | `adv_T_850_anom` |
+| **Moisture flux div anomaly** | 975 hPa | u′, v′, q′ at 975 hPa | `div_q_975_anom` |
+| **KE advection anomaly** | 250 hPa | u′, v′ at 250 hPa | `ke_adv_250_anom` |
+| **SLP anomaly** | Surface | msl (Pa) | `msl_anom` |
+
+> **Note:** EGR is not decomposed into anomaly form. The EGR formula involves N² and vertical shear over a deep layer (500–850 hPa), making a clean temporal decomposition ill-defined. EGR is interpreted as a total-field baroclinic instability measure.
+
 ### 3.2 Spherical Grid Spacing
 
 All horizontal derivatives account for Earth's spherical geometry:
@@ -206,6 +219,43 @@ $$AFC = -\nabla \cdot (\vec{v}_{ag}' \, \phi')$$
 **Climatology source:** ERA5 monthly averaged reanalysis (`reanalysis-era5-pressure-levels-monthly-means`), downloaded via CDS API. See `step2_1_download_era5_monthly_means.py`.
 
 **References:** Orlanski & Katzfey (1991), Orlanski & Sheldon (1993), Solman & Menéndez (1998)
+
+### 3.10 Anomaly Fields — Temporal Decomposition
+
+To isolate the **synoptic-scale eddy signature** of EP1 and EP2 cyclones from the background climatological state, five additional diagnostics are computed as anomaly (eddy perturbation) fields using the same temporal decomposition already applied to AFC.
+
+**Decomposition:**
+$$X = \bar{X} + X'$$
+
+where $\bar{X}$ is the **30-year WMO monthly climatological mean** (1991–2020, ERA5 monthly-averaged reanalysis) and $X'$ is the **eddy perturbation** at the time of the cyclone track.
+
+**Climatology data source:**  
+ERA5 monthly-averaged reanalysis on pressure levels (`reanalysis-era5-pressure-levels-monthly-means`), downloaded via CDS API in `step2_1_download_era5_monthly_means.py`. The download is organized in four groups:
+
+| Group | Levels (hPa) | Variables | Climatology file |
+|-------|-------------|-----------|------------------|
+| `250hPa` | 250 | u, v, z | `era5_climatology_250hPa.nc` |
+| `pv200` | 175, 200, 225 | u, v, t | `era5_climatology_pv200.nc` |
+| `pv850` | 825, 850, 875 | u, v, t | `era5_climatology_pv850.nc` |
+| `mfd975` | 975 | u, v, q | `era5_climatology_mfd975.nc` |
+| `slp` | surface | msl | `era5_climatology_slp.nc` |
+
+**Application to diagnostics:**  
+For each diagnostic $D = D(u, v, T, \ldots)$ the anomaly is computed by substituting all input fields with their eddy counterparts:
+
+$$D' = D(u', v', T', \ldots) \quad \text{where } u' = u - \bar{u}_m, \; T' = T - \bar{T}_m, \ldots$$
+
+This is the standard linear perturbation approach in synoptic-scale diagnostic studies (e.g., Decker & Martin 2005). For non-linear diagnostics (PV, divergence), the anomaly field thus captures the contribution of synoptic-scale transients to the diagnostic.
+
+**Physical rationale:**  
+- **PV′:** Highlights stratospheric intrusions and diabatic generation that are anomalous relative to the climatological background tropopause structure.
+- **Temp advection′:** Isolates warm/cold advection driven by the cyclone's eddy circulation, removing the climatological advective background.
+- **Moisture flux div′:** Captures synoptic-scale convergence anomalies, filtering out the seasonal moisture cycle.
+- **KE advection′:** Highlights energy transport by the eddy jet/streak relative to the mean flow.
+
+**Note on EGR:** EGR is a layer-averaged diagnostic derived from the total wind shear and static stability. A temporal decomposition of EGR would require priming N² and the shear simultaneously, leading to non-trivial cross terms. For this reason EGR is retained as a total-field diagnostic only.
+
+**Note on AFC:** AFC is by construction an anomaly field (it is already computed from eddy $\vec{v}'$ and $\phi'$ relative to the monthly climatology). No additional anomaly version is needed.
 
 ---
 
@@ -372,6 +422,93 @@ $$AFC = -\nabla \cdot (\vec{v}_{ag}' \, \phi')$$
 | South (-7.5°) | -5.042e-04 | -1.389e-03 |
 | East (+7.5°) | 6.667e-04 | -3.241e-03 |
 | West (-7.5°) | -1.856e-03 | 1.532e-03 |
+
+---
+
+### 4.10 PV Anomaly at 200 hPa
+
+![PV′@200 Composite](figures/ep_structure/composite_pv200_anom.png)
+
+*Figure: PV eddy perturbation at 200 hPa (departure from 1991–2020 climatology) for EP1 (left) and EP2 (right). Units: PVU. Computed from eddy winds u′, v′ and temperature T′ at 175/200/225 hPa.*
+
+**Summary Statistics:**
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Mean ± SD (PVU) | TBD | TBD |
+| Range (PVU) | TBD | TBD |
+| LEC 15×15° mean | TBD | TBD |
+
+### 4.11 PV Anomaly at 850 hPa
+
+![PV′@850 Composite](figures/ep_structure/composite_pv850_anom.png)
+
+*Figure: PV eddy perturbation at 850 hPa (departure from 1991–2020 climatology) for EP1 (left) and EP2 (right). Units: PVU. Computed from eddy winds u′, v′ and temperature T′ at 825/850/875 hPa.*
+
+**Summary Statistics:**
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Mean ± SD (PVU) | TBD | TBD |
+| Range (PVU) | TBD | TBD |
+| LEC 15×15° mean | TBD | TBD |
+
+### 4.12 Temperature Advection Anomaly (850 hPa)
+
+![AdvT′@850 Composite](figures/ep_structure/composite_advT850_anom.png)
+
+*Figure: Temperature advection eddy perturbation at 850 hPa (−V′·∇T′) for EP1 (left) and EP2 (right). Units: K h⁻¹. Positive = anomalous warm advection; Negative = anomalous cold advection.*
+
+**Summary Statistics:**
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Domain mean (K h⁻¹) | TBD | TBD |
+| Max warm advection (K h⁻¹) | TBD | TBD |
+| Max cold advection (K h⁻¹) | TBD | TBD |
+| LEC 15×15° mean (K h⁻¹) | TBD | TBD |
+
+### 4.13 Moisture Flux Divergence Anomaly (975 hPa)
+
+![MFD′@975 Composite](figures/ep_structure/composite_moisture_flux_anom.png)
+
+*Figure: Moisture flux divergence eddy perturbation at 975 hPa (∇·(q′V′)) for EP1 (left) and EP2 (right). Units: kg kg⁻¹ s⁻¹. Negative = anomalous convergence.*
+
+**Summary Statistics:**
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Domain mean (kg kg⁻¹ s⁻¹) | TBD | TBD |
+| Max convergence anomaly | TBD | TBD |
+| LEC 15×15° mean | TBD | TBD |
+
+### 4.14 KE Advection Anomaly (250 hPa)
+
+![KE′ Adv@250 Composite](figures/ep_structure/composite_ke_advection_anom.png)
+
+*Figure: Kinetic energy advection eddy perturbation at 250 hPa (−V′·∇(½|V|²)) for EP1 (left) and EP2 (right). Units: m² s⁻³.*
+
+**Summary Statistics:**
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Domain mean (m² s⁻³) | TBD | TBD |
+| Range (m² s⁻³) | TBD | TBD |
+| LEC 15×15° mean | TBD | TBD |
+
+### 4.15 Sea Level Pressure Anomaly
+
+![SLP′ Composite](figures/ep_structure/composite_slp_anom.png)
+
+*Figure: Sea level pressure anomaly (SLP′ = SLP − climatological monthly mean) for EP1 (left) and EP2 (right). Units: hPa. Positive (red) = anomalous high pressure; Negative (blue) = anomalous low pressure. The low-pressure anomaly centred at the cyclone position directly indicates the deepening relative to the climatological background. 850 hPa wind vectors overlaid.*
+
+**Summary Statistics:**
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Domain mean (hPa) | TBD | TBD |
+| Minimum anomaly (hPa) | TBD | TBD |
+| LEC 15×15° mean (hPa) | TBD | TBD |
 
 ---
 

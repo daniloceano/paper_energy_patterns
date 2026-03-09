@@ -104,31 +104,120 @@ MIN_LAT = 5.0
 MAX_EGR_DAY = 5.0
 MIN_N_SQUARED = 1e-6
 
-# AFC climatology file (produced by step2_1)
-CLIMATOLOGY_FILE = DATA_DIR / "era5_climatology_250hPa.nc"
+# Climatology files produced by step2_1  (one per download group)
+# ------------------------------------------------------------------
+# 250hPa  : u, v, z at 250 hPa   → AFC  +  KE_adv anomaly
+# pv200   : u, v, t at 175/200/225 hPa  → PV@200 anomaly
+# pv850   : u, v, t at 825/850/875 hPa  → PV@850 + T_adv@850 anomaly
+# mfd975  : u, v, q at 975 hPa          → moisture flux div anomaly
+CLIMATOLOGY_FILE        = DATA_DIR / "era5_climatology_250hPa.nc"
+CLIMATOLOGY_PV200_FILE  = DATA_DIR / "era5_climatology_pv200.nc"
+CLIMATOLOGY_PV850_FILE  = DATA_DIR / "era5_climatology_pv850.nc"
+CLIMATOLOGY_MFD975_FILE = DATA_DIR / "era5_climatology_mfd975.nc"
+CLIMATOLOGY_SLP_FILE    = DATA_DIR / "era5_climatology_slp.nc"
 
-# Module-level cache for climatology (loaded once, shared across cases)
-_CLIMATOLOGY_DS = None
+# Module-level caches (loaded once per process, shared across cases)
+_CLIMATOLOGY_DS       = None   # 250 hPa: u, v, z
+_CLIMATOLOGY_PV200_DS = None   # pv200  : u, v, t at 175/200/225 hPa
+_CLIMATOLOGY_PV850_DS = None   # pv850  : u, v, t at 825/850/875 hPa
+_CLIMATOLOGY_MFD975_DS = None  # mfd975 : u, v, q at 975 hPa
+_CLIMATOLOGY_SLP_DS   = None   # slp    : msl at surface
 
 
 def _load_climatology():
     """
-    Lazy-load the 250 hPa climatology for AFC computation.
+    Lazy-load the 250 hPa climatology (u, v, z).
 
-    Returns the xr.Dataset with variables u_clim, v_clim, z_clim and
-    dimension ``month`` (1–12).  Loaded once and cached in module global.
+    Used for AFC and KE advection anomaly.  Dims: (month, lat, lon).
     """
     global _CLIMATOLOGY_DS
     if _CLIMATOLOGY_DS is None:
         if not CLIMATOLOGY_FILE.exists():
             logging.warning(
-                f"   AFC climatology not found: {CLIMATOLOGY_FILE.name}. "
-                "Run step2_1 first.  AFC will be skipped."
+                f"   AFC/KE_adv climatology not found: {CLIMATOLOGY_FILE.name}. "
+                "Run step2_1 first.  AFC and KE_adv anomaly will be skipped."
             )
             return None
         _CLIMATOLOGY_DS = xr.open_dataset(CLIMATOLOGY_FILE)
-        logging.info(f"   Loaded AFC climatology: {CLIMATOLOGY_FILE.name}")
+        logging.info(f"   Loaded 250 hPa climatology: {CLIMATOLOGY_FILE.name}")
     return _CLIMATOLOGY_DS
+
+
+def _load_clim_pv200():
+    """
+    Lazy-load PV@200 climatology (u, v, t at 175/200/225 hPa).
+
+    Dims: (month, pressure_level, lat, lon).  Used for PV@200 anomaly.
+    """
+    global _CLIMATOLOGY_PV200_DS
+    if _CLIMATOLOGY_PV200_DS is None:
+        if not CLIMATOLOGY_PV200_FILE.exists():
+            logging.warning(
+                f"   PV200 climatology not found: {CLIMATOLOGY_PV200_FILE.name}. "
+                "Run step2_1 first.  PV@200 anomaly will be skipped."
+            )
+            return None
+        _CLIMATOLOGY_PV200_DS = xr.open_dataset(CLIMATOLOGY_PV200_FILE)
+        logging.info(f"   Loaded PV200 climatology: {CLIMATOLOGY_PV200_FILE.name}")
+    return _CLIMATOLOGY_PV200_DS
+
+
+def _load_clim_pv850():
+    """
+    Lazy-load PV@850/T_adv@850 climatology (u, v, t at 825/850/875 hPa).
+
+    Dims: (month, pressure_level, lat, lon).  Used for PV@850 anomaly
+    and temperature advection@850 anomaly.
+    """
+    global _CLIMATOLOGY_PV850_DS
+    if _CLIMATOLOGY_PV850_DS is None:
+        if not CLIMATOLOGY_PV850_FILE.exists():
+            logging.warning(
+                f"   PV850 climatology not found: {CLIMATOLOGY_PV850_FILE.name}. "
+                "Run step2_1 first.  PV@850 and T_adv@850 anomalies will be skipped."
+            )
+            return None
+        _CLIMATOLOGY_PV850_DS = xr.open_dataset(CLIMATOLOGY_PV850_FILE)
+        logging.info(f"   Loaded PV850 climatology: {CLIMATOLOGY_PV850_FILE.name}")
+    return _CLIMATOLOGY_PV850_DS
+
+
+def _load_clim_mfd975():
+    """
+    Lazy-load moisture flux divergence climatology (u, v, q at 975 hPa).
+
+    Dims: (month, pressure_level, lat, lon).  Used for MFD anomaly.
+    """
+    global _CLIMATOLOGY_MFD975_DS
+    if _CLIMATOLOGY_MFD975_DS is None:
+        if not CLIMATOLOGY_MFD975_FILE.exists():
+            logging.warning(
+                f"   MFD975 climatology not found: {CLIMATOLOGY_MFD975_FILE.name}. "
+                "Run step2_1 first.  Moisture flux div anomaly will be skipped."
+            )
+            return None
+        _CLIMATOLOGY_MFD975_DS = xr.open_dataset(CLIMATOLOGY_MFD975_FILE)
+        logging.info(f"   Loaded MFD975 climatology: {CLIMATOLOGY_MFD975_FILE.name}")
+    return _CLIMATOLOGY_MFD975_DS
+
+
+def _load_clim_slp():
+    """
+    Lazy-load SLP climatology (msl at surface).
+
+    Dims: (month, lat, lon).  Used for SLP anomaly.
+    """
+    global _CLIMATOLOGY_SLP_DS
+    if _CLIMATOLOGY_SLP_DS is None:
+        if not CLIMATOLOGY_SLP_FILE.exists():
+            logging.warning(
+                f"   SLP climatology not found: {CLIMATOLOGY_SLP_FILE.name}. "
+                "Run step2_1 with --groups slp to download.  SLP anomaly will be skipped."
+            )
+            return None
+        _CLIMATOLOGY_SLP_DS = xr.open_dataset(CLIMATOLOGY_SLP_FILE)
+        logging.info(f"   Loaded SLP climatology: {CLIMATOLOGY_SLP_FILE.name}")
+    return _CLIMATOLOGY_SLP_DS
 
 
 # ============================================================================
@@ -878,6 +967,121 @@ def _process_single_case(track_id):
                 clim_sub["u_clim"], clim_sub["v_clim"], clim_sub["z_clim"],
             )
 
+        # ── ANOMALY FIELDS ────────────────────────────────────────
+        # Anomalies follow the same convention as AFC: eddy (primed)
+        # inputs are computed first by subtracting the 30-year
+        # monthly climatological mean, then the diagnostic is applied
+        # to the anomaly inputs.  This isolates the eddy contribution
+        # and is consistent with the AFC temporal decomposition.
+        #
+        # All climatologies are loaded lazily (once per process) and
+        # skipped gracefully if the file is missing.
+
+        # Re-use case_month / case_lats / case_lons if already set,
+        # otherwise compute them now.
+        if 'case_month' not in dir():
+            case_month = pd.Timestamp(meta["start_time"]).month
+            case_lats  = u_250.latitude.values
+            case_lons  = u_250.longitude.values
+
+        def _interp_clim(ds_c):
+            """Interpolate monthly climatology slice to case subdomain."""
+            return ds_c.sel(month=case_month).interp(
+                latitude=case_lats, longitude=case_lons, method="linear"
+            )
+
+        def _clim_prime(clim_2d_raw, ref_da, unit_str):
+            """
+            Compute anomaly DataArray: ref_da − clim_2d_raw.
+            clim_2d_raw: plain xr.DataArray (2-D, from climatology file)
+            ref_da     : instantaneous unit-tagged DataArray (same shape)
+            """
+            clim_da = (
+                xr.DataArray(clim_2d_raw.values,
+                             coords=ref_da.coords,
+                             dims=ref_da.dims)
+                * units(unit_str)
+            )
+            return ref_da - clim_da
+
+        # ── KE advection anomaly (250 hPa, uses existing 250 hPa clim) ──
+        if ds_clim is not None:
+            c250 = _interp_clim(ds_clim)
+            u_250_p = _clim_prime(c250["u_clim"], u_250, "m/s")
+            v_250_p = _clim_prime(c250["v_clim"], v_250, "m/s")
+            result["ke_adv_250_anom"] = kinetic_energy_advection_250(u_250_p, v_250_p)
+
+        # ── PV@200 anomaly (175/200/225 hPa) ─────────────────────
+        ds_clim_pv200 = _load_clim_pv200()
+        if ds_clim_pv200 is not None:
+            c200 = _interp_clim(ds_clim_pv200)
+
+            def _p200(lev, da_field, clim_var, unit_str):
+                raw = c200[clim_var].sel(pressure_level=float(lev))
+                return _clim_prime(raw, da_field, unit_str)
+
+            result["pv_200_anom"] = compute_pv_at_level(
+                _p200(175, _sel(u_da, 175) * units("m/s"), "u_clim", "m/s"),
+                _p200(200, _sel(u_da, 200) * units("m/s"), "u_clim", "m/s"),
+                _p200(225, _sel(u_da, 225) * units("m/s"), "u_clim", "m/s"),
+                _p200(175, _sel(v_da, 175) * units("m/s"), "v_clim", "m/s"),
+                _p200(200, _sel(v_da, 200) * units("m/s"), "v_clim", "m/s"),
+                _p200(225, _sel(v_da, 225) * units("m/s"), "v_clim", "m/s"),
+                _p200(175, _sel(T_da, 175) * units.kelvin, "t_clim", "kelvin"),
+                _p200(200, _sel(T_da, 200) * units.kelvin, "t_clim", "kelvin"),
+                _p200(225, _sel(T_da, 225) * units.kelvin, "t_clim", "kelvin"),
+                np.array([levels[_idx(175)], levels[_idx(200)], levels[_idx(225)]]) * 100.0,
+            )
+
+        # ── T_adv@850 anomaly + PV@850 anomaly (825/850/875 hPa) ─
+        ds_clim_pv850 = _load_clim_pv850()
+        if ds_clim_pv850 is not None:
+            c850 = _interp_clim(ds_clim_pv850)
+
+            def _p850(lev, da_field, clim_var, unit_str):
+                raw = c850[clim_var].sel(pressure_level=float(lev))
+                return _clim_prime(raw, da_field, unit_str)
+
+            # Temperature advection anomaly uses eddy u', v', T' at 850 hPa
+            u_850_p = _p850(850, u_850, "u_clim", "m/s")
+            v_850_p = _p850(850, v_850, "v_clim", "m/s")
+            T_850_p = _p850(850, T_850, "t_clim", "kelvin")
+            result["adv_T_850_anom"] = temperature_advection_850(u_850_p, v_850_p, T_850_p)
+
+            # PV@850 anomaly uses eddy inputs at all three surrounding levels
+            result["pv_850_anom"] = compute_pv_at_level(
+                _p850(825, _sel(u_da, 825) * units("m/s"), "u_clim", "m/s"),
+                _p850(850, _sel(u_da, 850) * units("m/s"), "u_clim", "m/s"),
+                _p850(875, _sel(u_da, 875) * units("m/s"), "u_clim", "m/s"),
+                _p850(825, _sel(v_da, 825) * units("m/s"), "v_clim", "m/s"),
+                _p850(850, _sel(v_da, 850) * units("m/s"), "v_clim", "m/s"),
+                _p850(875, _sel(v_da, 875) * units("m/s"), "v_clim", "m/s"),
+                _p850(825, _sel(T_da, 825) * units.kelvin, "t_clim", "kelvin"),
+                _p850(850, _sel(T_da, 850) * units.kelvin, "t_clim", "kelvin"),
+                _p850(875, _sel(T_da, 875) * units.kelvin, "t_clim", "kelvin"),
+                np.array([levels[_idx(825)], levels[_idx(850)], levels[_idx(875)]]) * 100.0,
+            )
+
+        # ── Moisture flux divergence anomaly (975 hPa) ────────────
+        ds_clim_mfd = _load_clim_mfd975()
+        if ds_clim_mfd is not None:
+            c975 = _interp_clim(ds_clim_mfd)
+
+            def _p975(da_field, clim_var, unit_str):
+                raw = c975[clim_var].sel(pressure_level=975.0)
+                return _clim_prime(raw, da_field, unit_str)
+
+            u_975_p = _p975(u_975, "u_clim", "m/s")
+            v_975_p = _p975(v_975, "v_clim", "m/s")
+            q_975_p = _p975(q_975, "q_clim", "kg/kg")
+            result["div_q_975_anom"] = moisture_flux_divergence_975(u_975_p, v_975_p, q_975_p)
+
+        # ── SLP anomaly ───────────────────────────────────────────
+        ds_clim_slp = _load_clim_slp()
+        if "msl" in result and ds_clim_slp is not None:
+            c_slp = _interp_clim(ds_clim_slp)
+            result["msl_anom"] = result["msl"] - c_slp["msl_clim"].values
+
         ds.close()
         return track_id, result, None
 
@@ -945,6 +1149,9 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "egr": [], "pv_200": [], "pv_850": [], "adv_T_850": [],
         "div_q_975": [], "ke_adv_250": [], "rk_criterion_250": [],
         "afc_250": [], "msl": [],
+        # Anomaly fields (computed from eddy/primed inputs)
+        "ke_adv_250_anom": [], "adv_T_850_anom": [], "div_q_975_anom": [],
+        "pv_200_anom": [], "pv_850_anom": [], "msl_anom": [],
     }
     level_accum: dict[str, dict[int, list]] = {
         "u": {250: [], 850: [], 975: []},
@@ -962,7 +1169,7 @@ def compute_composite(cases, ep_label, n_jobs=1):
             failed += 1
             continue
 
-        # Scalars
+        # Scalars (total fields)
         for key in ("egr", "pv_200", "pv_850", "adv_T_850",
                      "div_q_975", "ke_adv_250", "rk_criterion_250",
                      "afc_250"):
@@ -970,6 +1177,12 @@ def compute_composite(cases, ep_label, n_jobs=1):
                 scalar_accum[key].append(result[key])
         if "msl" in result:
             scalar_accum["msl"].append(result["msl"])
+
+        # Anomaly fields (collected only when climatology was available)
+        for key in ("ke_adv_250_anom", "adv_T_850_anom", "div_q_975_anom",
+                     "pv_200_anom", "pv_850_anom", "msl_anom"):
+            if key in result:
+                scalar_accum[key].append(result[key])
 
         # Winds / humidity
         for var in ("u", "v"):
@@ -1001,14 +1214,21 @@ def compute_composite(cases, ep_label, n_jobs=1):
 
     # Scalar / single-level derived fields
     scalar_specs = {
-        "egr":              ("Eady Growth Rate",                     "day-1"),
-        "pv_200":           ("Potential Vorticity at 200 hPa",       "K m2 kg-1 s-1"),
-        "pv_850":           ("Potential Vorticity at 850 hPa",       "K m2 kg-1 s-1"),
-        "adv_T_850":        ("Temperature Advection at 850 hPa",     "K s-1"),
-        "div_q_975":        ("Moisture Flux Divergence at 975 hPa",  "g kg-1 s-1"),
-        "ke_adv_250":       ("KE Advection at 250 hPa",              "m2 s-3"),
-        "rk_criterion_250": ("Rayleigh-Kuo Criterion at 250 hPa",    "s-1 m-1"),
-        "afc_250":          ("Ageostrophic Flux Convergence 250 hPa", "m2 s-3"),
+        "egr":              ("Eady Growth Rate",                            "day-1"),
+        "pv_200":           ("Potential Vorticity at 200 hPa",              "K m2 kg-1 s-1"),
+        "pv_850":           ("Potential Vorticity at 850 hPa",              "K m2 kg-1 s-1"),
+        "adv_T_850":        ("Temperature Advection at 850 hPa",            "K s-1"),
+        "div_q_975":        ("Moisture Flux Divergence at 975 hPa",         "g kg-1 s-1"),
+        "ke_adv_250":       ("KE Advection at 250 hPa",                     "m2 s-3"),
+        "rk_criterion_250": ("Rayleigh-Kuo Criterion at 250 hPa",           "s-1 m-1"),
+        "afc_250":          ("Ageostrophic Flux Convergence 250 hPa",        "m2 s-3"),
+        # Anomaly fields (eddy inputs relative to 30-yr monthly climatology)
+        "ke_adv_250_anom":  ("KE Advection Anomaly at 250 hPa",             "m2 s-3"),
+        "adv_T_850_anom":   ("Temperature Advection Anomaly at 850 hPa",    "K s-1"),
+        "div_q_975_anom":   ("Moisture Flux Divergence Anomaly at 975 hPa", "g kg-1 s-1"),
+        "pv_200_anom":      ("Potential Vorticity Anomaly at 200 hPa",      "K m2 kg-1 s-1"),
+        "pv_850_anom":      ("Potential Vorticity Anomaly at 850 hPa",      "K m2 kg-1 s-1"),
+        "msl_anom":         ("Sea Level Pressure Anomaly",                   "Pa"),
     }
     da_scalars: dict[str, xr.DataArray] = {}
     for var, (lname, ustr) in scalar_specs.items():

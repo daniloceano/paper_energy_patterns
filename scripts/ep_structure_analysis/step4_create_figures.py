@@ -5,7 +5,7 @@ For each diagnostic field, creates a side-by-side composite figure:
   Left  panel: EP1
   Right panel: EP2
 
-Fields plotted:
+Fields plotted (total fields):
   1. EGR (500–850 hPa, Besson et al. 2021) — shaded
   2. PV at 200 hPa                         — shaded + 2 PVU contour
   3. PV at 850 hPa                         — shaded
@@ -15,6 +15,17 @@ Fields plotted:
   7. RK criterion at 250 hPa              — shaded (negative = unstable)
   8. KE advection at 250 hPa              — shaded (positive = acceleration)
   9. AFC at 250 hPa (Orlanski & Katzfey 1991) — shaded (positive = eddy KE source)
+
+Anomaly fields (departure from 1991–2020 WMO climatology):
+  10. PV anomaly at 200 hPa       — composite_pv200_anom.png
+  11. PV anomaly at 850 hPa       — composite_pv850_anom.png
+  12. Temp advection anomaly 850  — composite_advT850_anom.png
+  13. Moisture flux div anomaly   — composite_moisture_flux_anom.png
+  14. KE advection anomaly 250    — composite_ke_advection_anom.png
+
+Note: EGR is not decomposed into anomaly form (no climatology downloaded).
+Note: AFC anomaly uses the same temporal decomposition as the total field
+      (AFC is already computed from eddy geopotential departures).
 
 Each panel includes a 15°×15° dashed box indicating the LEC computation domain.
 
@@ -671,6 +682,190 @@ def figure_afc(datasets):
 
 
 # ============================================================================
+# ANOMALY FIGURE FUNCTIONS
+# ============================================================================
+
+def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
+              cmap="RdBu_r", wind_u=None, wind_v=None,
+              wind_scale=None, wind_note=None):
+    """Generic two-panel (EP1 / EP2) anomaly figure builder.
+
+    Parameters
+    ----------
+    datasets     : dict with keys "EP1", "EP2" → xr.Dataset
+    var_key      : variable name inside each dataset
+    scale_factor : multiply raw values before plotting (e.g. 3600 for K/s→K/h)
+    unit_label   : colorbar label string
+    suptitle     : figure super-title
+    out_name     : output filename (no directory)
+    cmap         : diverging colormap name
+    wind_u/v     : variable keys for optional quiver overlay
+    wind_scale   : quiver scale (default: VECTOR_SCALE)
+    wind_note    : optional text note placed at bottom-left of each panel
+    """
+    if var_key not in datasets["EP1"]:
+        logging.warning(f"    ⚠  {var_key} not in composites — skipping anomaly figure")
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+    # Symmetric colour limits from 98th-percentile of |anomaly| across both EPs
+    absmax = 0.0
+    for ep in ["EP1", "EP2"]:
+        d = datasets[ep][var_key].values * scale_factor
+        absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
+    if absmax == 0.0:
+        absmax = 1e-10  # guard against all-zero fields
+    clevels = np.linspace(-absmax, absmax, 21)
+    wscale = wind_scale if wind_scale is not None else VECTOR_SCALE
+
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[i]
+        ds = datasets[ep]
+        x, y = ds.coords["x"].values, ds.coords["y"].values
+        data = ds[var_key].values * scale_factor
+
+        im = ax.contourf(x, y, data, levels=clevels, cmap=cmap, extend="both")
+        ax.contour(x, y, data, levels=[0], colors="black", linewidths=1.2)
+
+        if wind_u and wind_v and wind_u in ds and wind_v in ds:
+            skip = slice(None, None, VECTOR_SKIP)
+            ax.quiver(
+                x[skip], y[skip],
+                ds[wind_u].values[skip, skip], ds[wind_v].values[skip, skip],
+                scale=wscale, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5,
+            )
+
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{EP_LABELS[ep]}  [n={n}]", ylabel=(i == 0))
+        _add_cbar(fig, ax, im, unit_label)
+
+        mean_val = np.nanmean(data)
+        ax.text(0.03, 0.97, f"Mean: {mean_val:.2e}",
+                transform=ax.transAxes, fontsize=9, va="top",
+                bbox=dict(boxstyle="round", fc="white", alpha=0.8))
+        if wind_note:
+            ax.text(0.03, 0.03, wind_note,
+                    transform=ax.transAxes, fontsize=8, va="bottom",
+                    bbox=dict(boxstyle="round", fc="white", alpha=0.8))
+
+    fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    out = FIGURES_DIR / out_name
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
+def figure_pv200_anom(datasets):
+    """PV anomaly at 200 hPa: EP1 vs EP2, with 250 hPa wind vectors."""
+    logging.info("  Creating PV anomaly @200 hPa composite figure...")
+    _anom_fig(
+        datasets,
+        var_key="pv_200_anom",
+        scale_factor=1e6,
+        unit_label="ΔPV (PVU)",
+        suptitle="PV Anomaly at 200 hPa (departure from 1991–2020 climatology) — EP1 vs EP2",
+        out_name="composite_pv200_anom.png",
+        cmap="RdBu_r",
+        wind_u="u_250",
+        wind_v="v_250",
+        wind_scale=VECTOR_SCALE,
+        wind_note="Anomaly = PV′(200 hPa)\nBased on eddy u′, v′, T′ at 175/200/225 hPa",
+    )
+
+
+def figure_pv850_anom(datasets):
+    """PV anomaly at 850 hPa: EP1 vs EP2, with 850 hPa wind vectors."""
+    logging.info("  Creating PV anomaly @850 hPa composite figure...")
+    _anom_fig(
+        datasets,
+        var_key="pv_850_anom",
+        scale_factor=1e6,
+        unit_label="ΔPV (PVU)",
+        suptitle="PV Anomaly at 850 hPa (departure from 1991–2020 climatology) — EP1 vs EP2",
+        out_name="composite_pv850_anom.png",
+        cmap="RdBu_r",
+        wind_u="u_850",
+        wind_v="v_850",
+        wind_scale=100,
+        wind_note="Anomaly = PV′(850 hPa)\nBased on eddy u′, v′, T′ at 825/850/875 hPa",
+    )
+
+
+def figure_advT850_anom(datasets):
+    """Temperature advection anomaly at 850 hPa: EP1 vs EP2."""
+    logging.info("  Creating temp advection anomaly @850 hPa composite figure...")
+    _anom_fig(
+        datasets,
+        var_key="adv_T_850_anom",
+        scale_factor=3600.0,
+        unit_label="Δ(−V·∇T) (K h⁻¹)",
+        suptitle="Temperature Advection Anomaly at 850 hPa (departure from climatology) — EP1 vs EP2",
+        out_name="composite_advT850_anom.png",
+        cmap="RdBu_r",
+        wind_u="u_850",
+        wind_v="v_850",
+        wind_scale=100,
+        wind_note="Anomaly = −V′·∇T′ (850 hPa)\nEddy winds & temperature",
+    )
+
+
+def figure_moisture_anom(datasets):
+    """Moisture flux divergence anomaly at 975 hPa: EP1 vs EP2."""
+    logging.info("  Creating moisture flux divergence anomaly @975 hPa composite figure...")
+    _anom_fig(
+        datasets,
+        var_key="div_q_975_anom",
+        scale_factor=1.0,
+        unit_label="Δ∇·(qV) (kg kg⁻¹ s⁻¹)",
+        suptitle="Moisture Flux Divergence Anomaly at 975 hPa (departure from climatology) — EP1 vs EP2",
+        out_name="composite_moisture_flux_anom.png",
+        cmap="BrBG_r",
+        wind_u="u_975",
+        wind_v="v_975",
+        wind_scale=80,
+        wind_note="Anomaly = ∇·(q′V′) at 975 hPa\n+ divergence / − convergence",
+    )
+
+
+def figure_ke_advection_anom(datasets):
+    """Kinetic energy advection anomaly at 250 hPa: EP1 vs EP2."""
+    logging.info("  Creating KE advection anomaly @250 hPa composite figure...")
+    _anom_fig(
+        datasets,
+        var_key="ke_adv_250_anom",
+        scale_factor=1.0,
+        unit_label="ΔKE adv (m² s⁻³)",
+        suptitle="KE Advection Anomaly at 250 hPa (departure from climatology) — EP1 vs EP2",
+        out_name="composite_ke_advection_anom.png",
+        cmap="PuOr_r",
+        wind_u="u_250",
+        wind_v="v_250",
+        wind_scale=VECTOR_SCALE,
+        wind_note="Anomaly = −V′·∇(½|V|²) at 250 hPa\nBased on eddy winds",
+    )
+
+
+def figure_slp_anom(datasets):
+    """SLP anomaly: EP1 vs EP2, with 850 hPa wind vectors."""
+    logging.info("  Creating SLP anomaly composite figure...")
+    _anom_fig(
+        datasets,
+        var_key="msl_anom",
+        scale_factor=1.0 / 100.0,    # Pa → hPa
+        unit_label="ΔSLP (hPa)",
+        suptitle="Sea Level Pressure Anomaly (departure from 1991–2020 climatology) — EP1 vs EP2",
+        out_name="composite_slp_anom.png",
+        cmap="RdBu_r",
+        wind_u="u_850",
+        wind_v="v_850",
+        wind_scale=100,
+        wind_note="Anomaly = SLP′ = SLP − \u015cLP⃗ₘ\n(1991–2020 monthly climatology)",
+    )
+
+
+# ============================================================================
 # MAIN
 # ============================================================================
 
@@ -693,13 +888,18 @@ def main():
             return
 
     # Optional diagnostics — warn but continue
-    optional = ["rk_criterion_250", "ke_adv_250", "afc_250"]
+    optional = [
+        "rk_criterion_250", "ke_adv_250", "afc_250",
+        # anomaly fields (require step2_1 multi-group climatologies)
+        "pv_200_anom", "pv_850_anom", "adv_T_850_anom",
+        "div_q_975_anom", "ke_adv_250_anom", "msl_anom",
+    ]
     for ep, ds in datasets.items():
         absent = [v for v in optional if v not in ds]
         if absent:
             logging.warning(f"   ⚠  {ep}: optional fields absent (will be skipped): {absent}")
 
-    logging.info("\nCreating figures...")
+    logging.info("\nCreating total-field figures...")
 
     figure_egr(datasets)
     figure_pv200(datasets)
@@ -710,6 +910,15 @@ def main():
     figure_rk_criterion(datasets)
     figure_ke_advection(datasets)
     figure_afc(datasets)
+
+    logging.info("\nCreating anomaly figures...")
+
+    figure_pv200_anom(datasets)
+    figure_pv850_anom(datasets)
+    figure_advT850_anom(datasets)
+    figure_moisture_anom(datasets)
+    figure_ke_advection_anom(datasets)
+    figure_slp_anom(datasets)
 
     # Close datasets
     for ds in datasets.values():

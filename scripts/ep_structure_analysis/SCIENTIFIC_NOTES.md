@@ -359,19 +359,19 @@ $$AFC = -\nabla \cdot (\vec{v}_{ag}' \, \phi')$$
 
 | Statistic | EP1 | EP2 |
 |-----------|-----|-----|
-| Mean (m² s⁻³) | {EP1_AFC_MEAN} | {EP2_AFC_MEAN} |
-| Range (m² s⁻³) | [{EP1_AFC_MIN}, {EP1_AFC_MAX}] | [{EP2_AFC_MIN}, {EP2_AFC_MAX}] |
-| LEC 15×15° mean | {EP1_AFC_LEC15} | {EP2_AFC_LEC15} |
-| Full 30×30° mean | {EP1_AFC_FULL30} | {EP2_AFC_FULL30} |
+| Mean (m² s⁻³) | 1.752e-04 | -2.870e-04 |
+| Range (m² s⁻³) | [-6.170e-03, 6.491e-03] | [-6.673e-03, 6.259e-03] |
+| LEC 15×15° mean | 1.575e-03 | 7.611e-04 |
+| Full 30×30° mean | 1.752e-04 | -2.870e-04 |
 
 **Lateral boundaries (flux assessment):**
 
 | Boundary | EP1 | EP2 |
 |----------|-----|-----|
-| North (+7.5°) | {EP1_AFC_NORTH} | {EP2_AFC_NORTH} |
-| South (-7.5°) | {EP1_AFC_SOUTH} | {EP2_AFC_SOUTH} |
-| East (+7.5°) | {EP1_AFC_EAST} | {EP2_AFC_EAST} |
-| West (-7.5°) | {EP1_AFC_WEST} | {EP2_AFC_WEST} |
+| North (+7.5°) | 2.092e-03 | 5.479e-04 |
+| South (-7.5°) | -5.042e-04 | -1.389e-03 |
+| East (+7.5°) | 6.667e-04 | -3.241e-03 |
+| West (-7.5°) | -1.856e-03 | 1.532e-03 |
 
 ---
 

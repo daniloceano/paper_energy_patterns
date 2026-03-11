@@ -77,6 +77,7 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 | **RK criterion** (Rayleigh-Kuo) | 250 hPa | Barotropic/baroclinic instability condition | Rayleigh (1880); Kuo (1949) |
 | **KE Advection** | 250 hPa | Kinetic energy tendency from advection | - |
 | **AFC** (Ageostrophic Flux Convergence) | 250 hPa | Eddy KE redistribution via ageostrophic pressure work | Orlanski & Katzfey (1991); Orlanski & Sheldon (1993) |
+| **BtCR** (Barotropic Critical Region) | 250 hPa | Effective deformation $\Delta_m = \sigma_m^2 - \zeta_m^2$ and dilatation axis $\phi_{dil}$; identifies jet-exit zones where deformation dominates rotation | Rivière (2006) |
 
 **Anomaly diagnostics** (departure from 1991–2020 climatology — same temporal decomposition as AFC):
 
@@ -115,7 +116,7 @@ $$\sigma_{EGR} = 0.31 \frac{|f|}{N} \left|\frac{\partial \vec{V}}{\partial z}\ri
 
 where:
 - $f = 2\Omega \sin(\phi)$ = Coriolis parameter
-- $N^2 = \frac{g}{\theta_v} \frac{\partial \theta_v}{\partial z}$ = static stability (Brunt-Väisälä frequency)
+- $N^2 = \frac{g}{\bar{\theta}} \frac{\partial \theta}{\partial z}$ = dry Brunt-Väisälä frequency (using dry potential temperature $\theta$; the code does not apply a virtual temperature correction, consistent with Besson et al. 2021 and the standard EGR formulation as in Hoskins & Valdes 1990)
 - $\left|\frac{\partial \vec{V}}{\partial z}\right|$ = vertical wind shear magnitude
 
 **Layer:** 500–850 hPa (following Besson et al. 2021, Eq. 5: this layer encompasses the main lower-to-mid tropospheric baroclinic zone while avoiding contamination from the jet-level wind maximum at 250 hPa)
@@ -159,7 +160,7 @@ $$\nabla \cdot (q\vec{V}) = \frac{\partial (qu)}{\partial x} + \frac{\partial (q
 
 - **Negative values** → Moisture convergence (convective potential, latent heat release)
 - **Positive values** → Moisture divergence (evaporation/drying)
-- Units: g kg⁻¹ h⁻¹ (converted from kg kg⁻¹ s⁻¹)
+- Units: g kg⁻¹ s⁻¹ (composite files store values as kg kg⁻¹ s⁻¹ × 10³; figures plot as-is without further rescaling)
 - Key diabatic process in cyclone intensification (Banacos & Schultz, 2005)
 
 ### 3.7 Rayleigh-Kuo Stability Criterion (250 hPa)
@@ -216,9 +217,9 @@ $$AFC = -\nabla \cdot (\vec{v}_{ag}' \, \phi')$$
 
 **Units:** m² s⁻³ (≡ W kg⁻¹)
 
-**Climatology source:** ERA5 monthly averaged reanalysis (`reanalysis-era5-pressure-levels-monthly-means`), downloaded via CDS API. See `step2_1_download_era5_monthly_means.py`.
-
 **References:** Orlanski & Katzfey (1991), Orlanski & Sheldon (1993), Solman & Menéndez (1998)
+
+> **Note on climatology data source:** The 30-year monthly climatology used as base state is described in Section 3.10.
 
 ### 3.10 Anomaly Fields — Temporal Decomposition
 
@@ -241,11 +242,17 @@ ERA5 monthly-averaged reanalysis on pressure levels (`reanalysis-era5-pressure-l
 | `slp` | surface | msl | `era5_climatology_slp.nc` |
 
 **Application to diagnostics:**  
-For each diagnostic $D = D(u, v, T, \ldots)$ the anomaly is computed by substituting all input fields with their eddy counterparts:
+For each diagnostic $D = D(u, v, T, \ldots)$ the anomaly (eddy) field is computed by substituting all input fields with their climatological perturbations:
 
 $$D' = D(u', v', T', \ldots) \quad \text{where } u' = u - \bar{u}_m, \; T' = T - \bar{T}_m, \ldots$$
 
-This is the standard linear perturbation approach in synoptic-scale diagnostic studies (e.g., Decker & Martin 2005). For non-linear diagnostics (PV, divergence), the anomaly field thus captures the contribution of synoptic-scale transients to the diagnostic.
+For **linear** diagnostics (temperature advection, KE self-advection), this substitution recovers the exact anomaly since cross-terms vanish.  For **non-linear** diagnostics (PV, moisture flux divergence), the full anomaly decomposes into:
+
+$$D_{\text{anom}} = \underbrace{D(u', v', T', \ldots)}_{\text{pure-eddy term (computed)}} + \underbrace{\text{cross terms}}_{\text{omitted}}$$
+
+The cross-terms (e.g. $-V_m \cdot \nabla T' - V' \cdot \nabla T_m$ for temperature advection) represent interactions between the mean and eddy flows and are **not** computed here.  The reported $D'$ therefore captures the **pure synoptic-scale eddy contribution**, which is the dominant term during active cyclone intensification.
+
+**Exception — SLP anomaly:** computed directly as $\mathrm{SLP}' = \mathrm{SLP} - \overline{\mathrm{SLP}}_m$, since sea-level pressure is a single-field diagnostic that requires no input priming. This formulation is exact (no cross-terms).
 
 **Physical rationale:**  
 - **PV′:** Highlights stratospheric intrusions and diabatic generation that are anomalous relative to the climatological background tropopause structure.
@@ -256,6 +263,62 @@ This is the standard linear perturbation approach in synoptic-scale diagnostic s
 **Note on EGR:** EGR is a layer-averaged diagnostic derived from the total wind shear and static stability. A temporal decomposition of EGR would require priming N² and the shear simultaneously, leading to non-trivial cross terms. For this reason EGR is retained as a total-field diagnostic only.
 
 **Note on AFC:** AFC is by construction an anomaly field (it is already computed from eddy $\vec{v}'$ and $\phi'$ relative to the monthly climatology). No additional anomaly version is needed.
+
+---
+
+### 3.11 Barotropic Critical Region (BtCR) at 250 hPa
+
+The BtCR concept, introduced by Rivière (2006), identifies jet-exit zones where the **low-frequency horizontal deformation field** dominates over rotation.  A synoptic-scale disturbance traversing such a region is forced into a preferred orientation that enables efficient extraction of baroclinic energy and can trigger explosive cyclogenesis.
+
+#### 3.11.1 Low-Frequency Base State
+
+Rivière (2006) defined the low-frequency background flow as the **8-day running mean** of the instantaneous wind field, which filters out synoptic-scale variability (periods of 2–6 days) while retaining the slowly-varying jet structure.  Computing a per-case 8-day running mean for hundreds of ERA5 cyclone tracks is impractical in this study.  Instead, the **30-year WMO monthly climatological mean** (1991–2020) is used as a surrogate.  This captures the same large-scale, slowly varying deformation structure as the 8-day mean, since the monthly climatology is dominated by the persistent jet-stream regime.
+
+**Consequence:** the composite BtCR maps presented here reflect the mean deformation environment in which EP1 and EP2 cyclones develop, not a case-by-case instantaneous background.  This is consistent with the composite analysis framework adopted throughout this study.
+
+#### 3.11.2 Formulation (Spherical Geometry)
+
+All derivatives use the full spherical-geometry grid spacings (see §3.2) and include curvature correction terms (Rivière 2006; BtCR Technical Guide, Souza 2026).
+
+**Background relative vorticity:**
+$$\zeta_m = \frac{\partial v_m}{\partial x} - \frac{\partial u_m}{\partial y} + \frac{u_m \tan\phi}{a}$$
+
+**Deformation components (with spherical curvature corrections):**
+$$St = \frac{\partial u_m}{\partial x} - \frac{\partial v_m}{\partial y} - \frac{v_m \tan\phi}{a} \quad\text{(stretching deformation)}$$
+$$Sh = \frac{\partial v_m}{\partial x} + \frac{\partial u_m}{\partial y} - \frac{u_m \tan\phi}{a} \quad\text{(shearing deformation)}$$
+
+**Total deformation magnitude:**
+$$\sigma_m = \sqrt{St^2 + Sh^2}$$
+
+**Effective deformation (master BtCR indicator):**
+$$\Delta_m = \sigma_m^2 - \zeta_m^2$$
+
+| $\Delta_m$ sign | Physical regime | Implication |
+|-----------------|-----------------|-------------|
+| $< 0$ | Rotation dominates | Disturbance stays circular; no preferred orientation; barotropic exchanges negligible |
+| $> 0$ | Deformation dominates | Fixed orientation points appear (stable + unstable); jet can tilt the system into an energy-producing or energy-draining configuration |
+
+**Dilatation axis angle** (defined only where $\Delta_m > 0$):
+$$\phi_{dil} = \frac{1}{2} \arctan\!\left(\frac{Sh}{St}\right)$$
+
+The dilatation axis is the direction toward which the background flow stretches fluid parcels.  The **key BtCR structural signature** is a sudden reorientation of $\phi_{dil}$ across the composited jet exit: from SW–NE orientation upstream/on the anticyclonic side to NW–SE orientation downstream/on the cyclonic side (Rivière 2006, Fig. 9).
+
+#### 3.11.3 Physical Interpretation
+
+When a cyclone traverses a BtCR, two amplification mechanisms are activated:
+
+1. **Interruption of barotropic drain:** Before reaching the BtCR, the eddy may be aligned in a configuration that drains energy to the jet (stable orientation point).  At the BtCR the alignment is rapidly reconfigured, replacing the energy-draining tilt with an energy-gaining one.
+
+2. **Configuration term (conf):** Even in regions of modest baroclinicity, the BtCR forces the disturbance into the optimal baroclinic configuration (the $\text{conf}$ term in Rivière 2006, Eq. 12).  This term can exceed the direct baroclinic contribution $|B_c|$ in magnitude during explosive growth phases.
+
+**Output variables:**
+- `btcr_delta_m`  — $\Delta_m$ composite (s⁻²); plotted at scale $\times 10^{9}$ s⁻²
+- `btcr_dil_angle` — $\phi_{dil}$ composite (radians); NaN where $\Delta_m \le 0$
+
+**Figure output:** `figures/ep_structure/composite_btcr.png`
+
+**References:**
+- Rivière, G., 2006: Role of the Low-Frequency Deformation Field on the Explosive Growth of Extratropical Cyclones at the Jet Exit. Part I: Barotropic Critical Region. *J. Atmos. Sci.*, **63**, 1764–1775. doi:10.1175/JAS3728.1
 
 ---
 
@@ -373,8 +436,6 @@ This is the standard linear perturbation approach in synoptic-scale diagnostic s
 | LEC 15×15° mean | 2.814e-11 | 2.818e-11 |
 | Full 30×30° mean | 2.242e-11 | 2.271e-11 |
 
-*Negative values indicate regions satisfying the necessary condition for barotropic/baroclinic instability.*
-
 ### 4.8 Kinetic Energy Advection (250 hPa)
 
 ![KE Advection Composite](figures/ep_structure/composite_ke_advection.png)
@@ -403,7 +464,7 @@ This is the standard linear perturbation approach in synoptic-scale diagnostic s
 
 ![AFC Composite](figures/ep_structure/composite_afc_250.png)
 
-*Figure: Ageostrophic Flux Convergence at 250 hPa for EP1 (left) and EP2 (right). Units: m² s⁻³. Positive values (red) indicate eddy KE sources; negative values (blue) indicate eddy KE sinks. Base state: ERA5 30-year monthly climatology (1991–2020). Wind vectors show eddy perturbation wind $\vec{v}'$ at 250 hPa.*
+*Figure: Ageostrophic Flux Convergence at 250 hPa for EP1 (left) and EP2 (right). Units: m² s⁻³. Positive values (red) indicate eddy KE sources; negative values (blue) indicate eddy KE sinks. Base state: ERA5 30-year monthly climatology (1991–2020). Wind vectors show total composite-mean 250 hPa wind.*
 
 **Summary Statistics:**
 
@@ -472,21 +533,21 @@ This is the standard linear perturbation approach in synoptic-scale diagnostic s
 
 ![MFD′@975 Composite](figures/ep_structure/composite_moisture_flux_anom.png)
 
-*Figure: Moisture flux divergence eddy perturbation at 975 hPa (∇·(q′V′)) for EP1 (left) and EP2 (right). Units: kg kg⁻¹ s⁻¹. Negative = anomalous convergence.*
+*Figure: Moisture flux divergence eddy perturbation at 975 hPa ($\nabla\cdot(q'\vec{V}')$) for EP1 (left) and EP2 (right). Units: g kg⁻¹ s⁻¹. Negative = anomalous convergence.*
 
 **Summary Statistics:**
 
 | Statistic | EP1 | EP2 |
 |-----------|-----|-----|
-| Domain mean (kg kg⁻¹ s⁻¹) | TBD | TBD |
-| Max convergence anomaly | TBD | TBD |
-| LEC 15×15° mean | TBD | TBD |
+| Domain mean (g kg⁻¹ s⁻¹) | TBD | TBD |
+| Max convergence anomaly (g kg⁻¹ s⁻¹) | TBD | TBD |
+| LEC 15×15° mean (g kg⁻¹ s⁻¹) | TBD | TBD |
 
 ### 4.14 KE Advection Anomaly (250 hPa)
 
 ![KE′ Adv@250 Composite](figures/ep_structure/composite_ke_advection_anom.png)
 
-*Figure: Kinetic energy advection eddy perturbation at 250 hPa (−V′·∇(½|V|²)) for EP1 (left) and EP2 (right). Units: m² s⁻³.*
+*Figure: Eddy KE self-advection at 250 hPa ($-\vec{V}'\cdot\nabla(\tfrac{1}{2}|\vec{V}'|^2)$) for EP1 (left) and EP2 (right). Units: m² s⁻³. Captures advection of eddy kinetic energy by the eddy wind itself; cross-term advection by the mean wind ($-\vec{V}_m\cdot\nabla(\tfrac{1}{2}|\vec{V}'|^2)$) is not included.*
 
 **Summary Statistics:**
 

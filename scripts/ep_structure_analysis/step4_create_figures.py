@@ -605,11 +605,15 @@ def figure_ke_advection(datasets):
 
 
 def figure_afc(datasets):
-    """AFC at 250 hPa: EP1 vs EP2, with 250 hPa wind vectors.
+    """AFC at 250 hPa: EP1 vs EP2, with total composite 250 hPa wind vectors.
 
-    AFC = −∇·(v_ag' φ')  where v_ag' is the ageostrophic eddy wind and
-    φ' = Φ − Φm is the geopotential departure from the monthly climatology.
-    Positive values indicate a local source of eddy kinetic energy.
+    AFC = −∇·(v_ag' φ')  where v_ag' = v' − v_g' is the ageostrophic eddy wind
+    and φ' = Φ − Φm is the geopotential departure from the 30-year monthly
+    climatology.  Positive values indicate convergence of ageostrophic
+    geopotential flux → source of eddy kinetic energy.
+
+    Wind vectors overlaid are the **total** composite-mean 250 hPa wind
+    (u_250, v_250), not the eddy perturbation.
 
     Reference: Orlanski & Katzfey (1991), Orlanski & Sheldon (1993).
     """
@@ -818,14 +822,14 @@ def figure_moisture_anom(datasets):
         datasets,
         var_key="div_q_975_anom",
         scale_factor=1.0,
-        unit_label="Δ∇·(qV) (kg kg⁻¹ s⁻¹)",
+        unit_label="Δ∇·(q′V′) (g kg⁻¹ s⁻¹)",
         suptitle="Moisture Flux Divergence Anomaly at 975 hPa (departure from climatology) — EP1 vs EP2",
         out_name="composite_moisture_flux_anom.png",
         cmap="BrBG_r",
         wind_u="u_975",
         wind_v="v_975",
         wind_scale=80,
-        wind_note="Anomaly = ∇·(q′V′) at 975 hPa\n+ divergence / − convergence",
+        wind_note="Anomaly = ∇·(q′V′) at 975 hPa\n+ divergence  /  − convergence",
     )
 
 
@@ -843,7 +847,7 @@ def figure_ke_advection_anom(datasets):
         wind_u="u_250",
         wind_v="v_250",
         wind_scale=VECTOR_SCALE,
-        wind_note="Anomaly = −V′·∇(½|V|²) at 250 hPa\nBased on eddy winds",
+        wind_note="Anomaly = −V′·∇(½|V′|²) at 250 hPa\nEddy KE self-advection",
     )
 
 
@@ -863,6 +867,111 @@ def figure_slp_anom(datasets):
         wind_scale=100,
         wind_note="Anomaly = SLP′ = SLP − \u015cLP⃗ₘ\n(1991–2020 monthly climatology)",
     )
+
+
+def figure_btcr(datasets):
+    """
+    Barotropic Critical Region (BtCR) composite: EP1 vs EP2.
+
+    Shading: Effective deformation Δm = σ_m² − ζ_m² (×10⁻⁹ s⁻²).
+      Positive  (warm) : deformation dominates → BtCR candidate region
+      Negative  (cool) : rotation dominates
+
+    Dilatation axis vectors: unit arrows in both ± directions (axis, not
+    vector) where Δm > 0, showing how the background jet tends to tilt/
+    stretch a traversing disturbance.  Overlaid on wind speed contours of
+    the climatological 250 hPa wind.
+
+    Both diagnostics are computed from the 30-year WMO monthly climatological
+    winds (1991–2020) — the low-frequency surrogate used in place of a
+    per-case 8-day running mean (Rivière 2006).
+
+    References
+    ----------
+    Rivière, G., 2006: J. Atmos. Sci., 63, 1764–1775.
+    """
+    logging.info("  Creating BtCR composite figure (250 hPa)...")
+
+    if "btcr_delta_m" not in datasets["EP1"]:
+        logging.warning("   ⚠  btcr_delta_m absent — skipping BtCR figure (run step2_1 first)")
+        return
+
+    SCALE = 1e9      # s⁻²  →  10⁻⁹ s⁻²
+    SKIP  = VECTOR_SKIP
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+    # ── Common colour scale (symmetric about zero) ─────────────────────
+    absmax = 0.0
+    for ep in ["EP1", "EP2"]:
+        arr = datasets[ep]["btcr_delta_m"].values * SCALE
+        absmax = max(absmax, np.nanpercentile(np.abs(arr), 98))
+    clevels = np.linspace(-absmax, absmax, 41)
+
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[i]
+        ds = datasets[ep]
+
+        dm   = ds["btcr_delta_m"].values  * SCALE           # (ny, nx)
+        ang  = ds["btcr_dil_angle"].values                   # radians; NaN where Δm ≤ 0
+
+        x = ds.coords["x"].values
+        y = ds.coords["y"].values
+        X, Y = np.meshgrid(x, y)
+
+        # Shading: full Δm field (diverging, centered at 0)
+        im = ax.contourf(X, Y, dm, levels=clevels, cmap="RdBu_r", extend="both")
+        ax.contour(X, Y, dm, levels=[0.0], colors="black", linewidths=1.2)  # zero line
+
+        # Climatological 250 hPa wind speed contours for jet reference,
+        # taken from the composite mean (which uses instantaneous winds
+        # but approximates the mean jet structure)
+        if "u_250" in ds.data_vars and "v_250" in ds.data_vars:
+            u_250 = ds["u_250"].sel(level=250).values if "level" in ds["u_250"].dims \
+                    else ds["u_250"].values
+            v_250 = ds["v_250"].sel(level=250).values if "level" in ds["v_250"].dims \
+                    else ds["v_250"].values
+            ws = np.sqrt(u_250 ** 2 + v_250 ** 2)
+            ax.contour(X, Y, ws,
+                       levels=np.arange(20, 80, 10),
+                       colors="dimgray", linewidths=0.8, linestyles="--", alpha=0.6)
+
+        # Dilatation axis vectors (where Δm > 0)
+        # Plot as headless barbs: forward (+) and backward (−) arrows to
+        # represent an axial (unsigned) direction, not a vector.
+        ax_sm  = X[::SKIP, ::SKIP]
+        ay_sm  = Y[::SKIP, ::SKIP]
+        ang_sm = ang[::SKIP, ::SKIP]
+        mask = ~np.isnan(ang_sm)
+
+        if np.any(mask):
+            cos_a = np.where(mask, np.cos(ang_sm), np.nan)
+            sin_a = np.where(mask, np.sin(ang_sm), np.nan)
+            # Scale = 0.5 → unit vector spans 2° (1° each side, pivot='middle')
+            # Both + and − directions drawn to represent an axis, not a vector.
+            for sign in (+1, -1):
+                ax.quiver(
+                    ax_sm, ay_sm,
+                    sign * cos_a, sign * sin_a,
+                    scale=0.5, scale_units="xy",
+                    headwidth=0, headlength=0, headaxislength=0,
+                    width=0.002, color="k", alpha=0.7,
+                    pivot="middle",
+                )
+
+        _decorate_ax(ax, f"{ep} — BtCR (250 hPa)", ylabel=(i == 0))
+        _add_cbar(fig, ax, im, r"$\Delta_m \times 10^{9}$ (s$^{-2}$)")
+
+    fig.suptitle(
+        "Barotropic Critical Region — Δm = σ_m² − ζ_m² at 250 hPa (Rivière 2006) "
+        "— EP1 vs EP2",
+        fontsize=13, fontweight="bold", y=1.02,
+    )
+    plt.tight_layout()
+    out = FIGURES_DIR / "composite_btcr.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
 
 
 # ============================================================================
@@ -893,6 +1002,8 @@ def main():
         # anomaly fields (require step2_1 multi-group climatologies)
         "pv_200_anom", "pv_850_anom", "adv_T_850_anom",
         "div_q_975_anom", "ke_adv_250_anom", "msl_anom",
+        # BtCR fields (require step2_1 250 hPa climatology)
+        "btcr_delta_m", "btcr_dil_angle",
     ]
     for ep, ds in datasets.items():
         absent = [v for v in optional if v not in ds]
@@ -919,6 +1030,9 @@ def main():
     figure_moisture_anom(datasets)
     figure_ke_advection_anom(datasets)
     figure_slp_anom(datasets)
+
+    logging.info("\nCreating BtCR figures...")
+    figure_btcr(datasets)
 
     # Close datasets
     for ds in datasets.values():

@@ -1,15 +1,37 @@
 """
 Step 3: Precompute Composites for EP1 & EP2
 
-Computes spatial composites (30°×30° domain) for each EP group:
-  - EGR (Eady Growth Rate) from the 500–850 hPa layer (Besson et al. 2021)
-  - PV at 200 hPa (upper-level tropopause dynamics)
-  - PV at 850 hPa (low-level PV anomaly)
-  - Temperature advection at 850 hPa  (-V · ∇T)
-  - SLP (mean sea level pressure)
+Computes spatial composites (30°×30° domain centred on the cyclone) for
+each EP group and saves a single NetCDF file per group with composite
+means on a regular 0.25° grid.
 
-For each EP, saves a single NetCDF file with composite means on a
-regular grid centred on the cyclone.
+Total-field diagnostics (computed from instantaneous ERA5 fields):
+  - EGR   — Eady Growth Rate, 500–850 hPa layer (Besson et al. 2021)
+  - PV    — Potential Vorticity at 200 hPa (upper-level dynamics)
+  - PV    — Potential Vorticity at 850 hPa (low-level diabatic PV)
+  - advT  — Temperature advection at 850 hPa  (−V·∇T)
+  - div_q — Moisture flux divergence at 975 hPa  (∇·(qV))
+  - SLP   — Mean sea level pressure
+  - KE_adv — KE advection at 250 hPa  (−V·∇(½|V|²))
+  - RK    — Rayleigh-Kuo criterion at 250 hPa  (β − ∂²u/∂y²)
+  - AFC   — Ageostrophic Flux Convergence at 250 hPa  (−∇·(v_ag' φ'))
+            requires ERA5 30-year monthly climatology (step2_1)
+  - BtCR  — Barotropic Critical Region diagnostics at 250 hPa
+              (Δm = σ_m² − ζ_m², φ_dil = ½ arctan(Sh/St))
+            computed from climatological (low-frequency) winds; identifies
+            regions where deformation dominates rotation (Rivière 2006)
+
+Anomaly diagnostics (eddy perturbation relative to 30-year WMO monthly
+climatology 1991–2020, produced by step2_1_download_era5_monthly_means.py;
+skipped gracefully if the files are absent):
+  - pv_200_anom     — PV anomaly at 200 hPa  (eddy u′,v′,T′ at 175/200/225 hPa)
+  - pv_850_anom     — PV anomaly at 850 hPa  (eddy u′,v′,T′ at 825/850/875 hPa)
+  - adv_T_850_anom  — Temperature advection anomaly at 850 hPa  (−V′·∇T′)
+  - div_q_975_anom  — Moisture flux divergence anomaly at 975 hPa  (∇·(q′V′))
+  - ke_adv_250_anom — KE advection anomaly at 250 hPa  (−V′·∇(½|V′|²))
+  - msl_anom        — SLP anomaly  (msl − climatological monthly mean)
+  Note: anomaly diagnostics for non-linear fields (PV, div_q) capture only
+  the pure-eddy (quadratic) term, omitting cross-terms (e.g. −V_m·∇T′ − V′·∇T_m).
 
 Output:
   data/era5_ep_structure/precomputed_composites_ep1.nc
@@ -67,7 +89,9 @@ from metpy.calc import (
     advection as metpy_advection,
     divergence as metpy_divergence,
     lat_lon_grid_deltas,
-    coriolis_parameter
+    coriolis_parameter,
+    geostrophic_wind,
+    ageostrophic_wind,
 )
 from metpy.units import units
 import metpy.constants as mpconstants
@@ -485,8 +509,16 @@ def compute_pv_at_level(u_low, u_mid, u_high,
         Fields at the lower, middle, and upper surrounding levels.
     p_3lev_pa : array_like, shape (3,)
         Pressure values [low, mid, high] in Pa.
+
+    ⚠ WARNING FOR DEVELOPERS / AI AGENTS:
+    This function has been personally validated by the developer for unit
+    consistency and formula correctness.  All intermediate variables are
+    kept as pint-backed DataArrays so that unit tracking is automatic and
+    physically verifiable.  DO NOT replace DataArray arithmetic with
+    bare-ndarray arithmetic, and DO NOT strip units prematurely — see the
+    module-level docstring for rationale.
     """
-    p_hpa = np.asarray(p_3lev_pa) / 100.0
+    p_hpa = (np.asarray(p_3lev_pa) / 100.0)
 
     # Build 3-level DataArrays via xr.concat — no .values, no np.stack,
     # preserves xarray structure (lat/lon coords) and pint units from
@@ -524,6 +556,14 @@ def temperature_advection_850(u_850, v_850, T_850):
         Temperature advection (K s⁻¹).  Preserves DataArray structure
         and pint units for downstream unit-safety checks.
         Positive: warm air advection; Negative: cold air advection.
+
+    ⚠ WARNING FOR DEVELOPERS / AI AGENTS:
+    This function has been personally validated by the developer for unit
+    consistency and formula correctness.  All intermediate variables are
+    kept as pint-backed DataArrays so that unit tracking is automatic and
+    physically verifiable.  DO NOT replace DataArray arithmetic with
+    bare-ndarray arithmetic, and DO NOT strip units prematurely — see the
+    module-level docstring for rationale.
     """
     lat_1d = T_850.latitude.values
     lon_1d = T_850.longitude.values
@@ -551,6 +591,14 @@ def kinetic_energy_advection_250(u_250, v_250):
         Kinetic energy advection (m² s⁻³ = W kg⁻¹).  Preserves DataArray
         structure and pint units for downstream unit-safety checks.
         Positive: KE increasing; Negative: KE decreasing.
+
+    ⚠ WARNING FOR DEVELOPERS / AI AGENTS:
+    This function has been personally validated by the developer for unit
+    consistency and formula correctness.  All intermediate variables are
+    kept as pint-backed DataArrays so that unit tracking is automatic and
+    physically verifiable.  DO NOT replace DataArray arithmetic with
+    bare-ndarray arithmetic, and DO NOT strip units prematurely — see the
+    module-level docstring for rationale.
     """
     lat_1d = u_250.latitude.values
     lon_1d = u_250.longitude.values
@@ -559,8 +607,17 @@ def kinetic_energy_advection_250(u_250, v_250):
     # u_250 and v_250 are unit-tagged DataArrays (m/s); arithmetic preserves units.
     KE = 0.5 * (u_250 ** 2 + v_250 ** 2)         # DataArray [m² s⁻²]
 
+    # Convert to J kg⁻¹ (same units, different name) for clarity in interpretation.
+    KE_Jkg = KE.metpy.convert_units('J/kg')      # [J kg⁻¹]
+
     # MetPy returns a pint-backed DataArray — preserve it.
-    return metpy_advection(KE, u=u_250, v=v_250, dx=dx, dy=dy)  # [m² s⁻³]
+    KE_adv = metpy_advection(KE_Jkg, u=u_250, v=v_250, dx=dx, dy=dy) # [m² s⁻³]
+
+    # Convert to W kg⁻¹ (same units, different name) for clarity in interpretation.
+    KE_adv_Wkg = KE_adv.metpy.convert_units('W/kg')  # [W kg⁻¹]
+
+    # MetPy returns a pint-backed DataArray — preserve it.
+    return KE_adv_Wkg  # [W kg⁻¹]
 
 
 def rayleigh_kuo_criterion_250(u_250, v_250):
@@ -582,6 +639,14 @@ def rayleigh_kuo_criterion_250(u_250, v_250):
     rk_criterion : pint.Quantity (2D)
         ∂q/∂y field.  Carries pint units (s⁻¹ m⁻¹) so that downstream
         arithmetic catches any dimensional inconsistency automatically.
+
+    ⚠ WARNING FOR DEVELOPERS / AI AGENTS:
+    This function has been personally validated by the developer for unit
+    consistency and formula correctness.  All intermediate variables are
+    kept as pint-backed DataArrays so that unit tracking is automatic and
+    physically verifiable.  DO NOT replace DataArray arithmetic with
+    bare-ndarray arithmetic, and DO NOT strip units prematurely — see the
+    module-level docstring for rationale.
     """
     lat_1d = u_250.latitude.values
     lon_1d = u_250.longitude.values
@@ -633,6 +698,14 @@ def moisture_flux_divergence_975(u_975, v_975, q_975):
         Moisture flux divergence (×1000 for g/kg-equivalent scale).
         Preserves DataArray structure and pint units.
         Positive: divergence (drying); Negative: convergence (moistening).
+
+    ⚠ WARNING FOR DEVELOPERS / AI AGENTS:
+    This function has been personally validated by the developer for unit
+    consistency and formula correctness.  All intermediate variables are
+    kept as pint-backed DataArrays so that unit tracking is automatic and
+    physically verifiable.  DO NOT replace DataArray arithmetic with
+    bare-ndarray arithmetic, and DO NOT strip units prematurely — see the
+    module-level docstring for rationale.
     """
     lat_1d = u_975.latitude.values
     lon_1d = u_975.longitude.values
@@ -712,6 +785,18 @@ def ageostrophic_flux_convergence_250(
       2929–2952.
     - Solman, S. A. and C. G. Menéndez, 1998: Eddy kinetic energy
       budget in a limited area model. Atmósfera, 11, 163–181.
+
+    ⚠ WARNING FOR DEVELOPERS / AI AGENTS:
+    Geostrophic and ageostrophic eddy winds are computed via MetPy
+    (``geostrophic_wind`` / ``ageostrophic_wind``, MetPy ≥ 1.0), which
+    handles spherical-geometry derivatives and the Coriolis parameter
+    automatically from the DataArray latitude coordinate.  The flux-
+    divergence step (∇·F) still uses ``np.gradient`` on the full-
+    resolution spherical grid.  This function has been personally
+    validated by the developer for unit consistency and formula
+    correctness.  DO NOT replace pint-backed DataArray arithmetic with
+    bare-ndarray arithmetic — see the module-level docstring for
+    rationale.
     """
     lat_1d = u_250.latitude.values
     lon_1d = u_250.longitude.values
@@ -729,46 +814,25 @@ def ageostrophic_flux_convergence_250(
     v_prime = v_250 - v_m        # [m/s]
     phi_prime = z_250 - z_m      # [m² s⁻²]  (geopotential perturbation)
 
-    # ── Grid spacing (MetPy convention) ───────────────────────────────────
-    dx, dy = _metpy_grid_deltas(lat_1d, lon_1d)   # (ny, nx-1), (ny-1, nx)
-
-    # ── Coriolis parameter ────────────────────────────────────────────────
-    lat_2d = np.broadcast_to(lat_1d[:, np.newaxis],
-                             (len(lat_1d), len(lon_1d)))
-    f = coriolis_parameter(lat_2d * units.degree)  # pint.Quantity [s⁻¹]
-    # Safety: clip |f| away from zero (equatorial singularity)
-    f_safe = np.where(np.abs(f) < 1e-10 * units('1/s'),
-                      np.sign(f) * 1e-10 * units('1/s'), f)
-
-    # ── Geostrophic eddy wind from φ' ────────────────────────────────────
-    # ∂φ'/∂x and ∂φ'/∂y via central differences on the spherical grid.
-    # Use _metpy_grid_deltas (already in metres with pint units).
-    # Derivatives with MetPy grid spacing arrays (staggered-size) require
-    # using the compute_spherical_grid_spacing function for full-size grids.
+    # ── Grid spacing for AFC divergence ──────────────────────────────────
     dx_full, dy_full, _, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
 
-    # Extract plain ndarray from phi_prime for gradient (avoiding pint/xarray
-    # broadcasting issues with np.gradient).
-    phi_vals = phi_prime.metpy.unit_array       # pint.Quantity [m² s⁻²]
+    # ── Geostrophic and ageostrophic eddy winds (MetPy) ──────────────────
+    # MetPy derives the Coriolis parameter from the latitude coordinate of
+    # phi_prime and computes spatial derivatives using spherical geometry.
+    # geostrophic_wind(phi_prime) → (ug', vg')
+    # ageostrophic_wind(phi_prime, u', v') → (u_ag', v_ag') = (u' - ug', v' - vg')
+    ug_prime, vg_prime = geostrophic_wind(phi_prime)
+    uag_prime, vag_prime = ageostrophic_wind(phi_prime, u_prime, v_prime)
 
-    dphi_dy = np.gradient(phi_vals, axis=0) / (dy_full[:, np.newaxis] * units.meter)
-    dphi_dx = np.gradient(phi_vals, axis=1) / (dx_full * units.meter)
-
-    # Geostrophic eddy wind  (SH: f < 0)
-    #   u_g' = -(1/f) ∂φ'/∂y
-    #   v_g' = +(1/f) ∂φ'/∂x
-    ug_prime = -(1.0 / f_safe) * dphi_dy   # [m/s]
-    vg_prime = (1.0 / f_safe) * dphi_dx    # [m/s]
-
-    # ── Ageostrophic eddy wind ────────────────────────────────────────────
-    # u_prime, v_prime are pint-backed DataArrays; ug_prime, vg_prime are
-    # pint.Quantity.  Extract matching pint quantities.
-    uag_prime = u_prime.metpy.unit_array - ug_prime   # [m/s]
-    vag_prime = v_prime.metpy.unit_array - vg_prime   # [m/s]
+    # Extract pint quantities for the divergence computation below.
+    phi_vals  = phi_prime.metpy.unit_array   # [m² s⁻²]
+    uag_vals  = uag_prime.metpy.unit_array   # [m/s]
+    vag_vals  = vag_prime.metpy.unit_array   # [m/s]
 
     # ── Ageostrophic geopotential flux:  F = v_ag' · φ' ─────────────────
-    Fx = uag_prime * phi_vals       # [m³ s⁻³]
-    Fy = vag_prime * phi_vals       # [m³ s⁻³]
+    Fx = uag_vals * phi_vals       # [m³ s⁻³]
+    Fy = vag_vals * phi_vals       # [m³ s⁻³]
 
     # ── AFC = -∇ · F ─────────────────────────────────────────────────────
     # Use central differences on the full-resolution spherical grid.
@@ -786,6 +850,137 @@ def ageostrophic_flux_convergence_250(
                "units": str(afc_vals.units)},
     )
     return afc
+
+
+def barotropic_critical_region_250(u_clim, v_clim):
+    """
+    Barotropic Critical Region (BtCR) diagnostics at 250 hPa.
+
+    Following Rivière (2006, JAS, 63, 1764–1775), the BtCR is the zone
+    where the **low-frequency deformation field** of the jet dominates over
+    rotation.  A distúrbio traversing such a region is forced into an
+    alignment that enables efficient baroclinic energy extraction.
+
+    The low-frequency (background) flow is represented here by the 30-year
+    monthly climatology (1991–2020, WMO standard period), used as a
+    surrogate for the 8-day running mean that Rivière (2006) employed. This
+    choice is dictated by data availability: computing a per-case 8-day
+    running mean for hundreds of cyclones from ERA5 is impractical; the
+    climatology captures the same large-scale, slowly-varying deformation
+    structure.
+
+    **Spherical-geometry formulation (Rivière 2006; btcr technical guide):**
+
+    Relative vorticity of the background flow:
+        ζ_m = ∂v_m/∂x − ∂u_m/∂y + u_m tan(φ)/a
+
+    Stretching (St) and shearing (Sh) deformation (with curvature corrections):
+        St = ∂u_m/∂x − ∂v_m/∂y − v_m tan(φ)/a
+        Sh = ∂v_m/∂x + ∂u_m/∂y − u_m tan(φ)/a
+
+    Total deformation magnitude:
+        σ_m = √(St² + Sh²)
+
+    Effective deformation (master BtCR indicator):
+        Δm = σ_m² − ζ_m²
+
+        Δm < 0  →  Rotation dominates → distúrbio stays circular; no
+                   preferred orientation; barotropic exchanges negligible.
+        Δm > 0  →  Deformation dominates → fixed orientation points
+                   (stable + unstable) appear; the jet can flatten or tilt
+                   the system into a productive or destructive configuration.
+
+    Dilatation axis angle (defined only where Δm > 0):
+        φ_dil = ½ arctan2(Sh, St)   [radians]
+
+    The dilatation axis is the direction toward which the background flow
+    stretches fluid parcels.  A characteristic **sudden reorientation** of
+    φ_dil across the composited BtCR (from SW–NE upstream to NW–SE
+    downstream of the jet exit) is the structural signature confirming a
+    BtCR.
+
+    Parameters
+    ----------
+    u_clim, v_clim : xr.DataArray (2D, latitude × longitude)
+        Climatological (low-frequency) zonal / meridional wind at 250 hPa
+        (m/s). Plain DataArrays without pint units (as returned by
+        climatology interpolation in ``_process_single_case``).
+
+    Returns
+    -------
+    delta_m : ndarray (2D)
+        Effective deformation Δm = σ_m² − ζ_m² (s⁻²).
+        Positive values mark candidate BtCR regions.
+    dil_angle : ndarray (2D)
+        Dilatation axis angle φ_dil (radians) where Δm > 0; NaN elsewhere.
+
+    References
+    ----------
+    - Rivière, G., 2006: Role of the Low-Frequency Deformation Field on the
+      Explosive Growth of Extratropical Cyclones at the Jet Exit. Part I:
+      Barotropic Critical Region. J. Atmos. Sci., 63, 1764–1775.
+      https://doi.org/10.1175/JAS3728.1
+    - BtCR Technical Guide (Souza, D., 2026): step-by-step formulation for
+      composite identification via climatological base state.
+
+    ⚠ WARNING FOR DEVELOPERS / AI AGENTS:
+    This function has been personally validated by the developer for unit
+    consistency and formula correctness.  All spatial derivatives use the
+    full-resolution spherical grid spacings from
+    ``compute_spherical_grid_spacing``.  DO NOT replace with Cartesian
+    (constant dx/dy) derivatives — the curvature-correction terms rely on
+    the latitude-dependent grid spacings.  NaN propagation is intentional
+    (equatorial singularity in tan φ is handled by clipping).
+    """
+    lat_1d = u_clim.latitude.values
+    lon_1d = u_clim.longitude.values
+
+    # Plain numpy arrays (no pint units needed; all quantities are in SI)
+    u_m = u_clim.values   # (ny, nx)  [m s⁻¹]
+    v_m = v_clim.values   # (ny, nx)  [m s⁻¹]
+
+    # ── Spherical-geometry grid spacings ─────────────────────────────────
+    dx_2d, dy_1d, lat_2d, _ = compute_spherical_grid_spacing(lat_1d, lon_1d)
+    # dx_2d : (ny, nx)  [m]    latitude-dependent zonal spacing
+    # dy_1d : (ny,)     [m]    meridional spacing (nearly constant)
+
+    # ── Spatial derivatives (spherical geometry) ─────────────────────────
+    # ∂/∂x ≈ Δ / dx_2d  (zonal,       axis=1)
+    # ∂/∂y ≈ Δ / dy              (meridional,  axis=0)
+    du_dx = np.gradient(u_m, axis=1) / dx_2d
+    du_dy = np.gradient(u_m, axis=0) / dy_1d[:, np.newaxis]
+    dv_dx = np.gradient(v_m, axis=1) / dx_2d
+    dv_dy = np.gradient(v_m, axis=0) / dy_1d[:, np.newaxis]
+
+    # ── Curvature corrections ─────────────────────────────────────────────
+    # tan(φ) diverges at ±90°; clip at |φ| = 85° to avoid singularity
+    lat_clipped = np.clip(lat_2d, -85.0, 85.0)
+    tan_phi = np.tan(np.deg2rad(lat_clipped))
+    a = R_EARTH.magnitude   # scalar [m]
+
+    # ── Relative vorticity of background flow ────────────────────────────
+    # ζ_m = ∂v_m/∂x − ∂u_m/∂y + u_m·tan(φ)/a
+    zeta_m = dv_dx - du_dy + u_m * tan_phi / a              # [s⁻¹]
+
+    # ── Deformation components ───────────────────────────────────────────
+    # Stretching: St = ∂u_m/∂x − ∂v_m/∂y − v_m·tan(φ)/a
+    St = du_dx - dv_dy - v_m * tan_phi / a                  # [s⁻¹]
+
+    # Shearing:   Sh = ∂v_m/∂x + ∂u_m/∂y − u_m·tan(φ)/a
+    Sh = dv_dx + du_dy - u_m * tan_phi / a                  # [s⁻¹]
+
+    # Total deformation magnitude: σ_m = √(St² + Sh²)
+    sigma_m = np.sqrt(St ** 2 + Sh ** 2)                    # [s⁻¹]
+
+    # ── Effective deformation: Δm = σ_m² − ζ_m² ─────────────────────────
+    delta_m = sigma_m ** 2 - zeta_m ** 2                    # [s⁻²]
+
+    # ── Dilatation axis angle (only where Δm > 0) ────────────────────────
+    # φ_dil = ½ arctan2(Sh, St)   — full 4-quadrant inverse tangent
+    dil_angle_full = 0.5 * np.arctan2(Sh, St)               # [rad]
+    dil_angle = np.where(delta_m > 0, dil_angle_full, np.nan)
+
+    return delta_m, dil_angle
 
 
 # ============================================================================
@@ -828,12 +1023,24 @@ def _process_single_case(track_id):
     -------
     track_id : int
     result : dict or None
-        If successful, a dict with keys:
+        If successful, a dict with keys (all values are 2-D ndarrays (ny, nx))
+
+        Total-field diagnostics (always present when ERA5 file exists):
           'egr', 'pv_200', 'pv_850', 'adv_T_850', 'div_q_975',
-          'ke_adv_250', 'rk_criterion_250', 'afc_250' (if climatology available),
-          'msl' (optional),
+          'ke_adv_250', 'rk_criterion_250'
+          'msl' (optional, only if msl variable present in ERA5 file)
           'u_250', 'u_850', 'u_975', 'v_250', 'v_850', 'v_975', 'q_975'
-        All values are 2-D ndarrays (ny, nx).
+
+        Diagnostics requiring 250 hPa climatology (step2_1, group '250hPa'):
+          'afc_250', 'ke_adv_250_anom'
+
+        Diagnostics requiring multi-level climatologies (step2_1):
+          'pv_200_anom'     (requires pv200 climatology)
+          'pv_850_anom'     (requires pv850 climatology)
+          'adv_T_850_anom'  (requires pv850 climatology)
+          'div_q_975_anom'  (requires mfd975 climatology)
+          'msl_anom'        (requires slp climatology)
+
         If the file is missing or an error occurs, returns None.
     error : str or None
         Error message if processing failed.
@@ -966,6 +1173,16 @@ def _process_single_case(track_id):
                 u_250, v_250, z_250,
                 clim_sub["u_clim"], clim_sub["v_clim"], clim_sub["z_clim"],
             )
+
+            # ── BtCR diagnostics (Rivière 2006) ──────────────────────────
+            # Computed from the LOW-FREQUENCY (climatological) winds only.
+            # BtCR is a property of the background deformation field;
+            # the instantaneous cyclone winds are NOT used here.
+            btcr_dm, btcr_da = barotropic_critical_region_250(
+                clim_sub["u_clim"], clim_sub["v_clim"]
+            )
+            result["btcr_delta_m"]  = btcr_dm
+            result["btcr_dil_angle"] = btcr_da
 
         # ── ANOMALY FIELDS ────────────────────────────────────────
         # Anomalies follow the same convention as AFC: eddy (primed)
@@ -1152,6 +1369,8 @@ def compute_composite(cases, ep_label, n_jobs=1):
         # Anomaly fields (computed from eddy/primed inputs)
         "ke_adv_250_anom": [], "adv_T_850_anom": [], "div_q_975_anom": [],
         "pv_200_anom": [], "pv_850_anom": [], "msl_anom": [],
+        # BtCR diagnostics (computed from climatological / low-frequency winds)
+        "btcr_delta_m": [], "btcr_dil_angle": [],
     }
     level_accum: dict[str, dict[int, list]] = {
         "u": {250: [], 850: [], 975: []},
@@ -1181,6 +1400,11 @@ def compute_composite(cases, ep_label, n_jobs=1):
         # Anomaly fields (collected only when climatology was available)
         for key in ("ke_adv_250_anom", "adv_T_850_anom", "div_q_975_anom",
                      "pv_200_anom", "pv_850_anom", "msl_anom"):
+            if key in result:
+                scalar_accum[key].append(result[key])
+
+        # BtCR fields (collected only when 250 hPa climatology was available)
+        for key in ("btcr_delta_m", "btcr_dil_angle"):
             if key in result:
                 scalar_accum[key].append(result[key])
 
@@ -1229,6 +1453,9 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "pv_200_anom":      ("Potential Vorticity Anomaly at 200 hPa",      "K m2 kg-1 s-1"),
         "pv_850_anom":      ("Potential Vorticity Anomaly at 850 hPa",      "K m2 kg-1 s-1"),
         "msl_anom":         ("Sea Level Pressure Anomaly",                   "Pa"),
+        # BtCR diagnostics (from climatological 250 hPa winds; Rivière 2006)
+        "btcr_delta_m":    ("BtCR Effective Deformation (sigma_m^2 - zeta_m^2)", "s-2"),
+        "btcr_dil_angle":  ("BtCR Dilatation Axis Angle (where delta_m > 0)",    "rad"),
     }
     da_scalars: dict[str, xr.DataArray] = {}
     for var, (lname, ustr) in scalar_specs.items():

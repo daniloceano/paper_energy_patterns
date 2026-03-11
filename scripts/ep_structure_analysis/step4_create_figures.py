@@ -162,6 +162,114 @@ def _add_cbar(fig, ax, im, label):
 # FIGURE FUNCTIONS
 # ============================================================================
 
+def figure_wind250(datasets):
+    """250 hPa total wind composite: EP1 vs EP2, Bentley style.
+
+    Produces wind-speed shading (plasma colormap, 0–70 m/s), wind barbs
+    sub-sampled every ~3° (~8 grid points at 0.25° res), and a solid contour
+    at 30 m/s marking the jet-stream core threshold.  This is a purely
+    kinematic overview figure (no anomalies) analogous to the jet-stream
+    climatology maps shown in Bentley et al. (2009) and similar works.
+
+    Parameters
+    ----------
+    datasets : dict
+        Mapping of EP label → composite xr.Dataset (as returned by
+        ``load_datasets``).  Must contain ``u_250`` and ``v_250`` (m s⁻¹).
+    """
+    logging.info("  Creating 250 hPa total wind composite figure (Bentley style)...")
+
+    ep_labels = list(datasets.keys())
+    n = len(ep_labels)
+    fig, axes = plt.subplots(
+        1, n,
+        figsize=(7 * n, 5.5),
+        subplot_kw={"projection": ccrs.PlateCarree()},
+        constrained_layout=True,
+    )
+    if n == 1:
+        axes = [axes]
+
+    cmap = plt.cm.plasma
+    vmin, vmax = 0, 70
+    jet_threshold = 30  # m/s
+
+    for ax, ep_label in zip(axes, ep_labels):
+        ds = datasets[ep_label]
+        if "u_250" not in ds or "v_250" not in ds:
+            logging.warning(f"    ⚠  u_250/v_250 not in {ep_label} — skipping panel")
+            ax.set_title(f"{ep_label} — missing wind data", fontsize=11)
+            continue
+
+        lons = ds["lon"].values
+        lats = ds["lat"].values
+        u = ds["u_250"].values
+        v = ds["v_250"].values
+        wspd = np.hypot(u, v)
+
+        # Wind-speed shading
+        im = ax.contourf(
+            lons, lats, wspd,
+            levels=np.linspace(vmin, vmax, 29),
+            cmap=cmap,
+            extend="max",
+            transform=ccrs.PlateCarree(),
+        )
+
+        # 30 m/s jet-core contour
+        ax.contour(
+            lons, lats, wspd,
+            levels=[jet_threshold],
+            colors="white",
+            linewidths=1.2,
+            linestyles="solid",
+            transform=ccrs.PlateCarree(),
+        )
+
+        # Wind barbs — sub-sample every ~8 grid points (~3° spacing at 0.25°)
+        step = max(1, len(lons) // 24)
+        ax.barbs(
+            lons[::step], lats[::step],
+            u[::step, ::step], v[::step, ::step],
+            length=5,
+            barbcolor="black",
+            flagcolor="black",
+            linewidth=0.6,
+            transform=ccrs.PlateCarree(),
+        )
+
+        ax.coastlines(linewidth=0.7)
+        ax.add_feature(cfeature.BORDERS, linewidth=0.4, edgecolor="0.4")
+        gl = ax.gridlines(draw_labels=True, linewidth=0.3, linestyle="--", color="0.5")
+        gl.top_labels = False
+        gl.right_labels = False
+        ax.set_title(f"{ep_label} — 250 hPa wind speed (m s⁻¹)", fontsize=11)
+
+    # Shared colorbar
+    cbar = fig.colorbar(
+        im,
+        ax=axes,
+        orientation="horizontal",
+        fraction=0.04,
+        pad=0.06,
+        aspect=40,
+    )
+    cbar.set_label("Wind speed (m s⁻¹)", fontsize=10)
+    cbar.ax.axvline(jet_threshold, color="white", linewidth=1.5, label=f"{jet_threshold} m/s (jet)")
+
+    fig.suptitle(
+        "250 hPa Total Wind — composite mean (EP1 vs EP2)",
+        fontsize=13,
+        fontweight="bold",
+        y=1.01,
+    )
+
+    out_path = os.path.join(FIGURES_DIR, "composite_wind250.png")
+    fig.savefig(out_path, dpi=DPI, bbox_inches="tight")
+    plt.close(fig)
+    logging.info(f"    Saved → {out_path}")
+
+
 def figure_egr(datasets):
     """EGR composite: EP1 vs EP2, with 850 hPa wind vectors.
 
@@ -762,7 +870,7 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
 
 
 def figure_pv200_anom(datasets):
-    """PV anomaly at 200 hPa: EP1 vs EP2, with 250 hPa wind vectors."""
+    """PV anomaly at 200 hPa: EP1 vs EP2, with 250 hPa anomaly wind vectors."""
     logging.info("  Creating PV anomaly @200 hPa composite figure...")
     _anom_fig(
         datasets,
@@ -772,15 +880,15 @@ def figure_pv200_anom(datasets):
         suptitle="PV Anomaly at 200 hPa (departure from 1991–2020 climatology) — EP1 vs EP2",
         out_name="composite_pv200_anom.png",
         cmap="RdBu_r",
-        wind_u="u_250",
-        wind_v="v_250",
+        wind_u="u_250_prime",
+        wind_v="v_250_prime",
         wind_scale=VECTOR_SCALE,
-        wind_note="Anomaly = PV′(200 hPa)\nBased on eddy u′, v′, T′ at 175/200/225 hPa",
+        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (250 hPa)",
     )
 
 
 def figure_pv850_anom(datasets):
-    """PV anomaly at 850 hPa: EP1 vs EP2, with 850 hPa wind vectors."""
+    """PV anomaly at 850 hPa: EP1 vs EP2, with 850 hPa anomaly wind vectors."""
     logging.info("  Creating PV anomaly @850 hPa composite figure...")
     _anom_fig(
         datasets,
@@ -790,15 +898,15 @@ def figure_pv850_anom(datasets):
         suptitle="PV Anomaly at 850 hPa (departure from 1991–2020 climatology) — EP1 vs EP2",
         out_name="composite_pv850_anom.png",
         cmap="RdBu_r",
-        wind_u="u_850",
-        wind_v="v_850",
+        wind_u="u_850_prime",
+        wind_v="v_850_prime",
         wind_scale=100,
-        wind_note="Anomaly = PV′(850 hPa)\nBased on eddy u′, v′, T′ at 825/850/875 hPa",
+        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (850 hPa)",
     )
 
 
 def figure_advT850_anom(datasets):
-    """Temperature advection anomaly at 850 hPa: EP1 vs EP2."""
+    """Temperature advection anomaly at 850 hPa: EP1 vs EP2, with 850 hPa anomaly wind vectors."""
     logging.info("  Creating temp advection anomaly @850 hPa composite figure...")
     _anom_fig(
         datasets,
@@ -808,15 +916,15 @@ def figure_advT850_anom(datasets):
         suptitle="Temperature Advection Anomaly at 850 hPa (departure from climatology) — EP1 vs EP2",
         out_name="composite_advT850_anom.png",
         cmap="RdBu_r",
-        wind_u="u_850",
-        wind_v="v_850",
+        wind_u="u_850_prime",
+        wind_v="v_850_prime",
         wind_scale=100,
-        wind_note="Anomaly = −V′·∇T′ (850 hPa)\nEddy winds & temperature",
+        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (850 hPa)",
     )
 
 
 def figure_moisture_anom(datasets):
-    """Moisture flux divergence anomaly at 975 hPa: EP1 vs EP2."""
+    """Moisture flux divergence anomaly at 975 hPa: EP1 vs EP2, with 975 hPa anomaly wind vectors."""
     logging.info("  Creating moisture flux divergence anomaly @975 hPa composite figure...")
     _anom_fig(
         datasets,
@@ -826,15 +934,15 @@ def figure_moisture_anom(datasets):
         suptitle="Moisture Flux Divergence Anomaly at 975 hPa (departure from climatology) — EP1 vs EP2",
         out_name="composite_moisture_flux_anom.png",
         cmap="BrBG_r",
-        wind_u="u_975",
-        wind_v="v_975",
+        wind_u="u_975_prime",
+        wind_v="v_975_prime",
         wind_scale=80,
-        wind_note="Anomaly = ∇·(q′V′) at 975 hPa\n+ divergence  /  − convergence",
+        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (975 hPa)",
     )
 
 
 def figure_ke_advection_anom(datasets):
-    """Kinetic energy advection anomaly at 250 hPa: EP1 vs EP2."""
+    """Kinetic energy advection anomaly at 250 hPa: EP1 vs EP2, with 250 hPa anomaly wind vectors."""
     logging.info("  Creating KE advection anomaly @250 hPa composite figure...")
     _anom_fig(
         datasets,
@@ -844,10 +952,10 @@ def figure_ke_advection_anom(datasets):
         suptitle="KE Advection Anomaly at 250 hPa (departure from climatology) — EP1 vs EP2",
         out_name="composite_ke_advection_anom.png",
         cmap="PuOr_r",
-        wind_u="u_250",
-        wind_v="v_250",
+        wind_u="u_250_prime",
+        wind_v="v_250_prime",
         wind_scale=VECTOR_SCALE,
-        wind_note="Anomaly = −V′·∇(½|V′|²) at 250 hPa\nEddy KE self-advection",
+        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (250 hPa)",
     )
 
 
@@ -1002,6 +1110,10 @@ def main():
         # anomaly fields (require step2_1 multi-group climatologies)
         "pv_200_anom", "pv_850_anom", "adv_T_850_anom",
         "div_q_975_anom", "ke_adv_250_anom", "msl_anom",
+        # eddy winds for anomaly overlays (X' = X − X̅_m)
+        "u_250_prime", "v_250_prime",
+        "u_850_prime", "v_850_prime",
+        "u_975_prime", "v_975_prime",
         # BtCR fields (require step2_1 250 hPa climatology)
         "btcr_delta_m", "btcr_dil_angle",
     ]
@@ -1012,6 +1124,7 @@ def main():
 
     logging.info("\nCreating total-field figures...")
 
+    figure_wind250(datasets)
     figure_egr(datasets)
     figure_pv200(datasets)
     figure_pv850(datasets)

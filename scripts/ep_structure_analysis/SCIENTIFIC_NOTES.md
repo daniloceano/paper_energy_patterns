@@ -225,10 +225,15 @@ $$AFC = -\nabla \cdot (\vec{v}_{ag}' \, \phi')$$
 
 To isolate the **synoptic-scale eddy signature** of EP1 and EP2 cyclones from the background climatological state, five additional diagnostics are computed as anomaly (eddy perturbation) fields using the same temporal decomposition already applied to AFC.
 
-**Decomposition:**
-$$X = \bar{X} + X'$$
+**Sign convention — anomaly definition:**
+$$X' = X - \bar{X}_m$$
 
-where $\bar{X}$ is the **30-year WMO monthly climatological mean** (1991–2020, ERA5 monthly-averaged reanalysis) and $X'$ is the **eddy perturbation** at the time of the cyclone track.
+that is, **instantaneous minus climatology** (positive anomaly = instantaneous value exceeds the climatological background).  This is the standard convention in the extratropical dynamics literature (Trenberth 1984; Orlanski & Katzfey 1991; Decker & Martin 2005) and is used throughout all anomaly diagnostics in this study.  The reverse sign ($\bar{X}_m - X$) is *not* used.
+
+**Full decomposition identity:**
+$$X = \bar{X}_m + X'$$
+
+where $\bar{X}_m$ is the **30-year WMO monthly climatological mean** (1991–2020, ERA5 monthly-averaged reanalysis) and $X'$ is the **eddy perturbation** at the time of the cyclone track.
 
 **Climatology data source:**  
 ERA5 monthly-averaged reanalysis on pressure levels (`reanalysis-era5-pressure-levels-monthly-means`), downloaded via CDS API in `step2_1_download_era5_monthly_means.py`. The download is organized in four groups:
@@ -263,6 +268,8 @@ The cross-terms (e.g. $-V_m \cdot \nabla T' - V' \cdot \nabla T_m$ for temperatu
 **Note on EGR:** EGR is a layer-averaged diagnostic derived from the total wind shear and static stability. A temporal decomposition of EGR would require priming N² and the shear simultaneously, leading to non-trivial cross terms. For this reason EGR is retained as a total-field diagnostic only.
 
 **Note on AFC:** AFC is by construction an anomaly field (it is already computed from eddy $\vec{v}'$ and $\phi'$ relative to the monthly climatology). No additional anomaly version is needed.
+
+**Note on wind vectors in anomaly figures:** All anomaly composite figures overlay **eddy wind vectors** $\vec{V}' = \vec{V} - \bar{\vec{V}}_m$ (not total winds), consistent with the sign convention above.  This ensures that the overlaid circulation patterns reflect the cyclone-induced perturbation rather than the climatological background.
 
 ---
 

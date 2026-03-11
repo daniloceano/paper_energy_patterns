@@ -1170,6 +1170,19 @@ def _process_single_case(track_id):
             raw = clim_ds[clim_var].sel(pressure_level=float(lev))
             return _clim_prime(raw, da_field, unit_str)
 
+        def _clim_da(clim_ds, lev, ref_da, clim_var, unit_str):
+            """Build a unit-tagged DataArray of the climatological field at `lev`.
+
+            Unlike ``_prime``, does NOT subtract from the instantaneous field;
+            used to evaluate diagnostics on the climatological mean itself
+            (e.g., for computing the exact PV anomaly as
+            PV_anom = PV(total) − PV(clim) rather than the nonlinear
+            approximation PV(u', v', T')).
+            """
+            raw = clim_ds[clim_var].sel(pressure_level=float(lev))
+            return (xr.DataArray(raw.values, coords=ref_da.coords, dims=ref_da.dims)
+                   * units(unit_str))
+
         # ── KE advection anomaly (250 hPa, uses existing 250 hPa clim) ──
         if ds_clim is not None:
             c250 = _interp_clim(ds_clim)
@@ -1187,19 +1200,25 @@ def _process_single_case(track_id):
         )
         if ds_clim_pv200 is not None:
             c200 = _interp_clim(ds_clim_pv200)
+            p3_200 = np.array([levels[_idx(175)], levels[_idx(200)], levels[_idx(225)]]) * 100.0
 
-            result["pv_200_anom"] = compute_pv_at_level(
-                _prime(c200, 175, _sel(u_da, 175) * units("m/s"), "u_clim", "m/s"),
-                _prime(c200, 200, _sel(u_da, 200) * units("m/s"), "u_clim", "m/s"),
-                _prime(c200, 225, _sel(u_da, 225) * units("m/s"), "u_clim", "m/s"),
-                _prime(c200, 175, _sel(v_da, 175) * units("m/s"), "v_clim", "m/s"),
-                _prime(c200, 200, _sel(v_da, 200) * units("m/s"), "v_clim", "m/s"),
-                _prime(c200, 225, _sel(v_da, 225) * units("m/s"), "v_clim", "m/s"),
-                _prime(c200, 175, _sel(T_da, 175) * units.kelvin, "t_clim", "kelvin"),
-                _prime(c200, 200, _sel(T_da, 200) * units.kelvin, "t_clim", "kelvin"),
-                _prime(c200, 225, _sel(T_da, 225) * units.kelvin, "t_clim", "kelvin"),
-                np.array([levels[_idx(175)], levels[_idx(200)], levels[_idx(225)]]) * 100.0,
+            # Exact PV anomaly: PV(total) − PV(climatology).
+            # Using PV(u', v', T') instead would be the pure-eddy approximation
+            # which omits cross terms and can give the wrong sign in the SH
+            # (PV is nonlinear — see §3.10 note in SCIENTIFIC_NOTES.md).
+            pv_200_clim = compute_pv_at_level(
+                _clim_da(c200, 175, _sel(u_da, 175)*units("m/s"), "u_clim", "m/s"),
+                _clim_da(c200, 200, _sel(u_da, 200)*units("m/s"), "u_clim", "m/s"),
+                _clim_da(c200, 225, _sel(u_da, 225)*units("m/s"), "u_clim", "m/s"),
+                _clim_da(c200, 175, _sel(v_da, 175)*units("m/s"), "v_clim", "m/s"),
+                _clim_da(c200, 200, _sel(v_da, 200)*units("m/s"), "v_clim", "m/s"),
+                _clim_da(c200, 225, _sel(v_da, 225)*units("m/s"), "v_clim", "m/s"),
+                _clim_da(c200, 175, _sel(T_da, 175)*units.kelvin, "t_clim", "kelvin"),
+                _clim_da(c200, 200, _sel(T_da, 200)*units.kelvin, "t_clim", "kelvin"),
+                _clim_da(c200, 225, _sel(T_da, 225)*units.kelvin, "t_clim", "kelvin"),
+                p3_200,
             )
+            result["pv_200_anom"] = result["pv_200"] - pv_200_clim
 
         # ── T_adv@850 anomaly + PV@850 anomaly (825/850/875 hPa) ─
         ds_clim_pv850 = _load_clim(
@@ -1218,19 +1237,22 @@ def _process_single_case(track_id):
             result["u_850_prime"] = u_850_p.metpy.unit_array.magnitude
             result["v_850_prime"] = v_850_p.metpy.unit_array.magnitude
 
-            # PV@850 anomaly uses eddy inputs at all three surrounding levels
-            result["pv_850_anom"] = compute_pv_at_level(
-                _prime(c850, 825, _sel(u_da, 825) * units("m/s"), "u_clim", "m/s"),
-                _prime(c850, 850, _sel(u_da, 850) * units("m/s"), "u_clim", "m/s"),
-                _prime(c850, 875, _sel(u_da, 875) * units("m/s"), "u_clim", "m/s"),
-                _prime(c850, 825, _sel(v_da, 825) * units("m/s"), "v_clim", "m/s"),
-                _prime(c850, 850, _sel(v_da, 850) * units("m/s"), "v_clim", "m/s"),
-                _prime(c850, 875, _sel(v_da, 875) * units("m/s"), "v_clim", "m/s"),
-                _prime(c850, 825, _sel(T_da, 825) * units.kelvin, "t_clim", "kelvin"),
-                _prime(c850, 850, _sel(T_da, 850) * units.kelvin, "t_clim", "kelvin"),
-                _prime(c850, 875, _sel(T_da, 875) * units.kelvin, "t_clim", "kelvin"),
-                np.array([levels[_idx(825)], levels[_idx(850)], levels[_idx(875)]]) * 100.0,
+            # Exact PV anomaly: PV(total) − PV(climatology).
+            # See §3.10 note in SCIENTIFIC_NOTES.md for rationale.
+            p3_850 = np.array([levels[_idx(825)], levels[_idx(850)], levels[_idx(875)]]) * 100.0
+            pv_850_clim = compute_pv_at_level(
+                _clim_da(c850, 825, _sel(u_da, 825)*units("m/s"), "u_clim", "m/s"),
+                _clim_da(c850, 850, _sel(u_da, 850)*units("m/s"), "u_clim", "m/s"),
+                _clim_da(c850, 875, _sel(u_da, 875)*units("m/s"), "u_clim", "m/s"),
+                _clim_da(c850, 825, _sel(v_da, 825)*units("m/s"), "v_clim", "m/s"),
+                _clim_da(c850, 850, _sel(v_da, 850)*units("m/s"), "v_clim", "m/s"),
+                _clim_da(c850, 875, _sel(v_da, 875)*units("m/s"), "v_clim", "m/s"),
+                _clim_da(c850, 825, _sel(T_da, 825)*units.kelvin, "t_clim", "kelvin"),
+                _clim_da(c850, 850, _sel(T_da, 850)*units.kelvin, "t_clim", "kelvin"),
+                _clim_da(c850, 875, _sel(T_da, 875)*units.kelvin, "t_clim", "kelvin"),
+                p3_850,
             )
+            result["pv_850_anom"] = result["pv_850"] - pv_850_clim
 
         # ── Moisture flux divergence anomaly (975 hPa) ────────────
         ds_clim_mfd = _load_clim(

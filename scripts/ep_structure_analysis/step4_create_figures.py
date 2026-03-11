@@ -17,11 +17,13 @@ Fields plotted (total fields):
   9. AFC at 250 hPa (Orlanski & Katzfey 1991) — shaded (positive = eddy KE source)
 
 Anomaly fields (departure from 1991–2020 WMO climatology):
-  10. PV anomaly at 200 hPa       — composite_pv200_anom.png
-  11. PV anomaly at 850 hPa       — composite_pv850_anom.png
-  12. Temp advection anomaly 850  — composite_advT850_anom.png
-  13. Moisture flux div anomaly   — composite_moisture_flux_anom.png
-  14. KE advection anomaly 250    — composite_ke_advection_anom.png
+  10. PV anomaly at 200 hPa            — composite_pv200_anom.png
+  11. PV anomaly at 850 hPa            — composite_pv850_anom.png
+  12. Temp advection anomaly 850       — composite_advT850_anom.png
+  13. Moisture flux div anomaly        — composite_moisture_flux_anom.png
+  14. KE advection anomaly 250         — composite_ke_advection_anom.png
+  15. SLP anomaly                      — composite_slp_anom.png
+  16. 250 hPa wind speed anomaly       — composite_wind250_anom.png
 
 Note: EGR is not decomposed into anomaly form (no climatology downloaded).
 Note: AFC anomaly uses the same temporal decomposition as the total field
@@ -45,6 +47,7 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import warnings
 import logging
@@ -165,109 +168,78 @@ def _add_cbar(fig, ax, im, label):
 def figure_wind250(datasets):
     """250 hPa total wind composite: EP1 vs EP2, Bentley style.
 
-    Produces wind-speed shading (plasma colormap, 0–70 m/s), wind barbs
-    sub-sampled every ~3° (~8 grid points at 0.25° res), and a solid contour
-    at 30 m/s marking the jet-stream core threshold.  This is a purely
-    kinematic overview figure (no anomalies) analogous to the jet-stream
-    climatology maps shown in Bentley et al. (2009) and similar works.
+    Produces wind-speed shading using a Bentley-inspired colormap that only
+    assigns colour to winds ≥ 30 m/s (jet threshold); sub-threshold regions
+    appear white.  The palette transitions from light blue (30 m/s) through
+    dark blue, pink, and red to dark gray (≥ 100 m/s), approximating the
+    style used in Bentley et al. (2009).  Wind barbs are sub-sampled every
+    ~3° of the storm-relative grid and a solid contour marks 30 m/s.
 
-    Parameters
-    ----------
-    datasets : dict
-        Mapping of EP label → composite xr.Dataset (as returned by
-        ``load_datasets``).  Must contain ``u_250`` and ``v_250`` (m s⁻¹).
+    Coordinates are storm-relative (x = Δlon, y = Δlat from cyclone centre),
+    consistent with all other composite figures in this module.
     """
     logging.info("  Creating 250 hPa total wind composite figure (Bentley style)...")
 
-    ep_labels = list(datasets.keys())
-    n = len(ep_labels)
-    fig, axes = plt.subplots(
-        1, n,
-        figsize=(7 * n, 5.5),
-        subplot_kw={"projection": ccrs.PlateCarree()},
-        constrained_layout=True,
-    )
-    if n == 1:
-        axes = [axes]
+    if "u_250" not in datasets["EP1"] or "v_250" not in datasets["EP1"]:
+        logging.warning("    ⚠  u_250/v_250 not in composites — skipping wind250 figure")
+        return
 
-    cmap = plt.cm.plasma
-    vmin, vmax = 0, 70
-    jet_threshold = 30  # m/s
+    # Bentley-inspired colormap: only ≥ 30 m/s receives colour; below → white
+    _bentley_colors = [
+        (0.85, 0.92, 1.00),   # 30 m/s : very light blue
+        (0.53, 0.81, 0.98),   # 40 m/s : sky blue
+        (0.20, 0.60, 0.90),   # 50 m/s : medium blue
+        (0.10, 0.35, 0.75),   # 60 m/s : dark blue
+        (0.95, 0.70, 0.80),   # 70 m/s : light pink
+        (0.90, 0.30, 0.40),   # 80 m/s : red-pink
+        (0.65, 0.05, 0.10),   # 90 m/s : deep red
+        (0.35, 0.35, 0.35),   # 100 m/s: dark gray
+    ]
+    cmap_bentley = LinearSegmentedColormap.from_list("bentley_wind", _bentley_colors)
+    cmap_bentley.set_under("white")     # below 30 m/s → white (invisible)
 
-    for ax, ep_label in zip(axes, ep_labels):
-        ds = datasets[ep_label]
-        if "u_250" not in ds or "v_250" not in ds:
-            logging.warning(f"    ⚠  u_250/v_250 not in {ep_label} — skipping panel")
-            ax.set_title(f"{ep_label} — missing wind data", fontsize=11)
-            continue
+    jet_threshold = 30                  # m/s
+    levels = np.arange(30, 115, 5)
 
-        lons = ds["lon"].values
-        lats = ds["lat"].values
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[i]
+        ds = datasets[ep]
+        x, y = ds.x.values, ds.y.values
+
         u = ds["u_250"].values
         v = ds["v_250"].values
         wspd = np.hypot(u, v)
 
-        # Wind-speed shading
-        im = ax.contourf(
-            lons, lats, wspd,
-            levels=np.linspace(vmin, vmax, 29),
-            cmap=cmap,
-            extend="max",
-            transform=ccrs.PlateCarree(),
-        )
+        # Wind-speed shading (only ≥ 30 m/s receives colour)
+        im = ax.contourf(x, y, wspd, levels=levels, cmap=cmap_bentley, extend="max")
 
         # 30 m/s jet-core contour
-        ax.contour(
-            lons, lats, wspd,
-            levels=[jet_threshold],
-            colors="white",
-            linewidths=1.2,
-            linestyles="solid",
-            transform=ccrs.PlateCarree(),
-        )
+        ax.contour(x, y, wspd, levels=[jet_threshold],
+                   colors="black", linewidths=1.4, linestyles="solid")
 
-        # Wind barbs — sub-sample every ~8 grid points (~3° spacing at 0.25°)
-        step = max(1, len(lons) // 24)
+        # Wind barbs — sub-sample every ~8 grid points (~2–3° at 0.25° res)
+        step = max(1, len(x) // 16)
+        skip = slice(None, None, step)
         ax.barbs(
-            lons[::step], lats[::step],
-            u[::step, ::step], v[::step, ::step],
-            length=5,
-            barbcolor="black",
-            flagcolor="black",
-            linewidth=0.6,
-            transform=ccrs.PlateCarree(),
+            x[skip], y[skip],
+            u[skip, skip], v[skip, skip],
+            length=5, barbcolor="black", flagcolor="black", linewidth=0.6,
         )
 
-        ax.coastlines(linewidth=0.7)
-        ax.add_feature(cfeature.BORDERS, linewidth=0.4, edgecolor="0.4")
-        gl = ax.gridlines(draw_labels=True, linewidth=0.3, linestyle="--", color="0.5")
-        gl.top_labels = False
-        gl.right_labels = False
-        ax.set_title(f"{ep_label} — 250 hPa wind speed (m s⁻¹)", fontsize=11)
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{ep} — 250 hPa total wind speed (m s⁻¹) + wind barbs  [n={n}]",
+                     ylabel=(i == 0))
+        _add_cbar(fig, ax, im, "Wind speed (m s⁻¹)")
 
-    # Shared colorbar
-    cbar = fig.colorbar(
-        im,
-        ax=axes,
-        orientation="horizontal",
-        fraction=0.04,
-        pad=0.06,
-        aspect=40,
-    )
-    cbar.set_label("Wind speed (m s⁻¹)", fontsize=10)
-    cbar.ax.axvline(jet_threshold, color="white", linewidth=1.5, label=f"{jet_threshold} m/s (jet)")
-
-    fig.suptitle(
-        "250 hPa Total Wind — composite mean (EP1 vs EP2)",
-        fontsize=13,
-        fontweight="bold",
-        y=1.01,
-    )
-
-    out_path = os.path.join(FIGURES_DIR, "composite_wind250.png")
-    fig.savefig(out_path, dpi=DPI, bbox_inches="tight")
-    plt.close(fig)
-    logging.info(f"    Saved → {out_path}")
+    fig.suptitle("250 hPa Total Wind — composite mean, Bentley style (EP1 vs EP2)",
+                 fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    out = FIGURES_DIR / "composite_wind250.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
 
 
 def figure_egr(datasets):
@@ -308,13 +280,8 @@ def figure_egr(datasets):
                       color="black", alpha=0.8, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — EGR 500–850 hPa  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — EGR 500–850 hPa + 850 hPa wind  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, "EGR (day⁻¹)")
-
-        mean_val = np.nanmean(ds["egr"].values)
-        ax.text(0.03, 0.97, f"Mean: {mean_val:.2f} day⁻¹",
-                transform=ax.transAxes, fontsize=9, va="top",
-                bbox=dict(boxstyle="round", fc="white", alpha=0.8))
 
     fig.suptitle("Eady Growth Rate (500–850 hPa, Besson et al. 2021) — EP1 vs EP2",
                  fontsize=13, fontweight="bold", y=1.02)
@@ -359,7 +326,7 @@ def figure_pv200(datasets):
                       color="gray", alpha=0.8, scale=VECTOR_SCALE, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — PV at 200 hPa  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — PV at 200 hPa + 250 hPa wind  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, "PV (PVU)")
 
     fig.suptitle("Potential Vorticity at 200 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
@@ -399,7 +366,7 @@ def figure_pv850(datasets):
                       color="black", alpha=0.7, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — PV at 850 hPa  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — PV at 850 hPa + 850 hPa wind  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, "PV (PVU)")
 
     fig.suptitle("Potential Vorticity at 850 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
@@ -439,7 +406,7 @@ def figure_advT850(datasets):
                       color="black", alpha=0.7, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — Temp advection at 850 hPa  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — T advection at 850 hPa + 850 hPa wind  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, "−V·∇T (K h⁻¹)")
 
     fig.suptitle("Temperature Advection at 850 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
@@ -486,13 +453,8 @@ def figure_moisture(datasets):
                       color="black", alpha=0.7, scale=80, width=VECTOR_WIDTH)
         
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — Specific Humidity at 975 hPa  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — Specific humidity at 975 hPa + 975 hPa wind  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, "q (g kg⁻¹)")
-        
-        q_mean = np.nanmean(q975_gkg)
-        ax.text(0.03, 0.97, f"Mean: {q_mean:.2f} g/kg",
-                transform=ax.transAxes, fontsize=9, va="top",
-                bbox=dict(boxstyle="round", fc="white", alpha=0.8))
     
     # Row 2: Moisture flux divergence (g kg⁻¹ s⁻¹)
     # Symmetric color scale
@@ -535,13 +497,9 @@ def figure_moisture(datasets):
                       color="black", alpha=0.6, scale=80, width=VECTOR_WIDTH)
         
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — Moisture Flux Divergence at 975 hPa  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — Moisture flux divergence at 975 hPa + 975 hPa wind  [n={n}]",
+                     ylabel=(i == 0))
         _add_cbar(fig, ax, im, "∇·(qV) (g kg⁻¹ s⁻¹)")
-        
-        # Note on convergence/divergence
-        ax.text(0.03, 0.03, "Blue dashed: convergence\nRed dashed: divergence",
-                transform=ax.transAxes, fontsize=8, va="bottom",
-                bbox=dict(boxstyle="round", fc="white", alpha=0.8))
     
     fig.suptitle("Low-Level Moisture Transport at 975 hPa — EP1 vs EP2", 
                  fontsize=13, fontweight="bold", y=0.995)
@@ -588,13 +546,8 @@ def figure_slp(datasets):
                       color="black", alpha=0.7, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — Sea Level Pressure  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — SLP contours + 850 hPa wind  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, "SLP (hPa)")
-
-        slp_min = np.nanmin(msl_hpa)
-        ax.text(0.03, 0.97, f"Min: {slp_min:.1f} hPa",
-                transform=ax.transAxes, fontsize=9, va="top",
-                bbox=dict(boxstyle="round", fc="white", alpha=0.8))
 
     fig.suptitle("Sea Level Pressure — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
@@ -645,7 +598,9 @@ def figure_rk_criterion(datasets):
             scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5
         )
         
-        _decorate_ax(ax, f"{EP_LABELS[ep]}", xlabel=(i == 0), ylabel=(i == 0))
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{ep} — RK criterion at 250 hPa + 250 hPa wind  [n={n}]",
+                     xlabel=(i == 0), ylabel=(i == 0))
         if i == 1:
             _add_cbar(fig, ax, im, "RK criterion (s⁻¹ m⁻¹)")
 
@@ -699,7 +654,9 @@ def figure_ke_advection(datasets):
             scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5
         )
         
-        _decorate_ax(ax, f"{EP_LABELS[ep]}", xlabel=(i == 0), ylabel=(i == 0))
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{ep} — KE advection at 250 hPa + 250 hPa wind  [n={n}]",
+                     xlabel=(i == 0), ylabel=(i == 0))
         if i == 1:
             _add_cbar(fig, ax, im, "KE advection (m² s⁻³)")
 
@@ -766,21 +723,9 @@ def figure_afc(datasets):
             )
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{EP_LABELS[ep]} — AFC 250 hPa  [n={n}]",
+        _decorate_ax(ax, f"{ep} — AFC at 250 hPa + 250 hPa total wind  [n={n}]",
                      xlabel=True, ylabel=(i == 0))
         _add_cbar(fig, ax, im, "AFC (m² s⁻³)")
-
-        mean_val = np.nanmean(afc)
-        ax.text(
-            0.03, 0.97, f"Mean: {mean_val:.2e} m² s⁻³",
-            transform=ax.transAxes, fontsize=9, va="top",
-            bbox=dict(boxstyle="round", fc="white", alpha=0.8),
-        )
-        ax.text(
-            0.03, 0.03, "+  eddy source\n−  eddy sink",
-            transform=ax.transAxes, fontsize=8, va="bottom",
-            bbox=dict(boxstyle="round", fc="white", alpha=0.8),
-        )
 
     fig.suptitle(
         "Ageostrophic Flux Convergence at 250 hPa (Orlanski & Katzfey 1991) — EP1 vs EP2",
@@ -798,8 +743,7 @@ def figure_afc(datasets):
 # ============================================================================
 
 def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
-              cmap="RdBu_r", wind_u=None, wind_v=None,
-              wind_scale=None, wind_note=None):
+              cmap="RdBu_r", wind_u=None, wind_v=None, wind_scale=None):
     """Generic two-panel (EP1 / EP2) anomaly figure builder.
 
     Parameters
@@ -813,7 +757,6 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
     cmap         : diverging colormap name
     wind_u/v     : variable keys for optional quiver overlay
     wind_scale   : quiver scale (default: VECTOR_SCALE)
-    wind_note    : optional text note placed at bottom-left of each panel
     """
     if var_key not in datasets["EP1"]:
         logging.warning(f"    ⚠  {var_key} not in composites — skipping anomaly figure")
@@ -852,15 +795,6 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
         _decorate_ax(ax, f"{EP_LABELS[ep]}  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, unit_label)
 
-        mean_val = np.nanmean(data)
-        ax.text(0.03, 0.97, f"Mean: {mean_val:.2e}",
-                transform=ax.transAxes, fontsize=9, va="top",
-                bbox=dict(boxstyle="round", fc="white", alpha=0.8))
-        if wind_note:
-            ax.text(0.03, 0.03, wind_note,
-                    transform=ax.transAxes, fontsize=8, va="bottom",
-                    bbox=dict(boxstyle="round", fc="white", alpha=0.8))
-
     fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = FIGURES_DIR / out_name
@@ -883,7 +817,6 @@ def figure_pv200_anom(datasets):
         wind_u="u_250_prime",
         wind_v="v_250_prime",
         wind_scale=VECTOR_SCALE,
-        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (250 hPa)",
     )
 
 
@@ -901,7 +834,6 @@ def figure_pv850_anom(datasets):
         wind_u="u_850_prime",
         wind_v="v_850_prime",
         wind_scale=100,
-        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (850 hPa)",
     )
 
 
@@ -919,7 +851,6 @@ def figure_advT850_anom(datasets):
         wind_u="u_850_prime",
         wind_v="v_850_prime",
         wind_scale=100,
-        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (850 hPa)",
     )
 
 
@@ -937,7 +868,6 @@ def figure_moisture_anom(datasets):
         wind_u="u_975_prime",
         wind_v="v_975_prime",
         wind_scale=80,
-        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (975 hPa)",
     )
 
 
@@ -955,7 +885,6 @@ def figure_ke_advection_anom(datasets):
         wind_u="u_250_prime",
         wind_v="v_250_prime",
         wind_scale=VECTOR_SCALE,
-        wind_note="Vectors: eddy wind V′ = V − V̅ₘ (250 hPa)",
     )
 
 
@@ -970,10 +899,9 @@ def figure_slp_anom(datasets):
         suptitle="Sea Level Pressure Anomaly (departure from 1991–2020 climatology) — EP1 vs EP2",
         out_name="composite_slp_anom.png",
         cmap="RdBu_r",
-        wind_u="u_850",
-        wind_v="v_850",
+        wind_u="u_850_prime",
+        wind_v="v_850_prime",
         wind_scale=100,
-        wind_note="Anomaly = SLP′ = SLP − \u015cLP⃗ₘ\n(1991–2020 monthly climatology)",
     )
 
 
@@ -1082,6 +1010,79 @@ def figure_btcr(datasets):
     logging.info(f"    ✓ {out.name}")
 
 
+def figure_wind250_anom(datasets):
+    """250 hPa wind speed anomaly: EP1 vs EP2, diverging shading.
+
+    Wind speed anomaly is defined as:
+        wspd_anom = |V_total| − |V_climatology|
+                  = sqrt(u² + v²) − sqrt((u − u′)² + (v − v′)²)
+
+    where V_total = (u_250, v_250) and V_climatology = (u_250 − u_250_prime,
+    v_250 − v_250_prime).  This is derived entirely from fields already stored
+    in the composite dataset; no additional step3 computation needed.
+
+    Positive values: EP case has stronger upper-level winds than climatology.
+    Negative values: EP case has weaker upper-level winds than climatology.
+    """
+    logging.info("  Creating 250 hPa wind speed anomaly composite figure...")
+
+    if "u_250" not in datasets["EP1"] or "u_250_prime" not in datasets["EP1"]:
+        logging.warning(
+            "    ⚠  u_250 or u_250_prime not in composites — skipping wind250_anom figure"
+        )
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+
+    # Symmetric colour scale from 98th-percentile across both EPs
+    absmax = 0.0
+    for ep in ["EP1", "EP2"]:
+        ds = datasets[ep]
+        u = ds["u_250"].values
+        v = ds["v_250"].values
+        up = ds["u_250_prime"].values
+        vp = ds["v_250_prime"].values
+        u_clim = u - up
+        v_clim = v - vp
+        anom = np.hypot(u, v) - np.hypot(u_clim, v_clim)
+        absmax = max(absmax, np.nanpercentile(np.abs(anom), 98))
+    if absmax == 0.0:
+        absmax = 1e-10
+    clevels = np.linspace(-absmax, absmax, 21)
+
+    for i, ep in enumerate(["EP1", "EP2"]):
+        ax = axes[i]
+        ds = datasets[ep]
+        x, y = ds.coords["x"].values, ds.coords["y"].values
+
+        u = ds["u_250"].values
+        v = ds["v_250"].values
+        up = ds["u_250_prime"].values
+        vp = ds["v_250_prime"].values
+        u_clim = u - up
+        v_clim = v - vp
+        wspd_anom = np.hypot(u, v) - np.hypot(u_clim, v_clim)
+
+        im = ax.contourf(x, y, wspd_anom, levels=clevels, cmap="RdBu_r", extend="both")
+        ax.contour(x, y, wspd_anom, levels=[0], colors="black", linewidths=1.2)
+
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax,
+                     f"{ep} — Wind speed anomaly at 250 hPa (|V| − |V̅ₘ|)  [n={n}]",
+                     ylabel=(i == 0))
+        _add_cbar(fig, ax, im, "Δ|V| (m s⁻¹)")
+
+    fig.suptitle(
+        "250 hPa Wind Speed Anomaly (|V| − |V̅ₘ|) — EP1 vs EP2",
+        fontsize=13, fontweight="bold", y=1.02,
+    )
+    plt.tight_layout()
+    out = FIGURES_DIR / "composite_wind250_anom.png"
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
@@ -1143,6 +1144,7 @@ def main():
     figure_moisture_anom(datasets)
     figure_ke_advection_anom(datasets)
     figure_slp_anom(datasets)
+    figure_wind250_anom(datasets)
 
     logging.info("\nCreating BtCR figures...")
     figure_btcr(datasets)

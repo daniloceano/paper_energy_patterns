@@ -83,8 +83,8 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 
 | Anomaly Diagnostic | Level | Base Field Primed | Output Variable |
 |--------------------|-------|-------------------|-----------------|
-| **PV anomaly** | 200 hPa | u′, v′, T′ at 175/200/225 hPa | `pv_200_anom` |
-| **PV anomaly** | 850 hPa | u′, v′, T′ at 825/850/875 hPa | `pv_850_anom` |
+| **PV anomaly** | 200 hPa | PV(u,v,T) − PV(ū_m,v̄_m,T̄_m) at 175/200/225 hPa | `pv_200_anom` |
+| **PV anomaly** | 850 hPa | PV(u,v,T) − PV(ū_m,v̄_m,T̄_m) at 825/850/875 hPa | `pv_850_anom` |
 | **Temp advection anomaly** | 850 hPa | u′, v′, T′ at 850 hPa | `adv_T_850_anom` |
 | **Moisture flux div anomaly** | 975 hPa | u′, v′, q′ at 975 hPa | `div_q_975_anom` |
 | **KE advection anomaly** | 250 hPa | u′, v′ at 250 hPa | `ke_adv_250_anom` |
@@ -497,7 +497,13 @@ When a cyclone traverses a BtCR, two amplification mechanisms are activated:
 
 ![PV′@200 Composite](figures/ep_structure/composite_pv200_anom.png)
 
-*Figure: PV eddy perturbation at 200 hPa (departure from 1991–2020 climatology) for EP1 (left) and EP2 (right). Units: PVU. Computed from eddy winds u′, v′ and temperature T′ at 175/200/225 hPa.*
+*Figure: PV anomaly at 200 hPa (departure from 1991–2020 climatology) for EP1 (left) and EP2 (right). Units: PVU.*
+
+**Computation method (exact subtraction):**
+$$PV'_{200} = PV(u, v, T) - PV(\bar{u}_m, \bar{v}_m, \bar{T}_m)$$
+where all PV values are computed using MetPy `potential_vorticity_baroclinic` on three levels (175/200/225 hPa) and the central level is extracted. The climatological PV uses monthly-mean (1991–2020) winds and temperature interpolated to case coordinates via `_clim_da`.
+
+> **Why exact subtraction?** PV is inherently nonlinear: $PV(u', v', T') \neq PV(u,v,T) - PV(\bar{u}_m, \bar{v}_m, \bar{T}_m)$ because cross-terms of the form $(\zeta_m \frac{\partial\theta'}{\partial p} + \zeta' \frac{\partial\theta_m}{\partial p})$ are omitted in the pure-eddy approximation. In the Southern Hemisphere, these cross-terms can dominate and produce wrong-sign anomalies for cyclones. Computing $PV(u', v', T')$ was the former approach; exact subtraction was adopted in February 2026.
 
 **Summary Statistics:**
 
@@ -511,7 +517,9 @@ When a cyclone traverses a BtCR, two amplification mechanisms are activated:
 
 ![PV′@850 Composite](figures/ep_structure/composite_pv850_anom.png)
 
-*Figure: PV eddy perturbation at 850 hPa (departure from 1991–2020 climatology) for EP1 (left) and EP2 (right). Units: PVU. Computed from eddy winds u′, v′ and temperature T′ at 825/850/875 hPa.*
+*Figure: PV anomaly at 850 hPa (departure from 1991–2020 climatology) for EP1 (left) and EP2 (right). Units: PVU.*
+
+**Computation method:** Identical to §4.10 but using levels 825/850/875 hPa. Expected sign in Southern Hemisphere cyclones: **negative** at low levels (cyclonic circulation in SH corresponds to negative PV anomaly since $f < 0$).
 
 **Summary Statistics:**
 
@@ -568,7 +576,7 @@ When a cyclone traverses a BtCR, two amplification mechanisms are activated:
 
 ![SLP′ Composite](figures/ep_structure/composite_slp_anom.png)
 
-*Figure: Sea level pressure anomaly (SLP′ = SLP − climatological monthly mean) for EP1 (left) and EP2 (right). Units: hPa. Positive (red) = anomalous high pressure; Negative (blue) = anomalous low pressure. The low-pressure anomaly centred at the cyclone position directly indicates the deepening relative to the climatological background. 850 hPa wind vectors overlaid.*
+*Figure: Sea level pressure anomaly (SLP′ = SLP − climatological monthly mean) for EP1 (left) and EP2 (right). Units: hPa. Positive (red) = anomalous high pressure; Negative (blue) = anomalous low pressure. The low-pressure anomaly centred at the cyclone position directly indicates the deepening relative to the climatological background. **Eddy 850 hPa wind vectors** (V′ = V − V̅_m) overlaid.*
 
 **Summary Statistics:**
 
@@ -577,6 +585,25 @@ When a cyclone traverses a BtCR, two amplification mechanisms are activated:
 | Domain mean (hPa) | TBD | TBD |
 | Minimum anomaly (hPa) | TBD | TBD |
 | LEC 15×15° mean (hPa) | TBD | TBD |
+
+### 4.16 Wind Speed Anomaly at 250 hPa
+
+![Wind250 Anom Composite](figures/ep_structure/composite_wind250_anom.png)
+
+*Figure: 250 hPa wind speed anomaly (|V| − |V̅_m|) for EP1 (left) and EP2 (right). Units: m s⁻¹. Diverging colormap (RdBu_r): red = stronger-than-climatology jet; blue = weaker-than-climatology jet.*
+
+**Computation:**
+$$\Delta|V|_{250} = \sqrt{u_{250}^2 + v_{250}^2} - \sqrt{(u_{250} - u'_{250})^2 + (v_{250} - v'_{250})^2}$$
+
+The climatological wind speed is recovered as $V_{\text{clim}} = V_{\text{total}} - V'$ since both total and eddy prime winds are already stored in the composite dataset. No additional step3 computation is required.
+
+**Summary Statistics:**
+
+| Statistic | EP1 | EP2 |
+|-----------|-----|-----|
+| Domain mean (m s⁻¹) | TBD | TBD |
+| Range (m s⁻¹) | TBD | TBD |
+| LEC 15×15° mean (m s⁻¹) | TBD | TBD |
 
 ---
 

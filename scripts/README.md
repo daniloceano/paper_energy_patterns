@@ -8,24 +8,24 @@ This directory contains all analysis scripts organised by purpose. The subdirect
 
 ```
 scripts/
- main Final publication figure scripts (07, S3)S101/                               # 
- exploratory/                        # Preliminary exploratory scripts (not in paper)
- cluster_analysis_energy_patterns/   # PCA + K-Means Energy Pattern classification
- ep_structure_analysis CURRENT FOCUS: ERA5 composite analysis (EP1 vs EP2)/              # 
- ck_subterms_analysis/               # Ck decomposition into subterms for EP1
- preprocess_data/                    # Data download and preprocessing
- utils/                              # Shared utility functions
- setup_and_examples/                 # Environment verification and script templates
- documentation/                      # Compile all READMEs into a consolidated PDF
+├── main/                               # Final publication figure scripts (01–07, S1–S3)
+├── exploratory/                        # Preliminary exploratory scripts (not in paper)
+├── cluster_analysis_energy_patterns/   # PCA + K-Means Energy Pattern classification
+├── ep_structure_analysis/              # CURRENT FOCUS: ERA5 composite analysis (EP1 vs EP2)
+├── ck_subterms_analysis/               # Ck decomposition into subterms for EP1
+├── preprocess_data/                    # Data download and preprocessing
+├── utils/                              # Shared utility functions
+├── setup_and_examples/                 # Environment verification and script templates
+└── documentation/                      # Compile all READMEs into a consolidated PDF
 ```
 
 ---
 
 ## Directory Descriptions
 
-### ` Final Publication Figure Scriptsmain/` 
+### `main/` — Final Publication Figure Scripts
 
-Repository of final publication-ready figure scripts, numbered by figure order (07 main figures, S3 supplementary). Output goes to `figures/main/`.S101
+Repository of final publication-ready figure scripts, numbered by figure order (01–07 main figures, S1–S3 supplementary). Output goes to `figures/main/`.
 
 **Main scripts:**
 
@@ -33,8 +33,8 @@ Repository of final publication-ready figure scripts, numbered by figure order (
 |--------|--------|
 | `01_figure_tracks_genesis_frequency.py` | Fig 1: Study area and workflow |
 | `02_figure_20070643_publication.py` | Fig 2: Case study cyclone 20070643 |
-| `03_make_phase_density_2x2.py` | Fig 3: Phase space density (22) |
-| `04_figure_lps_combined.py` | Fig 4: Lorenz Phase Space for EP3 |EP1
+| `03_make_phase_density_2x2.py` | Fig 3: Phase space density (2×2) |
+| `04_figure_lps_combined.py` | Fig 4: Lorenz Phase Space for EP1–EP3 |
 | `05_figure_intensity_seasonality_trends.py` | Fig 5: EP intensity, seasonality, trends |
 | `06_figure_genesis_density_kde.py` | Fig 6: Genesis density (KDE) |
 | `07_figure_ep1_instability_composite.py` | Fig 7: EP1 instability composite |
@@ -49,7 +49,7 @@ Repository of final publication-ready figure scripts, numbered by figure order (
 
 ---
 
-### ` Preliminary Exploratory Scriptsexploratory/` 
+### `exploratory/` — Preliminary Exploratory Scripts
 
 General preliminary exploratory scripts. These predate or support the main pipeline but are not directly used in the final paper.
 
@@ -79,18 +79,18 @@ General preliminary exploratory scripts. These predate or support the main pipel
 
 ---
 
-### `cluster_analysis_energy_ Energy Pattern Classificationpatterns/` 
+### `cluster_analysis_energy_patterns/` — Energy Pattern Classification
 
 Scripts for generating the Energy Patterns via PCA + K-Means clustering of Lorenz Energy Cycle diagnostics during the intensification phase.
 
 **Pipeline (run in order):**
 
-1. `step1_normalize_and_pca. Normalise energy variables and apply PCA by lifecycle phasepy` 
-2. `step2_plot_pca_results. Visualise PCA loadings and explained variancepy` 
-3. `step3_optimal_k_analysis. Determine optimal k via Gap Statisticpy` 
-4. `step4_apply_kmeans. Apply K-Means (k=3) and assign Energy Patternspy` 
-5. `step5_plot_energy_patterns. Composite statistics and LPS diagramspy` 
-6. `step6_generate_scientific_notes_pdf. Convert SCIENTIFIC_NOTES.md to PDFpy` 
+1. `step1_normalize_and_pca.py` — Normalise energy variables and apply PCA by lifecycle phase
+2. `step2_plot_pca_results.py` — Visualise PCA loadings and explained variance
+3. `step3_optimal_k_analysis.py` — Determine optimal k via Gap Statistic
+4. `step4_apply_kmeans.py` — Apply K-Means (k=3) and assign Energy Patterns
+5. `step5_plot_energy_patterns.py` — Composite statistics and LPS diagrams
+6. `step6_generate_scientific_notes_pdf.py` — Convert SCIENTIFIC_NOTES.md to PDF
 
 **Inputs:** `data/energy_cache.parquet`, `data/tracks_SAt_filtered_with_energetics_processed.csv`
 
@@ -100,7 +100,7 @@ Scripts for generating the Energy Patterns via PCA + K-Means clustering of Loren
 
 ---
 
-###   Current Scientific Focus)
+### `ep_structure_analysis/` — Spatial Structure Analysis (Current Scientific Focus)
 
 Composite analysis of ERA5 reanalysis fields to understand the atmospheric structure of EP1 (N=444) and EP2 (N=979) cyclones during intensification. EP3 is excluded because it represents less intense, climatological-background cyclones.
 
@@ -110,13 +110,13 @@ Composite analysis of ERA5 reanalysis fields to understand the atmospheric struc
 
 **Sample:** All 444 EP1 and 979 EP2 cyclones identified by `cluster_analysis_energy_patterns`, using intensification-phase timesteps only.
 
-**ERA5 data:** 0.resolution, storm-centred domain, 6-hourly. Pressure-level variables: u, v, t, z, q at 975 hPa. Single-level variable: msl.175303025
+**ERA5 data:** 0.25° resolution, storm-centred 30°×30° domain, 6-hourly. Pressure-level variables: u, v, t, z, q at levels 175–975 hPa. Single-level variable: msl.
 
 **Diagnostics computed:**
 
 | Diagnostic | Level(s) | Description |
 |------------|----------|-------------|
-| EGR (Eady Growth Rate) | 850 hPa | Baroclinic instability measure |500
+| EGR (Eady Growth Rate) | 500–850 hPa | Baroclinic instability measure |
 | PV (Potential Vorticity) | 200 hPa | Upper-level tropopause dynamics |
 | PV | 850 hPa | Low-level diabatic PV anomaly |
 | Temperature Advection | 850 hPa | Warm/cold advection patterns |
@@ -126,16 +126,16 @@ Composite analysis of ERA5 reanalysis fields to understand the atmospheric struc
 | KE Advection | 250 hPa | Jet-level kinetic energy tendency |
 | AFC (Ageostrophic Flux Convergence) | 250 hPa | Eddy KE redistribution |
 
-Anomaly versions (departure from 2020 WMO climatology) are computed for PV (200/850 hPa), temperature advection, moisture flux divergence, KE advection, and SLP.1991
+Anomaly versions (departure from 1991–2020 WMO climatology) are computed for PV (200/850 hPa), temperature advection, moisture flux divergence, KE advection, and SLP.
 
 **Pipeline:**
 
-1. `step1_select_ep_tracks. Select EP1/EP2 tracks from cluster resultspy` 
-2. `step2_download_era5_parallel. Download ERA5 fields (run **remotely**)py` 
-3. `step2_1_download_era5_monthly_means. Download monthly mean climatology (run **remotely**)py` 
-4. `step3_precompute_composites. Compute composites (run **remotely**)py` 
-5. `step4_create_figures. Create composite figures (run **locally**)py` 
-6. `step5_update_scientific_notes. Update SCIENTIFIC_NOTES.md and regenerate PDF (run **locally**)py` 
+1. `step1_select_ep_tracks.py` — Select EP1/EP2 tracks from cluster results
+2. `step2_download_era5_parallel.py` — Download ERA5 fields (run **remotely**)
+3. `step2_1_download_era5_monthly_means.py` — Download monthly mean climatology (run **remotely**)
+4. `step3_precompute_composites.py` — Compute composites (run **remotely**)
+5. `step4_create_figures.py` — Create composite figures (run **locally**)
+6. `step5_update_scientific_notes.py` — Update SCIENTIFIC_NOTES.md and regenerate PDF (run **locally**)
 
 **Inputs:** `results/cluster/kmeans_clustered_data.csv`, ERA5 via CDS API
 
@@ -143,15 +143,15 @@ Anomaly versions (departure from 2020 WMO climatology) are computed for PV (200/
 
 ---
 
-### `ck_subterms_ Barotropic Conversion Decompositionanalysis/` 
+### `ck_subterms_analysis/` — Barotropic Conversion Decomposition
 
-16.48 )).W m
+Decomposes the barotropic conversion term (Ck) into its three subterms for EP1 cyclones (N=444), which present the largest barotropic conversions in the dataset (mean Ck = −16.48 W m⁻²).
 
 **Pipeline:**
 
-1. `step1_prepare_tracks. Convert EP1 cyclone tracks to LorenzCycleToolkit formatpy` 
-2. `step2_run_lec_toolkit. Run LorenzCycleToolkit with automatic ERA5 downloadpy` 
-3. `step2_monitor_ck. Monitor job progresspy` 
+1. `step1_prepare_tracks.py` — Convert EP1 cyclone tracks to LorenzCycleToolkit format
+2. `step2_run_lec_toolkit.py` — Run LorenzCycleToolkit with automatic ERA5 download
+3. `step2_monitor_ck.py` — Monitor job progress
 
 **Prerequisite:** Cluster results `results/cluster/kmeans_clustered_data.csv` (from `cluster_analysis_energy_patterns`).
 
@@ -161,7 +161,7 @@ Anomaly versions (departure from 2020 WMO climatology) are computed for PV (200/
 
 ---
 
-### `preprocess_ Data Download and Preprocessingdata/` 
+### `preprocess_data/` — Data Download and Preprocessing
 
 Scripts for downloading and preprocessing the input data from Zenodo.
 
@@ -179,7 +179,7 @@ python scripts/preprocess_data/preprocess_data.py
 
 ---
 
-### ` Shared Utility Functionsutils/` 
+### `utils/` — Shared Utility Functions
 
 Shared utility functions used across the repository.
 
@@ -190,7 +190,7 @@ Shared utility functions used across the repository.
 
 ---
 
-### `setup_and_ Environment Verification and Templatesexamples/` 
+### `setup_and_examples/` — Environment Verification and Templates
 
 | Script | Description |
 |--------|-------------|
@@ -200,7 +200,7 @@ Shared utility functions used across the repository.
 
 ---
 
-### ` Documentation Compilerdocumentation/` 
+### `documentation/` — Documentation Compiler
 
 Contains `compile_docs.py`, which collects all repository READMEs and generates `docs/user_guide_repository_readmes.pdf`.
 

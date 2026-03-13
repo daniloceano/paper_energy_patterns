@@ -4,7 +4,8 @@ This repository organises all scripts, data, and results for the paper on energe
 
 ---
 
-## 
+## Quick Start
+
 ### 1. Setup Environment
 
 ```bash
@@ -46,48 +47,50 @@ Outputs publication-ready figures to `figures/main/`.
 
 ---
 
-## 
+## Repository Structure
+
 ```
 .
- data/                                    # Input and processed data
- energy_cache.parquet                 # Preprocessed energy data (generated)   
- era5_ep_structure/                   # ERA5 composites for ep_structure_analysis   
- precomputed_composites_ep1.nc      
- precomputed_composites_ep2.nc      
- README.md   
- docs/                                    # Generated documentation PDFs
- scientific_notes_cluster_analysis.pdf   
- scientific_notes_ep_structure.pdf   
- user_guide_repository_readmes.pdf   # Auto-generated (see below)   
- figures/                                 # Generated figures
- exploratory/                         # Exploratory figures   
- main/                                # Final publication figures   
- results/                                 # Analysis results
- cluster/                             # Cluster assignments and models   
- scripts/                                 # All analysis scripts
- cluster_analysis_energy_patterns/    # PCA + K-Means clustering pipeline   
- ck_subterms_analysis/                # Barotropic conversion (Ck) decomposition   
- documentation/                       # Compile READMEs into a PDF user guide   
- ep_structure_analysis CURRENT FOCUS: ERA5 composite analysis/               #    
- exploratory/                         # Preliminary exploratory scripts   
- main/                                # Final publication figure scripts   
- preprocess_data/                     # Data download and preprocessing   
- setup_and_examples/                  # Environment verification and templates   
- utils/                               # Shared utility functions   
- activate.sh                              # Quick environment activation
- requirements.txt
- setup_environment.sh
+├── data/                                   # Input and processed data
+│   ├── energy_cache.parquet               # Preprocessed energy data (generated)
+│   ├── era5_ep_structure/                 # ERA5 composites for ep_structure_analysis
+│   │   ├── precomputed_composites_ep1.nc
+│   │   └── precomputed_composites_ep2.nc
+│   └── README.md
+├── docs/                                   # Generated documentation PDFs
+│   ├── scientific_notes_cluster_analysis.pdf
+│   ├── scientific_notes_ep_structure.pdf
+│   └── user_guide_repository_readmes.pdf  # Auto-generated (see below)
+├── figures/                                # Generated figures
+│   ├── exploratory/                       # Exploratory figures
+│   └── main/                             # Final publication figures
+├── results/                                # Analysis results
+│   └── cluster/                          # Cluster assignments and models
+├── scripts/                                # All analysis scripts
+│   ├── cluster_analysis_energy_patterns/ # PCA + K-Means clustering pipeline
+│   ├── ck_subterms_analysis/             # Barotropic conversion (Ck) decomposition
+│   ├── documentation/                    # Compile READMEs into a PDF user guide
+│   ├── ep_structure_analysis/            # CURRENT FOCUS: ERA5 composite analysis
+│   ├── exploratory/                      # Preliminary exploratory scripts
+│   ├── main/                             # Final publication figure scripts
+│   ├── preprocess_data/                  # Data download and preprocessing
+│   ├── setup_and_examples/              # Environment verification and templates
+│   └── utils/                            # Shared utility functions
+├── activate.sh                             # Quick environment activation
+├── requirements.txt
+└── setup_environment.sh
 ```
 
 See `scripts/README.md` for detailed information on each subdirectory.
 
 ---
 
-## 
+## Data Sources
+
 ### Cyclone Tracks and Energetics
 
 - **DOI**: [10.5281/zenodo.18133432](https://doi.org/10.5281/zenodo.18133432)
-- **Description**: Combined cyclone tracks and semi-Lagrangian Lorenz Energy Cycle diagnostics (2020, ~6,700 cyclones, 42 years)1979
+- **Description**: Combined cyclone tracks and semi-Lagrangian Lorenz Energy Cycle diagnostics (1979–2020, ~6,700 cyclones, 42 years)
 - **Access**: Downloaded automatically by `scripts/preprocess_data/extract_tracks_from_zenodo.py`
 
 ### LEC Results with Vertical Resolution
@@ -98,9 +101,9 @@ See `scripts/README.md` for detailed information on each subdirectory.
 
 ---
 
-echo Configuration## 
+## Configuration
 
-All scripts use a header-level configuration  no command-line arguments needed:block 
+All scripts use header-level configuration. No command-line arguments are needed.
 
 ```python
 # Example configuration (top of any script)
@@ -112,14 +115,15 @@ DPI = 300              # Figure output quality
 
 ---
 
-## 
+## Analysis Pipelines
+
 ### 1. Energy Pattern Classification (`scripts/cluster_analysis_energy_patterns/`)
 
-Normalises LEC energy variables, applies PCA by lifecycle phase, determines the optimal number of clusters via Gap Statistic, and classifies each cyclone into one of three Energy Patterns using K-Means. Key results: EP1 (11.6%, 444  high conversions; EP2 (25.6%, 979  moderate conversions; EP3 (62. weak/background energetics.7%) cyclones) cyclones) 
+Normalises LEC energy variables, applies PCA by lifecycle phase, determines the optimal number of clusters via Gap Statistic, and classifies each cyclone into one of three Energy Patterns using K-Means. Key results: EP1 (11.6%, N=444, high conversions), EP2 (25.6%, N=979, moderate conversions), EP3 (62.7%, weak/background energetics).
 
-### 2 Spatial Structure Analysis (`scripts/ep_structure_ *Current Focus*analysis/`) . 
+### 2. Spatial Structure Analysis — *Current Focus* (`scripts/ep_structure_analysis/`)
 
-Composite ERA5 analysis of EP1 and EP2 cyclones during intensification. Uses a storm-centred domain at 0.resolution to compute EGR (850 hPa), PV (200/850 hPa), temperature advection (850 hPa), moisture flux divergence (975 hPa), SLP, RK criterion (250 hPa), KE advection (250 hPa), and AFC (250 hPa), plus anomalies relative to the 2020 WMO climatology. Data stored in `data/era5_ep_structure/`.1991500253030
+Composite ERA5 analysis of EP1 and EP2 cyclones during intensification. Uses a storm-centred 30°×30° domain at 0.25° resolution to compute EGR (500–850 hPa), PV (200/850 hPa), temperature advection (850 hPa), moisture flux divergence (975 hPa), SLP, RK criterion (250 hPa), KE advection (250 hPa), and AFC (250 hPa), plus anomalies relative to the 1991–2020 WMO climatology. Data stored in `data/era5_ep_structure/`.
 
 ### 3. Barotropic Conversion Decomposition (`scripts/ck_subterms_analysis/`)
 
@@ -127,11 +131,12 @@ Decomposes the barotropic conversion term (Ck) into its three subterms for EP1 c
 
 ### 4. Final Paper Figures (`scripts/main/`)
 
-Scripts numbered 07 (main figures) and S3 (supplementary) generate publication-ready figures at 300 DPI according to Scientific Reports guidelines.S101
+Scripts numbered 01–07 (main figures) and S1–S3 (supplementary) generate publication-ready figures at 300 DPI according to Scientific Reports guidelines.
 
 ---
 
-## 
+## Setup
+
 ### First Time
 
 ```bash
@@ -156,7 +161,8 @@ python scripts/setup_and_examples/verify_environment.py
 
 ---
 
-## 
+## Documentation
+
 A consolidated user guide (`docs/user_guide_repository_readmes.pdf`) is auto-generated from all repository READMEs. To regenerate it:
 
 ```bash

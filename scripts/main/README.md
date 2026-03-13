@@ -35,12 +35,12 @@ Scripts are numbered according to the order of figures in the manuscript:
   Figure S1: PCA and clustering validation
 
 - **`S2_figure_selected_tracks.py`**  
-  Figure S2: Selected EP1 cyclones for instability analysis  
-  *Requires: `scripts/ep1_ibc_ibt_analysis/step1_select_cases.py` (run first)*
+  Figure S2: Selected EP1 cyclones used in the spatial structure analysis  
+  *Requires: `data/era5_ep_structure/precomputed_composites_ep1.nc` (produced by `scripts/ep_structure_analysis/step3_precompute_composites.py`)*
 
 - **`S3_figure_vertical_levels.py`**  
-  Figure S3: Vertical distribution of energy conversions  
-  *Requires: `scripts/ep1_ibc_ibt_analysis/step2_vertical_levels_analysis.py` (run first)*
+  Figure S3: Vertical distribution of energy conversions for EP1 cyclones  
+  *Requires: `data/era5_ep_structure/precomputed_composites_ep1.nc` (produced by `scripts/ep_structure_analysis/step3_precompute_composites.py`)*
 
 ## Usage
 
@@ -72,6 +72,6 @@ Generated figures are saved to: `figures/main/`
 
 ## Notes
 
-- Figures S2 and S3 depend on outputs from the EP1 instability analysis pipeline (`scripts/ep1_ibc_ibt_analysis/`). Run those preprocessing steps first before generating these supplementary figures.
+- Figures S2 and S3 depend on outputs from the `ep_structure_analysis` pipeline (`scripts/ep_structure_analysis/`). Run steps 1–3 of that pipeline first to generate the composites in `data/era5_ep_structure/`.
 - All scripts include configuration sections at the top for customizing plot parameters (colors, dimensions, labels, etc.) without modifying core logic.
 - For detailed figure descriptions, methodology, and scientific interpretation, see `figures/main/README.md`.

@@ -50,11 +50,10 @@ EP1 cyclones exhibit the strongest energetic conversions in the Southwestern Atl
 
 ### Prerequisites
 
-**IMPORTANT**: This analysis requires completion of the EP1 full selection first:
-- Run `scripts/ep1_full_analysis/step1_select_all_ep1.py`
-- This creates `results/ep1_full/all_ep1_cases.csv` with ALL EP1 cyclones
-- **No spatial restriction** (all EP1 cyclones regardless of location)
-- **~444 cyclones** (entire EP1 population)
+**IMPORTANT**: This analysis requires the cluster analysis results:
+- `results/cluster/kmeans_clustered_data.csv` (produced by `scripts/cluster_analysis_energy_patterns/`)
+- This file contains the EP assignments for all cyclones, including all 444 EP1 cyclones
+- **No spatial restriction** — all EP1 cyclones regardless of genesis location are included
 
 ### Workflow Overview
 
@@ -77,7 +76,7 @@ Step 5: Statistical Analysis and Visualization
 **Objective**: Convert ALL EP1 cyclone tracks to LorenzCycleToolkit input format.
 
 **Input**:
-- `results/ep1_full/all_ep1_cases.csv` - ALL EP1 cyclones (no spatial restriction)
+- `results/cluster/kmeans_clustered_data.csv` — EP assignments from cluster analysis (444 EP1 cyclones)
 - Main track database (via `load_tracks()`)
 
 **Output Format** (one file per cyclone):
@@ -341,9 +340,9 @@ results/ck_analysis/lec_results/{track_id}_ERA5_track/
 ### Data Sources
 
 1. **Cyclone Selection**:
-   - From `scripts/ep1_ibc_ibt_analysis/step1_select_cases.py`
-   - ~94 EP1 cyclones with complete lifecycle
-   - Domain: 60°W-45°W, 45°S-30°S (intensification center)
+   - From `results/cluster/kmeans_clustered_data.csv` (cluster analysis results)
+   - 444 EP1 cyclones with complete lifecycle
+   - No spatial domain restriction (all EP1 cyclones regardless of genesis location)
 
 3. **ERA5 Reanalysis**:
    - Automatically downloaded by LorenzCycleToolkit

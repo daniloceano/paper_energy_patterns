@@ -1,10 +1,12 @@
-# Paper: Energetic Patterns of Cyclones in the Southwestern Atlantic
+# Energetic Patterns of Cyclones in the Southwestern Atlantic
 
-Repository to organize scripts and results for the paper based on Chapter 6 of the PhD thesis.
+This repository organises all scripts, data, and results for the paper on energetic patterns of South Atlantic extratropical cyclones, based on Chapter 6 of the PhD thesis. Cyclones are classified into three Energy Patterns (EP1, EP2, EP3) via PCA-based K-Means clustering of Lorenz Energy Cycle diagnostics during the intensification phase. The **current scientific focus** is `scripts/ep_structure_analysis/`, which performs composite analysis of ERA5 reanalysis fields to characterise the atmospheric structure of EP1 (N=444) and EP2 (N=979) cyclones during intensification.
 
-## 🚀 Quick Start
+---
 
+## 
 ### 1. Setup Environment
+
 ```bash
 # Clone the repository
 git clone https://github.com/daniloceano/paper_energy_patterns.git
@@ -18,201 +20,147 @@ conda activate paper_energy_patterns
 ```
 
 ### 2. Preprocess Data (Run Once)
+
 ```bash
-# This caches all energy data locally for fast access
-# Recommended to run on server with many cores (adjust N_WORKERS in script)
-python scripts/utils/preprocess_data.py
+# Download and cache all energy data for fast access
+python scripts/preprocess_data/run_all.py
 ```
 
-Expected output: `data/energy_cache.parquet` (~50-100 MB, loads in <1 second)
+Expected outputs: `data/tracks_SAt_filtered_with_energetics_processed.csv`, `data/energy_cache.parquet`
 
-### 3. Run Analyses
+### 3. Run Cluster Analysis (Energy Patterns)
+
 ```bash
-# Example: KDE pairplot analysis
-python scripts/exploratory/kde_pairplot.py
+python scripts/cluster_analysis_energy_patterns/run_all.py
 ```
 
-## 📁 Structure
+Outputs clustering results to `results/cluster/` and figures to `figures/`.
 
+### 4. Generate Final Paper Figures
+
+```bash
+python scripts/main/run_all.py
+```
+
+Outputs publication-ready figures to `figures/main/`.
+
+---
+
+## 
 ```
 .
-├── data/                       # Cached/processed data
-│   ├── energy_cache.parquet   # Preprocessed energy data (generated)
-│   └── README.md              # Data documentation
-├── scripts/                    # Analysis scripts
-│   ├── utils/                 # Utility functions
-│   │   ├── load_data.py       # Data loading from GitHub
-│   │   └── preprocess_data.py # Data preprocessing & caching
-│   ├── setup_and_examples/    # Setup verification and examples
-│   ├── exploratory/           # Exploratory analyses
-│   │   └── kde_pairplot.py    # KDE pairwise plot
-│   └── main/                  # Main paper analyses (promoted from exploratory)
-├── figures/                    # Generated figures
-│   ├── exploratory/           # Exploratory figures
-│   └── main/                  # Main paper figures
-├── results/                    # Analysis results (CSVs, etc.)
-│   ├── exploratory/           # Exploratory results
-│   └── main/                  # Main paper results
-└── README.md
+ data/                                    # Input and processed data
+ energy_cache.parquet                 # Preprocessed energy data (generated)   
+ era5_ep_structure/                   # ERA5 composites for ep_structure_analysis   
+ precomputed_composites_ep1.nc      
+ precomputed_composites_ep2.nc      
+ README.md   
+ docs/                                    # Generated documentation PDFs
+ scientific_notes_cluster_analysis.pdf   
+ scientific_notes_ep_structure.pdf   
+ user_guide_repository_readmes.pdf   # Auto-generated (see below)   
+ figures/                                 # Generated figures
+ exploratory/                         # Exploratory figures   
+ main/                                # Final publication figures   
+ results/                                 # Analysis results
+ cluster/                             # Cluster assignments and models   
+ scripts/                                 # All analysis scripts
+ cluster_analysis_energy_patterns/    # PCA + K-Means clustering pipeline   
+ ck_subterms_analysis/                # Barotropic conversion (Ck) decomposition   
+ documentation/                       # Compile READMEs into a PDF user guide   
+ ep_structure_analysis CURRENT FOCUS: ERA5 composite analysis/               #    
+ exploratory/                         # Preliminary exploratory scripts   
+ main/                                # Final publication figure scripts   
+ preprocess_data/                     # Data download and preprocessing   
+ setup_and_examples/                  # Environment verification and templates   
+ utils/                               # Shared utility functions   
+ activate.sh                              # Quick environment activation
+ requirements.txt
+ setup_environment.sh
 ```
 
-See `scripts/README.md` for detailed information about script organization and usage.
+See `scripts/README.md` for detailed information on each subdirectory.
 
-## 📊 Data Sources
+---
 
-### Energetic Patterns (Main Analysis)
+## 
+### Cyclone Tracks and Energetics
 
-Data is accessed directly from GitHub (no manual download needed):
+- **DOI**: [10.5281/zenodo.18133432](https://doi.org/10.5281/zenodo.18133432)
+- **Description**: Combined cyclone tracks and semi-Lagrangian Lorenz Energy Cycle diagnostics (2020, ~6,700 cyclones, 42 years)1979
+- **Access**: Downloaded automatically by `scripts/preprocess_data/extract_tracks_from_zenodo.py`
 
-- **Cyclone tracks**: [tracks_SAt_filtered_with_periods.csv](https://raw.githubusercontent.com/daniloceano/energetic_patterns_cyclones_south_atlantic/refs/heads/master/tracks_SAt_filtered/tracks_SAt_filtered_with_periods.csv)
-- **Energy by phase**: [csv_database_energy_by_periods/](https://raw.githubusercontent.com/daniloceano/energetic_patterns_cyclones_south_atlantic/master/csv_database_energy_by_periods/)
-  - Format: `{track_id}_averages.csv`
-  - Coverage: ~6,700 cyclones (100% coverage)
+### LEC Results with Vertical Resolution
 
-**Note**: Raw data loading is slow (~0.15s per cyclone). Use `preprocess_data.py` to create a local cache for 1000x faster access.
+- **DOI**: [10.5281/zenodo.18243447](https://doi.org/10.5281/zenodo.18243447)
+- **Description**: Complete LEC results with vertical resolution (~1,500 cyclones, 32 pressure levels, 3-hourly)
+- **Access**: Downloaded automatically by `scripts/preprocess_data/download_lec_from_zenodo.py`
 
-### ERA5 Data (EP1 Instability Analysis)
+---
 
-For EP1 cyclone instability diagnostics, ERA5 reanalysis data is downloaded from Copernicus CDS:
+echo Configuration## 
 
-- **Pressure levels**: 250, 300, 350, 400, 950, 975, 1000 hPa
-  - 250 hPa: Jet stream analysis (wind barbs)
-  - 975 hPa: Maximum available conversion (Ca)
-  - 350 hPa: Minimum baroclinic conversion (Ck)
-- **Variables**: u, v, t, z, q (winds, temperature, geopotential, specific humidity)
-- **Domains**: Local (5°×5°), Mesoscale (15°×15°), Synoptic (30°×30°)
-- **Storage**: `data/era5_ep1/{track_id}_era5.nc` + `{track_id}_metadata.csv`
-
-See `data/ERA5_STRUCTURE.md` for detailed information on the ERA5 data structure and variables.
-
-## ⚙️ Configuration
-
-All analysis scripts use header configuration (no command-line arguments needed):
+All scripts use a header-level configuration  no command-line arguments needed:block 
 
 ```python
-# Example: scripts/exploratory/kde_pairplot.py
-SAMPLE_SIZE = 100    # Number of cyclones (0 = all)
-USE_PARALLEL = True  # Enable parallel processing
-N_WORKERS = 50       # Adjust for your system
-DPI = 300           # Figure quality
+# Example configuration (top of any script)
+SAMPLE_SIZE = 0        # Number of cyclones (0 = all)
+USE_PARALLEL = True    # Enable parallel processing
+N_WORKERS = 8          # Workers (adjust for your system)
+DPI = 300              # Figure output quality
 ```
 
-## 🖥️ Running on Server
+---
 
-For best performance with ~6,700 cyclones:
+## 
+### 1. Energy Pattern Classification (`scripts/cluster_analysis_energy_patterns/`)
 
-1. **Preprocessing** (run once):
-   ```bash
-   # Edit scripts/utils/preprocess_data.py:
-   N_WORKERS = 50  # Use all 50 cores
-   
-   # Run (takes ~15 minutes with 50 cores)
-   python scripts/utils/preprocess_data.py
-   ```
+Normalises LEC energy variables, applies PCA by lifecycle phase, determines the optimal number of clusters via Gap Statistic, and classifies each cyclone into one of three Energy Patterns using K-Means. Key results: EP1 (11.6%, 444  high conversions; EP2 (25.6%, 979  moderate conversions; EP3 (62. weak/background energetics.7%) cyclones) cyclones) 
 
-2. **Analysis** (uses cached data):
-   ```bash
-   # Edit your analysis script:
-   USE_PARALLEL = True
-   N_WORKERS = 50
-   
-   # Run analysis (much faster with cache)
-   python scripts/exploratory/your_analysis.py
-   ```
+### 2 Spatial Structure Analysis (`scripts/ep_structure_ *Current Focus*analysis/`) . 
 
-## � EP1 Instability Analysis Pipeline
+Composite ERA5 analysis of EP1 and EP2 cyclones during intensification. Uses a storm-centred domain at 0.resolution to compute EGR (850 hPa), PV (200/850 hPa), temperature advection (850 hPa), moisture flux divergence (975 hPa), SLP, RK criterion (250 hPa), KE advection (250 hPa), and AFC (250 hPa), plus anomalies relative to the 2020 WMO climatology. Data stored in `data/era5_ep_structure/`.1991500253030
 
-For EP1 cyclone type instability diagnostics:
+### 3. Barotropic Conversion Decomposition (`scripts/ck_subterms_analysis/`)
 
-### 1. Download ERA5 Data
+Decomposes the barotropic conversion term (Ck) into its three subterms for EP1 cyclones, which present the largest barotropic conversions in the dataset.
+
+### 4. Final Paper Figures (`scripts/main/`)
+
+Scripts numbered 07 (main figures) and S3 (supplementary) generate publication-ready figures at 300 DPI according to Scientific Reports guidelines.S101
+
+---
+
+## 
+### First Time
+
 ```bash
-python scripts/ep1_ibc_ibt_analysis/step3_download_era5.py
-```
-
-**Features**:
-- Downloads ERA5 data at 7 pressure levels for all EP1 cases
-- **Automatic validation**: Checks existing files before downloading
-  - Verifies all required variables present
-  - Checks all pressure levels available
-  - Detects corrupted files (>50% NaN values)
-  - Validates temporal dimension consistency
-- **Smart skip**: Only downloads missing or invalid files
-- Includes 250 hPa for jet stream analysis
-
-### 2. Calculate Instabilities
-```bash
-python scripts/ep1_ibc_ibt_analysis/step4_calculate_instabilities.py
-python scripts/ep1_ibc_ibt_analysis/step4.1_consolidate_instability_results.py
-```
-
-**Output**: `results/ep1_vertical/instabilities/summary_statistics.txt`
-- Available potential energy (APE) per area
-- Eddy growth rate (EGR) diagnostics  
-- Richardson number (RK) criterion satisfaction by domain:
-  ```
-  RK criterion (2D field) satisfied for:
-    local       ( 5°): 45/94 cases (47.9%)
-    mesoscale   (15°): 68/94 cases (72.3%)
-    synoptic    (30°): 82/94 cases (87.2%)
-  ```
-
-### 3. Generate Composites
-```bash
-python scripts/ep1_ibc_ibt_analysis/step5_create_figures.py
-```
-
-**Output**: `figures/ep1_vertical/composites/`
-- Three-panel composite figures for each case
-- Panel (a): Virtual temperature (Ck: 350 hPa)
-- Panel (b): Virtual temperature (Ca: 975 hPa)
-- Panel (c): Baroclinic PV (975 hPa) + **Jet stream wind barbs (250 hPa)**
-
-### 4. Documentation
-```bash
-python scripts/ep1_ibc_ibt_analysis/generate_pdf_documentation.py
-```
-
-**Output**: `docs/Chapter_EP1_Instability_Diagnostics_Scientific_Notes.pdf`
-- Converts `SCIENTIFIC_NOTES_STEP4.md` to professional PDF
-- Includes table of contents, numbered sections, references
-- Covers: EGR derivation, RK criterion, physical constants, quality controls
-
-## 📈 Performance Tips
-
-- **Always preprocess first**: Speeds up subsequent analyses by 1000x
-- **Use parallel processing**: Set `N_WORKERS` to match available cores
-- **Test locally**: Use small `SAMPLE_SIZE` (10-50) for quick testing
-- **Full run on server**: Set `SAMPLE_SIZE = 0` and `N_WORKERS = 50`
-- **ERA5 downloads**: step3 automatically validates and skips existing valid files
-
-## Setup
-
-### First Time Setup
-```bash
-# Run the setup script
 bash setup_environment.sh
 ```
 
-The script will automatically:
-- Check if `paper_energy_patterns` conda environment exists
-- Create it if needed (with Python 3.13)
-- Install all required packages from requirements.txt
-- Verify all packages are present
-- Activate the environment
+The script creates the `paper_energy_patterns` conda environment (Python 3.13), installs all packages from `requirements.txt`, and verifies the installation.
 
 ### Daily Use
+
 ```bash
-# Quick activation
 source activate.sh
-
-# Or manually
+# or
 conda activate paper_energy_patterns
-
-# Deactivate when done
-conda deactivate
 ```
 
 ### Verify Installation
+
 ```bash
-python scripts/verify_environment.py
+python scripts/setup_and_examples/verify_environment.py
 ```
+
+---
+
+## 
+A consolidated user guide (`docs/user_guide_repository_readmes.pdf`) is auto-generated from all repository READMEs. To regenerate it:
+
+```bash
+python scripts/documentation/compile_docs.py
+```
+
+Requires `pandoc` and `pdflatex` on your system.

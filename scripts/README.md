@@ -1,220 +1,271 @@
 # Scripts Directory
 
-This directory contains all analysis scripts organized by purpose.
+This directory contains all analysis scripts organised by purpose. The subdirectories range from preprocessing and utility functions to the final publication figure scripts and the current scientific analysis pipeline.
 
-## Structure
+---
+
+## Directory Structure
 
 ```
 scripts/
-├── utils/                              # Utility functions (data loading, preprocessing, etc.)
-│   ├── __init__.py
-│   ├── load_data.py                    # Functions to load data from GitHub
-│   ├── preprocess_data.py              # Data preprocessing utilities
-│   └── gap_statistic.py                # Gap Statistic implementation (Tibshirani et al. 2001)
-│
-├── setup_and_examples/                 # Setup and example scripts
-│   ├── __init__.py
-│   ├── verify_environment.py           # Verify package installation
-│   ├── example_analysis.py             # Example analysis workflow
-│   └── template_analysis.py            # Template for new analyses
-│
-├── exploratory/                        # Exploratory analyses (work in progress)
-│   └── __init__.py
-│
-├── main/                               # Main analyses for the paper
-│   └── __init__.py
-│
-├── cluster_analysis_energy_patterns/   # Energy Pattern classification (PCA + K-Means)
-│   ├── step1_pca_analysis.py           # PCA by cyclone phase
-│   ├── step2_determine_optimal_k.py    # Gap statistic analysis
-│   ├── step3_kmeans_clustering.py      # K-Means clustering (k=3)
-│   ├── step4_analyze_clusters.py       # Cluster statistics & visualization
-│   ├── step5_lorenz_phasespace.py      # LPS analysis (conversions vs boundary fluxes)
-│   ├── SCIENTIFIC_NOTES.md             # Complete scientific documentation
-│   └── generate_scientific_notes_pdf.py # Convert to PDF
-│
-├── ep_structure_analysis/              # Spatial structure comparison (EP1 vs EP2)
-│   ├── step1_select_ep1_ep2_cases.py   # Select cases from EP1 and EP2
-│   ├── step2_download_era5.py          # Download ERA5 reanalysis data
-│   ├── step3_precompute_composites.py  # Compute spatial composites
-│   ├── step4_create_figures.py         # Generate composite figures
-│   ├── SCIENTIFIC_NOTES.md             # Complete scientific documentation
-│   └── generate_scientific_notes_pdf.py # Convert to PDF
-│
-├── ep1_ibc_ibt_analysis/               # EP1 vertical structure & instability
-│   ├── step1_select_ep1_cases.py       # Select EP1 cases
-│   ├── step2_track_ep1_cyclones.py     # Extract EP1 cyclone tracks
-│   ├── step3_download_era5.py          # Download ERA5 data (7 pressure levels)
-│   ├── step4_calculate_instabilities.py # Compute EGR, RK, APE diagnostics
-│   ├── step4.1_consolidate_instability_results.py # Summarize statistics
-│   ├── step5_create_figures.py         # Generate composite figures
-│   └── generate_pdf_documentation.py   # Convert documentation to PDF
-│
-├── ck_subterms_analysis/               # Ck subterm analysis
-│   └── ...
-│
-└── preprocess_data/                    # Data preprocessing scripts
-    └── __init__.py
+ main Final publication figure scripts (07, S3)S101/                               # 
+ exploratory/                        # Preliminary exploratory scripts (not in paper)
+ cluster_analysis_energy_patterns/   # PCA + K-Means Energy Pattern classification
+ ep_structure_analysis CURRENT FOCUS: ERA5 composite analysis (EP1 vs EP2)/              # 
+ ck_subterms_analysis/               # Ck decomposition into subterms for EP1
+ preprocess_data/                    # Data download and preprocessing
+ utils/                              # Shared utility functions
+ setup_and_examples/                 # Environment verification and script templates
+ documentation/                      # Compile all READMEs into a consolidated PDF
 ```
 
-## Analysis Pipelines
+---
 
-### 1. Energy Pattern Classification (Cluster Analysis)
+## Directory Descriptions
 
-**Purpose:** Classify cyclones into energy patterns using energetics during intensification phase.
+### ` Final Publication Figure Scriptsmain/` 
+
+Repository of final publication-ready figure scripts, numbered by figure order (07 main figures, S3 supplementary). Output goes to `figures/main/`.S101
+
+**Main scripts:**
+
+| Script | Figure |
+|--------|--------|
+| `01_figure_tracks_genesis_frequency.py` | Fig 1: Study area and workflow |
+| `02_figure_20070643_publication.py` | Fig 2: Case study cyclone 20070643 |
+| `03_make_phase_density_2x2.py` | Fig 3: Phase space density (22) |
+| `04_figure_lps_combined.py` | Fig 4: Lorenz Phase Space for EP3 |EP1
+| `05_figure_intensity_seasonality_trends.py` | Fig 5: EP intensity, seasonality, trends |
+| `06_figure_genesis_density_kde.py` | Fig 6: Genesis density (KDE) |
+| `07_figure_ep1_instability_composite.py` | Fig 7: EP1 instability composite |
+| `S1_figure_pca_clustering_validation.py` | Fig S1: PCA/clustering validation |
+| `S2_figure_selected_tracks.py` | Fig S2: Selected EP1 tracks |
+| `S3_figure_vertical_levels.py` | Fig S3: Vertical energy conversion distribution |
+| `run_all.py` | Run all figure scripts sequentially |
+
+**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; S2 and S3 additionally require composites from `data/era5_ep_structure/` produced by `ep_structure_analysis`.
+
+**Outputs:** `figures/main/`
+
+---
+
+### ` Preliminary Exploratory Scriptsexploratory/` 
+
+General preliminary exploratory scripts. These predate or support the main pipeline but are not directly used in the final paper.
+
+**Scripts:**
+
+| Script | Description |
+|--------|-------------|
+| `analyze_ep_characteristics.py` | EP characteristic statistics |
+| `density_diagrams_with_ge.py` | Density diagrams including Ge term |
+| `exploring_clustering.ipynb` | Interactive clustering exploration |
+| `exploring_pca.ipynb` | Interactive PCA exploration |
+| `figure_genesis_density_relative_kde.py` | Relative genesis density |
+| `figure_minmax_vs_zscore_comparison.py` | Normalisation method comparison |
+| `figure_most_intense_cyclone_lps.py` | Most intense cyclone LPS |
+| `figure_three_intense_cyclones_individual.py` | Three intense cyclones individual plots |
+| `figure_three_intense_cyclones_individual_zoom.py` | Zoomed versions |
+| `kde_pairplot.py` | KDE pairwise plot of energy terms |
+| `plot_ep_lps_diagrams.py` | LPS diagrams per energy pattern |
+| `plot_pv_jet_composite.py` | PV and jet composite |
+| `precompute_composites.py` | Early composite precomputation prototype |
+| `scatter_density.py` | Scatter density plots |
+| `vertical_term_boxplots_ep1_ep2.py` | Vertical term boxplots EP1 vs EP2 |
+
+**Inputs:** `data/energy_cache.parquet`, `results/cluster/kmeans_clustered_data.csv`
+
+**Outputs:** `figures/exploratory/`
+
+---
+
+### `cluster_analysis_energy_ Energy Pattern Classificationpatterns/` 
+
+Scripts for generating the Energy Patterns via PCA + K-Means clustering of Lorenz Energy Cycle diagnostics during the intensification phase.
+
+**Pipeline (run in order):**
+
+1. `step1_normalize_and_pca. Normalise energy variables and apply PCA by lifecycle phasepy` 
+2. `step2_plot_pca_results. Visualise PCA loadings and explained variancepy` 
+3. `step3_optimal_k_analysis. Determine optimal k via Gap Statisticpy` 
+4. `step4_apply_kmeans. Apply K-Means (k=3) and assign Energy Patternspy` 
+5. `step5_plot_energy_patterns. Composite statistics and LPS diagramspy` 
+6. `step6_generate_scientific_notes_pdf. Convert SCIENTIFIC_NOTES.md to PDFpy` 
+
+**Inputs:** `data/energy_cache.parquet`, `data/tracks_SAt_filtered_with_energetics_processed.csv`
+
+**Outputs:** `results/cluster/` (CSV assignments, PCA/KMeans model pickles), `figures/`, `docs/scientific_notes_cluster_analysis.pdf`
+
+**Key results:** EP1 (11.6%, N=444), EP2 (25.6%, N=979), EP3 (62.7%)
+
+---
+
+###   Current Scientific Focus)
+
+Composite analysis of ERA5 reanalysis fields to understand the atmospheric structure of EP1 (N=444) and EP2 (N=979) cyclones during intensification. EP3 is excluded because it represents less intense, climatological-background cyclones.
+
+#### Scientific Summary
+
+**Objective:** Investigate what structural differences in the large-scale atmospheric environment distinguish EP1 (high-conversion) from EP2 (moderate-conversion) cyclones.
+
+**Sample:** All 444 EP1 and 979 EP2 cyclones identified by `cluster_analysis_energy_patterns`, using intensification-phase timesteps only.
+
+**ERA5 data:** 0.resolution, storm-centred domain, 6-hourly. Pressure-level variables: u, v, t, z, q at 975 hPa. Single-level variable: msl.175303025
+
+**Diagnostics computed:**
+
+| Diagnostic | Level(s) | Description |
+|------------|----------|-------------|
+| EGR (Eady Growth Rate) | 850 hPa | Baroclinic instability measure |500
+| PV (Potential Vorticity) | 200 hPa | Upper-level tropopause dynamics |
+| PV | 850 hPa | Low-level diabatic PV anomaly |
+| Temperature Advection | 850 hPa | Warm/cold advection patterns |
+| Moisture Flux Divergence | 975 hPa | Near-surface moisture convergence |
+| SLP | Surface | Cyclone intensity and horizontal structure |
+| RK criterion (Rayleigh-Kuo) | 250 hPa | Barotropic/baroclinic instability condition |
+| KE Advection | 250 hPa | Jet-level kinetic energy tendency |
+| AFC (Ageostrophic Flux Convergence) | 250 hPa | Eddy KE redistribution |
+
+Anomaly versions (departure from 2020 WMO climatology) are computed for PV (200/850 hPa), temperature advection, moisture flux divergence, KE advection, and SLP.1991
 
 **Pipeline:**
-1. `step1_pca_analysis.py` - Reduce dimensionality of energy variables by phase
-2. `step2_determine_optimal_k.py` - Determine optimal number of clusters (k=3)
-3. `step3_kmeans_clustering.py` - Classify cyclones into 3 Energy Patterns
-4. `step4_analyze_clusters.py` - Compute statistics and visualize patterns
-5. `step5_lorenz_phasespace.py` - Analyze energetics in Lorenz Phase Space
 
-**Outputs:**
-- `results/cluster/`: Cluster assignments, statistics, PCA loadings
-- `figures/cluster/`: Composite plots, LPS diagrams
-- `docs/scientific_notes_cluster_analysis.pdf`: Complete scientific documentation
+1. `step1_select_ep_tracks. Select EP1/EP2 tracks from cluster resultspy` 
+2. `step2_download_era5_parallel. Download ERA5 fields (run **remotely**)py` 
+3. `step2_1_download_era5_monthly_means. Download monthly mean climatology (run **remotely**)py` 
+4. `step3_precompute_composites. Compute composites (run **remotely**)py` 
+5. `step4_create_figures. Create composite figures (run **locally**)py` 
+6. `step5_update_scientific_notes. Update SCIENTIFIC_NOTES.md and regenerate PDF (run **locally**)py` 
 
-**Key Results:**
-- EP1 (11.6%): High conversions, energy exporters
-- EP2 (25.6%): Moderate conversions, energy importers
-- EP3 (62.7%): Low conversions, energy self-contained
+**Inputs:** `results/cluster/kmeans_clustered_data.csv`, ERA5 via CDS API
 
-### 2. Spatial Structure Analysis (EP1 vs EP2)
+**Outputs:** `data/era5_ep_structure/precomputed_composites_ep1.nc`, `data/era5_ep_structure/precomputed_composites_ep2.nc`, `figures/`, `docs/scientific_notes_ep_structure.pdf`
 
-**Purpose:** Compare atmospheric structure of EP1 and EP2 cyclones using ERA5 composites.
+---
+
+### `ck_subterms_ Barotropic Conversion Decompositionanalysis/` 
+
+16.48 )).W m
 
 **Pipeline:**
-1. `step1_select_ep1_ep2_cases.py` - Select representative cases
-2. `step2_download_era5.py` - Download ERA5 reanalysis (30° domains)
-3. `step3_precompute_composites.py` - Compute spatial composites (444 EP1, 979 EP2 cases)
-4. `step4_create_figures.py` - Generate diagnostic figures
 
-**Outputs:**
-- `results/ep_structure/`: Composite statistics
-- `figures/ep_structure/`: Spatial composite figures (EGR, PV, advection, moisture, SLP)
-- `docs/scientific_notes_ep_structure.pdf`: Complete scientific documentation
+1. `step1_prepare_tracks. Convert EP1 cyclone tracks to LorenzCycleToolkit formatpy` 
+2. `step2_run_lec_toolkit. Run LorenzCycleToolkit with automatic ERA5 downloadpy` 
+3. `step2_monitor_ck. Monitor job progresspy` 
 
-**Diagnostics:**
-- Eady Growth Rate (250–850 hPa): Baroclinic instability
-- Potential Vorticity (200/850 hPa): Upper/lower dynamics
-- Temperature Advection (850 hPa): Thermal structure
-- Moisture Flux Divergence (975 hPa): Moisture budget
-- Sea Level Pressure: Horizontal structure
+**Prerequisite:** Cluster results `results/cluster/kmeans_clustered_data.csv` (from `cluster_analysis_energy_patterns`).
 
-### 3. EP1 Vertical Structure & Instability
+**Inputs:** `results/cluster/kmeans_clustered_data.csv`, ERA5 (auto-downloaded by toolkit)
 
-**Purpose:** Analyze vertical structure and instability diagnostics for EP1 cyclones.
+**Outputs:** `data/ck_analysis/`, `results/ck_analysis/`
 
-**Pipeline:**
-1. `step1_select_ep1_cases.py` - Select EP1 intensification cases
-2. `step2_track_ep1_cyclones.py` - Extract cyclone tracks
-3. `step3_download_era5.py` - Download ERA5 at 7 pressure levels (with validation)
-4. `step4_calculate_instabilities.py` - Compute EGR, RK criterion, APE
-5. `step4.1_consolidate_instability_results.py` - Summarize statistics
-6. `step5_create_figures.py` - Generate three-panel composite figures
+---
 
-**Outputs:**
-- `results/ep1_vertical/instabilities/`: Diagnostic statistics
-- `figures/ep1_vertical/composites/`: Three-panel composites (Tv@350hPa, Tv@975hPa, PV+jets@250hPa)
-- `docs/Chapter_EP1_Instability_Diagnostics_Scientific_Notes.pdf`: Scientific documentation
+### `preprocess_ Data Download and Preprocessingdata/` 
 
-**Key Diagnostics:**
-- Eady Growth Rate (EGR): Baroclinic instability intensity
-- Richardson-Kuo (RK) criterion: Spatial satisfaction
-- Available Potential Energy (APE): Per-area energetics
+Scripts for downloading and preprocessing the input data from Zenodo.
+
+**Run order:**
+
+```bash
+python scripts/preprocess_data/run_all.py
+# or individually:
+python scripts/preprocess_data/download_lec_from_zenodo.py
+python scripts/preprocess_data/extract_tracks_from_zenodo.py
+python scripts/preprocess_data/preprocess_data.py
+```
+
+**Outputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `data/energy_cache.parquet`, `data/temp_lec_zenodo/`
+
+---
+
+### ` Shared Utility Functionsutils/` 
+
+Shared utility functions used across the repository.
+
+| Module | Description |
+|--------|-------------|
+| `load_data.py` | Load cyclone tracks and energy data |
+| `gap_statistic.py` | Gap Statistic implementation (Tibshirani et al. 2001) |
+
+---
+
+### `setup_and_ Environment Verification and Templatesexamples/` 
+
+| Script | Description |
+|--------|-------------|
+| `verify_environment.py` | Check all required packages are installed |
+| `example_analysis.py` | Minimal working example of a complete analysis |
+| `template_analysis.py` | Boilerplate template for new scripts |
+
+---
+
+### ` Documentation Compilerdocumentation/` 
+
+Contains `compile_docs.py`, which collects all repository READMEs and generates `docs/user_guide_repository_readmes.pdf`.
+
+```bash
+python scripts/documentation/compile_docs.py
+```
+
+---
 
 ## How Imports Work
 
-All scripts use absolute imports from the project root. Each script includes:
+All scripts use absolute imports from the project root:
 
 ```python
 import sys
 from pathlib import Path
 
-# Add project root to path for imports
-project_root = Path(__file__).resolve().parents[2]  # Adjust number based on depth
+project_root = Path(__file__).resolve().parents[2]  # adjust depth as needed
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-# Now you can import from scripts package
 from scripts.utils.load_data import load_tracks
 ```
 
-This ensures scripts work from **any location**:
-- From project root: `python scripts/main/my_analysis.py`
-- From scripts dir: `python main/my_analysis.py`
-- From subdirs: `python my_analysis.py`
+This ensures scripts work from **any working directory**:
+- From project root: `python scripts/main/01_figure_tracks_genesis_frequency.py`
+- From scripts dir: `python main/01_figure_tracks_genesis_frequency.py`
+
+Depth reference: scripts in `scripts/` use `.parents[1]`; scripts in `scripts/subdir/` use `.parents[2]`.
+
+---
 
 ## Directory Setup
 
-All scripts automatically create output directories:
+All scripts automatically create their output directories:
 
 ```python
 project_root = Path(__file__).resolve().parents[2]
-FIGURES_DIR = project_root / "figures"
-RESULTS_DIR = project_root / "results"
-FIGURES_DIR.mkdir(exist_ok=True)
-RESULTS_DIR.mkdir(exist_ok=True)
+FIGURES_DIR = project_root / "figures" / "my_analysis"
+FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 ```
 
-## Creating New Scripts
-
-### For exploratory analyses:
-1. Copy `setup_and_examples/template_analysis.py` to `exploratory/`
-2. Rename and modify as needed
-3. Run from anywhere: `python scripts/exploratory/your_analysis.py`
-
-### For main paper analyses:
-1. Copy `setup_and_examples/template_analysis.py` to `main/`
-2. Rename and modify as needed
-3. Run from anywhere: `python scripts/main/your_analysis.py`
-
-### Adjust path depth if needed:
-- Scripts in `scripts/`: `.parents[1]` (1 level up)
-- Scripts in `scripts/subdir/`: `.parents[2]` (2 levels up)
-- Scripts in `scripts/subdir/subsubdir/`: `.parents[3]` (3 levels up)
+---
 
 ## Running Scripts
 
-### From project root:
 ```bash
-python scripts/setup_and_examples/verify_environment.py
-python scripts/setup_and_examples/example_analysis.py
-python scripts/main/your_analysis.py
-```
+# From project root
+python scripts/main/run_all.py
+python scripts/cluster_analysis_energy_patterns/run_all.py
 
-### From any subdirectory:
-```bash
+# From any subdirectory (imports resolve automatically)
 cd scripts/main
-python your_analysis.py
+python 01_figure_tracks_genesis_frequency.py
 ```
 
-The import system automatically finds the project root!
+---
 
 ## Available Utilities
 
-### Data Loading (`scripts.utils.load_data`)
 ```python
 from scripts.utils.load_data import (
     load_tracks,              # Load all cyclone tracks
     load_energy_by_cyclone,   # Load energy for one cyclone
-    load_all_energy_data      # Load energy for multiple cyclones
+    load_all_energy_data,     # Load energy for multiple cyclones
 )
+from scripts.utils.gap_statistic import GapStatistic
 ```
-
-## Adding New Utilities
-
-Create new utility modules in `scripts/utils/`:
-
-1. Create the file: `scripts/utils/my_utils.py`
-2. Add functions to the file
-3. Update `scripts/utils/__init__.py`:
-   ```python
-   from .my_utils import my_function
-   __all__ = [..., 'my_function']
-   ```
-4. Use anywhere:
-   ```python
-   from scripts.utils.my_utils import my_function
-   ```

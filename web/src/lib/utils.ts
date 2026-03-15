@@ -47,13 +47,16 @@ export function readCSV(relativePath: string): Record<string, string>[] {
  * The relativePath argument is always in the form "figures/<subpath>".
  * The function strips the leading "figures/" so the bucket path is just "<subpath>".
  *
- * In local dev (no env var), falls back to the /api/figures route which reads
- * files directly from the filesystem (requires figures on disk but NOT in git).
+ * Figures are committed to web/public/figures/ as static Next.js assets.
+ * They are served at /figures/<path> on Vercel without any external service.
+ *
+ * To override with Supabase Storage (optional), set NEXT_PUBLIC_SUPABASE_FIGURES_URL
+ * in the Vercel dashboard. The site works fine without it.
  *
  * Examples:
  *   figureUrl('figures/cluster/pca_variance_wide.png')
- *     → local:  /api/figures?path=figures%2Fcluster%2Fpca_variance_wide.png
- *     → prod:   https://<project>.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png
+ *     → default: /figures/cluster/pca_variance_wide.png  (web/public/figures/...)
+ *     → supabase: https://<project>.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png
  */
 export function figureUrl(relativePath: string): string {
   const storageBase = process.env.NEXT_PUBLIC_SUPABASE_FIGURES_URL
@@ -62,8 +65,8 @@ export function figureUrl(relativePath: string): string {
     const bucketPath = relativePath.replace(/^figures\//, '')
     return `${storageBase.replace(/\/$/, '')}/${bucketPath}`
   }
-  // Local dev: serve from filesystem via API route
-  return `/api/figures?path=${encodeURIComponent(relativePath)}`
+  // Default: serve from web/public/figures/ (committed static assets, no API route needed)
+  return `/${relativePath}`
 }
 
 /** Format a number for display */

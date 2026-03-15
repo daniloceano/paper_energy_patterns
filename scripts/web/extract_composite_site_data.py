@@ -30,7 +30,9 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RESULTS_DIR = REPO_ROOT / "results" / "ep_structure"
-FIGURES_DIR = REPO_ROOT / "figures" / "ep_structure"
+# Figures are served from web/public/figures/ (committed static assets).
+# copy_figures_to_web.py copies from figures/ → web/public/figures/.
+FIGURES_DIR = REPO_ROOT / "web" / "public" / "figures" / "ep_structure"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
 # Mapping from web diagnostic id to step4 figure filenames.

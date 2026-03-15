@@ -533,6 +533,19 @@ export const DATASET_STATS = {
   climatologyPeriod: '1991–2020',
 }
 
+// Mapping from diagnostic id to step4_create_figures.py output filename (in figures/ep_structure/)
+export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom?: string }> = {
+  egr:                     { real: 'composite_egr.png' },
+  'pv-200':                { real: 'composite_pv200.png',         anom: 'composite_pv200_anom.png' },
+  'pv-850':                { real: 'composite_pv850.png',         anom: 'composite_pv850_anom.png' },
+  'temperature-advection': { real: 'composite_advT850.png',       anom: 'composite_advT850_anom.png' },
+  'moisture-flux-divergence': { real: 'composite_moisture_flux.png', anom: 'composite_moisture_flux_anom.png' },
+  slp:                     { real: 'composite_slp.png',           anom: 'composite_slp_anom.png' },
+  'rk-criterion':          { real: 'composite_rk_criterion.png' },
+  'ke-advection':          { real: 'composite_ke_advection.png',  anom: 'composite_ke_advection_anom.png' },
+  afc:                     { real: 'composite_afc_250.png' },
+}
+
 // --- Flux/Advection diagnostics that need boundary tables ---
 export const FLUX_DIAGNOSTICS: DiagnosticId[] = [
   'temperature-advection',

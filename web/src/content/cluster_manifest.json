@@ -1,0 +1,142 @@
+{
+  "optimal_k": 3,
+  "phases": [
+    "incipient",
+    "intensification",
+    "mature",
+    "decay"
+  ],
+  "energy_terms": [
+    "Ca",
+    "Ck",
+    "Ge",
+    "BAe",
+    "BKe",
+    "Ae",
+    "Ke"
+  ],
+  "pca": {
+    "incipient": {
+      "explained_variance": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n_components": 6
+    },
+    "intensification": {
+      "explained_variance": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n_components": 6
+    },
+    "mature": {
+      "explained_variance": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n_components": 6
+    },
+    "decay": {
+      "explained_variance": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "n_components": 6
+    }
+  },
+  "kmeans_summary": {
+    "incipient": [
+      {
+        "phase": "incipient",
+        "n_clusters": "2",
+        "n_samples": "3820",
+        "n_features_used": "6",
+        "inertia": "20287.980414355043",
+        "n_init": "100",
+        "random_state": "42",
+        "cluster_0_size": "3176",
+        "cluster_0_percentage": "83.1413612565445",
+        "cluster_1_size": "644",
+        "cluster_1_percentage": "16.858638743455497"
+      }
+    ],
+    "intensification": [
+      {
+        "phase": "intensification",
+        "n_clusters": "2",
+        "n_samples": "4003",
+        "n_features_used": "6",
+        "inertia": "19431.205601738053",
+        "n_init": "100",
+        "random_state": "42",
+        "cluster_0_size": "2969",
+        "cluster_0_percentage": "74.16937297027229",
+        "cluster_1_size": "1034",
+        "cluster_1_percentage": "25.830627029727705"
+      }
+    ],
+    "mature": [
+      {
+        "phase": "mature",
+        "n_clusters": "2",
+        "n_samples": "4003",
+        "n_features_used": "6",
+        "inertia": "19574.989881992602",
+        "n_init": "100",
+        "random_state": "42",
+        "cluster_0_size": "934",
+        "cluster_0_percentage": "23.3325006245316",
+        "cluster_1_size": "3069",
+        "cluster_1_percentage": "76.6674993754684"
+      }
+    ],
+    "decay": [
+      {
+        "phase": "decay",
+        "n_clusters": "2",
+        "n_samples": "4003",
+        "n_features_used": "6",
+        "inertia": "18885.427102762325",
+        "n_init": "100",
+        "random_state": "42",
+        "cluster_0_size": "3441",
+        "cluster_0_percentage": "85.96052960279789",
+        "cluster_1_size": "562",
+        "cluster_1_percentage": "14.039470397202097"
+      }
+    ],
+    "aggregate": [
+      {
+        "n_clusters": "3",
+        "n_samples": "3820",
+        "n_features_used": "15",
+        "inertia": "73190.76535059507",
+        "n_init": "100",
+        "random_state": "42",
+        "cluster_0_size": "444",
+        "cluster_0_percentage": "11.62303664921466",
+        "cluster_1_size": "2397",
+        "cluster_1_percentage": "62.74869109947644",
+        "cluster_2_size": "979",
+        "cluster_2_percentage": "25.628272251308896"
+      }
+    ]
+  }
+}

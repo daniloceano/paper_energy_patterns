@@ -22,6 +22,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import argparse
+import json
 import subprocess
 import numpy as np
 import xarray as xr
@@ -214,8 +215,10 @@ def load_stats():
             stats[f"{label}_Q975_LEC15"] = f"{q975_regional['lec15']:.2f}"
 
         # === Moisture flux divergence @ 975 hPa ===
-        if "div_qflux_975" in ds:
-            div_q = ds["div_qflux_975"].values * 1000 * 3600  # kg/kg/s to g/kg/h
+        # Variable is "div_q_975" in NetCDF (step3 output); "div_qflux_975" was an alias — use correct name
+        divq_var = "div_q_975" if "div_q_975" in ds else ("div_qflux_975" if "div_qflux_975" in ds else None)
+        if divq_var is not None:
+            div_q = ds[divq_var].values * 1000 * 3600  # kg/kg/s to g/kg/h
             stats[f"{label}_DIVQ_MEAN"] = f"{np.nanmean(div_q):.3e}"
             stats[f"{label}_DIVQ_MIN"] = f"{np.nanmin(div_q):.3e}"
             stats[f"{label}_DIVQ_MAX"] = f"{np.nanmax(div_q):.3e}"
@@ -294,7 +297,78 @@ def load_stats():
     return stats
 
 
-def populate_notes(stats):
+def export_stats_json(stats):
+    """Export computed statistics to results/ep_structure/composite_stats.json.
+    
+    This structured JSON is the source of truth for the web layer.
+    The web scripts/web/extract_composite_site_data.py reads from this file.
+    
+    Domain definitions:
+      - "inside_15x15" (lec15): Mean within the central ±7.5° LEC subdomain
+      - "outside_15x15" (full30): Mean over the full 30×30° domain
+        NOTE: "outside" here means "full domain" — use as context ring
+        The web displays lec15 as "inside" and full30 as "outside" (full domain)
+    """
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Mapping from internal stat keys to structured JSON entries
+    DIAG_MAP = {
+        # (stat_prefix, diag_id, unit, is_flux)
+        "EGR":   ("egr",                  "day⁻¹",      False),
+        "PV200": ("pv-200",               "PVU",        False),
+        "PV850": ("pv-850",               "PVU",        False),
+        "ADVT":  ("temperature-advection","K h⁻¹",      True),
+        "DIVQ":  ("moisture-flux-divergence","g kg⁻¹ s⁻¹", True),
+        "SLP":   ("slp",                  "hPa",        False),
+        "KEADV": ("ke-advection",         "m² s⁻³",     True),
+        "AFC":   ("afc",                  "m² s⁻³",     True),
+        "RK":    ("rk-criterion",         "s⁻¹",        False),
+    }
+
+    domain_stats = []
+    boundary_fluxes = []
+
+    for prefix, (diag_id, unit, is_flux) in DIAG_MAP.items():
+        for ep in ["EP1", "EP2"]:
+            lec_key  = f"{ep}_{prefix}_LEC15"
+            full_key = f"{ep}_{prefix}_FULL30"
+            if lec_key in stats:
+                domain_stats.append({
+                    "diagnostic_id": diag_id,
+                    "ep": ep,
+                    "unit": unit,
+                    "inside_15x15": stats[lec_key],
+                    "outside_15x15": stats[full_key] if full_key in stats else None,
+                })
+            if is_flux:
+                n_key  = f"{ep}_{prefix}_NORTH"
+                s_key  = f"{ep}_{prefix}_SOUTH"
+                e_key  = f"{ep}_{prefix}_EAST"
+                w_key  = f"{ep}_{prefix}_WEST"
+                if n_key in stats:
+                    boundary_fluxes.append({
+                        "diagnostic_id": diag_id,
+                        "ep": ep,
+                        "unit": unit,
+                        "north": stats[n_key],
+                        "south": stats[s_key] if s_key in stats else None,
+                        "east":  stats[e_key] if e_key in stats else None,
+                        "west":  stats[w_key] if w_key in stats else None,
+                    })
+
+    out = {
+        "generated_at": stats.get("GENERATION_DATE", ""),
+        "domain_stats": domain_stats,
+        "boundary_fluxes": boundary_fluxes,
+    }
+
+    out_path = RESULTS_DIR / "composite_stats.json"
+    out_path.write_text(json.dumps(out, indent=2, ensure_ascii=False))
+    print(f"   ✓ Exported structured stats to {out_path.relative_to(PROJECT_ROOT)}")
+    return out_path
+
+
+
     """Replace placeholders in SCIENTIFIC_NOTES.md."""
     if not NOTES_FILE.exists():
         print(f"⚠️  {NOTES_FILE} not found — skipping population")
@@ -375,7 +449,10 @@ def main():
 
     print(f"   ✓ Computed {len(stats)} statistics")
 
-    print("\n2. Populating SCIENTIFIC_NOTES.md...")
+    print("\n2. Exporting structured stats to JSON (for web layer)...")
+    export_stats_json(stats)
+
+    print("\n3. Populating SCIENTIFIC_NOTES.md...")
     populate_notes(stats)
     
     # Print summary of key statistics
@@ -385,12 +462,12 @@ def main():
             print(f"   {key:40s} = {stats[key]}")
 
     if not args.no_pdf:
-        print("\n3. Generating PDF...")
+        print("\n4. Generating PDF...")
         pdf_path = generate_pdf()
         if pdf_path and pdf_path.exists():
             print(f"   ✓ PDF ready at: {pdf_path.relative_to(PROJECT_ROOT)}")
     else:
-        print("\n3. PDF generation skipped (use without --no-pdf to generate)")
+        print("\n4. PDF generation skipped (use without --no-pdf to generate)")
 
     print("\n" + "=" * 60)
     print("✓ STEP 5 COMPLETE")

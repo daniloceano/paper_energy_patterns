@@ -1,0 +1,2804 @@
+[
+  {
+    "filename": "lps_conversion_default.png",
+    "path": "figures/cluster/cluster/lps_conversion_default.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/lps_conversion_default.png"
+  },
+  {
+    "filename": "lps_conversion_zoom.png",
+    "path": "figures/cluster/cluster/lps_conversion_zoom.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/lps_conversion_zoom.png"
+  },
+  {
+    "filename": "lps_imports_default.png",
+    "path": "figures/cluster/cluster/lps_imports_default.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/lps_imports_default.png"
+  },
+  {
+    "filename": "lps_imports_zoom.png",
+    "path": "figures/cluster/cluster/lps_imports_zoom.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/lps_imports_zoom.png"
+  },
+  {
+    "filename": "optimal_k_analysis.png",
+    "path": "figures/cluster/cluster/optimal_k_analysis.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/optimal_k_analysis.png"
+  },
+  {
+    "filename": "pca_correlation_wide.png",
+    "path": "figures/cluster/cluster/pca_correlation_wide.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/pca_correlation_wide.png"
+  },
+  {
+    "filename": "pca_loadings_wide.png",
+    "path": "figures/cluster/cluster/pca_loadings_wide.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/pca_loadings_wide.png"
+  },
+  {
+    "filename": "pca_scatter_wide.png",
+    "path": "figures/cluster/cluster/pca_scatter_wide.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/pca_scatter_wide.png"
+  },
+  {
+    "filename": "pca_variance_wide.png",
+    "path": "figures/cluster/cluster/pca_variance_wide.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/cluster/pca_variance_wide.png"
+  },
+  {
+    "filename": "lps_conversion_default.png",
+    "path": "figures/cluster/lps_conversion_default.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/lps_conversion_default.png"
+  },
+  {
+    "filename": "lps_conversion_zoom.png",
+    "path": "figures/cluster/lps_conversion_zoom.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/lps_conversion_zoom.png"
+  },
+  {
+    "filename": "lps_imports_default.png",
+    "path": "figures/cluster/lps_imports_default.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/lps_imports_default.png"
+  },
+  {
+    "filename": "lps_imports_zoom.png",
+    "path": "figures/cluster/lps_imports_zoom.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/lps_imports_zoom.png"
+  },
+  {
+    "filename": "optimal_k_analysis.png",
+    "path": "figures/cluster/optimal_k_analysis.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/optimal_k_analysis.png"
+  },
+  {
+    "filename": "pca_correlation_wide.png",
+    "path": "figures/cluster/pca_correlation_wide.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/pca_correlation_wide.png"
+  },
+  {
+    "filename": "pca_loadings_wide.png",
+    "path": "figures/cluster/pca_loadings_wide.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/pca_loadings_wide.png"
+  },
+  {
+    "filename": "pca_scatter_wide.png",
+    "path": "figures/cluster/pca_scatter_wide.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/pca_scatter_wide.png"
+  },
+  {
+    "filename": "pca_variance_wide.png",
+    "path": "figures/cluster/pca_variance_wide.png",
+    "category": "cluster",
+    "api_url": "/api/figures?path=figures/cluster/pca_variance_wide.png"
+  },
+  {
+    "filename": "composite_local.png",
+    "path": "figures/ep1_full/composite/composite_local.png",
+    "category": "ep1_full",
+    "api_url": "/api/figures?path=figures/ep1_full/composite/composite_local.png"
+  },
+  {
+    "filename": "composite_mesoscale.png",
+    "path": "figures/ep1_full/composite/composite_mesoscale.png",
+    "category": "ep1_full",
+    "api_url": "/api/figures?path=figures/ep1_full/composite/composite_mesoscale.png"
+  },
+  {
+    "filename": "composite_synoptic.png",
+    "path": "figures/ep1_full/composite/composite_synoptic.png",
+    "category": "ep1_full",
+    "api_url": "/api/figures?path=figures/ep1_full/composite/composite_synoptic.png"
+  },
+  {
+    "filename": "all_ep1_tracks_overview.png",
+    "path": "figures/ep1_full/tracks/all_ep1_tracks_overview.png",
+    "category": "ep1_full",
+    "api_url": "/api/figures?path=figures/ep1_full/tracks/all_ep1_tracks_overview.png"
+  },
+  {
+    "filename": "composite_local.png",
+    "path": "figures/ep1_vertical/composite/composite_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/composite/composite_local.png"
+  },
+  {
+    "filename": "composite_mesoscale.png",
+    "path": "figures/ep1_vertical/composite/composite_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/composite/composite_mesoscale.png"
+  },
+  {
+    "filename": "composite_synoptic.png",
+    "path": "figures/ep1_vertical/composite/composite_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/composite/composite_synoptic.png"
+  },
+  {
+    "filename": "critical_levels_boxplot.png",
+    "path": "figures/ep1_vertical/critical_levels_boxplot.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/critical_levels_boxplot.png"
+  },
+  {
+    "filename": "19790205_local.png",
+    "path": "figures/ep1_vertical/individual/19790205_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19790205_local.png"
+  },
+  {
+    "filename": "19790205_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19790205_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19790205_mesoscale.png"
+  },
+  {
+    "filename": "19790205_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19790205_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19790205_synoptic.png"
+  },
+  {
+    "filename": "19790535_local.png",
+    "path": "figures/ep1_vertical/individual/19790535_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19790535_local.png"
+  },
+  {
+    "filename": "19790535_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19790535_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19790535_mesoscale.png"
+  },
+  {
+    "filename": "19790535_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19790535_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19790535_synoptic.png"
+  },
+  {
+    "filename": "19791150_local.png",
+    "path": "figures/ep1_vertical/individual/19791150_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19791150_local.png"
+  },
+  {
+    "filename": "19791150_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19791150_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19791150_mesoscale.png"
+  },
+  {
+    "filename": "19791150_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19791150_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19791150_synoptic.png"
+  },
+  {
+    "filename": "19800256_local.png",
+    "path": "figures/ep1_vertical/individual/19800256_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800256_local.png"
+  },
+  {
+    "filename": "19800256_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19800256_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800256_mesoscale.png"
+  },
+  {
+    "filename": "19800256_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19800256_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800256_synoptic.png"
+  },
+  {
+    "filename": "19800464_local.png",
+    "path": "figures/ep1_vertical/individual/19800464_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800464_local.png"
+  },
+  {
+    "filename": "19800464_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19800464_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800464_mesoscale.png"
+  },
+  {
+    "filename": "19800464_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19800464_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800464_synoptic.png"
+  },
+  {
+    "filename": "19800640_local.png",
+    "path": "figures/ep1_vertical/individual/19800640_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800640_local.png"
+  },
+  {
+    "filename": "19800640_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19800640_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800640_mesoscale.png"
+  },
+  {
+    "filename": "19800640_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19800640_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19800640_synoptic.png"
+  },
+  {
+    "filename": "19810096_local.png",
+    "path": "figures/ep1_vertical/individual/19810096_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810096_local.png"
+  },
+  {
+    "filename": "19810096_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19810096_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810096_mesoscale.png"
+  },
+  {
+    "filename": "19810096_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19810096_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810096_synoptic.png"
+  },
+  {
+    "filename": "19810241_local.png",
+    "path": "figures/ep1_vertical/individual/19810241_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810241_local.png"
+  },
+  {
+    "filename": "19810241_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19810241_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810241_mesoscale.png"
+  },
+  {
+    "filename": "19810241_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19810241_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810241_synoptic.png"
+  },
+  {
+    "filename": "19810618_local.png",
+    "path": "figures/ep1_vertical/individual/19810618_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810618_local.png"
+  },
+  {
+    "filename": "19810618_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19810618_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810618_mesoscale.png"
+  },
+  {
+    "filename": "19810618_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19810618_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810618_synoptic.png"
+  },
+  {
+    "filename": "19810863_local.png",
+    "path": "figures/ep1_vertical/individual/19810863_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810863_local.png"
+  },
+  {
+    "filename": "19810863_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19810863_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810863_mesoscale.png"
+  },
+  {
+    "filename": "19810863_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19810863_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19810863_synoptic.png"
+  },
+  {
+    "filename": "19820712_local.png",
+    "path": "figures/ep1_vertical/individual/19820712_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19820712_local.png"
+  },
+  {
+    "filename": "19820712_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19820712_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19820712_mesoscale.png"
+  },
+  {
+    "filename": "19820712_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19820712_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19820712_synoptic.png"
+  },
+  {
+    "filename": "19820917_local.png",
+    "path": "figures/ep1_vertical/individual/19820917_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19820917_local.png"
+  },
+  {
+    "filename": "19820917_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19820917_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19820917_mesoscale.png"
+  },
+  {
+    "filename": "19820917_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19820917_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19820917_synoptic.png"
+  },
+  {
+    "filename": "19831052_local.png",
+    "path": "figures/ep1_vertical/individual/19831052_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19831052_local.png"
+  },
+  {
+    "filename": "19831052_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19831052_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19831052_mesoscale.png"
+  },
+  {
+    "filename": "19831052_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19831052_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19831052_synoptic.png"
+  },
+  {
+    "filename": "19840379_local.png",
+    "path": "figures/ep1_vertical/individual/19840379_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19840379_local.png"
+  },
+  {
+    "filename": "19840379_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19840379_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19840379_mesoscale.png"
+  },
+  {
+    "filename": "19840379_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19840379_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19840379_synoptic.png"
+  },
+  {
+    "filename": "19850849_local.png",
+    "path": "figures/ep1_vertical/individual/19850849_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19850849_local.png"
+  },
+  {
+    "filename": "19850849_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19850849_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19850849_mesoscale.png"
+  },
+  {
+    "filename": "19850849_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19850849_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19850849_synoptic.png"
+  },
+  {
+    "filename": "19860154_local.png",
+    "path": "figures/ep1_vertical/individual/19860154_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860154_local.png"
+  },
+  {
+    "filename": "19860154_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19860154_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860154_mesoscale.png"
+  },
+  {
+    "filename": "19860154_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19860154_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860154_synoptic.png"
+  },
+  {
+    "filename": "19860443_local.png",
+    "path": "figures/ep1_vertical/individual/19860443_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860443_local.png"
+  },
+  {
+    "filename": "19860443_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19860443_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860443_mesoscale.png"
+  },
+  {
+    "filename": "19860443_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19860443_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860443_synoptic.png"
+  },
+  {
+    "filename": "19860513_local.png",
+    "path": "figures/ep1_vertical/individual/19860513_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860513_local.png"
+  },
+  {
+    "filename": "19860513_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19860513_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860513_mesoscale.png"
+  },
+  {
+    "filename": "19860513_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19860513_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860513_synoptic.png"
+  },
+  {
+    "filename": "19860601_local.png",
+    "path": "figures/ep1_vertical/individual/19860601_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860601_local.png"
+  },
+  {
+    "filename": "19860601_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19860601_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860601_mesoscale.png"
+  },
+  {
+    "filename": "19860601_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19860601_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860601_synoptic.png"
+  },
+  {
+    "filename": "19860879_local.png",
+    "path": "figures/ep1_vertical/individual/19860879_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860879_local.png"
+  },
+  {
+    "filename": "19860879_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19860879_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860879_mesoscale.png"
+  },
+  {
+    "filename": "19860879_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19860879_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860879_synoptic.png"
+  },
+  {
+    "filename": "19860900_local.png",
+    "path": "figures/ep1_vertical/individual/19860900_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860900_local.png"
+  },
+  {
+    "filename": "19860900_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19860900_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860900_mesoscale.png"
+  },
+  {
+    "filename": "19860900_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19860900_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19860900_synoptic.png"
+  },
+  {
+    "filename": "19880272_local.png",
+    "path": "figures/ep1_vertical/individual/19880272_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19880272_local.png"
+  },
+  {
+    "filename": "19880272_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19880272_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19880272_mesoscale.png"
+  },
+  {
+    "filename": "19880272_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19880272_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19880272_synoptic.png"
+  },
+  {
+    "filename": "19880964_local.png",
+    "path": "figures/ep1_vertical/individual/19880964_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19880964_local.png"
+  },
+  {
+    "filename": "19880964_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19880964_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19880964_mesoscale.png"
+  },
+  {
+    "filename": "19880964_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19880964_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19880964_synoptic.png"
+  },
+  {
+    "filename": "19890872_local.png",
+    "path": "figures/ep1_vertical/individual/19890872_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19890872_local.png"
+  },
+  {
+    "filename": "19890872_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19890872_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19890872_mesoscale.png"
+  },
+  {
+    "filename": "19890872_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19890872_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19890872_synoptic.png"
+  },
+  {
+    "filename": "19900356_local.png",
+    "path": "figures/ep1_vertical/individual/19900356_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19900356_local.png"
+  },
+  {
+    "filename": "19900356_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19900356_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19900356_mesoscale.png"
+  },
+  {
+    "filename": "19900356_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19900356_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19900356_synoptic.png"
+  },
+  {
+    "filename": "19900839_local.png",
+    "path": "figures/ep1_vertical/individual/19900839_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19900839_local.png"
+  },
+  {
+    "filename": "19900839_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19900839_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19900839_mesoscale.png"
+  },
+  {
+    "filename": "19900839_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19900839_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19900839_synoptic.png"
+  },
+  {
+    "filename": "19901076_local.png",
+    "path": "figures/ep1_vertical/individual/19901076_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19901076_local.png"
+  },
+  {
+    "filename": "19901076_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19901076_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19901076_mesoscale.png"
+  },
+  {
+    "filename": "19901076_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19901076_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19901076_synoptic.png"
+  },
+  {
+    "filename": "19910317_local.png",
+    "path": "figures/ep1_vertical/individual/19910317_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19910317_local.png"
+  },
+  {
+    "filename": "19910317_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19910317_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19910317_mesoscale.png"
+  },
+  {
+    "filename": "19910317_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19910317_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19910317_synoptic.png"
+  },
+  {
+    "filename": "19920501_local.png",
+    "path": "figures/ep1_vertical/individual/19920501_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19920501_local.png"
+  },
+  {
+    "filename": "19920501_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19920501_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19920501_mesoscale.png"
+  },
+  {
+    "filename": "19920501_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19920501_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19920501_synoptic.png"
+  },
+  {
+    "filename": "19920898_local.png",
+    "path": "figures/ep1_vertical/individual/19920898_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19920898_local.png"
+  },
+  {
+    "filename": "19920898_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19920898_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19920898_mesoscale.png"
+  },
+  {
+    "filename": "19920898_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19920898_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19920898_synoptic.png"
+  },
+  {
+    "filename": "19930045_local.png",
+    "path": "figures/ep1_vertical/individual/19930045_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930045_local.png"
+  },
+  {
+    "filename": "19930045_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19930045_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930045_mesoscale.png"
+  },
+  {
+    "filename": "19930045_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19930045_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930045_synoptic.png"
+  },
+  {
+    "filename": "19930191_local.png",
+    "path": "figures/ep1_vertical/individual/19930191_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930191_local.png"
+  },
+  {
+    "filename": "19930191_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19930191_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930191_mesoscale.png"
+  },
+  {
+    "filename": "19930191_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19930191_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930191_synoptic.png"
+  },
+  {
+    "filename": "19930476_local.png",
+    "path": "figures/ep1_vertical/individual/19930476_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930476_local.png"
+  },
+  {
+    "filename": "19930476_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19930476_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930476_mesoscale.png"
+  },
+  {
+    "filename": "19930476_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19930476_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930476_synoptic.png"
+  },
+  {
+    "filename": "19930531_local.png",
+    "path": "figures/ep1_vertical/individual/19930531_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930531_local.png"
+  },
+  {
+    "filename": "19930531_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19930531_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930531_mesoscale.png"
+  },
+  {
+    "filename": "19930531_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19930531_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930531_synoptic.png"
+  },
+  {
+    "filename": "19930649_local.png",
+    "path": "figures/ep1_vertical/individual/19930649_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930649_local.png"
+  },
+  {
+    "filename": "19930649_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19930649_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930649_mesoscale.png"
+  },
+  {
+    "filename": "19930649_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19930649_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930649_synoptic.png"
+  },
+  {
+    "filename": "19930687_local.png",
+    "path": "figures/ep1_vertical/individual/19930687_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930687_local.png"
+  },
+  {
+    "filename": "19930687_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19930687_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930687_mesoscale.png"
+  },
+  {
+    "filename": "19930687_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19930687_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19930687_synoptic.png"
+  },
+  {
+    "filename": "19940276_local.png",
+    "path": "figures/ep1_vertical/individual/19940276_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19940276_local.png"
+  },
+  {
+    "filename": "19940276_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19940276_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19940276_mesoscale.png"
+  },
+  {
+    "filename": "19940276_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19940276_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19940276_synoptic.png"
+  },
+  {
+    "filename": "19950024_local.png",
+    "path": "figures/ep1_vertical/individual/19950024_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950024_local.png"
+  },
+  {
+    "filename": "19950024_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19950024_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950024_mesoscale.png"
+  },
+  {
+    "filename": "19950024_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19950024_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950024_synoptic.png"
+  },
+  {
+    "filename": "19950300_local.png",
+    "path": "figures/ep1_vertical/individual/19950300_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950300_local.png"
+  },
+  {
+    "filename": "19950300_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19950300_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950300_mesoscale.png"
+  },
+  {
+    "filename": "19950300_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19950300_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950300_synoptic.png"
+  },
+  {
+    "filename": "19950584_local.png",
+    "path": "figures/ep1_vertical/individual/19950584_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950584_local.png"
+  },
+  {
+    "filename": "19950584_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19950584_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950584_mesoscale.png"
+  },
+  {
+    "filename": "19950584_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19950584_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950584_synoptic.png"
+  },
+  {
+    "filename": "19950852_local.png",
+    "path": "figures/ep1_vertical/individual/19950852_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950852_local.png"
+  },
+  {
+    "filename": "19950852_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19950852_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950852_mesoscale.png"
+  },
+  {
+    "filename": "19950852_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19950852_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19950852_synoptic.png"
+  },
+  {
+    "filename": "19951122_local.png",
+    "path": "figures/ep1_vertical/individual/19951122_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19951122_local.png"
+  },
+  {
+    "filename": "19951122_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19951122_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19951122_mesoscale.png"
+  },
+  {
+    "filename": "19951122_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19951122_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19951122_synoptic.png"
+  },
+  {
+    "filename": "19960165_local.png",
+    "path": "figures/ep1_vertical/individual/19960165_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19960165_local.png"
+  },
+  {
+    "filename": "19960165_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19960165_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19960165_mesoscale.png"
+  },
+  {
+    "filename": "19960165_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19960165_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19960165_synoptic.png"
+  },
+  {
+    "filename": "19960792_local.png",
+    "path": "figures/ep1_vertical/individual/19960792_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19960792_local.png"
+  },
+  {
+    "filename": "19960792_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19960792_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19960792_mesoscale.png"
+  },
+  {
+    "filename": "19960792_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19960792_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19960792_synoptic.png"
+  },
+  {
+    "filename": "19970233_local.png",
+    "path": "figures/ep1_vertical/individual/19970233_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970233_local.png"
+  },
+  {
+    "filename": "19970233_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19970233_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970233_mesoscale.png"
+  },
+  {
+    "filename": "19970233_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19970233_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970233_synoptic.png"
+  },
+  {
+    "filename": "19970421_local.png",
+    "path": "figures/ep1_vertical/individual/19970421_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970421_local.png"
+  },
+  {
+    "filename": "19970421_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19970421_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970421_mesoscale.png"
+  },
+  {
+    "filename": "19970421_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19970421_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970421_synoptic.png"
+  },
+  {
+    "filename": "19970525_local.png",
+    "path": "figures/ep1_vertical/individual/19970525_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970525_local.png"
+  },
+  {
+    "filename": "19970525_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19970525_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970525_mesoscale.png"
+  },
+  {
+    "filename": "19970525_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19970525_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970525_synoptic.png"
+  },
+  {
+    "filename": "19970674_local.png",
+    "path": "figures/ep1_vertical/individual/19970674_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970674_local.png"
+  },
+  {
+    "filename": "19970674_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19970674_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970674_mesoscale.png"
+  },
+  {
+    "filename": "19970674_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19970674_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19970674_synoptic.png"
+  },
+  {
+    "filename": "19980679_local.png",
+    "path": "figures/ep1_vertical/individual/19980679_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19980679_local.png"
+  },
+  {
+    "filename": "19980679_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19980679_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19980679_mesoscale.png"
+  },
+  {
+    "filename": "19980679_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19980679_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19980679_synoptic.png"
+  },
+  {
+    "filename": "19980756_local.png",
+    "path": "figures/ep1_vertical/individual/19980756_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19980756_local.png"
+  },
+  {
+    "filename": "19980756_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19980756_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19980756_mesoscale.png"
+  },
+  {
+    "filename": "19980756_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19980756_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19980756_synoptic.png"
+  },
+  {
+    "filename": "19990647_local.png",
+    "path": "figures/ep1_vertical/individual/19990647_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19990647_local.png"
+  },
+  {
+    "filename": "19990647_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/19990647_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19990647_mesoscale.png"
+  },
+  {
+    "filename": "19990647_synoptic.png",
+    "path": "figures/ep1_vertical/individual/19990647_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/19990647_synoptic.png"
+  },
+  {
+    "filename": "20000633_local.png",
+    "path": "figures/ep1_vertical/individual/20000633_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20000633_local.png"
+  },
+  {
+    "filename": "20000633_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20000633_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20000633_mesoscale.png"
+  },
+  {
+    "filename": "20000633_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20000633_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20000633_synoptic.png"
+  },
+  {
+    "filename": "20010518_local.png",
+    "path": "figures/ep1_vertical/individual/20010518_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20010518_local.png"
+  },
+  {
+    "filename": "20010518_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20010518_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20010518_mesoscale.png"
+  },
+  {
+    "filename": "20010518_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20010518_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20010518_synoptic.png"
+  },
+  {
+    "filename": "20010826_local.png",
+    "path": "figures/ep1_vertical/individual/20010826_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20010826_local.png"
+  },
+  {
+    "filename": "20010826_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20010826_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20010826_mesoscale.png"
+  },
+  {
+    "filename": "20010826_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20010826_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20010826_synoptic.png"
+  },
+  {
+    "filename": "20020038_local.png",
+    "path": "figures/ep1_vertical/individual/20020038_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020038_local.png"
+  },
+  {
+    "filename": "20020038_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20020038_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020038_mesoscale.png"
+  },
+  {
+    "filename": "20020038_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20020038_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020038_synoptic.png"
+  },
+  {
+    "filename": "20020688_local.png",
+    "path": "figures/ep1_vertical/individual/20020688_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020688_local.png"
+  },
+  {
+    "filename": "20020688_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20020688_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020688_mesoscale.png"
+  },
+  {
+    "filename": "20020688_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20020688_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020688_synoptic.png"
+  },
+  {
+    "filename": "20020940_local.png",
+    "path": "figures/ep1_vertical/individual/20020940_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020940_local.png"
+  },
+  {
+    "filename": "20020940_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20020940_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020940_mesoscale.png"
+  },
+  {
+    "filename": "20020940_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20020940_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20020940_synoptic.png"
+  },
+  {
+    "filename": "20030046_local.png",
+    "path": "figures/ep1_vertical/individual/20030046_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20030046_local.png"
+  },
+  {
+    "filename": "20030046_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20030046_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20030046_mesoscale.png"
+  },
+  {
+    "filename": "20030046_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20030046_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20030046_synoptic.png"
+  },
+  {
+    "filename": "20030110_local.png",
+    "path": "figures/ep1_vertical/individual/20030110_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20030110_local.png"
+  },
+  {
+    "filename": "20030110_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20030110_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20030110_mesoscale.png"
+  },
+  {
+    "filename": "20030110_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20030110_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20030110_synoptic.png"
+  },
+  {
+    "filename": "20040394_local.png",
+    "path": "figures/ep1_vertical/individual/20040394_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040394_local.png"
+  },
+  {
+    "filename": "20040394_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20040394_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040394_mesoscale.png"
+  },
+  {
+    "filename": "20040394_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20040394_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040394_synoptic.png"
+  },
+  {
+    "filename": "20040614_local.png",
+    "path": "figures/ep1_vertical/individual/20040614_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040614_local.png"
+  },
+  {
+    "filename": "20040614_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20040614_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040614_mesoscale.png"
+  },
+  {
+    "filename": "20040614_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20040614_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040614_synoptic.png"
+  },
+  {
+    "filename": "20040792_local.png",
+    "path": "figures/ep1_vertical/individual/20040792_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040792_local.png"
+  },
+  {
+    "filename": "20040792_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20040792_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040792_mesoscale.png"
+  },
+  {
+    "filename": "20040792_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20040792_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20040792_synoptic.png"
+  },
+  {
+    "filename": "20041025_local.png",
+    "path": "figures/ep1_vertical/individual/20041025_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20041025_local.png"
+  },
+  {
+    "filename": "20041025_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20041025_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20041025_mesoscale.png"
+  },
+  {
+    "filename": "20041025_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20041025_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20041025_synoptic.png"
+  },
+  {
+    "filename": "20050095_local.png",
+    "path": "figures/ep1_vertical/individual/20050095_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050095_local.png"
+  },
+  {
+    "filename": "20050095_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20050095_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050095_mesoscale.png"
+  },
+  {
+    "filename": "20050095_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20050095_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050095_synoptic.png"
+  },
+  {
+    "filename": "20050665_local.png",
+    "path": "figures/ep1_vertical/individual/20050665_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050665_local.png"
+  },
+  {
+    "filename": "20050665_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20050665_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050665_mesoscale.png"
+  },
+  {
+    "filename": "20050665_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20050665_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050665_synoptic.png"
+  },
+  {
+    "filename": "20050760_local.png",
+    "path": "figures/ep1_vertical/individual/20050760_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050760_local.png"
+  },
+  {
+    "filename": "20050760_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20050760_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050760_mesoscale.png"
+  },
+  {
+    "filename": "20050760_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20050760_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050760_synoptic.png"
+  },
+  {
+    "filename": "20050977_local.png",
+    "path": "figures/ep1_vertical/individual/20050977_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050977_local.png"
+  },
+  {
+    "filename": "20050977_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20050977_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050977_mesoscale.png"
+  },
+  {
+    "filename": "20050977_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20050977_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20050977_synoptic.png"
+  },
+  {
+    "filename": "20060272_local.png",
+    "path": "figures/ep1_vertical/individual/20060272_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20060272_local.png"
+  },
+  {
+    "filename": "20060272_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20060272_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20060272_mesoscale.png"
+  },
+  {
+    "filename": "20060272_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20060272_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20060272_synoptic.png"
+  },
+  {
+    "filename": "20070387_local.png",
+    "path": "figures/ep1_vertical/individual/20070387_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070387_local.png"
+  },
+  {
+    "filename": "20070387_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20070387_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070387_mesoscale.png"
+  },
+  {
+    "filename": "20070387_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20070387_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070387_synoptic.png"
+  },
+  {
+    "filename": "20070457_local.png",
+    "path": "figures/ep1_vertical/individual/20070457_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070457_local.png"
+  },
+  {
+    "filename": "20070457_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20070457_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070457_mesoscale.png"
+  },
+  {
+    "filename": "20070457_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20070457_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070457_synoptic.png"
+  },
+  {
+    "filename": "20070633_local.png",
+    "path": "figures/ep1_vertical/individual/20070633_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070633_local.png"
+  },
+  {
+    "filename": "20070633_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20070633_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070633_mesoscale.png"
+  },
+  {
+    "filename": "20070633_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20070633_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070633_synoptic.png"
+  },
+  {
+    "filename": "20070648_local.png",
+    "path": "figures/ep1_vertical/individual/20070648_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070648_local.png"
+  },
+  {
+    "filename": "20070648_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20070648_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070648_mesoscale.png"
+  },
+  {
+    "filename": "20070648_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20070648_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20070648_synoptic.png"
+  },
+  {
+    "filename": "20080491_local.png",
+    "path": "figures/ep1_vertical/individual/20080491_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20080491_local.png"
+  },
+  {
+    "filename": "20080491_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20080491_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20080491_mesoscale.png"
+  },
+  {
+    "filename": "20080491_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20080491_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20080491_synoptic.png"
+  },
+  {
+    "filename": "20080975_local.png",
+    "path": "figures/ep1_vertical/individual/20080975_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20080975_local.png"
+  },
+  {
+    "filename": "20080975_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20080975_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20080975_mesoscale.png"
+  },
+  {
+    "filename": "20080975_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20080975_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20080975_synoptic.png"
+  },
+  {
+    "filename": "20081041_local.png",
+    "path": "figures/ep1_vertical/individual/20081041_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20081041_local.png"
+  },
+  {
+    "filename": "20081041_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20081041_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20081041_mesoscale.png"
+  },
+  {
+    "filename": "20081041_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20081041_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20081041_synoptic.png"
+  },
+  {
+    "filename": "20090679_local.png",
+    "path": "figures/ep1_vertical/individual/20090679_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20090679_local.png"
+  },
+  {
+    "filename": "20090679_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20090679_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20090679_mesoscale.png"
+  },
+  {
+    "filename": "20090679_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20090679_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20090679_synoptic.png"
+  },
+  {
+    "filename": "20091145_local.png",
+    "path": "figures/ep1_vertical/individual/20091145_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20091145_local.png"
+  },
+  {
+    "filename": "20091145_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20091145_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20091145_mesoscale.png"
+  },
+  {
+    "filename": "20091145_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20091145_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20091145_synoptic.png"
+  },
+  {
+    "filename": "20100609_local.png",
+    "path": "figures/ep1_vertical/individual/20100609_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20100609_local.png"
+  },
+  {
+    "filename": "20100609_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20100609_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20100609_mesoscale.png"
+  },
+  {
+    "filename": "20100609_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20100609_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20100609_synoptic.png"
+  },
+  {
+    "filename": "20100690_local.png",
+    "path": "figures/ep1_vertical/individual/20100690_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20100690_local.png"
+  },
+  {
+    "filename": "20100690_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20100690_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20100690_mesoscale.png"
+  },
+  {
+    "filename": "20100690_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20100690_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20100690_synoptic.png"
+  },
+  {
+    "filename": "20111020_local.png",
+    "path": "figures/ep1_vertical/individual/20111020_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20111020_local.png"
+  },
+  {
+    "filename": "20111020_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20111020_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20111020_mesoscale.png"
+  },
+  {
+    "filename": "20111020_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20111020_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20111020_synoptic.png"
+  },
+  {
+    "filename": "20111066_local.png",
+    "path": "figures/ep1_vertical/individual/20111066_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20111066_local.png"
+  },
+  {
+    "filename": "20111066_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20111066_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20111066_mesoscale.png"
+  },
+  {
+    "filename": "20111066_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20111066_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20111066_synoptic.png"
+  },
+  {
+    "filename": "20120079_local.png",
+    "path": "figures/ep1_vertical/individual/20120079_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20120079_local.png"
+  },
+  {
+    "filename": "20120079_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20120079_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20120079_mesoscale.png"
+  },
+  {
+    "filename": "20120079_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20120079_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20120079_synoptic.png"
+  },
+  {
+    "filename": "20120214_local.png",
+    "path": "figures/ep1_vertical/individual/20120214_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20120214_local.png"
+  },
+  {
+    "filename": "20120214_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20120214_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20120214_mesoscale.png"
+  },
+  {
+    "filename": "20120214_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20120214_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20120214_synoptic.png"
+  },
+  {
+    "filename": "20121159_local.png",
+    "path": "figures/ep1_vertical/individual/20121159_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20121159_local.png"
+  },
+  {
+    "filename": "20121159_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20121159_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20121159_mesoscale.png"
+  },
+  {
+    "filename": "20121159_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20121159_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20121159_synoptic.png"
+  },
+  {
+    "filename": "20131031_local.png",
+    "path": "figures/ep1_vertical/individual/20131031_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20131031_local.png"
+  },
+  {
+    "filename": "20131031_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20131031_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20131031_mesoscale.png"
+  },
+  {
+    "filename": "20131031_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20131031_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20131031_synoptic.png"
+  },
+  {
+    "filename": "20131072_local.png",
+    "path": "figures/ep1_vertical/individual/20131072_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20131072_local.png"
+  },
+  {
+    "filename": "20131072_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20131072_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20131072_mesoscale.png"
+  },
+  {
+    "filename": "20131072_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20131072_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20131072_synoptic.png"
+  },
+  {
+    "filename": "20140207_local.png",
+    "path": "figures/ep1_vertical/individual/20140207_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20140207_local.png"
+  },
+  {
+    "filename": "20140207_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20140207_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20140207_mesoscale.png"
+  },
+  {
+    "filename": "20140207_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20140207_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20140207_synoptic.png"
+  },
+  {
+    "filename": "20150746_local.png",
+    "path": "figures/ep1_vertical/individual/20150746_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20150746_local.png"
+  },
+  {
+    "filename": "20150746_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20150746_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20150746_mesoscale.png"
+  },
+  {
+    "filename": "20150746_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20150746_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20150746_synoptic.png"
+  },
+  {
+    "filename": "20160587_local.png",
+    "path": "figures/ep1_vertical/individual/20160587_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20160587_local.png"
+  },
+  {
+    "filename": "20160587_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20160587_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20160587_mesoscale.png"
+  },
+  {
+    "filename": "20160587_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20160587_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20160587_synoptic.png"
+  },
+  {
+    "filename": "20170899_local.png",
+    "path": "figures/ep1_vertical/individual/20170899_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20170899_local.png"
+  },
+  {
+    "filename": "20170899_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20170899_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20170899_mesoscale.png"
+  },
+  {
+    "filename": "20170899_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20170899_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20170899_synoptic.png"
+  },
+  {
+    "filename": "20180759_local.png",
+    "path": "figures/ep1_vertical/individual/20180759_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20180759_local.png"
+  },
+  {
+    "filename": "20180759_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20180759_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20180759_mesoscale.png"
+  },
+  {
+    "filename": "20180759_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20180759_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20180759_synoptic.png"
+  },
+  {
+    "filename": "20181046_local.png",
+    "path": "figures/ep1_vertical/individual/20181046_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20181046_local.png"
+  },
+  {
+    "filename": "20181046_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20181046_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20181046_mesoscale.png"
+  },
+  {
+    "filename": "20181046_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20181046_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20181046_synoptic.png"
+  },
+  {
+    "filename": "20191155_local.png",
+    "path": "figures/ep1_vertical/individual/20191155_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20191155_local.png"
+  },
+  {
+    "filename": "20191155_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20191155_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20191155_mesoscale.png"
+  },
+  {
+    "filename": "20191155_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20191155_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20191155_synoptic.png"
+  },
+  {
+    "filename": "20204655_local.png",
+    "path": "figures/ep1_vertical/individual/20204655_local.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20204655_local.png"
+  },
+  {
+    "filename": "20204655_mesoscale.png",
+    "path": "figures/ep1_vertical/individual/20204655_mesoscale.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20204655_mesoscale.png"
+  },
+  {
+    "filename": "20204655_synoptic.png",
+    "path": "figures/ep1_vertical/individual/20204655_synoptic.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/individual/20204655_synoptic.png"
+  },
+  {
+    "filename": "selected_tracks_overview.png",
+    "path": "figures/ep1_vertical/tracks/selected_tracks_overview.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/selected_tracks_overview.png"
+  },
+  {
+    "filename": "track_19790205_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19790205_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19790205_domains.png"
+  },
+  {
+    "filename": "track_19790535_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19790535_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19790535_domains.png"
+  },
+  {
+    "filename": "track_19791150_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19791150_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19791150_domains.png"
+  },
+  {
+    "filename": "track_19800256_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19800256_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19800256_domains.png"
+  },
+  {
+    "filename": "track_19800464_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19800464_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19800464_domains.png"
+  },
+  {
+    "filename": "track_19810096_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19810096_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19810096_domains.png"
+  },
+  {
+    "filename": "track_19810241_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19810241_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19810241_domains.png"
+  },
+  {
+    "filename": "track_19810618_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19810618_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19810618_domains.png"
+  },
+  {
+    "filename": "track_19810863_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19810863_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19810863_domains.png"
+  },
+  {
+    "filename": "track_19820712_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19820712_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19820712_domains.png"
+  },
+  {
+    "filename": "track_19820917_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19820917_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19820917_domains.png"
+  },
+  {
+    "filename": "track_19831052_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19831052_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19831052_domains.png"
+  },
+  {
+    "filename": "track_19840379_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19840379_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19840379_domains.png"
+  },
+  {
+    "filename": "track_19850849_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19850849_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19850849_domains.png"
+  },
+  {
+    "filename": "track_19860154_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19860154_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19860154_domains.png"
+  },
+  {
+    "filename": "track_19860443_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19860443_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19860443_domains.png"
+  },
+  {
+    "filename": "track_19860513_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19860513_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19860513_domains.png"
+  },
+  {
+    "filename": "track_19860601_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19860601_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19860601_domains.png"
+  },
+  {
+    "filename": "track_19860879_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19860879_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19860879_domains.png"
+  },
+  {
+    "filename": "track_19860900_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19860900_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19860900_domains.png"
+  },
+  {
+    "filename": "track_19880272_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19880272_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19880272_domains.png"
+  },
+  {
+    "filename": "track_19880964_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19880964_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19880964_domains.png"
+  },
+  {
+    "filename": "track_19890872_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19890872_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19890872_domains.png"
+  },
+  {
+    "filename": "track_19900356_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19900356_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19900356_domains.png"
+  },
+  {
+    "filename": "track_19900839_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19900839_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19900839_domains.png"
+  },
+  {
+    "filename": "track_19901076_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19901076_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19901076_domains.png"
+  },
+  {
+    "filename": "track_19910317_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19910317_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19910317_domains.png"
+  },
+  {
+    "filename": "track_19920501_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19920501_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19920501_domains.png"
+  },
+  {
+    "filename": "track_19920898_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19920898_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19920898_domains.png"
+  },
+  {
+    "filename": "track_19930045_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19930045_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19930045_domains.png"
+  },
+  {
+    "filename": "track_19930531_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19930531_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19930531_domains.png"
+  },
+  {
+    "filename": "track_19930687_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19930687_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19930687_domains.png"
+  },
+  {
+    "filename": "track_19940276_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19940276_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19940276_domains.png"
+  },
+  {
+    "filename": "track_19950024_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19950024_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19950024_domains.png"
+  },
+  {
+    "filename": "track_19950584_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19950584_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19950584_domains.png"
+  },
+  {
+    "filename": "track_19950852_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19950852_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19950852_domains.png"
+  },
+  {
+    "filename": "track_19951122_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19951122_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19951122_domains.png"
+  },
+  {
+    "filename": "track_19960165_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19960165_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19960165_domains.png"
+  },
+  {
+    "filename": "track_19960792_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19960792_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19960792_domains.png"
+  },
+  {
+    "filename": "track_19970233_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19970233_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19970233_domains.png"
+  },
+  {
+    "filename": "track_19970421_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19970421_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19970421_domains.png"
+  },
+  {
+    "filename": "track_19970674_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19970674_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19970674_domains.png"
+  },
+  {
+    "filename": "track_19980679_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19980679_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19980679_domains.png"
+  },
+  {
+    "filename": "track_19980756_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19980756_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19980756_domains.png"
+  },
+  {
+    "filename": "track_19990647_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_19990647_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_19990647_domains.png"
+  },
+  {
+    "filename": "track_20010518_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20010518_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20010518_domains.png"
+  },
+  {
+    "filename": "track_20020688_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20020688_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20020688_domains.png"
+  },
+  {
+    "filename": "track_20020940_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20020940_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20020940_domains.png"
+  },
+  {
+    "filename": "track_20030110_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20030110_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20030110_domains.png"
+  },
+  {
+    "filename": "track_20040792_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20040792_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20040792_domains.png"
+  },
+  {
+    "filename": "track_20041025_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20041025_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20041025_domains.png"
+  },
+  {
+    "filename": "track_20050095_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20050095_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20050095_domains.png"
+  },
+  {
+    "filename": "track_20050665_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20050665_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20050665_domains.png"
+  },
+  {
+    "filename": "track_20050760_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20050760_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20050760_domains.png"
+  },
+  {
+    "filename": "track_20050977_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20050977_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20050977_domains.png"
+  },
+  {
+    "filename": "track_20060272_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20060272_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20060272_domains.png"
+  },
+  {
+    "filename": "track_20070633_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20070633_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20070633_domains.png"
+  },
+  {
+    "filename": "track_20070648_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20070648_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20070648_domains.png"
+  },
+  {
+    "filename": "track_20080491_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20080491_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20080491_domains.png"
+  },
+  {
+    "filename": "track_20081041_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20081041_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20081041_domains.png"
+  },
+  {
+    "filename": "track_20090679_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20090679_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20090679_domains.png"
+  },
+  {
+    "filename": "track_20091145_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20091145_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20091145_domains.png"
+  },
+  {
+    "filename": "track_20100609_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20100609_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20100609_domains.png"
+  },
+  {
+    "filename": "track_20111020_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20111020_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20111020_domains.png"
+  },
+  {
+    "filename": "track_20111066_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20111066_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20111066_domains.png"
+  },
+  {
+    "filename": "track_20121159_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20121159_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20121159_domains.png"
+  },
+  {
+    "filename": "track_20131031_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20131031_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20131031_domains.png"
+  },
+  {
+    "filename": "track_20140207_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20140207_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20140207_domains.png"
+  },
+  {
+    "filename": "track_20150746_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20150746_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20150746_domains.png"
+  },
+  {
+    "filename": "track_20160587_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20160587_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20160587_domains.png"
+  },
+  {
+    "filename": "track_20180759_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20180759_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20180759_domains.png"
+  },
+  {
+    "filename": "track_20191155_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20191155_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20191155_domains.png"
+  },
+  {
+    "filename": "track_20204655_domains.png",
+    "path": "figures/ep1_vertical/tracks/track_20204655_domains.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/track_20204655_domains.png"
+  },
+  {
+    "filename": "tracks_overview.png",
+    "path": "figures/ep1_vertical/tracks/tracks_overview.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/tracks_overview.png"
+  },
+  {
+    "filename": "all_cyclones.png",
+    "path": "figures/exploratory/density_ge/all_cyclones.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/all_cyclones.png"
+  },
+  {
+    "filename": "ep1.png",
+    "path": "figures/exploratory/density_ge/by_ep/ep1.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_ep/ep1.png"
+  },
+  {
+    "filename": "ep2.png",
+    "path": "figures/exploratory/density_ge/by_ep/ep2.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_ep/ep2.png"
+  },
+  {
+    "filename": "ep3.png",
+    "path": "figures/exploratory/density_ge/by_ep/ep3.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_ep/ep3.png"
+  },
+  {
+    "filename": "dec.png",
+    "path": "figures/exploratory/density_ge/by_phase/dec.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase/dec.png"
+  },
+  {
+    "filename": "inc.png",
+    "path": "figures/exploratory/density_ge/by_phase/inc.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase/inc.png"
+  },
+  {
+    "filename": "int.png",
+    "path": "figures/exploratory/density_ge/by_phase/int.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase/int.png"
+  },
+  {
+    "filename": "mat.png",
+    "path": "figures/exploratory/density_ge/by_phase/mat.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase/mat.png"
+  },
+  {
+    "filename": "ep1_dec.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep1_dec.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep1_dec.png"
+  },
+  {
+    "filename": "ep1_inc.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep1_inc.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep1_inc.png"
+  },
+  {
+    "filename": "ep1_int.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep1_int.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep1_int.png"
+  },
+  {
+    "filename": "ep1_mat.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep1_mat.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep1_mat.png"
+  },
+  {
+    "filename": "ep2_dec.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep2_dec.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep2_dec.png"
+  },
+  {
+    "filename": "ep2_inc.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep2_inc.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep2_inc.png"
+  },
+  {
+    "filename": "ep2_int.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep2_int.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep2_int.png"
+  },
+  {
+    "filename": "ep2_mat.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep2_mat.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep2_mat.png"
+  },
+  {
+    "filename": "ep3_dec.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep3_dec.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep3_dec.png"
+  },
+  {
+    "filename": "ep3_inc.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep3_inc.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep3_inc.png"
+  },
+  {
+    "filename": "ep3_int.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep3_int.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep3_int.png"
+  },
+  {
+    "filename": "ep3_mat.png",
+    "path": "figures/exploratory/density_ge/by_phase_ep/ep3_mat.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep3_mat.png"
+  },
+  {
+    "filename": "elbow_analysis_wide_matrix.png",
+    "path": "figures/exploratory/elbow_analysis_wide_matrix.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/elbow_analysis_wide_matrix.png"
+  },
+  {
+    "filename": "elbow_vs_composite_comparison.png",
+    "path": "figures/exploratory/elbow_vs_composite_comparison.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/elbow_vs_composite_comparison.png"
+  },
+  {
+    "filename": "genesis_regions.png",
+    "path": "figures/exploratory/ep_analysis/genesis_regions.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/ep_analysis/genesis_regions.png"
+  },
+  {
+    "filename": "intensity_relationship.png",
+    "path": "figures/exploratory/ep_analysis/intensity_relationship.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/ep_analysis/intensity_relationship.png"
+  },
+  {
+    "filename": "interannual_variability.png",
+    "path": "figures/exploratory/ep_analysis/interannual_variability.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/ep_analysis/interannual_variability.png"
+  },
+  {
+    "filename": "seasonality.png",
+    "path": "figures/exploratory/ep_analysis/seasonality.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/ep_analysis/seasonality.png"
+  },
+  {
+    "filename": "kde_pairplot.png",
+    "path": "figures/exploratory/kde_pairplot.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/kde_pairplot.png"
+  },
+  {
+    "filename": "ep1_lps_conversion_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep1_lps_conversion_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_conversion_default.png"
+  },
+  {
+    "filename": "ep1_lps_conversion_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep1_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "ep1_lps_imports_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep1_lps_imports_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_imports_default.png"
+  },
+  {
+    "filename": "ep1_lps_imports_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep1_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_imports_zoom.png"
+  },
+  {
+    "filename": "ep1_lps_mixed_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep1_lps_mixed_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_mixed_default.png"
+  },
+  {
+    "filename": "ep1_lps_mixed_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep1_lps_mixed_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_mixed_zoom.png"
+  },
+  {
+    "filename": "ep2_lps_conversion_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_conversion_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_conversion_default.png"
+  },
+  {
+    "filename": "ep2_lps_conversion_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "ep2_lps_imports_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_imports_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_imports_default.png"
+  },
+  {
+    "filename": "ep2_lps_imports_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_imports_zoom.png"
+  },
+  {
+    "filename": "ep2_lps_mixed_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_mixed_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_mixed_default.png"
+  },
+  {
+    "filename": "ep2_lps_mixed_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_mixed_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_mixed_zoom.png"
+  },
+  {
+    "filename": "ep3_lps_conversion_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_conversion_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_conversion_default.png"
+  },
+  {
+    "filename": "ep3_lps_conversion_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "ep3_lps_imports_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_imports_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_imports_default.png"
+  },
+  {
+    "filename": "ep3_lps_imports_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_imports_zoom.png"
+  },
+  {
+    "filename": "ep3_lps_mixed_default.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_mixed_default.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_mixed_default.png"
+  },
+  {
+    "filename": "ep3_lps_mixed_zoom.png",
+    "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_mixed_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_mixed_zoom.png"
+  },
+  {
+    "filename": "1_minmax_genesis_density.png",
+    "path": "figures/exploratory/normalization_comparison/1_minmax_genesis_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/1_minmax_genesis_density.png"
+  },
+  {
+    "filename": "2_zscore_genesis_density.png",
+    "path": "figures/exploratory/normalization_comparison/2_zscore_genesis_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/2_zscore_genesis_density.png"
+  },
+  {
+    "filename": "3_fractional_weighted_genesis_density.png",
+    "path": "figures/exploratory/normalization_comparison/3_fractional_weighted_genesis_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/3_fractional_weighted_genesis_density.png"
+  },
+  {
+    "filename": "4_kl_divergence_genesis_density.png",
+    "path": "figures/exploratory/normalization_comparison/4_kl_divergence_genesis_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/4_kl_divergence_genesis_density.png"
+  },
+  {
+    "filename": "5_percentile_genesis_density.png",
+    "path": "figures/exploratory/normalization_comparison/5_percentile_genesis_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/5_percentile_genesis_density.png"
+  },
+  {
+    "filename": "6_dog_filter_genesis_density.png",
+    "path": "figures/exploratory/normalization_comparison/6_dog_filter_genesis_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/6_dog_filter_genesis_density.png"
+  },
+  {
+    "filename": "7_clr_compositional_genesis_density.png",
+    "path": "figures/exploratory/normalization_comparison/7_clr_compositional_genesis_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/7_clr_compositional_genesis_density.png"
+  },
+  {
+    "filename": "COMPARISON_minmax_vs_zscore.png",
+    "path": "figures/exploratory/normalization_comparison/COMPARISON_minmax_vs_zscore.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/COMPARISON_minmax_vs_zscore.png"
+  },
+  {
+    "filename": "scatter_density.png",
+    "path": "figures/exploratory/scatter_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/scatter_density.png"
+  },
+  {
+    "filename": "19920472_lps_conversion.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/19920472_lps_conversion.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/19920472_lps_conversion.png"
+  },
+  {
+    "filename": "19920472_lps_imports.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/19920472_lps_imports.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/19920472_lps_imports.png"
+  },
+  {
+    "filename": "19920472_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/19920472_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/19920472_track.png"
+  },
+  {
+    "filename": "19950629_lps_conversion.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/19950629_lps_conversion.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/19950629_lps_conversion.png"
+  },
+  {
+    "filename": "19950629_lps_imports.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/19950629_lps_imports.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/19950629_lps_imports.png"
+  },
+  {
+    "filename": "19950629_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/19950629_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/19950629_track.png"
+  },
+  {
+    "filename": "20070643_lps_conversion.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/20070643_lps_conversion.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/20070643_lps_conversion.png"
+  },
+  {
+    "filename": "20070643_lps_imports.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/20070643_lps_imports.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/20070643_lps_imports.png"
+  },
+  {
+    "filename": "20070643_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones/20070643_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/20070643_track.png"
+  },
+  {
+    "filename": "three_most_intense_cyclones_lps_tracks.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_lps_tracks.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_lps_tracks.png"
+  },
+  {
+    "filename": "19920472_lps_conversion_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19920472_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19920472_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "19920472_lps_imports_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19920472_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19920472_lps_imports_zoom.png"
+  },
+  {
+    "filename": "19920472_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19920472_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19920472_track.png"
+  },
+  {
+    "filename": "19950629_lps_conversion_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19950629_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19950629_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "19950629_lps_imports_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19950629_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19950629_lps_imports_zoom.png"
+  },
+  {
+    "filename": "19950629_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19950629_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19950629_track.png"
+  },
+  {
+    "filename": "20070643_lps_conversion_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "20070643_lps_imports_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_imports_zoom.png"
+  },
+  {
+    "filename": "20070643_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/20070643_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/20070643_track.png"
+  },
+  {
+    "filename": "validation_vertical_integration.png",
+    "path": "figures/exploratory/validation_vertical_integration.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/validation_vertical_integration.png"
+  },
+  {
+    "filename": "1_tracks_genesis_frequency.png",
+    "path": "figures/main/1_tracks_genesis_frequency.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/1_tracks_genesis_frequency.png"
+  },
+  {
+    "filename": "2_20070643_lps_track_publication.png",
+    "path": "figures/main/2_20070643_lps_track_publication.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/2_20070643_lps_track_publication.png"
+  },
+  {
+    "filename": "3_phase_density_2x2.png",
+    "path": "figures/main/3_phase_density_2x2.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/3_phase_density_2x2.png"
+  },
+  {
+    "filename": "4_lps_combined.png",
+    "path": "figures/main/4_lps_combined.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/4_lps_combined.png"
+  },
+  {
+    "filename": "5_ep_intensity_seasonality_trends.png",
+    "path": "figures/main/5_ep_intensity_seasonality_trends.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/5_ep_intensity_seasonality_trends.png"
+  },
+  {
+    "filename": "6_ep_genesis_density_kde.png",
+    "path": "figures/main/6_ep_genesis_density_kde.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/6_ep_genesis_density_kde.png"
+  },
+  {
+    "filename": "7_ep1_instability_composite_4x3.png",
+    "path": "figures/main/7_ep1_instability_composite_4x3.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/7_ep1_instability_composite_4x3.png"
+  },
+  {
+    "filename": "S1_pca_clustering_validation.png",
+    "path": "figures/main/S1_pca_clustering_validation.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/S1_pca_clustering_validation.png"
+  },
+  {
+    "filename": "S2_selected_tracks.png",
+    "path": "figures/main/S2_selected_tracks.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/S2_selected_tracks.png"
+  },
+  {
+    "filename": "S3_vertical_levels.png",
+    "path": "figures/main/S3_vertical_levels.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/S3_vertical_levels.png"
+  }
+]

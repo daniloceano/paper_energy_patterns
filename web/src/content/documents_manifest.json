@@ -1,0 +1,38 @@
+[
+  {
+    "filename": "all_notes.pdf",
+    "path": "docs/all_notes.pdf",
+    "type": "pdf",
+    "api_url": "/api/figures?path=docs/all_notes.pdf"
+  },
+  {
+    "filename": "scientific_notes_cluster_analysis.pdf",
+    "path": "docs/scientific_notes_cluster_analysis.pdf",
+    "type": "pdf",
+    "api_url": "/api/figures?path=docs/scientific_notes_cluster_analysis.pdf"
+  },
+  {
+    "filename": "scientific_notes_ep_structure.pdf",
+    "path": "docs/scientific_notes_ep_structure.pdf",
+    "type": "pdf",
+    "api_url": "/api/figures?path=docs/scientific_notes_ep_structure.pdf"
+  },
+  {
+    "filename": "user_guide_repository_readmes.pdf",
+    "path": "docs/user_guide_repository_readmes.pdf",
+    "type": "pdf",
+    "api_url": "/api/figures?path=docs/user_guide_repository_readmes.pdf"
+  },
+  {
+    "filename": "SCIENTIFIC_NOTES.md",
+    "path": "scripts/cluster_analysis_energy_patterns/SCIENTIFIC_NOTES.md",
+    "type": "markdown",
+    "parent_dir": "scripts/cluster_analysis_energy_patterns"
+  },
+  {
+    "filename": "SCIENTIFIC_NOTES.md",
+    "path": "scripts/ep_structure_analysis/SCIENTIFIC_NOTES.md",
+    "type": "markdown",
+    "parent_dir": "scripts/ep_structure_analysis"
+  }
+]

@@ -38,8 +38,31 @@ export function readCSV(relativePath: string): Record<string, string>[] {
   })
 }
 
-/** Get the public URL for a figure served via the API route */
+/** Get the URL for a figure.
+ *
+ * In production (Vercel), set NEXT_PUBLIC_SUPABASE_FIGURES_URL to point to the
+ * Supabase Storage public base URL for the 'figures' bucket, e.g.:
+ *   https://<project>.supabase.co/storage/v1/object/public/figures
+ *
+ * The relativePath argument is always in the form "figures/<subpath>".
+ * The function strips the leading "figures/" so the bucket path is just "<subpath>".
+ *
+ * In local dev (no env var), falls back to the /api/figures route which reads
+ * files directly from the filesystem (requires figures on disk but NOT in git).
+ *
+ * Examples:
+ *   figureUrl('figures/cluster/pca_variance_wide.png')
+ *     → local:  /api/figures?path=figures%2Fcluster%2Fpca_variance_wide.png
+ *     → prod:   https://<project>.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png
+ */
 export function figureUrl(relativePath: string): string {
+  const storageBase = process.env.NEXT_PUBLIC_SUPABASE_FIGURES_URL
+  if (storageBase) {
+    // Strip leading "figures/" — the bucket root already corresponds to figures/
+    const bucketPath = relativePath.replace(/^figures\//, '')
+    return `${storageBase.replace(/\/$/, '')}/${bucketPath}`
+  }
+  // Local dev: serve from filesystem via API route
   return `/api/figures?path=${encodeURIComponent(relativePath)}`
 }
 

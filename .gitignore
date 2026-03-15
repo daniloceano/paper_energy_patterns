@@ -106,7 +106,3 @@ web/.next/
 web/.env.local
 # Content JSONs must be committed for Vercel build (they're read at static-gen time)
 # Do NOT add web/src/content/*.json here
-
-# Allow ep_structure composite figures (step4 output — publication figures)
-!figures/ep_structure/
-!figures/ep_structure/*.png

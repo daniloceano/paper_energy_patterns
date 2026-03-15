@@ -1,326 +1,403 @@
-# Deployment Guide — Energy Patterns Web Explorer
+# Como fazer o deploy do site — Guia Completo
 
-This guide explains how to publish the web application to [Vercel](https://vercel.com) and how to manage the generated figure assets using Supabase Storage, so that **binary figures never need to be committed to the Git repository**.
+Este guia ensina passo a passo como publicar o site **Energy Patterns** na Vercel, do zero. Não é necessário experiência prévia com deploy.
 
----
-
-## Architecture Overview
-
-```
-Scientific Pipeline (local)
-  ↓ step4_create_figures.py  → figures/cluster/*.png, figures/ep_structure/*.png
-  ↓ step5_update_scientific_notes.py → results/ep_structure/composite_stats.json
-
-Upload Script (local, run once after pipeline)
-  ↓ scripts/web/upload_figures_to_supabase.py → Supabase Storage bucket "figures"
-
-Web App (Vercel)
-  ↓ reads NEXT_PUBLIC_SUPABASE_FIGURES_URL env var
-  ↓ renders images as: https://<project>.supabase.co/storage/v1/object/public/figures/<path>
-```
-
-**Key principle:** The Git repository contains only code, manifests (small JSON files), and documentation. Generated binary figures live in Supabase Storage and are referenced by public URL.
-
-**Local development:** Figures are served directly from the local filesystem via the `/api/figures` route — no upload needed.
+> **TL;DR para quem já conhece o fluxo:**
+> 1. Crie bucket `figures` público no Supabase Storage
+> 2. Rode `python scripts/web/upload_figures_to_supabase.py`
+> 3. Configure `Root Directory = web` na Vercel
+> 4. Adicione `NEXT_PUBLIC_SUPABASE_FIGURES_URL` nas env vars da Vercel
+> 5. Push → deploy automático
 
 ---
 
-## Part 1 — Supabase Storage Setup
+## Por que as figuras não ficam no Git?
 
-Do this once for your Supabase project.
+As figuras são geradas pelo pipeline científico (scripts Python) e pesam ~100 MB. Colocar binários gerados no Git é uma má prática — o repositório fica pesado e difícil de gerenciar.
 
-### 1.1 Create the bucket
-
-1. Go to [app.supabase.com](https://app.supabase.com) → your project.
-2. Click **Storage** in the left sidebar.
-3. Click **New bucket**.
-4. Name: `figures`
-5. Access: **Public** (uncheck "Private bucket").
-6. Click **Save**.
-
-### 1.2 Set bucket policy (public read)
-
-The bucket must allow anonymous reads so the web site can load images without authentication.
-
-If the bucket was created as Public (step above), this is automatic.
-
-To verify or set manually, go to **Storage** → `figures` bucket → **Policies**, and confirm there is a policy like:
-
-```sql
--- Allow public read of all objects in the figures bucket
-CREATE POLICY "Public read"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'figures');
-```
-
-### 1.3 Get your Service Role Key
-
-For **uploading** (write access), you need the service role key:
-
-1. Go to your Supabase project → **Settings** → **API**.
-2. Copy the **service_role** key (not the anon key).
-3. **Never commit this key.** Use it only locally for uploads.
+A solução adotada:
+- **Figuras** → ficam no **Supabase Storage** (CDN gratuito, acesso por URL pública)
+- **Código e metadados** → ficam no Git
+- **Vercel** → faz o build do site e referencia as figuras pelo URL do Supabase
 
 ---
 
-## Part 2 — Uploading Figures
+## Pré-requisitos
 
-Do this after running the scientific pipeline, whenever figures are regenerated.
+- Conta no [GitHub](https://github.com) com o repositório já criado
+- Acesso ao terminal (macOS/Linux) ou WSL (Windows)
+- Python 3.9+ com o pipeline científico rodando
 
-### 2.1 Prerequisites
+---
+
+## Passo 1 — Criar uma conta e projeto no Supabase
+
+O Supabase é onde as figuras vão ficar hospedadas. A conta gratuita é suficiente.
+
+### 1.1 Criar conta
+
+1. Acesse [supabase.com](https://supabase.com) e clique em **Start your project**.
+2. Faça login com sua conta do GitHub.
+
+### 1.2 Criar um projeto novo
+
+1. Na tela inicial do Supabase, clique em **New project**.
+2. Preencha:
+   - **Organization**: selecione ou crie uma organização (pode ser o seu nome).
+   - **Name**: `paper-energy-patterns` (ou qualquer nome que preferir).
+   - **Database Password**: crie uma senha forte e **guarde** — você vai precisar dela.
+   - **Region**: escolha a região mais próxima de você (ex.: `South America (São Paulo)`).
+3. Clique em **Create new project**.
+4. Aguarde 1–2 minutos até o projeto estar pronto (barra de progresso no topo).
+
+---
+
+## Passo 2 — Criar o bucket de figuras no Supabase Storage
+
+O Supabase Storage é como um Google Drive para arquivos do site.
+
+### 2.1 Acessar o Storage
+
+No painel do seu projeto Supabase:
+1. Clique em **Storage** no menu lateral esquerdo.
+2. Clique em **New bucket**.
+
+### 2.2 Configurar o bucket
+
+Preencha:
+- **Name**: `figures`
+- **Public bucket**: ✅ marque esta opção (para que as imagens sejam acessíveis publicamente)
+
+Clique em **Save**.
+
+> ⚠️ Se esquecer de marcar "Public", as imagens não vão aparecer no site. Se isso acontecer, clique no bucket → **Edit** → marque "Public" → salve.
+
+### 2.3 Verificar o acesso público
+
+Para confirmar que funcionou, anote a URL base do seu projeto. Ela fica em:
+
+**Settings** (ícone de engrenagem) → **API** → campo **Project URL**
+
+A URL tem o formato: `https://xxxxxxxxxxxxxxxx.supabase.co`
+
+Anote essa URL — você vai precisar dela.
+
+---
+
+## Passo 3 — Obter as credenciais do Supabase
+
+Você vai precisar de duas chaves:
+
+1. Vá em **Settings** → **API**.
+2. Anote os valores de:
+   - **Project URL** → ex.: `https://abcdefgh12345678.supabase.co`
+   - **anon / public** (em "Project API keys") → chave pública, segura de expor
+   - **service_role** (em "Project API keys") → ⚠️ **secreta**, nunca commitar
+
+> **Atenção:** A chave `service_role` tem acesso total ao seu banco. Use-a **apenas localmente** para o upload das figuras. Nunca coloque no código ou no Git.
+
+---
+
+## Passo 4 — Fazer upload das figuras para o Supabase
+
+Este passo é feito **na sua máquina**, depois de rodar o pipeline científico.
+
+### 4.1 Instalar dependências
 
 ```bash
-# 1. Run the scientific pipeline to generate figures
-python scripts/ep_structure_analysis/step4_create_figures.py
-python scripts/cluster_analysis_energy_patterns/run_pipeline.py  # or equivalent
-
-# 2. Install the Supabase Python SDK
 pip install supabase
 ```
 
-### 2.2 Set environment variables
+### 4.2 Exportar as credenciais no terminal
+
+No macOS/Linux, execute no terminal (substitua pelos seus valores reais):
 
 ```bash
-export SUPABASE_URL=https://<project-ref>.supabase.co
-export SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+export SUPABASE_URL=https://xxxxxxxxxxxxxxxx.supabase.co
+export SUPABASE_SERVICE_ROLE_KEY=eyJ...SUA_SERVICE_ROLE_KEY...
 ```
 
-### 2.3 Dry run (preview)
+> Essas variáveis existem apenas na sessão atual do terminal — fechar o terminal as apaga. Isso é intencional por segurança.
+
+### 4.3 Verificar o que será enviado (simulação)
 
 ```bash
 python scripts/web/upload_figures_to_supabase.py --dry-run
 ```
 
-### 2.4 Upload
+Isso mostra quais arquivos seriam enviados sem realmente enviá-los.
+
+### 4.4 Enviar as figuras
 
 ```bash
-# First upload (skip existing files)
+# Primeiro envio
 python scripts/web/upload_figures_to_supabase.py
 
-# Re-run after figures are regenerated (overwrite)
+# Após atualizar as figuras (sobrescrever existentes)
 python scripts/web/upload_figures_to_supabase.py --overwrite
-
-# Upload specific directories only
-python scripts/web/upload_figures_to_supabase.py --dirs cluster main ep_structure
 ```
 
-### 2.5 Bucket structure
+O script exibirá algo como:
+```
+✓  cluster/pca_variance_wide.png
+✓  cluster/pca_loadings_wide.png
+✓  ep_structure/composite_egr.png
+...
+✓ Uploaded : 18
+– Skipped  : 0
+✗ Errors   : 0
 
-The upload script mirrors the `figures/` directory structure into the bucket, stripping the leading `figures/`:
+SET THIS ENV VAR IN VERCEL:
+  NEXT_PUBLIC_SUPABASE_FIGURES_URL = https://xxxxxxxx.supabase.co/storage/v1/object/public/figures
+```
 
-| Local path | Supabase object key | Public URL |
-|-----------|--------------------|-|
-| `figures/cluster/pca_variance_wide.png` | `cluster/pca_variance_wide.png` | `https://<project>.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png` |
-| `figures/ep_structure/composite_egr.png` | `ep_structure/composite_egr.png` | `https://<project>.supabase.co/storage/v1/object/public/figures/ep_structure/composite_egr.png` |
-| `figures/main/4_lps_combined.png` | `main/4_lps_combined.png` | `https://<project>.supabase.co/storage/v1/object/public/figures/main/4_lps_combined.png` |
+**Copie esse valor** — você vai configurá-lo na Vercel logo adiante.
+
+### 4.5 Verificar se o upload funcionou
+
+Abra essa URL no navegador (substitua pelo seu projeto e um arquivo que você acabou de enviar):
+
+```
+https://xxxxxxxxxxxxxxxx.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png
+```
+
+Se abrir uma imagem: ✅ tudo certo.
+Se aparecer erro: veja a seção de diagnóstico no final deste guia.
 
 ---
 
-## Part 3 — Deploying to Vercel
+## Passo 5 — Criar conta e importar o projeto na Vercel
 
-### 3.1 Push the repository to GitHub
+A Vercel hospeda o site Next.js e faz deploy automático a cada push.
+
+### 5.1 Criar conta na Vercel
+
+1. Acesse [vercel.com](https://vercel.com) e clique em **Sign Up**.
+2. Escolha **Continue with GitHub** e autorize o acesso.
+
+### 5.2 Importar o repositório
+
+1. Na tela inicial da Vercel, clique em **Add New...** → **Project**.
+2. Encontre o repositório `paper_energy_patterns` na lista.
+3. Clique em **Import**.
+
+---
+
+## Passo 6 — Configurar o projeto na Vercel
+
+### 6.1 Configurar o Root Directory ⚠️ (passo crítico)
+
+O site Next.js está na pasta `web/`, não na raiz do repositório. Você precisa informar isso à Vercel.
+
+Na tela de configuração do projeto:
+
+1. Encontre o campo **Root Directory**.
+2. Clique no ícone de lápis ✏️ ao lado dele.
+3. Digite: `web`
+4. Clique em **Save** ou confirme.
+
+Se não fizer isso, a Vercel vai tentar fazer o build na raiz do repositório e vai falhar.
+
+### 6.2 Configurar as variáveis de ambiente
+
+Na mesma tela, procure a seção **Environment Variables** e adicione:
+
+| Nome | Valor | Para que serve |
+|------|-------|---------------|
+| `NEXT_PUBLIC_SUPABASE_FIGURES_URL` | `https://xxxxxxxx.supabase.co/storage/v1/object/public/figures` | URL das figuras (obrigatório para imagens aparecerem) |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxxxxxx.supabase.co` | URL do projeto Supabase (opcional por enquanto) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ...` | Chave anon pública do Supabase (opcional por enquanto) |
+
+> O valor de `NEXT_PUBLIC_SUPABASE_FIGURES_URL` é o que o script de upload mostrou no final — format: `https://<seu-projeto>.supabase.co/storage/v1/object/public/figures`
+
+Para adicionar cada variável:
+1. Digite o nome no campo **Key**.
+2. Cole o valor no campo **Value**.
+3. Deixe marcado para todos os ambientes (Production, Preview, Development).
+4. Clique em **Add**.
+
+### 6.3 Fazer o deploy
+
+Clique em **Deploy**. A Vercel vai:
+1. Clonar o repositório.
+2. Entrar na pasta `web/`.
+3. Rodar `npm install`.
+4. Rodar `npm run build` (gera o site estático).
+5. Publicar o site.
+
+O processo leva cerca de 2–3 minutos.
+
+---
+
+## Passo 7 — Verificar se funcionou
+
+Depois do deploy:
+
+1. Clique em **Visit** para abrir o site.
+2. Navegue até **Analyses** → **Cluster Analysis** → **Step 2 — PCA**.
+3. As figuras de PCA devem aparecer. ✅
+4. Navegue até **Analyses** → **Composites** → **EGR**.
+5. O mapa compósito deve aparecer (se `step4_create_figures.py` já foi rodado e as figuras foram enviadas ao Supabase). ✅
+
+---
+
+## Como funciona o deploy automático
+
+Depois da configuração inicial, **você não precisa fazer mais nada manual**. A cada vez que você fizer `git push`, a Vercel detecta a mudança e redeploy automaticamente:
 
 ```bash
-git remote add origin https://github.com/<your-username>/<repo-name>.git
-git push -u origin main
-```
-
-### 3.2 Import project in Vercel
-
-1. Go to [vercel.com/new](https://vercel.com/new).
-2. Click **Import Git Repository** and select this repo.
-
-### 3.3 Configure Root Directory
-
-> **Critical.** The Next.js app is in `web/`, not the repo root.
-
-In the **Configure Project** screen, click the pencil icon next to **Root Directory** and type `web`.
-
-| Setting | Value |
-|---------|-------|
-| Root Directory | `web` |
-| Framework Preset | Next.js (auto-detected) |
-| Build Command | `npm run build` |
-| Output Directory | `.next` |
-| Install Command | `npm install` |
-
-### 3.4 Configure Environment Variables
-
-In the Vercel project → **Settings** → **Environment Variables**, add:
-
-| Variable | Value | Required |
-|----------|-------|---------|
-| `NEXT_PUBLIC_SUPABASE_FIGURES_URL` | `https://<project-ref>.supabase.co/storage/v1/object/public/figures` | **Yes — for figures to appear** |
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://<project-ref>.supabase.co` | Only if using Supabase DB |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJ...` | Only if using Supabase DB |
-| `NEXT_PUBLIC_SITE_URL` | `https://your-site.vercel.app` | Optional |
-
-The `NEXT_PUBLIC_SUPABASE_FIGURES_URL` is the most important variable — without it, figures will not load on Vercel.
-
-### 3.5 Deploy
-
-Click **Deploy**. Vercel will install dependencies and run `next build`. The build itself does NOT require figures — they are referenced by URL at runtime.
-
----
-
-## Part 4 — How It Works End to End
-
-### In production (Vercel)
-
-The `figureUrl()` utility in `web/src/lib/utils.ts` detects the `NEXT_PUBLIC_SUPABASE_FIGURES_URL` env var:
-
-```
-figureUrl('figures/cluster/pca_variance_wide.png')
-  → https://<project>.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png
-```
-
-The browser fetches the image directly from Supabase CDN. No server-side filesystem access. No large files in git.
-
-### In local development
-
-Without `NEXT_PUBLIC_SUPABASE_FIGURES_URL` set in `.env.local`, the fallback is:
-
-```
-figureUrl('figures/cluster/pca_variance_wide.png')
-  → /api/figures?path=figures%2Fcluster%2Fpca_variance_wide.png
-```
-
-The `/api/figures` route (in `web/src/app/api/figures/route.ts`) reads the file from the local filesystem at `<repo-root>/figures/cluster/pca_variance_wide.png`. The figures must exist on disk but do NOT need to be committed to git.
-
----
-
-## Part 5 — Automatic Deploys and Update Flow
-
-After the first setup, pushing to `main` auto-deploys:
-
-```bash
+# Editou alguma coisa no site ou scripts
 git add .
-git commit -m "Update analysis pages"
+git commit -m "Atualiza página de análise"
 git push
-# → Vercel automatically rebuilds and deploys
+# → Vercel faz o deploy automaticamente em ~2 minutos
 ```
 
-**When to re-upload figures:**
-Figures only need to be re-uploaded when the scientific pipeline generates new or changed figures:
+> **Figuras não precisam de redeploy!** Quando você reprocessa as figuras e faz upload para o Supabase (`--overwrite`), elas ficam disponíveis imediatamente no site sem precisar de redeploy.
 
-```bash
-# After re-running step4 or cluster pipeline:
-python scripts/web/upload_figures_to_supabase.py --overwrite
-# No git commit or Vercel redeploy needed for figure changes — Supabase Storage serves them live.
+---
+
+## Fluxo completo — do pipeline científico ao site
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Pipeline científica (sua máquina)                        │
+│    python scripts/ep_structure_analysis/step4_create_figures.py  │
+│    python scripts/ep_structure_analysis/step5_update_scientific_notes.py │
+│    → gera: figures/cluster/*.png, figures/ep_structure/*.png │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Manifests web (sua máquina)                              │
+│    python scripts/web/build_site_manifest.py                │
+│    python scripts/web/extract_composite_site_data.py        │
+│    → gera: web/src/content/*.json                           │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Upload figuras para Supabase (sua máquina)               │
+│    python scripts/web/upload_figures_to_supabase.py         │
+│    → figuras disponíveis em: supabase.co/.../figures/*      │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 4. Commit apenas os manifests (sem figuras)                 │
+│    git add web/src/content/                                 │
+│    git add results/ep_structure/composite_stats.json        │
+│    git commit -m "Atualiza manifests"                       │
+│    git push → Vercel faz redeploy automático                │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Part 6 — What Must Be Committed to Git
+## O que commitar e o que NÃO commitar
 
-| Path | Must commit? | Why |
-|------|-------------|-----|
-| `web/src/content/*.json` | ✅ Yes | Manifest files read at build time |
-| `results/ep_structure/composite_stats.json` | ✅ Yes | Stats from step5, read at build time |
-| `web/.env.example` | ✅ Yes | Documents required env vars |
-| `figures/**/*.png` | ❌ No | Uploaded to Supabase Storage instead |
-| `data/**/*.nc` | ❌ No | Large ERA5 files — not needed by web |
-| `web/.env.local` | ❌ No | Contains secrets — use Vercel env vars |
-| `web/node_modules/` | ❌ No | Installed by Vercel |
-| `web/.next/` | ❌ No | Built by Vercel |
+### ✅ Commitar (devem estar no Git)
+
+| Arquivo | Por quê |
+|---------|---------|
+| `web/src/content/*.json` | Manifests lidos pelo site em build time |
+| `results/ep_structure/composite_stats.json` | Estatísticas geradas pelo step5 |
+| `scripts/web/*.py` | Scripts de extração e upload |
+| `web/**/*.ts`, `web/**/*.tsx` | Código do site |
+| `web/.env.example` | Documenta as variáveis necessárias |
+| `web/DEPLOYMENT.md` | Este guia |
+
+### ❌ NÃO commitar (esses já estão no `.gitignore`)
+
+| Arquivo | Por quê |
+|---------|---------|
+| `figures/**/*.png` | Servidos pelo Supabase Storage |
+| `figures/**/*.svg` | Servidos pelo Supabase Storage |
+| `data/**/*.nc` | Arquivos ERA5 pesados (~GBs) |
+| `web/.env.local` | Contém segredos — só na sua máquina |
+| `web/node_modules/` | Instalado pela Vercel automaticamente |
+| `web/.next/` | Gerado pela Vercel automaticamente |
+
+> **Como verificar?** Rode `git status` antes de commitar. Se aparecer algum `.png` ou `.nc`, algo está errado com o `.gitignore`.
 
 ---
 
-## Part 7 — Preparing a Full Deploy (Step by Step)
+## Desenvolvimento local (sem Supabase)
+
+Para rodar o site na sua máquina sem precisar de conta no Supabase:
 
 ```bash
-# 1. Run scientific pipeline to generate figures
-python scripts/ep_structure_analysis/step4_create_figures.py
-python scripts/ep_structure_analysis/step5_update_scientific_notes.py --no-pdf
+cd web
+npm install
+npm run dev
+```
 
-# 2. Update web manifests
-python scripts/web/build_site_manifest.py
-python scripts/web/extract_cluster_site_data.py
-python scripts/web/extract_composite_site_data.py
+Abra [http://localhost:3000](http://localhost:3000).
 
-# 3. Upload figures to Supabase Storage
-export SUPABASE_URL=https://<project-ref>.supabase.co
-export SUPABASE_SERVICE_ROLE_KEY=<service-role-key>
-python scripts/web/upload_figures_to_supabase.py --overwrite
+As figuras são servidas automaticamente do disco local (`figures/`) via a rota `/api/figures`. Você **não precisa** configurar Supabase nem fazer upload — desde que as figuras existam na pasta `figures/`.
 
-# 4. Commit manifests (JSON files) — NOT figures
-git add web/src/content/ results/ep_structure/composite_stats.json
-git commit -m "Update web manifests"
+---
+
+## Diagnóstico — o que fazer se algo der errado
+
+### Figuras não aparecem no site (ícone quebrado ?)
+
+**Passo 1:** Verifique se a env var está configurada na Vercel:
+- Vercel → seu projeto → Settings → Environment Variables
+- Deve existir `NEXT_PUBLIC_SUPABASE_FIGURES_URL`
+
+**Passo 2:** Verifique se a URL do Supabase funciona:
+```
+https://<seu-projeto>.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png
+```
+- Abre imagem → ✅ URL correta, bucket público
+- Erro 404 → Arquivo não foi enviado. Rode: `python scripts/web/upload_figures_to_supabase.py`
+- Erro 400/401 → Bucket não é público. Vá ao Supabase Storage → bucket `figures` → Edit → marque Public
+
+**Passo 3:** Veja os logs na Vercel:
+- Vercel → Deployments → clique no deploy → Build Logs
+- Procure por erros em vermelho
+
+### Build falhou na Vercel
+
+- Verifique se **Root Directory = `web`** está configurado
+- Verifique se `web/src/content/*.json` estão commitados (rode `git ls-files web/src/content/`)
+- Rode `npm run build` localmente para ver o erro exato
+
+### "Cannot find module" ou erro de TypeScript
+
+```bash
+cd web
+npm install
+npm run typecheck
+npm run build
+```
+
+Se falhar localmente, vai falhar na Vercel também. Corrija antes de fazer push.
+
+---
+
+## Como fazer redeploy manualmente
+
+```bash
+# Opção 1: push de commit vazio
+git commit --allow-empty -m "redeploy"
 git push
-# → Vercel auto-deploys
+
+# Opção 2: pelo painel
+# Vercel → Deployments → ⋯ → Redeploy
 ```
 
 ---
 
-## Part 8 — Verifying a Deploy
+## Referência rápida de variáveis de ambiente
 
-1. Go to Vercel → Deployments → click latest → **Build Logs**.
-2. Visit the deployed site.
-3. Navigate to `/analyses/cluster/step-2-pca`:
-   - If figures appear: ✅ Supabase Storage is configured correctly.
-   - If broken icons: Check that `NEXT_PUBLIC_SUPABASE_FIGURES_URL` is set in Vercel env vars AND figures were uploaded.
-4. Navigate to `/analyses/composites/egr`:
-   - If domain stats table shows values: ✅ `composite_stats.json` is committed and step5 has been run.
-   - If table shows `—`: Run `step5_update_scientific_notes.py`, then `extract_composite_site_data.py`, then commit and push.
+| Variável | Onde usar | Obrigatória? | Onde pegar |
+|----------|-----------|-------------|-----------|
+| `NEXT_PUBLIC_SUPABASE_FIGURES_URL` | Vercel | ✅ Sim | Saída do upload script |
+| `NEXT_PUBLIC_SUPABASE_URL` | Vercel | Não (por enquanto) | Supabase → Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Vercel | Não (por enquanto) | Supabase → Settings → API → anon/public key |
+| `SUPABASE_URL` | Só local (terminal) | Para upload | Supabase → Settings → API → Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Só local (terminal) | Para upload | Supabase → Settings → API → service_role key ⚠️ |
 
-### Debug: Check Supabase URL manually
-
-Open this URL in your browser (replace with your values):
-```
-https://<project-ref>.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png
-```
-If it loads an image: the bucket is public and the file was uploaded correctly.
-If 404: the file was not uploaded. Run the upload script.
-If 400/401: the bucket is private. Make it public in Supabase Storage settings.
-
----
-
-## Part 9 — Redeploy
-
-To trigger a redeploy without code changes:
-
-```bash
-git commit --allow-empty -m "trigger redeploy"
-git push
-```
-
-Or in Vercel dashboard → Deployments → ⋯ → **Redeploy**.
-
----
-
-## Part 10 — Source of Truth Reference
-
-| What | Source | Who generates it |
-|------|--------|-----------------|
-| Composite figures (EP1 vs EP2) | `figures/ep_structure/composite_*.png` | `step4_create_figures.py` |
-| Domain statistics (inside/outside 15×15) | `results/ep_structure/composite_stats.json` | `step5_update_scientific_notes.py` |
-| Boundary flux tables (N/S/E/W) | `results/ep_structure/composite_stats.json` | `step5_update_scientific_notes.py` |
-| Scientific Notes text | `scripts/ep_structure_analysis/SCIENTIFIC_NOTES.md` | `step5_update_scientific_notes.py` |
-| Cluster figures | `figures/cluster/*.png` | cluster analysis pipeline |
-| Web manifests (domain stats, figures catalog) | `web/src/content/*.json` | `scripts/web/extract_composite_site_data.py` |
-| Supabase Storage (figures CDN) | Supabase bucket `figures` | `scripts/web/upload_figures_to_supabase.py` |
-
-**Domain definitions** (used in step5 and displayed in the web):
-- **inside 15×15**: mean within the central ±7.5° LEC subdomain (cyclone-centred)
-- **outside 15×15**: mean over the full 30×30° domain (full composite domain)
-- **Boundary fluxes** (North/South/East/West): mean of the field along each edge of the ±7.5° inner box, at ERA5 0.25° resolution (tolerance ±0.25°)
-- Applicable to: Temperature Advection 850, Moisture Flux Divergence 975, KE Advection 250, AFC 250
-- Not applicable to: EGR (no flux direction), PV 200/850 (scalar PV, not flux), SLP (pressure, not flux), RK criterion (vorticity gradient)
-
----
-
-## Quick Reference
-
-```bash
-# Setup (once)
-# 1. Create bucket 'figures' (public) in Supabase Storage
-# 2. In Vercel: set NEXT_PUBLIC_SUPABASE_FIGURES_URL
-
-# After each pipeline run
-python scripts/web/upload_figures_to_supabase.py --overwrite
-python scripts/web/extract_composite_site_data.py
-git add web/src/content/ results/ep_structure/composite_stats.json && git push
-
-# Local dev
-cd web && npm run dev   # figures served from local disk via /api/figures
-```
+> ⚠️ `SUPABASE_SERVICE_ROLE_KEY` nunca deve ir para o Git nem para a Vercel — use apenas localmente para o upload.

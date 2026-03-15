@@ -75,7 +75,16 @@ Outputs publication-ready figures to `figures/main/`.
 │   ├── main/                             # Final publication figure scripts
 │   ├── preprocess_data/                  # Data download and preprocessing
 │   ├── setup_and_examples/              # Environment verification and templates
-│   └── utils/                            # Shared utility functions
+│   ├── utils/                            # Shared utility functions
+│   └── web/                             # Data extraction scripts for the web site
+├── supabase/                               # Database migrations for Supabase
+│   └── migrations/
+├── web/                                    # Interactive Next.js web application
+│   ├── src/app/                          # App Router pages
+│   ├── src/components/                   # Reusable UI components
+│   ├── src/content/                      # Generated JSON manifests
+│   ├── src/lib/                          # Types, constants, utilities
+│   └── README.md                         # Web setup & deploy instructions
 ├── activate.sh                             # Quick environment activation
 ├── requirements.txt
 └── setup_environment.sh
@@ -158,6 +167,24 @@ conda activate paper_energy_patterns
 ```bash
 python scripts/setup_and_examples/verify_environment.py
 ```
+
+---
+
+## Interactive Web Explorer
+
+An interactive Next.js site for visual exploration of the paper's results. See `web/README.md` for full details.
+
+```bash
+# Generate site data from results
+python scripts/web/build_site_manifest.py
+python scripts/web/extract_cluster_site_data.py
+python scripts/web/extract_composite_site_data.py
+
+# Run the web app
+cd web && npm install && npm run dev
+```
+
+And then open http://localhost:3000. The site reads from existing results, figures, and data — it does not modify the scientific pipeline.
 
 ---
 

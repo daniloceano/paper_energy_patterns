@@ -55,6 +55,7 @@ export type DiagnosticId =
   | 'rk-criterion'
   | 'ke-advection'
   | 'afc'
+  | 'btcr'
 
 export interface Diagnostic {
   id: DiagnosticId

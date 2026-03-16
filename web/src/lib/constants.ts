@@ -303,6 +303,29 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     references: ['Orlanski and Katzfey (1991)', 'Chang (1993)'],
     hasAnomaly: false,
   },
+  btcr: {
+    id: 'btcr',
+    slug: 'btcr',
+    name: 'Barotropic Critical Region at 250 hPa',
+    shortName: 'BtCR 250',
+    level: '250 hPa',
+    unit: '×10⁻⁹ s⁻²',
+    description:
+      'Effective deformation Δₘ = σₘ² − ζₘ² of the climatological background flow at 250 hPa. Positive values identify jet-exit zones where deformation dominates rotation — the Barotropic Critical Region (BtCR) — where synoptic disturbances are forced into orientations that enable efficient energy extraction or loss.',
+    physicalObjective:
+      'Identify whether EP1 and EP2 cyclones develop preferentially in BtCR environments (Δₘ > 0) that can amplify or suppress their growth via barotropic processes.',
+    formula:
+      '\\Delta_m = \\sigma_m^2 - \\zeta_m^2, \\quad \\sigma_m = \\sqrt{St^2 + Sh^2}',
+    formulaTerms: {
+      'Δₘ': 'Effective deformation (s⁻²); positive = deformation dominates',
+      'σₘ': 'Total deformation magnitude (s⁻¹)',
+      'ζₘ': 'Background relative vorticity (s⁻¹)',
+      St: 'Stretching deformation (s⁻¹)',
+      Sh: 'Shearing deformation (s⁻¹)',
+    },
+    references: ['Rivière (2006)'],
+    hasAnomaly: false,
+  },
 }
 
 export const DIAGNOSTIC_LIST = Object.values(DIAGNOSTICS)
@@ -568,6 +591,7 @@ export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom?
   'rk-criterion':          { real: 'composite_rk_criterion.png' },
   'ke-advection':          { real: 'composite_ke_advection.png',  anom: 'composite_ke_advection_anom.png' },
   afc:                     { real: 'composite_afc_250.png' },
+  btcr:                    { real: 'composite_btcr.png' },
 }
 
 // --- Flux/Advection diagnostics that need boundary tables ---

@@ -76,5 +76,11 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_afc_250.png"
     }
+  },
+  "btcr": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_btcr.png"
+    }
   }
 }

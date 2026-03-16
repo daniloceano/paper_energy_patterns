@@ -47,6 +47,7 @@ DIAGNOSTIC_FIGURE_MAP = {
     "rk-criterion":             {"real": "composite_rk_criterion.png"},
     "ke-advection":             {"real": "composite_ke_advection.png",   "anom": "composite_ke_advection_anom.png"},
     "afc":                      {"real": "composite_afc_250.png"},
+    "btcr":                     {"real": "composite_btcr.png"},
 }
 
 

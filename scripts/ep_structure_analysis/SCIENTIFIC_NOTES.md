@@ -544,6 +544,15 @@ where all PV values are computed using MetPy `potential_vorticity_baroclinic` on
 | Max cold advection (K h⁻¹) | TBD | TBD |
 | LEC 15×15° mean (K h⁻¹) | TBD | TBD |
 
+**Lateral boundaries — anomaly (flux assessment):**
+
+| Boundary | EP1′ (K h⁻¹) | EP2′ (K h⁻¹) |
+|----------|-------------:|-------------:|
+| North (+7.5°) | -0.057 | -0.048 |
+| South (-7.5°) | 0.021 | 0.022 |
+| East (+7.5°) | -0.023 | -0.029 |
+| West (-7.5°) | -0.007 | -0.016 |
+
 ### 4.13 Moisture Flux Divergence Anomaly (975 hPa)
 
 ![MFD′@975 Composite](figures/ep_structure/composite_moisture_flux_anom.png)
@@ -558,6 +567,15 @@ where all PV values are computed using MetPy `potential_vorticity_baroclinic` on
 | Max convergence anomaly (g kg⁻¹ s⁻¹) | TBD | TBD |
 | LEC 15×15° mean (g kg⁻¹ s⁻¹) | TBD | TBD |
 
+**Lateral boundaries — anomaly (flux assessment):**
+
+| Boundary | EP1′ (g kg⁻¹ s⁻¹) | EP2′ (g kg⁻¹ s⁻¹) |
+|----------|-------------------:|-------------------:|
+| North (+7.5°) | 1.073e+01 | 8.352e+00 |
+| South (-7.5°) | -5.168e+00 | -8.519e+00 |
+| East (+7.5°) | -3.601e-01 | -1.422e+00 |
+| West (-7.5°) | -2.091e+00 | 4.778e+00 |
+
 ### 4.14 KE Advection Anomaly (250 hPa)
 
 ![KE′ Adv@250 Composite](figures/ep_structure/composite_ke_advection_anom.png)
@@ -571,6 +589,15 @@ where all PV values are computed using MetPy `potential_vorticity_baroclinic` on
 | Domain mean (m² s⁻³) | TBD | TBD |
 | Range (m² s⁻³) | TBD | TBD |
 | LEC 15×15° mean | TBD | TBD |
+
+**Lateral boundaries — anomaly (flux assessment):**
+
+| Boundary | EP1′ (m² s⁻³) | EP2′ (m² s⁻³) |
+|----------|---------------:|---------------:|
+| North (+7.5°) | -4.546e-04 | -3.210e-04 |
+| South (-7.5°) | -1.117e-03 | 6.557e-05 |
+| East (+7.5°) | -6.259e-04 | -1.415e-04 |
+| West (-7.5°) | -1.098e-04 | 2.944e-04 |
 
 ### 4.15 Sea Level Pressure Anomaly
 

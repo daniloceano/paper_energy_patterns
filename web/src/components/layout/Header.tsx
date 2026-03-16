@@ -5,10 +5,8 @@ import { usePathname } from 'next/navigation'
 import {
   Home,
   BarChart3,
-  FileText,
   BookOpen,
   Microscope,
-  Info,
   Menu,
   X,
 } from 'lucide-react'
@@ -18,9 +16,7 @@ const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: Home },
   { label: 'Analyses', href: '/analyses', icon: BarChart3 },
   { label: 'Methods', href: '/methods', icon: Microscope },
-  { label: 'Documentation', href: '/docs', icon: FileText },
   { label: 'References', href: '/references', icon: BookOpen },
-  { label: 'About', href: '/about', icon: Info },
 ]
 
 export default function Header() {

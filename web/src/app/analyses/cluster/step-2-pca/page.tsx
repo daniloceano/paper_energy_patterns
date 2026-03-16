@@ -59,25 +59,25 @@ export default function Step2Page() {
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <FigurePanel
-              src="/api/figures?path=figures/cluster/pca_variance_wide.png"
+              src="/figures/cluster/pca_variance_wide.png"
               alt="PCA explained variance by phase"
               caption="Explained variance ratio for each PC across lifecycle phases. ≥97% variance is retained."
               source="figures/cluster/pca_variance_wide.png"
             />
             <FigurePanel
-              src="/api/figures?path=figures/cluster/pca_loadings_wide.png"
+              src="/figures/cluster/pca_loadings_wide.png"
               alt="PCA loadings heatmap by phase"
               caption="Variable loadings on principal components for each lifecycle phase."
               source="figures/cluster/pca_loadings_wide.png"
             />
             <FigurePanel
-              src="/api/figures?path=figures/cluster/pca_correlation_wide.png"
+              src="/figures/cluster/pca_correlation_wide.png"
               alt="PCA correlation circle"
               caption="Correlation circle showing variable projections on the first two PCs."
               source="figures/cluster/pca_correlation_wide.png"
             />
             <FigurePanel
-              src="/api/figures?path=figures/cluster/pca_scatter_wide.png"
+              src="/figures/cluster/pca_scatter_wide.png"
               alt="PCA scatter plot"
               caption="Cyclone distribution in PC1-PC2 space for each lifecycle phase."
               source="figures/cluster/pca_scatter_wide.png"

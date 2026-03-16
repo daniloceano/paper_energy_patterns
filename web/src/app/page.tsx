@@ -3,13 +3,10 @@ import {
   BarChart3,
   Layers,
   Database,
-  FileText,
   BookOpen,
   Microscope,
-  Zap,
-  Wind,
-  TrendingUp,
   ArrowRight,
+  GitBranch,
 } from 'lucide-react'
 import { ENERGY_PATTERNS, DATASET_STATS } from '@/lib/constants'
 
@@ -180,7 +177,7 @@ export default function HomePage() {
             Explore the Research
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Navigate through the analyses, methods, and documentation.
+            Navigate through the analyses and methodology.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
@@ -198,27 +195,15 @@ export default function HomePage() {
               },
               {
                 title: 'Data & Methods',
-                desc: 'Dataset description, energy terms, formulas, and methodology details',
+                desc: 'Dataset, energy terms, anomaly methodology, and boundary flux formulas',
                 href: '/methods',
                 icon: Microscope,
-              },
-              {
-                title: 'Documentation',
-                desc: 'Scientific notes, repository user guide, and PDF documents',
-                href: '/docs',
-                icon: FileText,
               },
               {
                 title: 'References',
                 desc: 'Key bibliographic references and data sources',
                 href: '/references',
                 icon: BookOpen,
-              },
-              {
-                title: 'About',
-                desc: 'Project context, data provenance, and repository information',
-                href: '/about',
-                icon: Zap,
               },
             ].map((card) => {
               const Icon = card.icon
@@ -238,6 +223,90 @@ export default function HomePage() {
                 </Link>
               )
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* About / Context section — absorbed from /about */}
+      <section className="border-t border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl">
+          <h2 className="text-2xl font-bold text-slate-900">About This Project</h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-500">
+            Research context, data provenance, and repository information.
+          </p>
+
+          <div className="mt-8 grid gap-6 sm:grid-cols-2">
+            {/* Research context */}
+            <div className="rounded-xl border border-slate-200 bg-white p-6">
+              <h3 className="mb-3 font-semibold text-slate-900">Research Context</h3>
+              <div className="space-y-3 text-sm leading-relaxed text-slate-600">
+                <p>
+                  Extratropical cyclones are key elements of midlatitude weather and climate.
+                  In the South Atlantic, these systems exhibit a wide range of energetic
+                  behaviours — from weak transient disturbances to intense storms with large
+                  barotropic and baroclinic energy conversions.
+                </p>
+                <p>
+                  This project uses the <strong>Lorenz Energy Cycle</strong> framework to
+                  quantify the energetics of {DATASET_STATS.totalCyclones.toLocaleString()}{' '}
+                  cyclones tracked over {DATASET_STATS.years} years ({DATASET_STATS.period}).
+                  Seven energy terms are computed in a semi-Lagrangian framework following
+                  each cyclone.
+                </p>
+                <p>
+                  PCA-based K-Means clustering identifies three distinct{' '}
+                  <strong>Energy Patterns</strong>. ERA5 composite analysis reveals the
+                  atmospheric structure differences between EP1 (strong conversions,
+                  energy exporters) and EP2 (intermediate conversions, energy importers)
+                  during intensification.
+                </p>
+              </div>
+            </div>
+
+            {/* Repository */}
+            <div className="space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-white p-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <GitBranch className="h-4 w-4 text-indigo-500" />
+                  <h3 className="font-semibold text-slate-900">Repository</h3>
+                </div>
+                <p className="text-sm text-slate-600">
+                  <a
+                    href="https://github.com/daniloceano/paper_energy_patterns"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-indigo-600 hover:underline"
+                  >
+                    daniloceano/paper_energy_patterns
+                  </a>
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  All scripts, data references, results, and documentation. This web layer
+                  lives in <code className="text-xs">web/</code> and reads from existing
+                  scientific outputs without modifying them.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-6">
+                <h3 className="mb-3 font-semibold text-slate-900">Repository Structure</h3>
+                <ul className="space-y-1 text-xs text-slate-500 font-mono">
+                  {[
+                    ['scripts/', 'Scientific analysis pipelines (Python)'],
+                    ['data/', 'Input data and ERA5 composites'],
+                    ['results/', 'Analysis outputs (CSV, pickle)'],
+                    ['figures/', 'Generated figures (PNG)'],
+                    ['docs/', 'PDF documentation'],
+                    ['web/', 'This Next.js application'],
+                    ['scripts/web/', 'Data extraction for the site'],
+                  ].map(([path, desc]) => (
+                    <li key={path} className="flex gap-2">
+                      <span className="w-28 shrink-0 text-slate-700">{path}</span>
+                      <span>{desc}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </section>

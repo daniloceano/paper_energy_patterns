@@ -20,22 +20,22 @@ export const SITE_DESCRIPTION =
 export const ENERGY_PATTERNS: Record<string, EnergyPattern> = {
   EP1: {
     id: 'EP1',
-    label: 'EP1 — Strong Conversions',
+    label: 'EP1 — Strong Conversions / Energy Exporters',
     count: 444,
     percentage: 11.6,
     meanCk: -16.48,
     description:
-      'Most energetically active cyclones with large barotropic and baroclinic conversions. Energy exporters that contribute to downstream cyclogenesis. Peak genesis at Brazil-Malvinas Confluence.',
+      'Most energetically active cyclones. Strong barotropic and baroclinic conversions. Tend to export energy (negative boundary fluxes). Genesis concentrated at the Brazil-Malvinas Confluence and SE-Brazil shelf.',
     color: '#e63946',
   },
   EP2: {
     id: 'EP2',
-    label: 'EP2 — Intermediate Conversions',
+    label: 'EP2 — Intermediate Conversions / Energy Importers',
     count: 979,
     percentage: 25.6,
     meanCk: -3.49,
     description:
-      'Moderately energetic cyclones coupled to jet stream dynamics and remote forcing. Energy importers with balanced baroclinic and barotropic conversions.',
+      'Moderately energetic cyclones coupled to jet stream dynamics. Tend to import energy (positive boundary fluxes), drawing energy from the large-scale flow. Genesis mainly in the La Plata region.',
     color: '#457b9d',
   },
   EP3: {

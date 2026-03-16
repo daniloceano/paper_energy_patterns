@@ -63,20 +63,20 @@ export default function Step5Page() {
           </h2>
           <div className="space-y-4">
             <FigurePanel
-              src="/api/figures?path=figures/main/4_lps_combined.png"
+              src="/figures/main/4_lps_combined.png"
               alt="Combined Lorenz Phase Space for EP1, EP2, EP3"
               caption="Combined LPS diagram showing the three Energy Patterns in both conversion and import spaces. Publication-ready figure."
               source="figures/main/4_lps_combined.png"
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <FigurePanel
-                src="/api/figures?path=figures/main/5_ep_intensity_seasonality_trends.png"
+                src="/figures/main/5_ep_intensity_seasonality_trends.png"
                 alt="EP intensity, seasonality, and trends"
                 caption="Intensity metrics, seasonal distribution, and interannual trends by Energy Pattern."
                 source="figures/main/5_ep_intensity_seasonality_trends.png"
               />
               <FigurePanel
-                src="/api/figures?path=figures/main/6_ep_genesis_density_kde.png"
+                src="/figures/main/6_ep_genesis_density_kde.png"
                 alt="Genesis density KDE maps by EP"
                 caption="Kernel density estimation of genesis locations for each Energy Pattern."
                 source="figures/main/6_ep_genesis_density_kde.png"

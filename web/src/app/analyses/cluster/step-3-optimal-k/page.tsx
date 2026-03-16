@@ -70,7 +70,7 @@ export default function Step3Page() {
             Validation Plot
           </h2>
           <FigurePanel
-            src="/api/figures?path=figures/cluster/optimal_k_analysis.png"
+            src="/figures/cluster/optimal_k_analysis.png"
             alt="Optimal k analysis showing 5 cluster validity indices"
             caption="Five cluster validity indices as a function of k. The vertical dashed line at k = 3 indicates the optimal value selected by ensemble averaging."
             source="figures/cluster/optimal_k_analysis.png"

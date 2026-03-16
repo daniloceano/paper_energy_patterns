@@ -96,25 +96,25 @@ export default function Step4Page() {
           </p>
           <div className="grid gap-4 sm:grid-cols-2">
             <FigurePanel
-              src="/api/figures?path=figures/cluster/lps_conversion_default.png"
+              src="/figures/cluster/lps_conversion_default.png"
               alt="LPS Conversion diagram (Ck vs Ca)"
               caption="Lorenz Phase Space — Conversion terms (Ck vs Ca) for EP1, EP2, EP3."
               source="figures/cluster/lps_conversion_default.png"
             />
             <FigurePanel
-              src="/api/figures?path=figures/cluster/lps_imports_default.png"
+              src="/figures/cluster/lps_imports_default.png"
               alt="LPS Imports diagram (BAe vs BKe)"
               caption="Lorenz Phase Space — Boundary fluxes (BAe vs BKe) for EP1, EP2, EP3."
               source="figures/cluster/lps_imports_default.png"
             />
             <FigurePanel
-              src="/api/figures?path=figures/cluster/lps_conversion_zoom.png"
+              src="/figures/cluster/lps_conversion_zoom.png"
               alt="LPS Conversion diagram zoomed"
               caption="Zoomed view of the conversion LPS, highlighting EP2 and EP3 separation."
               source="figures/cluster/lps_conversion_zoom.png"
             />
             <FigurePanel
-              src="/api/figures?path=figures/cluster/lps_imports_zoom.png"
+              src="/figures/cluster/lps_imports_zoom.png"
               alt="LPS Imports diagram zoomed"
               caption="Zoomed view of the imports LPS."
               source="figures/cluster/lps_imports_zoom.png"

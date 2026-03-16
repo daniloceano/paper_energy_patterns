@@ -613,7 +613,27 @@ The table below compares the mean diagnostic field along each edge of the 15°×
 subdomain for the **total** composite (EP1, EP2) and the **anomaly** composite
 (EP1′, EP2′ — departure from the ERA5 1991–2020 monthly climatology).
 
-{BOUNDARY_FLUX_TOTAL_ANOM_TABLE}
+> **EP' = anomalia relativa à climatologia ERA5 1991–2020.** Campos totais usam o compósito bruto; anomalias usam u′, v′, T′/q′ (desvios da média mensal climatológica).
+
+| Diagnóstico | Fronteira | EP1 (total) | EP1′ (anomalia) | EP2 (total) | EP2′ (anomalia) |
+|-------------|-----------|------------:|----------------:|------------:|----------------:|
+| Temperature Advection (850 hPa) | North (+K h⁻¹) | -0.030 | -0.057 | 0.011 | -0.048 |
+| Temperature Advection (850 hPa) | South (+K h⁻¹) | -0.079 | 0.021 | -0.055 | 0.022 |
+| Temperature Advection (850 hPa) | East (+K h⁻¹) | -0.022 | -0.023 | 0.058 | -0.029 |
+| Temperature Advection (850 hPa) | West (+K h⁻¹) | -0.094 | -0.007 | -0.088 | -0.016 |
+| Moisture Flux Div. (975 hPa) | North (+g kg⁻¹ s⁻¹) | 1.456e+01 | 1.073e+01 | -2.866e+01 | 8.352e+00 |
+| Moisture Flux Div. (975 hPa) | South (+g kg⁻¹ s⁻¹) | 3.522e+01 | -5.168e+00 | -1.359e+01 | -8.519e+00 |
+| Moisture Flux Div. (975 hPa) | East (+g kg⁻¹ s⁻¹) | -7.553e+01 | -3.601e-01 | -1.143e+02 | -1.422e+00 |
+| Moisture Flux Div. (975 hPa) | West (+g kg⁻¹ s⁻¹) | 5.112e+01 | -2.091e+00 | 3.617e+01 | 4.778e+00 |
+| KE Advection (250 hPa) | North (+m² s⁻³) | 1.165e-03 | -4.546e-04 | 4.173e-03 | -3.210e-04 |
+| KE Advection (250 hPa) | South (+m² s⁻³) | -1.058e-02 | -1.117e-03 | -9.517e-03 | 6.557e-05 |
+| KE Advection (250 hPa) | East (+m² s⁻³) | -3.349e-03 | -6.259e-04 | 1.866e-03 | -1.415e-04 |
+| KE Advection (250 hPa) | West (+m² s⁻³) | -1.805e-03 | -1.098e-04 | -3.653e-03 | 2.944e-04 |
+| AFC (250 hPa) | North (+m² s⁻³) | 2.122e-03 | — | 5.687e-04 | — |
+| AFC (250 hPa) | South (+m² s⁻³) | -5.140e-04 | — | -1.398e-03 | — |
+| AFC (250 hPa) | East (+m² s⁻³) | 6.742e-04 | — | -3.255e-03 | — |
+| AFC (250 hPa) | West (+m² s⁻³) | -1.881e-03 | — | 1.544e-03 | — |
+
 
 ---
 

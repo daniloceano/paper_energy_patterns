@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { BarChart3, Layers } from 'lucide-react'
+import { BarChart3, Layers, TrendingDown } from 'lucide-react'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import AnalysisCardGrid from '@/components/analysis/AnalysisCardGrid'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
@@ -35,6 +35,13 @@ export default function AnalysesPage() {
               'Storm-centred ERA5 composites comparing EP1 vs EP2 atmospheric structure across 9 diagnostic fields: EGR, PV, temperature advection, moisture flux, SLP, and more.',
             href: '/analyses/composites',
             icon: Layers,
+          },
+          {
+            title: 'Ck Subterms Analysis — EP1 Barotropic Decomposition',
+            description:
+              'Decomposition of barotropic energy conversion (Ck) into five subterms (A–E) for EP1 cyclones. Genesis density maps and dominance classification by intensification-phase subterm.',
+            href: '/analyses/ck-subterms',
+            icon: TrendingDown,
           },
         ]}
       />

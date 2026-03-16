@@ -2,49 +2,65 @@
 
 ## Scientific Motivation
 
-The barotropic conversion term (Ck) represents the conversion of kinetic energy between the zonal mean and eddy components. In the context of extratropical cyclones in the Southwestern Atlantic, Ck quantifies the energy transfer from eddy kinetic energy (Ke) to zonal mean kinetic energy (Kz):
+The barotropic conversion term C_K (also written Ck) represents the transfer of kinetic energy
+between cyclone-scale eddies and the large-scale mean flow. In the limited-area, semi-Lagrangian
+Lorenz Energy Cycle framework used here, C_K enters the eddy kinetic energy (K_E) equation as a
+positive source: when C_K > 0 the mean flow feeds the eddies (barotropic instability, K_Z → K_E);
+when C_K < 0 the eddies feed the mean flow (K_E → K_Z).
 
-$$Ck = -\overline{u'v'}\frac{\partial \overline{u}}{\partial y} - \overline{u'w'}\frac{\partial \overline{u}}{\partial p} - \overline{v'w'}\frac{\partial \overline{v}}{\partial p}$$
+The full expression for C_K (vertically integrated from pressure level p_t to p_b; paper.tex Eq.
+for C_K) is:
 
-where:
-- $u$, $v$, $w$ are zonal, meridional, and vertical wind components
-- Primes ($'$) denote deviations from the area mean (eddy components)
-- Overbars ($\overline{}$) denote area averages (mean state)
+$$C_K = \int_{p_t}^{p_b} \frac{1}{g} \left[
+  \underbrace{\frac{\cos\phi}{a}(u)'(v)'\frac{\partial}{\partial\phi}\!\left(\frac{[u]}{\cos\phi}\right)}_{\text{(A)}}
++ \underbrace{\frac{(v)'^2}{a}\frac{\partial [v]}{\partial\phi}}_{\text{(B)}}
++ \underbrace{\frac{\tan\phi}{a}(u)'^2[v]}_{\text{(C)}}
++ \underbrace{(\omega)'(u)'\frac{\partial [u]}{\partial p}}_{\text{(D)}}
++ \underbrace{(\omega)'(v)'\frac{\partial [v]}{\partial p}}_{\text{(E)}}
+\right] dp$$
 
-**Physical Interpretation**:
-- **Negative Ck**: Energy flows from eddies to mean flow (Ke → Kz)
-  - Typical during cyclone intensification in baroclinic zones
-  - Eddy momentum fluxes decelerate the mean flow
-- **Positive Ck**: Energy flows from mean flow to eddies (Kz → Ke)
-  - Associated with barotropic instability
-  - Mean flow accelerates the eddies
+where square brackets and primes denote area means and deviations, respectively, and
+g = 9.8 m s⁻².
+
+### Physical Interpretation of Subterms (from paper.tex)
+
+| Subterm | Physical mechanism |
+|---------|-------------------|
+| Term (A) | Eddy momentum flux linked to the meridional (N–S) gradient of zonal wind — most directly associated with barotropic instability |
+| Term (B) | Meridional flux of eddy KE associated with meridional wind and its meridional gradient |
+| Term (C) | Meridional flux of zonal eddy KE (tan-φ curvature term) |
+| Term (D) | Zonal and vertical flux associated with the vertical shear of zonal wind |
+| Term (E) | Meridional and vertical flux associated with the vertical shear of meridional wind |
+
+### Sign Convention (authoritative source: paper.tex)
+
+$$\frac{\partial K_E}{\partial t} = BK_E + C_E + C_K + B\Phi_E - D_E$$
+
+- **C_K < 0**: K_E → K_Z (eddies export energy to mean flow). EP1 cyclones have mean C_K ≈ −16.5 W m⁻² — they are the strongest energy exporters among all Energy Patterns.
+- **C_K > 0**: K_Z → K_E (mean flow accelerates eddies; barotropic instability).
+
+Note: EP1 cyclones are NOT driven by barotropic instability (that would require C_K > 0). Instead, they have large negative C_K, reflecting intense eddy-to-mean energy export. The term "barotropic conversion" refers to the magnitude of C_K, regardless of sign.
 
 ### Energy Pattern 1 (EP1) Characteristics
 
 EP1 cyclones exhibit the strongest energetic conversions in the Southwestern Atlantic:
-- **Mean Ck**: -16.48 W/m² (strongest barotropic conversion among all patterns)
+- **Mean C_K**: −16.48 W m⁻² (largest-magnitude barotropic conversion among all patterns)
 - **Frequency**: 444 cyclones (11.6% of total)
 - **Analysis scope**: ALL EP1 cyclones (no spatial restriction)
-- **Vertical structure**: Ck minimum occurs at mid-tropospheric levels (~500-600 hPa)
+- **Dominant level**: C_K is most negative at ~350 hPa (from paper.tex Fig. S3)
 
 ## Research Questions
 
-1. **What is the relative importance of each Ck subterm during EP1 cyclone intensification?**
-   - Horizontal momentum flux: $-\overline{u'v'}\frac{\partial \overline{u}}{\partial y}$
-   - Vertical momentum flux (zonal): $-\overline{u'w'}\frac{\partial \overline{u}}{\partial p}$
-   - Vertical momentum flux (meridional): $-\overline{v'w'}\frac{\partial \overline{v}}{\partial p}$
+1. **Which C_K subterm dominates the eddy-to-mean energy export during EP1 intensification?**
+   - Dominance = subterm with minimum (most negative) intensification-phase mean
+   - Results: Ck⁽ᴱ⁾ (Term E, 43%), Ck⁽ᴮ⁾ (Term B, 38%), Ck⁽ᴬ⁾ (Term A, 19%)
 
-2. **How do Ck subterms evolve throughout the cyclone lifecycle?**
-   - Comparison across phases: incipient → intensification → mature → decay
-   - Identification of dominant mechanisms in each phase
+2. **Is genesis location linked to the dominant C_K subterm?**
+   - Genesis density maps + normalized anomaly maps
 
-3. **Are there differences in Ck subterm contributions between different EP1 cyclones?**
-   - Regional variations (genesis location, track orientation)
-   - Seasonal variations (winter vs. summer systems)
-
-4. **How does the updated LorenzCycleToolkit decomposition compare with previous results?**
-   - Validation against Zenodo dataset (aggregated Ck)
-   - Assessment of term-by-term contributions to total Ck
+3. **How does the updated LorenzCycleToolkit decomposition compare with the Zenodo dataset?**
+   - Validation of new LEC results against Zenodo aggregated C_K
+   - Internal consistency: subterm sum ≈ total C_K
 
 ## Methodology
 

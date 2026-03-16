@@ -1,0 +1,481 @@
+%Version 3 December 2023
+% See section 11 of the User Manual for version history
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%                                                                 %%
+%% Please do not use \input{...} to include other tex files.       %%
+%% Submit your LaTeX manuscript as one .tex document.              %%
+%%                                                                 %%
+%% All additional figures and files should be attached             %%
+%% separately and not embedded in the \TeX\ document itself.       %%
+%%                                                                 %%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%\documentclass[referee,sn-basic]{sn-jnl}% referee option is meant for double line spacing
+
+%%=======================================================%%
+%% to print line numbers in the margin use lineno option %%
+%%=======================================================%%
+
+% \documentclass[lineno,sn-basic]{sn-jnl}% Basic Springer Nature Reference Style/Chemistry Reference Style
+
+%%======================================================%%
+%% to compile with pdflatex/xelatex use pdflatex option %%
+%%======================================================%%
+
+%%\documentclass[pdflatex,sn-basic]{sn-jnl}% Basic Springer Nature Reference Style/Chemistry Reference Style
+
+
+%%Note: the following reference styles support Namedate and Numbered referencing. By default the style follows the most common style. To switch between the options you can add or remove Numbered in the optional parenthesis. 
+%%The option is available for: sn-basic.bst, sn-vancouver.bst, sn-chicago.bst%  
+ 
+%%\documentclass[pdflatex,sn-nature]{sn-jnl}% Style for submissions to Nature Portfolio journals
+%%\documentclass[pdflatex,sn-basic]{sn-jnl}% Basic Springer Nature Reference Style/Chemistry Reference Style
+%\documentclass[pdflatex,sn-mathphys-num]{sn-jnl}% Math and Physical Sciences Numbered Reference Style 
+%\documentclass[pdflatex,sn-mathphys-ay]{sn-jnl}% Math and Physical Sciences Author Year Reference Style
+%%\documentclass[pdflatex,sn-aps]{sn-jnl}% American Physical Society (APS) Reference Style
+%%\documentclass[pdflatex,sn-vancouver,Numbered]{sn-jnl}% Vancouver Reference Style
+%%\documentclass[pdflatex,sn-apa]{sn-jnl}% APA Reference Style 
+\documentclass[pdflatex,sn-chicago]{sn-jnl}% Chicago-based Humanities Reference Style
+
+%%%% Standard Packages
+%%<additional latex packages if required can be included here>
+
+\usepackage{graphicx}%
+\usepackage{multirow}%
+\usepackage{amsmath,amssymb,amsfonts}%
+\usepackage{amsthm}%
+\usepackage{lmodern}  % Scalable fonts for better support across sizes
+\usepackage{mathrsfs}  % Since you're already using this for mathematical symbols
+\usepackage[title]{appendix}%
+\usepackage{xcolor}%
+\usepackage{textcomp}%
+\usepackage{manyfoot}%
+\usepackage{booktabs}%
+\usepackage{algorithm}%
+\usepackage{algorithmicx}%
+\usepackage{algpseudocode}%
+\usepackage{listings}%
+\usepackage{lmodern}  % For Latin Modern fonts (more scalable)
+\usepackage{newtxmath}  % For enhanced math font support
+\usepackage{hyperref}
+\usepackage{lineno}
+\linenumbers
+\hypersetup{
+    bookmarksdepth=section  % or any desired level
+}
+\usepackage{orcidlink}
+
+%%%%
+
+%%%%%=============================================================================%%%%
+%%%%  Remarks: This template is provided to aid authors with the preparation
+%%%%  of original research articles intended for submission to journals published 
+%%%%  by Springer Nature. The guidance has been prepared in partnership with 
+%%%%  production teams to conform to Springer Nature technical requirements. 
+%%%%  Editorial and presentation requirements differ among journal portfolios and 
+%%%%  research disciplines. You may find sections in this template are irrelevant 
+%%%%  to your work and are empowered to omit any such section if allowed by the 
+%%%%  journal you intend to submit to. The submission guidelines and policies 
+%%%%  of the journal take precedence. A detailed User Manual is available in the 
+%%%%  template package for technical guidance.
+%%%%%=============================================================================%%%%
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}
+
+\theoremstyle{definition}
+\newtheorem{proposition}{Proposition}
+
+\theoremstyle{remark}
+\newtheorem{example}{Example}
+\newtheorem{remark}{Remark}
+
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+
+\raggedbottom
+%%\unnumbered% uncomment this for unnumbered level heads
+
+\begin{document}
+
+\title[Article Title]{Energy Patterns of Southwestern Atlantic Cyclones: Evidence for Barotropic Instability}
+
+%%=============================================================%%
+%% GivenName	-> \fnm{Joergen W.}
+%% Particle	-> \spfx{van der} -> surname prefix
+%% FamilyName	-> \sur{Ploeg}
+%% Suffix	-> \sfx{IV}
+%% \author*[1,2]{\fnm{Joergen W.} \spfx{van der} \sur{Ploeg} 
+%%  \sfx{IV}}\email{iauthor@gmail.com}
+%%=============================================================%%
+
+\author*[1,2,3]{\fnm{Danilo Couto} \sur{de Souza}}\email{danilo.oceano@gmail.com\orcidlink{0000-0003-4121-7583}}
+
+\author[1]{\fnm{Pedro Leite da} \sur{Silva Dias}}\email{pldsdias@gmail.com\orcidlink{0000-0002-4051-2962}}
+
+\author[4]{\fnm{Carolina Barnez} \sur{Gramcianinov}}\email{cbgramcianinov@gmail.com\orcidlink{0000-0002-3919-5226}}
+
+\author[1]{\fnm{Ricardo} \sur{Camargo}}\email{ricamarg@usp.br\orcidlink{0000-0002-9425-5391}}
+
+\affil*[1]{\orgdiv{Institute of Astronomy, Geophysics and Atmospheric Sciences}, \orgname{São Paulo University}, \orgaddress{\street{Rua do Matão, 266}, \city{São Paulo}, \postcode{05508-090}, \state{São Paulo}, \country{Brazil}}}
+
+
+\affil[2]{IRB(P\&D), Av. República do Chile, 330 - 4o andar - Centro, Rio de Janeiro - RJ, 20031-170}
+
+\affil[3]{Brazilian Center of Risk and Resilience Studies, R. Equador, 335 - Santo Cristo, Rio de Janeiro - RJ, 20220-410}
+
+\affil[4]{\orgdiv{Institute for Coastal Systems Analysis and Modeling}, \orgname{Helmholtz-Zentrum Hereon}, \orgaddress{\street{Max-Planck-Straße, 1}, \city{Geesthacht}, \postcode{21502}, \state{Schleswig-Holstein}, \country{Germany}}}
+
+
+\abstract{Lorem ipsum}
+
+
+\keywords{Cyclone energetics, Baroclinic conversion, Barotropic conversion, Latent heat release, South Atlantic cyclones}
+
+%%\pacs[JEL Classification]{D8, H51}
+
+%%\pacs[MSC Classification]{35A01, 65L10, 65L12, 65L20, 65L70}
+
+\maketitle
+
+\section*{Acknowledgements}
+
+The first author would like to thank the Laboratory of Applied Meteorology for Regional Meteorological Systems (MASTER) for providing the data processing infrastructure. Special thanks are extended to Jean Peres and Djalma Vieira for their invaluable technical assistance and support in the laboratory, which contributed significantly to the success of this research. CBG acknowledges the Helmholtz European Partnership “Research Capacity Building for Healthy, Productive and Resilient Seas” (SEA-ReCap, grant no. PIE-0025).
+
+\section{Introduction}\label{sec1}
+
+Extratropical cyclones are key components of the midlatitude storm tracks and major drivers of synoptic variability, acting as transient eddies that transport heat, moisture, and momentum poleward. By organizing fronts and modulating the occurrence of precipitation and wind extremes, they exert a strong influence on regional climates and on the large-scale atmospheric energy cycle. Understanding the dynamical processes that control cyclone growth and intensification is therefore essential for interpreting climate variability and for improving numerical models used in weather prediction and climate projections.
+
+Over South America, three cyclogenesis hotspots have been identified in the literature: eastern Argentina (ARG), the La Plata River basin (LA-PLATA), and southeastern Brazil (SE-BR) \citep{gan1991surface,hoskins2005new,gramcianinov2019properties,crespo2021potential}. Cyclones forming in these regions often undergo genesis, intensification, and maturity over or near the continent \citep{couto2024new}, substantially modulating weather across subtropical and extratropical South America and being associated with high-impact hazards such as extreme rainfall \citep[e.g.,][]{de2021ocean,de2024extreme}, intense winds \citep{cardoso2022synoptic,de2021ocean}, high sea waves \citep{da2025classification,gramcianinov2023impact}, and storm surges along coastal areas \citep{leal2023identification,tecchiomean}. These events translate into socioeconomic losses and disruptions to local infrastructure \citep[e.g.][]{da2022climate,marengo2024impactos}, which is particularly critical given the presence of major metropolitan areas (e.g., São Paulo, Rio de Janeiro, and Buenos Aires) and strategic coastal assets such as the Port of Santos, the largest in Latin America.
+
+The cyclone phase space (CPS) framework, which diagnoses cyclone thermal-core structure (warm vs. cold) and symmetry \citep{hart2003cyclone}, is among the most widely used objective tools for classifying cyclone types and phase transitions \citep{wood2023phase}. However, CPS is fundamentally a structural diagnostic: it tracks how the storm’s thermal and symmetry signatures evolve, but it does not explicitly diagnose the physical processes and environmental controls driving those changes (e.g., vertical shear, baroclinicity, air–sea fluxes, or PV interactions). Moreover, CPS-based classification can be ambiguous for certain hybrid cyclone types. For instance, warm seclusions can exhibit warm, relatively symmetric cores \citep[e.g.,][]{dekker2018characteristics}, yielding CPS signatures that may overlap those of tropical(-like) cyclones. In addition, some systems follow atypical CPS pathways—for example, extratropical transitions in which the core becomes cold before a marked increase in thermal asymmetry \citep{kitabatake2011climatology}. Finally, because CPS magnitudes and commonly used thresholds depend on storm size, tropospheric depth, and regional atmospheric structure, several studies have proposed adaptations of CPS parameters (e.g., analysis radius and/or pressure layers) for medicanes, Arctic cyclones/polar lows, and South Atlantic subtropical cyclones \citep{gozzo2014subtropical,comellas2021evaluation,croad2023role,saraceni2023mediterranean,miglietta2025defining}.
+
+Some authors proposed objective cyclone classification methods based on environmental parameters \citep[e.g][]{yanase2014parameter,emanuel2025cyclops}. For instance, \citet{corner2025classification} clustered extratropical cyclones cyclone into four intensity types, that differ in terms of not only intensity but on life cycle characteristics (e.g., duration and deepening rate) and on geographical location. Meanwhile, \citet{graf2017objective} attempted to classify cyclogenesis events using over 30 environmental variables. They found that these systems represent a continuum between systems with low/high level forcing with varying importance of diabatic processes. Noteworthy, \citet{han2025system} used a machine learning approach for classifying cyclone types, although, for this method it is required previously classified systems, which can propagate biases. Here, we instead adopt a phase-resolved energetics framework, quantifying the relative contributions of baroclinic, barotropic and diabatic pathways throughout the cyclone life cycle. By focusing on energy conversions rather than solely on environmental proxies or peak intensity, our approach provides a process-based classification that distinguishes cyclones with similar intensity or background conditions but fundamentally different growth mechanisms.
+
+Extratropical cyclone development is traditionally framed in terms of baroclinic instability, and the canonical eddy life cycle is often summarized as a phase of baroclinic growth followed by barotropic decay — i.e., a net transfer of eddy kinetic energy back to the mean flow, ultimately dissipated by friction \citep[e.g.,][]{simmons1978life,randel1985observed,ma2021lorenz,cai2007dynamical}. However, study cases using limited-area energetics and Lorenz Energy Cycle (LEC) diagnostics indicate that barotropic conversions can be positive and contribute to cyclone intensification, implying that the mean-flow kinetic energy may directly feed transient eddies during development \citep[e.g.,][]{bulic2006limited,dias2011energy,black2013universal,cavicchia2018energetics}. This pathway appears to be relatively more relevant in weakly baroclinic environments and/or in hybrid–subtropical systems, where diabatic processes and enhanced barotropic conversions may jointly promote eddy growth \citep[e.g.,][]{veiga2008analysis,pezza2014large,cavicchia2019physically}. More recently, \citet{desouza2025lorenz} presented a large-sample, semi-Lagrangian LEC climatology for South Atlantic cyclones, showing that barotropic conversions are ubiquitous during cyclone evolution and typically peak near maturity, and that they can even exceed baroclinic conversions for some intense clusters.
+
+In this study, we use cyclone energetics to objectively cluster extratropical cyclones forming over the southwestern South Atlantic into distinct groups with contrasting energetic pathways. Building on the semi-Lagrangian framework of \citet{de2025lorenz}, we diagnose the Lorenz Energy Cycle (LEC) for more than 3,800 cyclones with genesis in the main cyclogenesis regions adjacent to South America. To enable a consistent comparison across storms with different lifetimes, we phase-average the energy-cycle terms over objectively defined life-cycle stages \citep{couto2024new}. The resulting multivariate energetic descriptors are then clustered to identify recurrent energy patterns. Finally, we assess the occurrence of baroclinic and barotropic instability during cyclone intensification as an independent dynamical validation of the inferred energetic regimes.
+
+\section{Materials and methods}
+
+\subsection{Data}\label{sec:data}
+
+The primary data source used in this study is the European Centre for Medium-Range Weather Forecasts (ECMWF) fifth-generation reanalysis, ERA5 \citep{hersbach2020era5}. This dataset has global coverage, with a horizontal grid spacing of approximately 31 km (0.25$^\circ$). It includes 137 vertical levels, ranging from near the Earth's surface (1000 hPa) to the top of the atmosphere (1 hPa), and provides hourly data. ERA5 contains estimates of several atmospheric variables; for the energy computations, we used geopotential, zonal and meridional wind, vertical velocity on isobaric surfaces, and temperature. ERA5 reanalysis data are produced using a state-of-the-art data assimilation system that incorporates a large number of observations, including satellite and in situ measurements \citep{hersbach2020era5}.
+
+The cyclone tracks used in this study are the same as those in \citet{gramcianinov2020analysis, couto2024new, de2025lorenz}. The tracks are derived from the "Atlantic Extratropical Cyclone Tracks Database" \citep{gramcianinov2020data}, which identifies cyclones based on central relative vorticity at 850 hPa ($\zeta_{850}$). Cyclones are tracked using the TRACK algorithm \citep{hodges1994general, hodges1995feature} and the method outlined by \citet{hoskins2002new}, spanning the period 1979--2020. Here, as in \citet{de2025lorenz}, we considered only cyclones with genesis in the ARG, LA-PLATA, and SE-BR cyclogenesis regions (Figure \ref{fig:1_tracks_genesis_frequency}a). The cyclone selection criteria and processing are the same as those employed in \citet{couto2024new, de2025lorenz}; for further details, please refer to these references. These selection criteria resulted in 6789 cyclones with genesis in these regions: 4015 in ARG (59.1\%), 1288 in LA-PLATA (18.9\%), and 1486 in SE-BR (21.8\%).
+
+\subsection{Life Cycle Detection}
+\label{sec:life_cycle}
+
+Cyclones have variable lifetimes, being able to last for less than 24 hours to over 10 days \citep[e.g.][]{trigo2006climatology,gramcianinov2019properties}. Therefore, to normalize their duration and enable comparisons of cyclone energetics, we averaged the energy diagnostics over four distinct life cycle phases: incipient, intensification, mature, and decay, similarly to \citep{de2025lorenz}. This was performed using the open-source Python package Cyclophaser, which identifies cyclone life cycle phases from the time series of relative vorticity at the system's central position and its first derivative \citep{de2025cyclophaser}. The cyclone life cycle phases are then identified from peaks and troughs in the vorticity time series. For a detailed description of the procedure, the spatial distribution of cyclone life cycle phases in the South Atlantic, and statistics such as duration, displacement, speed, and intensity for each phase, see \citet{couto2024new}. For standardizing the cyclone life cycle, we considered only cyclones with a complete life cycle in the standard sequence — incipient, intensification, mature, and decay — resulting in 3820 systems, approximately 56\% of the original sample. Figure \ref{fig:1_tracks_genesis_frequency} summarizes the resulting tracks used in this study, along with their seasonal occurrence.
+
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=1\linewidth]{1_tracks_genesis_frequency.png}
+    \caption{Cyclone tracks and genesis climatology for the three cyclogenesis regions considered in this study (1979--2020). (a) Tracks of cyclones with genesis in ARG, LA-PLATA, and SE-BR, shown in different colors. (b) Seasonal distribution of cyclone genesis by region: the outer ring indicates the fraction (and total number) of cyclones originating in each region, and the inner ring shows the seasonal breakdown (DJF, MAM, JJA, SON) within each region.}
+    \label{fig:1_tracks_genesis_frequency}
+\end{figure}
+
+\subsection{Lorenz Energy Cycle Computation}
+
+The LEC framework employed here is the same as in \citet{de2025lorenz}, which used the open-source Python application LorenzCycleToolKit \citep{de2024lorenzcycletoolkit}. A semi-Lagrangian framework was used to compute the LEC for a $15^\circ \times 15^\circ$ computational domain centered on the cyclone's central position. The energy budget equations for the zonal and eddy forms of APE and kinetic energy are expressed as:
+
+
+\begin{flalign}
+\frac{\partial A_Z}{\partial t} &= BA_Z - C_Z - C_A + G_Z \\
+\frac{\partial A_E}{\partial t} &= BA_E - C_E + C_A + G_E \\
+\frac{\partial K_Z}{\partial t} &= BK_Z + C_Z - C_K + B\Phi_Z - D_Z \\
+\frac{\partial K_E}{\partial t} &= BK_E + C_E + C_K + B\Phi_E - D_E 
+\end{flalign}
+
+In these equations, APE is divided into zonal ($A_Z$) and eddy ($A_E$) components, as is kinetic energy ($K_Z$ and $K_E$, respectively). $C_A$ represents the conversion between $A_Z$ and $A_E$, $C_E$ denotes the conversion from $A_E$ to $K_E$, $C_K$ signifies the transformation from $K_E$ to $K_Z$, and $C_Z$ describes the conversion from $A_Z$ to $K_Z$. The generation of APE and the dissipation of kinetic energy are indicated by $G$ and $D$, with $G_Z$ and $G_E$ denoting the generation of $A_Z$ and $A_E$, and $D_Z$ and $D_E$ representing the dissipation of $K_Z$ and $K_E$, respectively. The terms $BA_Z$, $BA_E$, $BK_Z$, and $BK_E$ represent the fluxes of zonal and eddy APE and kinetic energy across the boundaries. The terms $B\Phi_Z$ and $B\Phi_E$ are grouped with $C_Z$ and $C_E$, respectively, because both arise from the same derivation of the $K_Z$ and $K_E$ balances. \citet{muench1965dynamics} notes the difficulty in interpreting $B\Phi_Z$ and $B\Phi_E$, indicating that they are related to the downward flux of kinetic energy (i.e., toward lower altitudes) and represent the emergence of kinetic energy at the boundaries of the computational domain. For the full mathematical formulations of these processes, we refer to \citet{muench1965dynamics} and \citet{brennan1980zonal}.
+
+As our goal was to evaluate the energy patterns of cyclonic development in the Southwestern Atlantic, we considered only a subset of terms for analysis: $A_E$, $K_E$, $C_A$, $C_K$, $BK_E$ $BA_E$ and $G_E$, which govern eddy (cyclone) development. This selection facilitates synthesis by focusing on terms relevant to eddy development and, because we applied PCA followed by k-means clustering, reduces the number of input features, enhancing interpretability and mitigating potential issues associated with highly collinear variables.
+
+This term selection is illustrated in Fig.~\ref{fig:2_20070643_lps_track_publication} using a diagram we refer to as the Lorenz Phase Space (LPS). As an example, we use cyclone ``20070643'' from the database, which exhibited the most negative (i.e., most intense) central relative vorticity during the 21st century. These diagrams display distinct LEC terms on the $x$- and $y$-axes; circle size scales with $K_E$, and circle color indicates $G_E$. We define two types of LPS: (1) a ``Conversion'' LPS (Fig.~\ref{fig:2_20070643_lps_track_publication}a), in which the $y$-axis shows $C_A$ and the $x$-axis shows $C_K$; and (2) an ``Import'' LPS (Fig.~\ref{fig:2_20070643_lps_track_publication}b), in which the $x$-axis represents $BK_E$ and the $y$-axis represents $BA_E$. The ``Conversion'' LPS highlights the relative importance of baroclinic and barotropic conversions, whereas the ``Import'' LPS indicates the relative importance of eddy-energy imports and exports. Plot annotations are included to aid interpretation.
+
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=1\linewidth]{2_20070643_lps_track_publication.png}
+    \caption{Lorenz Phase Space (LPS) representation of the energetics of cyclone 20070643. (a) ``Conversion'' phase space, showing the barotropic conversion $C_K$ on the $x$-axis and the baroclinic conversion $C_A$ on the $y$-axis. (b) ``Import'' phase space, showing the boundary fluxes of eddy APE ($BA_E$, $x$-axis) and eddy kinetic energy ($BK_E$, $y$-axis). In (a,b), circles denote 6-hourly samples connected in time; circle size is proportional to eddy kinetic energy ($K_E$) and colors indicate eddy APE generation ($G_E$; W\,m$^{-2}$). Gray bands mark the zero lines, and annotations indicate the physical interpretation of each quadrant; letters A and Z mark the beginning and end of the trajectory. The black-outlined circle denotes the time of minimum (most negative) central relative vorticity. (c) Cyclone track, with 6-hourly positions colored by central relative vorticity at 850\,hPa ($-1 \times 10^{-5}$\,s$^{-1}$) and marker size scaled by $K_E  \times 10^{-5} J m^{-2}$; genesis and lysis are indicated by the green circle and red cross, respectively.}
+    \label{fig:2_20070643_lps_track_publication}
+\end{figure}
+
+The example system had genesis at 2007-07-24 14:00 UTC in the LA-PLATA region and lysis at 2007-07-29 03:00 UTC in the Southeastern Atlantic (Fig.~\ref{fig:2_20070643_lps_track_publication}c). The LPS diagrams (based on 6-hourly data) reveal that, from a conversion perspective (Fig.~\ref{fig:2_20070643_lps_track_publication}a), the system is initially driven by both barotropic and baroclinic processes. During early intensification, it increasingly feeds the zonal circulation via barotropic conversion ($K_E \rightarrow K_Z$). From late intensification through maturity and early decay, barotropic conversions dominate the energy cycle, and during late decay both $C_A$ and $C_K$ indicate energy transfer from the eddy to the zonal circulation. From the boundary-flux perspective (Fig.~\ref{fig:2_20070643_lps_track_publication}b), the system exhibits nearly neutral boundary fluxes of $A_E$ at genesis, while $K_E$ is imported. During early intensification, there is a net influx of both forms of eddy energy. Over the subsequent evolution, $BK_E$ tends to decrease and even indicates export prior to maturity. After maturity, although there are periods with export of both forms of eddy energy, the boundary fluxes are, overall, closer to neutral. There is also a large diabatic contribution ($G_E$) during early intensification, which decreases over time. Lastly, $K_E$ increases gradually from genesis to maturity and decreases rapidly afterward.
+
+
+We also investigated the contribution of each subterm associated with $C_K$, as these provide a more detailed perspective on the dynamical processes governing barotropic conversions:
+
+
+\begin{equation}
+\begin{split}
+C_K = \int_{p_t}^{p_b} \frac{1}{g}  & \Bigg( \underbrace{ \left[ \frac{\cos\phi}{a} (u)_{\lambda} (v)_{\lambda} \frac{\partial}{\partial\phi} \left(\frac{[u]_{\lambda}}{\cos\phi}\right) \right]_{\lambda\phi}}_{\text{(A)}} + \underbrace{\left[ \frac{(v)_{\lambda}^2}{a} \frac{\partial [v]_{\lambda}}{\partial\phi}\right]_{\lambda\phi}}_{\text{(B)}} + \underbrace{\left[ \frac{\tan\phi}{a} (u)_{\lambda}^2 [v]_{\lambda}\right]_{\lambda\phi}}_{\text{(C)}} \\
+& + \underbrace{ \left[(\omega)_{\lambda}  (u)_{\lambda} \frac{\partial [u]_{\lambda}}{\partial p}\right]_{\lambda\phi}}_{\text{(D)}} + \underbrace{ \left[(\omega)_{\lambda}  (v)_{\lambda} \frac{\partial [v]_{\lambda}}{\partial p}\right]_{\lambda\phi}}_{\text{(E)}} \Bigg)  dp
+\end{split}
+\label{eq:CK}
+\end{equation}
+
+Where \(p_t\) and \(p_b\) are the top and bottom pressure levels used for the analysis (100 hPa and 1000 hPa, respectively), \(g\) is the gravitational acceleration, \(\phi\) is longitude, \(\lambda\) is latitude, \(a\) is the Earth’s radius, \(u\) and \(v\) are the zonal and meridional wind components, and \(\omega\) is the vertical velocity in isobaric coordinates (pressure, \(p\)). The \([X]_{\lambda}\) denotes the zonal mean, while \((X)\) represents eddy-related terms. The complete mathematical expressions for all LEC terms, including the eddy–mean decomposition, treatment of lateral fluxes, pressure–work terms, and an extended methodological discussion, are provided in \citet{de2025lorenz}.
+
+The $C_K$ subterms can be interpreted as follows. Term (A) expresses the eddy momentum flux linked to the meridional (north--south) gradient of the zonal wind. Term (B) represents the meridional flux of kinetic energy associated with the meridional wind and its meridional gradient. Term (C) describes the meridional flux of zonal kinetic energy. Term (D) captures the zonal and vertical flux associated with the vertical shear of the zonal wind, whereas term (E) accounts for the meridional and vertical flux associated with the vertical shear of the meridional wind. Among these contributions, term (A) is the most directly connected to barotropic instability, since shear instabilities are fundamentally driven by horizontal wind shear \citep{rayleigh1895stability,kuo1949dynamic,chen1985note,mak1989local,yokota2012tropical,read2020baroclinic}. The remaining terms represent secondary contributions and/or modulate the primary instability, reflecting interactions between horizontal and vertical fluxes of kinetic energy.
+
+\subsection{Clustering Analysis}
+
+Here, we perform a cluster analysis for identifying the Energy Patterns (EP) related to cyclones in the Southwestern Atlantic. For this we used the main LEC terms related to eddy development ($A_E$, $K_E$, $C_A$, $C_K$, $BK_E$ $BA_E$ and $G_E$), as previously discussed. This analysis consisted of the three steps, which are described bellow: 1) principal component analysis (PCA) for reducing dimensionality 2) determining the best number of clusters using objective indices, 3) applying the clustering analysis.
+
+Given that more than 3{,}800 cyclones were analysed in this study, we applied PCA to reduce the dimensionality of the LEC feature space prior to clustering. PCA constructs a set of mutually orthogonal principal components (PCs) as linear combinations of the original variables, ordered such that PC1 explains the largest fraction of the total variance, followed by PC2, and so on. Dimensionality reduction is achieved by retaining only the first $K$ PCs that explain most of the variability in the data. This step is widely adopted in meteorological pre-clustering workflows \citep[e.g.,][]{camus2014,de2022hybrid,borato2024evaluation,pozo2025characterising,zhong2025advanced}. The PCA was performed with the open-source Python library PyEOF \citep{zheng_2021}.
+
+Let $N$ be the number of cyclones and $p=28$ the number of features. We organised the predictors into a matrix
+\begin{equation}
+\mathbf{X} \in \mathbb{R}^{N \times p},
+\end{equation}
+whose columns are the LEC terms evaluated as phase-mean values over four lifecycle phases (incipient, intensification, mature, and decay). Specifically, for each term $n=1,\ldots,7$ and phase $\phi \in \{\mathrm{ic},\mathrm{it},\mathrm{ma},\mathrm{de}\}$, a feature $T_{n,\phi}$ is included, so that
+\begin{equation}
+\mathbf{X} = \big[T_{1,\mathrm{ic}}, \ldots, T_{7,\mathrm{ic}},\;
+               T_{1,\mathrm{it}}, \ldots, T_{7,\mathrm{it}},\;
+               T_{1,\mathrm{ma}}, \ldots, T_{7,\mathrm{ma}},\;
+               T_{1,\mathrm{de}}, \ldots, T_{7,\mathrm{de}}\big],
+\end{equation}
+yielding $7 \times 4 = 28$ features.
+
+Prior to PCA, each feature (column) was standardised to have zero mean and unit variance using the \texttt{StandardScaler} implementation in scikit-learn \citep{pedregosa2011scikit}. Denoting by $x_{ij}$ the value for cyclone $i$ and feature $j$, we computed
+\begin{align}
+\mu_j &= \frac{1}{N}\sum_{i=1}^{N} x_{ij},\\
+s_j  &= \sqrt{\frac{1}{N-1}\sum_{i=1}^{N} (x_{ij}-\mu_j)^2},\\
+z_{ij} &= \frac{x_{ij}-\mu_j}{s_j},
+\end{align}
+forming the standardised matrix $\mathbf{Z}=[z_{ij}] \in \mathbb{R}^{N \times p}$ on which PCA was applied. We retained the first $K=15$ PCs, which explain approximately $90\%$ of the cumulative variance (Figure \ref{fig:S1_pca_clustering_validation}a).
+
+After dimensionality reduction with PCA, we clustered the cyclones using the $k$-means algorithm \citep{macqueen1967}. Owing to its simplicity, versatility, and low computational cost, $k$-means is one of the most widely used clustering methods in the geosciences, although other powerful alternatives exist \citep[e.g.,][]{fachieri2025introduccao}. Let $\mathbf{Y}\in\mathbb{R}^{N\times K}$ denote the matrix of PCA scores for the $N$ cyclones retaining the first $K$ principal components, and let $\mathbf{y}_i\in\mathbb{R}^{K}$ be the $i$-th row of $\mathbf{Y}$. The $k$-means method partitions the set of points $\{\mathbf{y}_i\}_{i=1}^{N}$ into $C$ clusters by minimizing the within-cluster sum of squares (WCSS),
+
+\begin{equation}
+\mathcal{J} = \sum_{c=1}^{C}\sum_{i \in \mathcal{I}_c}\left\lVert \mathbf{y}_i - \boldsymbol{\mu}_c \right\rVert^2,
+\end{equation}
+
+where $\mathcal{I}_c$ is the index set of points assigned to cluster $c$ and $\boldsymbol{\mu}_c\in\mathbb{R}^{K}$ is the cluster centroid (i.e., the mean of the points in cluster $c$). The optimization is performed iteratively using Lloyd's algorithm: (i) assign each point to the nearest centroid in Euclidean distance, and (ii) update each centroid as the mean of the points currently assigned to it, repeating until convergence \citep{lloyd1982least}. Here, we used the scikit-learn implementation of $k$-means with $k$-means++ initialization \citep{arthur2006k}, which selects initial centroids in a distance-aware manner to improve convergence and reduce the chance of poor local minima.
+
+Because $k$-means requires the number of clusters to be specified \emph{a priori}, we adopted an objective, multi-metric procedure to select this value. More than 100 cluster validity indices (CVIs) have been proposed in the literature \citep{arbelaitz2013extensive,hassan2024z}; here we combine five complementary CVIs that quantify cluster compactness and separation from different perspectives (Table~\ref{tab:cvi_summary}). For each candidate number of clusters $C$ (tested over a prescribed range), we computed all five indices from the $k$-means partition in the retained PCA space.
+
+To place all CVIs on a common scale, each index $I_m(C)$ (with $m=1,\ldots,5$) was rescaled to $[0,1]$ using min--max normalization,
+\begin{equation}
+\widetilde{I}_m(C) = \frac{I_m(C) - \min\limits_{C} I_m(C)}{\max\limits_{C} I_m(C) - \min\limits_{C} I_m(C)}.
+\end{equation}
+For indices where smaller values indicate better clustering (Davies--Bouldin), we inverted the normalized score as
+\begin{equation}
+\widetilde{I}_{\mathrm{DB}}^{\,*}(C) = 1 - \widetilde{I}_{\mathrm{DB}}(C).
+\end{equation}
+Finally, we defined a composite (unweighted) agreement score as the mean of the normalized CVIs,
+\begin{equation}
+\overline{I}(C) = \frac{1}{5}\sum_{m=1}^{5}\widetilde{I}_m^{\,*}(C),
+\end{equation}
+and selected the optimal number of clusters as the maximizer of $\overline{I}(C)$. This procedure consistently indicated $C=3$ as the optimal partition for the full dataset, supporting three distinct energy patterns while reducing reliance on any single validity criterion  (Figure \ref{fig:S1_pca_clustering_validation}b). 
+
+
+\begin{table}[t]
+\centering
+\caption{Cluster validity indices (CVIs) used to select the number of clusters $C$: Silhouette (SIL; \citealp{rousseeuw1987silhouettes}), Davies--Bouldin (DB; \citealp{davies2009cluster}), Calinski--Harabasz (CH; \citealp{calinski1974dendrite}), Score Function (SF; \citealp{saitta2008comprehensive}), and Gap statistic (GAP; \citealp{tibshirani2001estimating}). Optimization indicates whether the index should be maximized (Max) or minimized (Min).}
+\label{tab:cvi_summary}
+\begin{tabular}{p{0.8cm}p{1cm}p{0.8cm}p{7.2cm}}
+\toprule
+\textbf{Index} & \textbf{Range} & \textbf{Opt.} & \textbf{What it measures (summary)} \\
+\midrule
+SIL & $[-1,\,1]$ & Max &
+Balance between within-cluster cohesion and separation to the nearest neighbouring cluster; values near 1 indicate well-separated, compact clusters. \\
+DB  & $[0,\,\infty)$ & Min &
+Average (worst-case) similarity between each cluster and its most similar other cluster, based on within-cluster scatter and between-centroid distance; lower implies better separation/compactness. \\
+CH  & $[0,\,\infty)$ & Max &
+Variance ratio criterion: ratio of between-cluster dispersion to within-cluster dispersion (adjusted by sample size); higher implies denser and more separated clusters. \\
+SF  & $(0,\,1)$ & Max &
+Normalized measure combining compactness and separation via a bounded (sigmoid) transformation of the log-ratio between- and within-cluster distances. \\
+GAP & $[0,\,\infty)$ & Max &
+Difference between observed within-cluster dispersion and that expected under a null reference distribution; larger gaps indicate stronger clustering structure than random. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Trend Analysis}
+
+We assessed monotonic trends in annual cyclone counts (one value per year; 1979--2020) for each energy-pattern (EP) group using the Mann--Kendall (MK) test \citep{mann1945nonparametric,kendall1948rank}. To evaluate serial dependence, we applied the Ljung--Box portmanteau statistic $Q(h)$ to detrended residuals, using $h=\min(10,\lfloor n/5\rfloor)=8$ for $n=42$ years. Detrending was performed with the Theil--Sen slope estimator \citep{sen1968estimates}, and the residuals were then tested with the Ljung--Box procedure \citep{ljung1978measure}; no EP exhibited significant autocorrelation ($p\ge 0.05$). Accordingly, we report trend significance based on the original MK test. As a robustness check, we also computed and archived MK-based approaches that explicitly address serial correlation, including the Hamed--Rao variance correction, the Yue--Wang effective-sample-size correction, pre-whitening, and trend-free pre-whitening \citep{KulkarniVonStorch1995,hamed1998modified,YueEtAl2002_TFPW,YueWang2004}; all approaches yielded consistent conclusions (not shown). Trend magnitude and the corresponding 95\% confidence interval were estimated using the Theil--Sen slope and are reported in cyclones~yr$^{-1}$.
+
+\subsection{Accessing barotropic and baroclinic instability processes}
+
+In order to investigate key physical processes driving cyclonic development, here we use a composite analysis centered on cyclonic centers. The analysis is restricted to the intensification phase as a proxy of mechanisms driving the cyclone development. Here we used the Rayleigh--Kuo (RK) criterion as a proxy for barotropic instability occurrence \citep{rayleigh1895stability,kuo1949dynamic}. By this criterion, barotropic instability can occur if there is at least one latitude where the meridional gradient of absolute vorticity vanishes:
+
+\begin{equation}
+    \frac{\partial \eta}{\partial y} \;=\; 0,
+    \quad\text{with}\quad
+    \eta \;=\; f + \zeta,
+\end{equation}
+
+where \(\eta\) is the absolute vorticity, \(f\) is the Coriolis parameter, and \(\zeta\) is the relative vorticity. This condition indicates a sign reversal in the meridional gradient of absolute vorticity, which is a necessary, but not sufficient criterion for barotropic instability. It was originally derived for idealized barotropic shear flows and should therefore be interpreted with caution in complex, real‐atmosphere cyclone environments.
+
+
+% To diagnose barotropic and baroclinic instabilities, we computed composites of the Rayleigh--Kuo (RK) criterion and the Eady growth rate (EGR), respectively. We focus on EP1 cyclones, as they exhibit the strongest barotropic and baroclinic conversions. The analysis is restricted to the intensification phase. Although conversion terms tend to peak during maturity, cyclone centers typically cover a larger area during that phase \citep{couto2024new}, which would increase spatial variability and potentially add noise to the composites. Therefore, we use the central time step of the intensification phase and restrict the sample to a $15^\circ \times 15^\circ$ domain bounded by $60^\circ$W--$45^\circ$W and $45^\circ$S--$30^\circ$S (Fig.~\ref{fig:S2_selected_tracks}). This domain was selected to capture a high track density of intensifying systems, including cyclones originating from all three genesis regions \citep{couto2024new}, thereby avoiding an overrepresentation of any single region. 
+
+
+\section{Results}\label{sec:results}
+
+\subsection{General energetic behavior of Southwestern Atlantic cyclones}
+
+Figure \ref{fig:3_phase_density_2x2} contains the conversion and imports LPS diagrams for all cyclones considered in the current study, averaged for each cyclone lifecyle phase. On then, the bins indicate mean $G_E$ values and the contours, cyclone density. The cyclone density always increase towards the graph origin and decreases outwards, with the regions of higher density changing for each develoment phase. This indicates that the cyclones behavior represent a continuum, a feature ubiquoustly noted by all previous studies attempting an objective cyclone classification \citet[e.g.][]{hart2003cyclone,yanase2014parameter,graf2017objective,dekker2018characteristics,corner2025classification}.
+
+For the conversion LPS, there is a tendency for systems to concentrate in the upper-right quadrant across all phases (Fig.~\ref{fig:3_phase_density_2x2}a,c,e,g). This indicates a shared importance of baroclinic and barotropic processes for eddy development, as previously noted by \citet{de2025lorenz}. This concentration strengthens from the incipient to the intensification phase and then gradually weakens. The $G_E$ term follows a similar evolution: although values are averaged within each $3 \times 3$ bin, an increase in the relative contribution of $G_E$ from incipient to intensification can be identified, followed by a decrease afterward. Also, $G_E$ increase approximately with increasing $C_A$. A smaller fraction of cases falls in regimes in which barotropic processes alone govern cyclone development (lower-left quadrants) or in which neither baroclinic nor barotropic conversions favor eddy growth (lower-right quadrants). For cyclones in the lower-left quadrant, $G_E$ contributions are generally weaker. Cyclones in the lower-right quadrant (which are rare, accounting for roughly 5\%) are either driven by $G_E$ or by energy imports.
+
+The ``import'' LPS exhibits greater dispersion than the ``conversion'' LPS. Although cyclone behavior spans a continuum, some phase-dependent preferences emerge. In the incipient phase (Fig.~\ref{fig:3_phase_density_2x2}b), there is a concentration in the right half-plane, indicating a preference for imports of $A_E$ during this phase, whereas $K_E$ may be either exported or imported. During intensification (Fig.~\ref{fig:3_phase_density_2x2}d), the relative importance of the left half-plane increases, particularly the upper-left quadrant, indicating a higher tendency to export $A_E$ while importing $K_E$. During maturity (Fig.~\ref{fig:3_phase_density_2x2}f), there is a stronger concentration in the lower-left quadrant, indicating exports of both forms of eddy energy. Lastly, during decay (Fig.~\ref{fig:3_phase_density_2x2}h), cyclones concentrate in either the lower-left or upper-right quadrants, suggesting that, in some cases, energy export contributes to cyclone dissipation, whereas in others, energy import may help maintain the system despite frictional processes \citep{de2025lorenz} and/or enhanced conversion back to the mean flow.
+
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=1\linewidth]{3_phase_density_2x2.png}
+    \caption{Phase-dependent density of cyclone energetics in the Lorenz Phase Space (LPS). Conversion LPS panels show $C_K$ (x-axis) versus $C_A$ (y-axis) for the incipient (a), intensification (c), mature (e), and decay (g) phases. Import LPS panels show $BA_E$ (x-axis) versus $BK_E$ (y-axis) for the corresponding phases (b,d,f,h). Colored bins indicate the mean $G_E$ within each bin, and black contours depict the relative density of samples. Percentages in the corners denote the fraction of samples in each quadrant. The colored map was obtained by discretizing the 2‑D phase space into a 20×20 regular grid and computing the arithmetic mean of $G_E$ in each cell; cells with fewer than 3 observations were masked to reduce statistical noise. Density contours are derived from the per‑cell counts smoothed with a Gaussian filter.}
+    \label{fig:3_phase_density_2x2}
+\end{figure}
+
+\subsection{Energy patterns: key energy pathways for cyclone development}
+\label{sec:energy_patterns}
+
+The clustering analysis yielded three centroids defining the energy patterns (EPs) for cyclones with genesis in the southwestern Atlantic. Figure~\ref{fig:4_lps_combined}a shows the conversion LPS for these EPs, indicating that, for all EPs, the energy cycle is largely modulated by barotropic and baroclinic conversions that feed the eddies. For EP3, these contributions are more modest, including the contribution from $G_E$. For EP2, systems start the incipient phase with moderate conversions, which increase nearly proportionally during intensification, return approximately to their initial values, and then decrease toward near-neutral conditions. EP1 also begins with modest conversions, but exhibits large increases during intensification and further increases during the mature phase, particularly in the barotropic conversion. EP1 also shows relatively large conversion values during decay. $G_E$ is highest during intensification for both EP1 and EP2, but $K_E$ is larger for EP2 during intensification, suggesting that EP1 systems tend to intensify more slowly.
+
+Figure~\ref{fig:4_lps_combined}b shows the import LPS. EP3 initially exhibits modest imports of $A_E$ that decrease over time, while $K_E$ remains close to neutral; by decay, both terms are nearly neutral. EP2 shows a similar behavior, but with modest imports of $K_E$; both imports decrease over the life cycle, becoming nearly neutral by decay. EP1, in contrast, starts with small imports of $A_E$ and near-neutral $K_E$; while $K_E$ imports increase slightly during intensification, the system transitions to exporting $A_E$. During the mature and decay phases, EP1 exports large amounts of both forms of eddy energy. This suggests that the large conversion values attained during these phases counteract these exports (and dissipation; \citealp{de2025lorenz}), keeping the system active until it eventually dissipates.
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=1\linewidth]{4_lps_combined.png}
+    \caption{Centroids of the three energy patterns (EP1--EP3) in the Lorenz Phase Space (LPS), shown for phase-mean energetics across the cyclone life cycle. (a) Conversion LPS: $C_K$ (x-axis) versus $C_A$ (y-axis). (b) Import LPS: $BA_E$ (x-axis) versus $BK_E$ (y-axis). Markers represent life-cycle phase means (incipient, intensification, mature, and decay) connected in chronological order; marker size scales with $K_E$ and marker color indicates $G_E$. Line thickness denotes the EP group. Letters A and Z denote the beginning and end of each trajectory, respectively.}
+    \label{fig:4_lps_combined}
+\end{figure}
+
+Figure~\ref{fig:5_ep_intensity_seasonality_trends} summarizes the overall characteristics of cyclones within each EP. Overall, EP3 includes the weakest systems in the dataset (Fig.~\ref{fig:5_ep_intensity_seasonality_trends}a), consistent with its comparatively less active energy cycle, and is also the most frequent group (Fig.~\ref{fig:5_ep_intensity_seasonality_trends}c). These systems exhibit pronounced seasonality, with higher genesis frequency during DJF and SON (Fig.~\ref{fig:5_ep_intensity_seasonality_trends}b). In contrast, EP1 comprises the strongest systems, is also the least frequent, and shows a clear peak during JJA. EP2 displays intermediate intensity and a weaker seasonal modulation, with relatively higher frequencies during JJA and SON.
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=1\linewidth]{5_ep_intensity_seasonality_trends.png}
+    \caption{Overall characteristics of the energy-pattern groups (EP1--EP3). (a) Distribution of cyclone maximum intensity, quantified as the peak value of $-\zeta_{850}$ (1 $\times$ 10$^{-5}$\,s$^{-1}$); horizontal bars and labels indicate the maximum, mean, median and mean for each EP. (b) Seasonal distribution of cyclone genesis frequency (DJF, MAM, JJA, SON) for each EP. (c) Interannual variability of annual cyclone counts (1979--2020) for each EP; solid (dashed) lines denote significant (non-significant) monotonic trends at $p<0.05$.}
+    \label{fig:5_ep_intensity_seasonality_trends}
+\end{figure}
+
+The relative contribution of each genesis region for each EP is shown in Fig.~\ref{fig:6_ep_genesis_density_kde}. Figure~\ref{fig:6_ep_genesis_density_kde}a shows the genesis density for all systems, indicating the highest frequency in the ARG region, followed by LA-PLATA and then SE-BR, as previously reported \citep{hoskins2005new,gramcianinov2019properties,crespo2021potential,couto2024new}. Figures~\ref{fig:6_ep_genesis_density_kde}b, c, and d present the difference in genesis density when comparing the density of each EP individually with the density of all cyclones. For this, both densities were normalized using min-max normalization. The normalized genesis density for each EP was then subtracted from the normalized density of all systems (i.e., relative anomaly = norm\_EP - norm\_all). Relative to the all-cyclone distribution, EP1 shows a higher relative frequency of genesis in SE-BR and in an intermediate region between ARG and LA-PLATA (Fig.~\ref{fig:6_ep_genesis_density_kde}b). EP2 exhibits a higher relative occurrence of genesis in LA-PLATA (Fig.~\ref{fig:6_ep_genesis_density_kde}c), whereas EP3 shows a smaller relative frequency across all regions, with an enhanced relative frequency south of ARG (Fig.~\ref{fig:6_ep_genesis_density_kde}d).
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=1\linewidth]{6_ep_genesis_density_kde.png}
+    \caption{Kernel density estimates of cyclone genesis density (cyclones per $10^6$ km$^2$ per year) for all cyclones (a) and relative frequency bias for each energy-pattern group: (b) EP1, (c) EP2, and (d) EP3. Shading and contours on (a) represent genesis density (cyclones per $10^6$ km$^2$ per year). In panels (b--d), the genesis density for each EP was first normalized using min-max normalization and then subtracted from the normalized density for all systems, resulting in the relative anomaly of genesis density for each EP.}
+\end{figure}
+
+Overall, these results indicate that EP3 comprises weaker, day-to-day systems, with genesis predominantly in ARG. These cyclones have a less active energy cycle and occur preferentially during the austral warm season. Although they exhibit substantial interannual variability, no statistically significant trend is detected in their occurrence. In contrast, EP2 represents relatively intense systems, with genesis primarily in LA-PLATA and ARG, weak seasonality, and energetics characterized by modest baroclinic conversions and diabatic contributions, together with especially large imports of $A_E$ and $K_E$ during early development. EP2 is the only EP exhibiting a statistically significant trend, with an overall increase.
+
+Finally, EP1, while being the least frequent and most active during the cold season, shows the strongest conversions throughout the life cycle, particularly barotropic conversion, with relevant contributions from diabatic processes. However, these eddy-energy sources are partly offset by energy export, which becomes stronger during the mature and decay phases. EP1 does not show a marked interannual variability or a statistically significant trend.
+
+
+\subsection{Physical mechanisms of cyclonic intensification}
+
+Section~\ref{sec:energy_patterns} shows that the LEC analysis indicates an important contribution from barotropic and baroclinic conversions to cyclone development, with a particularly strong role for the former. Here, we further investigate the physical mechanisms associated with cyclone intensification to assess the occurrence of barotropic and baroclinic instabilities and their consistency with the semi-Lagrangian, limited-area framework that follows the cyclone center.
+
+To diagnose barotropic and baroclinic instabilities, we computed composites of the Rayleigh--Kuo (RK) criterion and the Eady growth rate (EGR), respectively. We focus on EP1 cyclones, as they exhibit the strongest barotropic and baroclinic conversions. The analysis is restricted to the intensification phase. Although conversion terms tend to peak during maturity, cyclone centers typically cover a larger area during that phase \citep{couto2024new}, which would increase spatial variability and potentially add noise to the composites. Therefore, we use the central time step of the intensification phase and restrict the sample to a $15^\circ \times 15^\circ$ domain bounded by $60^\circ$W--$45^\circ$W and $45^\circ$S--$30^\circ$S (Fig.~\ref{fig:S2_selected_tracks}). This domain was selected to capture a high track density of intensifying systems, including cyclones originating from all three genesis regions \citep{couto2024new}, thereby avoiding an overrepresentation of any single region. 
+
+Furthermore, we perform the instability diagnostics at the pressure levels where the corresponding conversion terms exhibit their largest median magnitudes (Fig.~\ref{fig:S3_vertical_levels}): 975,hPa for the EGR analysis and 350,hPa for the RK criterion. To assess the sensitivity of the results to the choice of domain size, we conduct the analysis on three distinct domains: a $5^\circ \times 5^\circ$ domain, a $15^\circ \times 15^\circ$ domain, and a $30^\circ \times 30^\circ$ domain - hereafter referred to as the local, synoptic, and large-scale domains, respectively. This approach allows us to verify the impact of the centered semi-Lagrangian analysis on the detection and magnitude of barotropic and baroclinic instabilities.
+
+Figures~\ref{fig:7_ep1_instability_composite_4x3}a, b, and c show $\partial\eta/\partial y$ for the local, synoptic, and large-scale domains, respectively. In the local domain, there is a distinct and clear inflection point (i.e., a change in the signal of $\partial\eta/\partial y$), located near the cyclone center. As the domain size increases, multiple inflection points appear. This behavior is further supported by the meridional profiles (showing zonal means of $\partial\eta/\partial y$ in Fig.~\ref{fig:7_ep1_instability_composite_4x3}d, e, and f). In the local domain, there is a clear inflection point centered on the composite mean, though some variability is observed in the individual cases. In contrast, for the synoptic and large-scale domains, the variability increases, and the ensemble mean becomes noisier, with multiple "local" inflection points appearing, reinforcing the local aspect of barotropic instability on synoptic scale protuberances, as previously shown by \citet{mak1989local,wernli1998effect,riviere2006role}.
+
+
+
+% Revisitar após olhar os jatos
+%The Rayleigh--Kuo (RK) criterion provides a necessary (but not sufficient) condition for modal barotropic instability in idealized barotropic shear flows, requiring a sign reversal of the meridional gradient of absolute vorticity within the domain \citep{Kuo1949,Simonnet2021}. In the local ($5^\circ\times5^\circ$) cyclone-centered composites, $\partial\eta/\partial y$ exhibits a robust inflection point close to the analysis center, indicating that the upper-tropospheric flow in the immediate vicinity of intensifying EP1 cyclones recurrently satisfies this necessary condition. Such a near-core, jet-related configuration is consistent with barotropic development being favored in localized regions of strong horizontal shear (e.g., near jet-exit environments) \citep{RiviereJoly2006,Wernli1998}. 
+
+% In contrast, the synoptic and large-scale domains display multiple inflection points and noisier meridional profiles. This does not necessarily imply the absence of barotropic instability; rather, it likely reflects case-to-case variability in the relative position and orientation of the upper-level jet and associated shear zones with respect to the cyclone center. Cyclone-centered compositing is known to smooth out sharp gradients and small-scale features when dynamically relevant structures are not perfectly co-located across events \citep{Vessey2022}. Because the RK diagnostic is sign-based, averaging fields with inflection points occurring at different meridional offsets can yield multiple weak zero-crossings (or partially cancel the signal), thereby masking the underlying frequency of RK satisfaction in individual cases.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{7_ep1_instability_composite_4x3.png}
+    \caption{Composites characterizing instability-related diagnostics for EP1 cyclones during the central time step of the intensification phase. (a--c) Meridional gradient of absolute vorticity at 350 hPa, $\partial\eta/\partial y$ (s$^{-1}$\,m$^{-1}$). (d--f) Corresponding meridional profiles (zonal means) for individual cases (gray) and the composite mean (blue). (g--i) Ertel potential vorticity at 975 hPa (PV; $10^{-6}$\,K\,m$^2$\,kg$^{-1}$\,s$^{-1}$). (j--l) Eady growth rate at 975 hPa (EGR; day$^{-1}$). The star marks the analysis center.}
+    \label{fig:7_ep1_instability_composite_4x3}
+\end{figure}
+
+
+Figure~\ref{fig:7_ep1_instability_composite_4x3}g, h, and i show the Ertel PV for each domain size. Cyclonic PV (negative values in the Southern Hemisphere) reaches a maximum just northwest of the cyclone center. In the local domain, the cyclonic vorticity occupies most of the domain area, and its relative occupation decreases as the domain size increases, as expected. 
+
+Meanwhile, Figures~\ref{fig:7_ep1_instability_composite_4x3}j, k, and l display the EGR for each domain, with the mean values across the domain indicated on each panel. The presented values ($> 2 \space day^{-1}$) indicate high baroclinicity and thus rapid deepening rates \citep[e.g.]{crespo2021potential,besson2021global,zhan2023climatology} There is virtually no change in the mean EGR values between the local and synoptic domains. However, for the large-scale domain, there is a ~20\% drop, as the EGR values decrease sharply outside the synoptic domain. The maximum EGR is not located at the cyclone center but rather in a region surrounding it.
+
+
+
+\subsection{Barotropic instability processes}\label{sec:}
+
+- Calcular o LEC para os 50 sistemas mais intensos e 50 menos intensos de cada EP
+- Avaliar os sub-termos do CK (boxplots) para cada EP: qual sub-termo domina para cada EP? Os resultados variam por EP ou são homogêneos? Há mudança entre os sistemas intensos x não intensos?
+
+
+\section{Discussion}\label{sec:discussion}
+
+- LPS se mostrou uma ferramenta útil para visualização dos principais termos do LEC relacionados ao desenvolvimento dos ciclones, de forma a condensar a informação e apresentar de um modo intuitivo em comparação ao tradicional diagrama do LEC com as quatro caixas e setas de conversão. Não que vá substitui-lo, mas para análise de sistemas transientes é uma boa opção.
+
+-  While conversion LPS shows that the difference among systems is more represented by the instensity of the Ck and Ca conversions, the imports LPS shows distinct pathways.
+
+- EP1 high conversion on the decay phase phase act to maintain the system against energy dissipation \citep{de2025lorenz} and exports.
+
+- Importação de AE pode estar relacionado com transporte remoto de calor, enquanto que importação de KE pode ser o downstream development - mais estudos são necessários.
+
+
+- Overall, the composite results indicate that the $15^\circ \times 15^\circ$ domain used for the LEC analysis provides an optimal size for capturing baroclinic growth, which becomes attenuated for larger domains. The findings also suggest that barotropic instability, assuming the RK criterion is satisfied, is a more localized phenomenon, potentially occurring in specific regions around the cyclone environment. In larger domains, the barotropic instability signal becomes diffuse and noisy, and may be further attenuated when domain-averaged values are computed, as is done in the LEC analysis.
+
+\subsection{}\label{sec:}
+
+\section{Summary and Conclusions}\label{sec:conclusion}
+
+
+\backmatter
+
+\section*{Supplementary information}
+
+\renewcommand{\thefigure}{S\arabic{figure}}
+\setcounter{figure}{0}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{S1_pca_clustering_validation.png}
+    \caption{Principal component analysis (PCA) and selection of the optimal number of $k$-means clusters. (a) PCA scree plot showing the fraction of variance explained by each principal component (bars) and the cumulative explained variance (green line). The horizontal red dashed line marks the 90\% threshold, and the vertical red dashed line indicates the retained dimensionality ($K=15$ PCs), which explains 90.3\% of the cumulative variance. (b) Determination of the optimal number of clusters ($k$) using normalized cluster-validity indices computed in the retained PCA space. Individual curves show the min--max normalized indices (with Davies--Bouldin inverted so that higher values indicate better performance); the black curve is the unweighted mean index. The vertical red dashed line and star highlight the selected solution, $k=3$.}
+    \label{fig:S1_pca_clustering_validation}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{S2_selected_tracks.png}
+    \caption{Tracks used for the instability composites. Gray lines indicate the complete tracks, and yellow segments denote the intensification phase. Red stars mark the analysis centers (central time step of intensification), and green circles indicate genesis locations. The blue box outlines the selection domain ($60^\circ$W--$45^\circ$W, $45^\circ$S--$30^\circ$S).}
+    \label{fig:S2_selected_tracks}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{S3_vertical_levels.png}
+    \caption{Vertical distribution of conversion terms used to select pressure levels for the instability diagnostics (n = 444 systems). (a) Baroclinic conversion ($C_A$) by pressure level; the star marks the level of maximum median $C_A$ (975\,hPa). (b) Barotropic conversion ($C_K$) by pressure level; the star marks the level of minimum median $C_K$ (350\,hPa).}
+    \label{fig:S3_vertical_levels}
+\end{figure}
+
+%TC:ignore
+\section*{Declarations}
+
+\subsection*{Funding}
+
+This study was partly financed by the Coordenação de Aperfeiçoamento de Pessoal de Nível Superior – Brasil (CAPES) under Finance Code 001.
+
+\subsection*{Competing interests}
+
+The authors have no relevant financial or non-financial interests to disclose.
+
+\subsection*{Data Availability}
+
+The cyclone tracks used in this study were obtained from the \textit{Atlantic Extratropical Cyclone Tracks Database}, available at \url{https://doi.org/10.17632/kwcvfr52hp.4}. All datasets, including the computed Lorenz Energy Cycle results for each cyclone, along with the scripts used to generate the figures and analyses presented in this study, are publicly available at the following GitHub repository: \url{https://github.com/daniloceano/energetic_patterns_cyclones_south_atlantic}. The source code of the \texttt{Cyclophaser} package, used for detecting cyclone life cycle phases, is available on PyPI at \url{https://pypi.org/project/cyclophaser/}. The \texttt{LorenzCycleToolkit} package, used for computing the Lorenz Energy Cycle components, is also available on PyPI at \url{https://pypi.org/project/LorenzCycleToolkit/}.
+
+\subsection*{Author contributions}
+
+Conceptualization: Danilo Couto de Souza, Pedro Leite da Silva Dias, Ricardo de Camargo, Carolina Barnez Gramcianinov; Methodology: Danilo Couto de Souza, Pedro Leite da Silva Dias, Ricardo de Camarg; Formal analysis and investigation: Danilo Couto de Souza, Pedro Leite da Silva Dias; Writing - original draft preparation: Danilo Couto de Souza; Writing - review and editing: Danilo Couto de Souza, Pedro Leite da Silva Dias, Ricardo de Camargo, Carolina Barnez Gramcianinov; Funding acquisition: Pedro Leite da Silva Dias, Ricardo de Camargo; Resources: Pedro Leite da Silva Dias, Ricardo de Camargo; Supervision: Pedro Leite da Silva Dias, Ricardo de Camargo.
+
+\bibliography{sn-bibliography}% common bib file
+%% if required, the content of .bbl file can be included here once bbl is generated
+%%\input sn-article.bbl
+
+
+\end{document}

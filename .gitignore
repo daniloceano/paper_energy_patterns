@@ -106,3 +106,7 @@ web/.next/
 web/.env.local
 # Content JSONs must be committed for Vercel build (they're read at static-gen time)
 # Do NOT add web/src/content/*.json here
+
+# Generated analysis figures served via Supabase Storage (not git)
+# Upload with: python scripts/web/upload_figures_to_supabase.py --dirs ck_subterms
+web/public/figures/ck_subterms/

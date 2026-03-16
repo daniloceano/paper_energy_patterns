@@ -6,6 +6,18 @@
     "api_url": "/api/figures?path=figures/ck_subterms/ck_subterms_boxplots.png"
   },
   {
+    "filename": "ck_subterms_boxplots_subterms.png",
+    "path": "figures/ck_subterms/ck_subterms_boxplots_subterms.png",
+    "category": "ck_subterms",
+    "api_url": "/api/figures?path=figures/ck_subterms/ck_subterms_boxplots_subterms.png"
+  },
+  {
+    "filename": "ck_subterms_boxplots_total.png",
+    "path": "figures/ck_subterms/ck_subterms_boxplots_total.png",
+    "category": "ck_subterms",
+    "api_url": "/api/figures?path=figures/ck_subterms/ck_subterms_boxplots_total.png"
+  },
+  {
     "filename": "ck_subterms_genesis_density.png",
     "path": "figures/ck_subterms/ck_subterms_genesis_density.png",
     "category": "ck_subterms",

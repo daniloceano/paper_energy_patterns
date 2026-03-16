@@ -1,57 +1,27 @@
 [
   {
-    "filename": "lps_conversion_default.png",
-    "path": "figures/cluster/cluster/lps_conversion_default.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/lps_conversion_default.png"
+    "filename": "ck_subterms_boxplots.png",
+    "path": "figures/ck_subterms/ck_subterms_boxplots.png",
+    "category": "ck_subterms",
+    "api_url": "/api/figures?path=figures/ck_subterms/ck_subterms_boxplots.png"
   },
   {
-    "filename": "lps_conversion_zoom.png",
-    "path": "figures/cluster/cluster/lps_conversion_zoom.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/lps_conversion_zoom.png"
+    "filename": "ck_subterms_genesis_density.png",
+    "path": "figures/ck_subterms/ck_subterms_genesis_density.png",
+    "category": "ck_subterms",
+    "api_url": "/api/figures?path=figures/ck_subterms/ck_subterms_genesis_density.png"
   },
   {
-    "filename": "lps_imports_default.png",
-    "path": "figures/cluster/cluster/lps_imports_default.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/lps_imports_default.png"
+    "filename": "ck_subterms_genesis_normaldiff.png",
+    "path": "figures/ck_subterms/ck_subterms_genesis_normaldiff.png",
+    "category": "ck_subterms",
+    "api_url": "/api/figures?path=figures/ck_subterms/ck_subterms_genesis_normaldiff.png"
   },
   {
-    "filename": "lps_imports_zoom.png",
-    "path": "figures/cluster/cluster/lps_imports_zoom.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/lps_imports_zoom.png"
-  },
-  {
-    "filename": "optimal_k_analysis.png",
-    "path": "figures/cluster/cluster/optimal_k_analysis.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/optimal_k_analysis.png"
-  },
-  {
-    "filename": "pca_correlation_wide.png",
-    "path": "figures/cluster/cluster/pca_correlation_wide.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/pca_correlation_wide.png"
-  },
-  {
-    "filename": "pca_loadings_wide.png",
-    "path": "figures/cluster/cluster/pca_loadings_wide.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/pca_loadings_wide.png"
-  },
-  {
-    "filename": "pca_scatter_wide.png",
-    "path": "figures/cluster/cluster/pca_scatter_wide.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/pca_scatter_wide.png"
-  },
-  {
-    "filename": "pca_variance_wide.png",
-    "path": "figures/cluster/cluster/pca_variance_wide.png",
-    "category": "cluster",
-    "api_url": "/api/figures?path=figures/cluster/cluster/pca_variance_wide.png"
+    "filename": "ck_subterms_tracks.png",
+    "path": "figures/ck_subterms/ck_subterms_tracks.png",
+    "category": "ck_subterms",
+    "api_url": "/api/figures?path=figures/ck_subterms/ck_subterms_tracks.png"
   },
   {
     "filename": "lps_conversion_default.png",
@@ -106,6 +76,24 @@
     "path": "figures/cluster/pca_variance_wide.png",
     "category": "cluster",
     "api_url": "/api/figures?path=figures/cluster/pca_variance_wide.png"
+  },
+  {
+    "filename": "critical_levels_boxplot.png",
+    "path": "figures/ep1_vertical/critical_levels_boxplot.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/critical_levels_boxplot.png"
+  },
+  {
+    "filename": "all_ep1_tracks_overview.png",
+    "path": "figures/ep1_vertical/tracks/all_ep1_tracks_overview.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/all_ep1_tracks_overview.png"
+  },
+  {
+    "filename": "selected_tracks_overview.png",
+    "path": "figures/ep1_vertical/tracks/selected_tracks_overview.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/selected_tracks_overview.png"
   },
   {
     "filename": "composite_advT850.png",
@@ -348,16 +336,10 @@
     "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep3_mat.png"
   },
   {
-    "filename": "elbow_analysis_wide_matrix.png",
-    "path": "figures/exploratory/elbow_analysis_wide_matrix.png",
+    "filename": "ep_genesis_density_relative_kde.png",
+    "path": "figures/exploratory/ep_analysis/ep_genesis_density_relative_kde.png",
     "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/elbow_analysis_wide_matrix.png"
-  },
-  {
-    "filename": "elbow_vs_composite_comparison.png",
-    "path": "figures/exploratory/elbow_vs_composite_comparison.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/elbow_vs_composite_comparison.png"
+    "api_url": "/api/figures?path=figures/exploratory/ep_analysis/ep_genesis_density_relative_kde.png"
   },
   {
     "filename": "genesis_regions.png",
@@ -414,18 +396,6 @@
     "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_imports_zoom.png"
   },
   {
-    "filename": "ep1_lps_mixed_default.png",
-    "path": "figures/exploratory/lps_diagrams_by_ep/ep1_lps_mixed_default.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_mixed_default.png"
-  },
-  {
-    "filename": "ep1_lps_mixed_zoom.png",
-    "path": "figures/exploratory/lps_diagrams_by_ep/ep1_lps_mixed_zoom.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep1_lps_mixed_zoom.png"
-  },
-  {
     "filename": "ep2_lps_conversion_default.png",
     "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_conversion_default.png",
     "category": "exploratory",
@@ -450,18 +420,6 @@
     "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_imports_zoom.png"
   },
   {
-    "filename": "ep2_lps_mixed_default.png",
-    "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_mixed_default.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_mixed_default.png"
-  },
-  {
-    "filename": "ep2_lps_mixed_zoom.png",
-    "path": "figures/exploratory/lps_diagrams_by_ep/ep2_lps_mixed_zoom.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep2_lps_mixed_zoom.png"
-  },
-  {
     "filename": "ep3_lps_conversion_default.png",
     "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_conversion_default.png",
     "category": "exploratory",
@@ -484,66 +442,6 @@
     "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_imports_zoom.png",
     "category": "exploratory",
     "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_imports_zoom.png"
-  },
-  {
-    "filename": "ep3_lps_mixed_default.png",
-    "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_mixed_default.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_mixed_default.png"
-  },
-  {
-    "filename": "ep3_lps_mixed_zoom.png",
-    "path": "figures/exploratory/lps_diagrams_by_ep/ep3_lps_mixed_zoom.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_mixed_zoom.png"
-  },
-  {
-    "filename": "1_minmax_genesis_density.png",
-    "path": "figures/exploratory/normalization_comparison/1_minmax_genesis_density.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/1_minmax_genesis_density.png"
-  },
-  {
-    "filename": "2_zscore_genesis_density.png",
-    "path": "figures/exploratory/normalization_comparison/2_zscore_genesis_density.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/2_zscore_genesis_density.png"
-  },
-  {
-    "filename": "3_fractional_weighted_genesis_density.png",
-    "path": "figures/exploratory/normalization_comparison/3_fractional_weighted_genesis_density.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/3_fractional_weighted_genesis_density.png"
-  },
-  {
-    "filename": "4_kl_divergence_genesis_density.png",
-    "path": "figures/exploratory/normalization_comparison/4_kl_divergence_genesis_density.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/4_kl_divergence_genesis_density.png"
-  },
-  {
-    "filename": "5_percentile_genesis_density.png",
-    "path": "figures/exploratory/normalization_comparison/5_percentile_genesis_density.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/5_percentile_genesis_density.png"
-  },
-  {
-    "filename": "6_dog_filter_genesis_density.png",
-    "path": "figures/exploratory/normalization_comparison/6_dog_filter_genesis_density.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/6_dog_filter_genesis_density.png"
-  },
-  {
-    "filename": "7_clr_compositional_genesis_density.png",
-    "path": "figures/exploratory/normalization_comparison/7_clr_compositional_genesis_density.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/7_clr_compositional_genesis_density.png"
-  },
-  {
-    "filename": "COMPARISON_minmax_vs_zscore.png",
-    "path": "figures/exploratory/normalization_comparison/COMPARISON_minmax_vs_zscore.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/normalization_comparison/COMPARISON_minmax_vs_zscore.png"
   },
   {
     "filename": "scatter_density.png",
@@ -664,12 +562,6 @@
     "path": "figures/exploratory/three_most_intense_cyclones_zoom/20070643_track.png",
     "category": "exploratory",
     "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/20070643_track.png"
-  },
-  {
-    "filename": "validation_vertical_integration.png",
-    "path": "figures/exploratory/validation_vertical_integration.png",
-    "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/validation_vertical_integration.png"
   },
   {
     "filename": "1_tracks_genesis_frequency.png",

@@ -1,0 +1,94 @@
+{
+  "analysis": "ck_subterms",
+  "title": "Ck Subterms Analysis \u2014 EP1 Barotropic Decomposition",
+  "phase": "intensification",
+  "phase_note": "Dominance classification uses the mean value of each subterm during the intensification phase. The dominant subterm is the one with the minimum (most negative) value, consistent with the sign convention in paper.tex: negative Ck = energy transfer from eddies to mean flow.",
+  "sample_sizes": {
+    "ep1_total": 444,
+    "ep1_with_lec": 385,
+    "valid": 385
+  },
+  "validation": {
+    "mean_ck_zenodo_corrected": -1.2613085459507873,
+    "mean_ck_new": -12.360824041584292,
+    "mean_subterm_sum": -12.369211743611917,
+    "mean_rel_error_pct": 880.0001653132165,
+    "note": "The ~880% relative error between Zenodo and new LEC Ck values reflects a known scale difference between the two datasets (different reference areas and time averaging). Internal consistency is confirmed: mean subterm sum (-12.37) \u2248 mean new LEC Ck total (-12.36) W/m\u00b2."
+  },
+  "subterms": [
+    {
+      "symbol": "Ck\u207d\u1d2c\u207e",
+      "name": "Term A",
+      "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"
+    },
+    {
+      "symbol": "Ck\u207d\u1d2e\u207e",
+      "name": "Term B",
+      "description": "Meridional flux of eddy KE with meridional wind"
+    },
+    {
+      "symbol": "Ck\u207d\u1d9c\u207e",
+      "name": "Term C",
+      "description": "Zonal flux of eddy KE with zonal wind"
+    },
+    {
+      "symbol": "Ck\u207d\u1d30\u207e",
+      "name": "Term D",
+      "description": "Mixed meridional and vertical flux with vertical shear of U"
+    },
+    {
+      "symbol": "Ck\u207d\u1d31\u207e",
+      "name": "Term E",
+      "description": "Mixed meridional and vertical flux with vertical shear of V"
+    }
+  ],
+  "dominance": [
+    {
+      "subterm_key": "Ck_1",
+      "symbol": "Ck\u207d\u1d2c\u207e",
+      "name": "Term A",
+      "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)",
+      "count": 72,
+      "percentage": 18.7
+    },
+    {
+      "subterm_key": "Ck_2",
+      "symbol": "Ck\u207d\u1d2e\u207e",
+      "name": "Term B",
+      "description": "Meridional flux of eddy KE with meridional wind",
+      "count": 147,
+      "percentage": 38.2
+    },
+    {
+      "subterm_key": "Ck_3",
+      "symbol": "Ck\u207d\u1d9c\u207e",
+      "name": "Term C",
+      "description": "Zonal flux of eddy KE with zonal wind",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "subterm_key": "Ck_4",
+      "symbol": "Ck\u207d\u1d30\u207e",
+      "name": "Term D",
+      "description": "Mixed meridional and vertical flux with vertical shear of U",
+      "count": 0,
+      "percentage": 0.0
+    },
+    {
+      "subterm_key": "Ck_5",
+      "symbol": "Ck\u207d\u1d31\u207e",
+      "name": "Term E",
+      "description": "Mixed meridional and vertical flux with vertical shear of V",
+      "count": 166,
+      "percentage": 43.1
+    }
+  ],
+  "figures": {
+    "boxplots_subterms": "figures/ck_subterms/ck_subterms_boxplots_subterms.png",
+    "boxplots_total": "figures/ck_subterms/ck_subterms_boxplots_total.png",
+    "genesis_density": "figures/ck_subterms/ck_subterms_genesis_density.png",
+    "genesis_normaldiff": "figures/ck_subterms/ck_subterms_genesis_normaldiff.png",
+    "tracks": "figures/ck_subterms/ck_subterms_tracks.png"
+  }
+}

@@ -203,6 +203,18 @@ def load_stats():
         stats[f"{label}_ADVT_EAST"] = f"{advT_boundary['east']:.3f}"
         stats[f"{label}_ADVT_WEST"] = f"{advT_boundary['west']:.3f}"
 
+        # === Temperature advection anomaly @ 850 hPa ===
+        if "adv_T_850_anom" in ds:
+            advT_a = ds["adv_T_850_anom"].values * 3600
+            advT_a_regional = compute_regional_stats(advT_a, x_2d, y_2d)
+            stats[f"{label}_ADVT_ANOM_FULL30"] = f"{advT_a_regional['full30']:.3f}"
+            stats[f"{label}_ADVT_ANOM_LEC15"]  = f"{advT_a_regional['lec15']:.3f}"
+            advT_a_boundary = compute_boundary_stats(advT_a, x_2d, y_2d)
+            stats[f"{label}_ADVT_ANOM_NORTH"] = f"{advT_a_boundary['north']:.3f}"
+            stats[f"{label}_ADVT_ANOM_SOUTH"] = f"{advT_a_boundary['south']:.3f}"
+            stats[f"{label}_ADVT_ANOM_EAST"]  = f"{advT_a_boundary['east']:.3f}"
+            stats[f"{label}_ADVT_ANOM_WEST"]  = f"{advT_a_boundary['west']:.3f}"
+
         # === Specific humidity @ 975 hPa ===
         if "q_975" in ds:
             q975 = ds["q_975"].values * 1000  # kg/kg to g/kg
@@ -234,6 +246,19 @@ def load_stats():
             stats[f"{label}_DIVQ_EAST"] = f"{div_q_boundary['east']:.3e}"
             stats[f"{label}_DIVQ_WEST"] = f"{div_q_boundary['west']:.3e}"
 
+        # === Moisture flux divergence anomaly @ 975 hPa ===
+        divq_anom_var = "div_q_975_anom" if "div_q_975_anom" in ds else None
+        if divq_anom_var is not None:
+            div_q_a = ds[divq_anom_var].values * 1000 * 3600
+            div_q_a_regional = compute_regional_stats(div_q_a, x_2d, y_2d)
+            stats[f"{label}_DIVQ_ANOM_FULL30"] = f"{div_q_a_regional['full30']:.3e}"
+            stats[f"{label}_DIVQ_ANOM_LEC15"]  = f"{div_q_a_regional['lec15']:.3e}"
+            div_q_a_boundary = compute_boundary_stats(div_q_a, x_2d, y_2d)
+            stats[f"{label}_DIVQ_ANOM_NORTH"] = f"{div_q_a_boundary['north']:.3e}"
+            stats[f"{label}_DIVQ_ANOM_SOUTH"] = f"{div_q_a_boundary['south']:.3e}"
+            stats[f"{label}_DIVQ_ANOM_EAST"]  = f"{div_q_a_boundary['east']:.3e}"
+            stats[f"{label}_DIVQ_ANOM_WEST"]  = f"{div_q_a_boundary['west']:.3e}"
+
         # === SLP ===
         if "msl" in ds:
             msl = ds["msl"].values / 100
@@ -261,6 +286,18 @@ def load_stats():
             stats[f"{label}_KEADV_SOUTH"] = f"{ke_adv_boundary['south']:.3e}"
             stats[f"{label}_KEADV_EAST"] = f"{ke_adv_boundary['east']:.3e}"
             stats[f"{label}_KEADV_WEST"] = f"{ke_adv_boundary['west']:.3e}"
+
+        # === KE advection anomaly @ 250 hPa ===
+        if "ke_adv_250_anom" in ds:
+            ke_adv_a = ds["ke_adv_250_anom"].values
+            ke_adv_a_regional = compute_regional_stats(ke_adv_a, x_2d, y_2d)
+            stats[f"{label}_KEADV_ANOM_FULL30"] = f"{ke_adv_a_regional['full30']:.3e}"
+            stats[f"{label}_KEADV_ANOM_LEC15"]  = f"{ke_adv_a_regional['lec15']:.3e}"
+            ke_adv_a_boundary = compute_boundary_stats(ke_adv_a, x_2d, y_2d)
+            stats[f"{label}_KEADV_ANOM_NORTH"] = f"{ke_adv_a_boundary['north']:.3e}"
+            stats[f"{label}_KEADV_ANOM_SOUTH"] = f"{ke_adv_a_boundary['south']:.3e}"
+            stats[f"{label}_KEADV_ANOM_EAST"]  = f"{ke_adv_a_boundary['east']:.3e}"
+            stats[f"{label}_KEADV_ANOM_WEST"]  = f"{ke_adv_a_boundary['west']:.3e}"
 
         # === RK criterion @ 250 hPa (if available) ===
         if "rk_criterion_250" in ds:
@@ -312,49 +349,64 @@ def export_stats_json(stats):
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # Mapping from internal stat keys to structured JSON entries
+    # Format: prefix → (diag_id, unit, is_flux, anom_prefix_or_None)
     DIAG_MAP = {
-        # (stat_prefix, diag_id, unit, is_flux)
-        "EGR":   ("egr",                  "day⁻¹",      False),
-        "PV200": ("pv-200",               "PVU",        False),
-        "PV850": ("pv-850",               "PVU",        False),
-        "ADVT":  ("temperature-advection","K h⁻¹",      True),
-        "DIVQ":  ("moisture-flux-divergence","g kg⁻¹ s⁻¹", True),
-        "SLP":   ("slp",                  "hPa",        False),
-        "KEADV": ("ke-advection",         "m² s⁻³",     True),
-        "AFC":   ("afc",                  "m² s⁻³",     True),
-        "RK":    ("rk-criterion",         "s⁻¹",        False),
+        # (stat_prefix, diag_id, unit, is_flux, anom_prefix)
+        "EGR":   ("egr",                      "day⁻¹",        False, None),
+        "PV200": ("pv-200",                   "PVU",          False, None),
+        "PV850": ("pv-850",                   "PVU",          False, None),
+        "ADVT":  ("temperature-advection",    "K h⁻¹",        True,  "ADVT_ANOM"),
+        "DIVQ":  ("moisture-flux-divergence", "g kg⁻¹ s⁻¹",  True,  "DIVQ_ANOM"),
+        "SLP":   ("slp",                      "hPa",          False, None),
+        "KEADV": ("ke-advection",             "m² s⁻³",       True,  "KEADV_ANOM"),
+        "AFC":   ("afc",                      "m² s⁻³",       True,  None),
+        "RK":    ("rk-criterion",             "s⁻¹",          False, None),
     }
 
     domain_stats = []
     boundary_fluxes = []
 
-    for prefix, (diag_id, unit, is_flux) in DIAG_MAP.items():
+    for prefix, (diag_id, unit, is_flux, anom_prefix) in DIAG_MAP.items():
         for ep in ["EP1", "EP2"]:
             lec_key  = f"{ep}_{prefix}_LEC15"
             full_key = f"{ep}_{prefix}_FULL30"
             if lec_key in stats:
-                domain_stats.append({
+                entry = {
                     "diagnostic_id": diag_id,
                     "ep": ep,
                     "unit": unit,
                     "inside_15x15": stats[lec_key],
                     "outside_15x15": stats[full_key] if full_key in stats else None,
-                })
+                }
+                # Add anomaly domain fields if available
+                if anom_prefix:
+                    a_lec  = f"{ep}_{anom_prefix}_LEC15"
+                    a_full = f"{ep}_{anom_prefix}_FULL30"
+                    entry["inside_15x15_anom"]  = stats.get(a_lec)
+                    entry["outside_15x15_anom"] = stats.get(a_full)
+                domain_stats.append(entry)
             if is_flux:
                 n_key  = f"{ep}_{prefix}_NORTH"
                 s_key  = f"{ep}_{prefix}_SOUTH"
                 e_key  = f"{ep}_{prefix}_EAST"
                 w_key  = f"{ep}_{prefix}_WEST"
                 if n_key in stats:
-                    boundary_fluxes.append({
+                    entry = {
                         "diagnostic_id": diag_id,
                         "ep": ep,
                         "unit": unit,
                         "north": stats[n_key],
-                        "south": stats[s_key] if s_key in stats else None,
-                        "east":  stats[e_key] if e_key in stats else None,
-                        "west":  stats[w_key] if w_key in stats else None,
-                    })
+                        "south": stats.get(s_key),
+                        "east":  stats.get(e_key),
+                        "west":  stats.get(w_key),
+                    }
+                    # Add anomaly boundary fields if available
+                    if anom_prefix:
+                        entry["north_anom"] = stats.get(f"{ep}_{anom_prefix}_NORTH")
+                        entry["south_anom"] = stats.get(f"{ep}_{anom_prefix}_SOUTH")
+                        entry["east_anom"]  = stats.get(f"{ep}_{anom_prefix}_EAST")
+                        entry["west_anom"]  = stats.get(f"{ep}_{anom_prefix}_WEST")
+                    boundary_fluxes.append(entry)
 
     out = {
         "generated_at": stats.get("GENERATION_DATE", ""),
@@ -368,7 +420,44 @@ def export_stats_json(stats):
     return out_path
 
 
+def generate_boundary_flux_table(stats):
+    """Generate a Markdown table comparing total and anomaly boundary fluxes.
 
+    Returns a Markdown string with one section per flux diagnostic.
+    EP' = anomaly relative to 1991–2020 climatology.
+    """
+    FLUX_DIAGS = [
+        # (label, prefix, anom_prefix, unit)
+        ("Temperature Advection (850 hPa)", "ADVT",  "ADVT_ANOM",  "K h⁻¹"),
+        ("Moisture Flux Div. (975 hPa)",    "DIVQ",  "DIVQ_ANOM",  "g kg⁻¹ s⁻¹"),
+        ("KE Advection (250 hPa)",          "KEADV", "KEADV_ANOM", "m² s⁻³"),
+        ("AFC (250 hPa)",                   "AFC",   None,          "m² s⁻³"),
+    ]
+
+    lines = [
+        "> **EP' = anomalia relativa à climatologia ERA5 1991–2020.** "
+        "Campos totais usam o compósito bruto; anomalias usam u′, v′, T′/q′ "
+        "(desvios da média mensal climatológica).\n",
+        "| Diagnóstico | Fronteira | EP1 (total) | EP1′ (anomalia) | EP2 (total) | EP2′ (anomalia) |",
+        "|-------------|-----------|------------:|----------------:|------------:|----------------:|",
+    ]
+
+    for diag_label, prefix, anom_prefix, unit in FLUX_DIAGS:
+        for boundary in ["NORTH", "SOUTH", "EAST", "WEST"]:
+            bname = boundary.capitalize()
+            ep1_total = stats.get(f"EP1_{prefix}_{boundary}", "—")
+            ep2_total = stats.get(f"EP2_{prefix}_{boundary}", "—")
+            ep1_anom  = stats.get(f"EP1_{anom_prefix}_{boundary}", "—") if anom_prefix else "—"
+            ep2_anom  = stats.get(f"EP2_{anom_prefix}_{boundary}", "—") if anom_prefix else "—"
+            lines.append(
+                f"| {diag_label} | {bname} (+{unit}) "
+                f"| {ep1_total} | {ep1_anom} | {ep2_total} | {ep2_anom} |"
+            )
+
+    return "\n".join(lines) + "\n"
+
+
+def populate_notes(stats):
     """Replace placeholders in SCIENTIFIC_NOTES.md."""
     if not NOTES_FILE.exists():
         print(f"⚠️  {NOTES_FILE} not found — skipping population")
@@ -376,11 +465,20 @@ def export_stats_json(stats):
 
     text = NOTES_FILE.read_text()
     n_replaced = 0
+
+    # Replace simple key placeholders
     for key, val in stats.items():
         placeholder = "{" + key + "}"
         if placeholder in text:
             text = text.replace(placeholder, val)
             n_replaced += 1
+
+    # Replace special table placeholder
+    table_placeholder = "{BOUNDARY_FLUX_TOTAL_ANOM_TABLE}"
+    if table_placeholder in text:
+        table_md = generate_boundary_flux_table(stats)
+        text = text.replace(table_placeholder, table_md)
+        n_replaced += 1
 
     NOTES_FILE.write_text(text)
     print(f"   ✓ Populated {n_replaced} placeholders in SCIENTIFIC_NOTES.md")

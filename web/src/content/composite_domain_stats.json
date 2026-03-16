@@ -2,14 +2,14 @@
   {
     "diagnostic_id": "egr",
     "ep": "EP1",
-    "unit": "day\u207b\u00b9",
+    "unit": "day⁻¹",
     "inside_15x15": "0.60",
     "outside_15x15": "0.54"
   },
   {
     "diagnostic_id": "egr",
     "ep": "EP2",
-    "unit": "day\u207b\u00b9",
+    "unit": "day⁻¹",
     "inside_15x15": "0.59",
     "outside_15x15": "0.52"
   },
@@ -44,30 +44,38 @@
   {
     "diagnostic_id": "temperature-advection",
     "ep": "EP1",
-    "unit": "K h\u207b\u00b9",
+    "unit": "K h⁻¹",
     "inside_15x15": "-0.078",
-    "outside_15x15": "-0.031"
+    "outside_15x15": "-0.031",
+    "inside_15x15_anom": null,
+    "outside_15x15_anom": null
   },
   {
     "diagnostic_id": "temperature-advection",
     "ep": "EP2",
-    "unit": "K h\u207b\u00b9",
+    "unit": "K h⁻¹",
     "inside_15x15": "-0.040",
-    "outside_15x15": "-0.013"
+    "outside_15x15": "-0.013",
+    "inside_15x15_anom": null,
+    "outside_15x15_anom": null
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
     "ep": "EP1",
-    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "unit": "g kg⁻¹ s⁻¹",
     "inside_15x15": "-1.655e+01",
-    "outside_15x15": "-2.235e+00"
+    "outside_15x15": "-2.235e+00",
+    "inside_15x15_anom": null,
+    "outside_15x15_anom": null
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
     "ep": "EP2",
-    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "unit": "g kg⁻¹ s⁻¹",
     "inside_15x15": "-6.436e+01",
-    "outside_15x15": "-2.414e+01"
+    "outside_15x15": "-2.414e+01",
+    "inside_15x15_anom": null,
+    "outside_15x15_anom": null
   },
   {
     "diagnostic_id": "slp",
@@ -86,42 +94,46 @@
   {
     "diagnostic_id": "ke-advection",
     "ep": "EP1",
-    "unit": "m\u00b2 s\u207b\u00b3",
+    "unit": "m² s⁻³",
     "inside_15x15": "-4.021e-03",
-    "outside_15x15": "-2.820e-03"
+    "outside_15x15": "-2.820e-03",
+    "inside_15x15_anom": null,
+    "outside_15x15_anom": null
   },
   {
     "diagnostic_id": "ke-advection",
     "ep": "EP2",
-    "unit": "m\u00b2 s\u207b\u00b3",
+    "unit": "m² s⁻³",
     "inside_15x15": "-2.722e-03",
-    "outside_15x15": "-1.259e-03"
+    "outside_15x15": "-1.259e-03",
+    "inside_15x15_anom": null,
+    "outside_15x15_anom": null
   },
   {
     "diagnostic_id": "afc",
     "ep": "EP1",
-    "unit": "m\u00b2 s\u207b\u00b3",
+    "unit": "m² s⁻³",
     "inside_15x15": "1.574e-03",
     "outside_15x15": "1.758e-04"
   },
   {
     "diagnostic_id": "afc",
     "ep": "EP2",
-    "unit": "m\u00b2 s\u207b\u00b3",
+    "unit": "m² s⁻³",
     "inside_15x15": "7.704e-04",
     "outside_15x15": "-2.863e-04"
   },
   {
     "diagnostic_id": "rk-criterion",
     "ep": "EP1",
-    "unit": "s\u207b\u00b9",
+    "unit": "s⁻¹",
     "inside_15x15": "2.814e-11",
     "outside_15x15": "2.242e-11"
   },
   {
     "diagnostic_id": "rk-criterion",
     "ep": "EP2",
-    "unit": "s\u207b\u00b9",
+    "unit": "s⁻¹",
     "inside_15x15": "2.818e-11",
     "outside_15x15": "2.271e-11"
   }

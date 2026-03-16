@@ -89,6 +89,7 @@ def load_domain_stats():
       - outside_15x15 (full30): mean over the full 30×30° domain
         NOTE: 'outside' = full domain context (not a ring); the LEC subdomain
         is a subset of full30. This distinction is documented in step5.
+      - inside_15x15_anom / outside_15x15_anom: same regions for anomaly composites
     """
     stats_file = RESULTS_DIR / "composite_stats.json"
     if not stats_file.exists():

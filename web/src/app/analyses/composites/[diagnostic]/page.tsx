@@ -31,6 +31,10 @@ interface BoundaryFluxEntry {
   south: string | null
   east: string | null
   west: string | null
+  north_anom?: string | null
+  south_anom?: string | null
+  east_anom?: string | null
+  west_anom?: string | null
 }
 
 interface FigureEntry {
@@ -286,34 +290,41 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50/50">
-                      <th className="px-4 py-3 text-left font-semibold text-slate-600">Pattern</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">North</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">South</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">East</th>
-                      <th className="px-4 py-3 text-right font-semibold text-slate-600">West</th>
+                      <th className="px-4 py-3 text-left font-semibold text-slate-600" rowSpan={2}>Pattern</th>
+                      <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>North</th>
+                      <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>South</th>
+                      <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>East</th>
+                      <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>West</th>
+                    </tr>
+                    <tr className="border-b border-slate-200 bg-slate-50/50">
+                      {(['North','South','East','West'] as const).flatMap((_, i) => [
+                        <th key={`t${i}`} className="px-3 py-1 text-right text-xs font-medium text-slate-500">total</th>,
+                        <th key={`a${i}`} className="px-3 py-1 text-right text-xs font-medium text-amber-500">anom′</th>,
+                      ])}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="px-4 py-3 font-medium text-slate-900">EP1</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{ep1Fluxes?.north ?? '—'}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{ep1Fluxes?.south ?? '—'}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{ep1Fluxes?.east ?? '—'}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{ep1Fluxes?.west ?? '—'}</td>
-                    </tr>
-                    <tr className="hover:bg-slate-50/50">
-                      <td className="px-4 py-3 font-medium text-slate-900">EP2</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{ep2Fluxes?.north ?? '—'}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{ep2Fluxes?.south ?? '—'}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{ep2Fluxes?.east ?? '—'}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-700">{ep2Fluxes?.west ?? '—'}</td>
-                    </tr>
+                    {([['EP1', ep1Fluxes], ['EP2', ep2Fluxes]] as [string, typeof ep1Fluxes][]).map(([label, f]) => (
+                      <tr key={label} className="hover:bg-slate-50/50">
+                        <td className="px-4 py-3 font-medium text-slate-900">{label}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-slate-700">{f?.north ?? '—'}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-amber-600">{f?.north_anom ?? '—'}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-slate-700">{f?.south ?? '—'}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-amber-600">{f?.south_anom ?? '—'}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-slate-700">{f?.east ?? '—'}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-amber-600">{f?.east_anom ?? '—'}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-slate-700">{f?.west ?? '—'}</td>
+                        <td className="px-3 py-3 text-right tabular-nums text-amber-600">{f?.west_anom ?? '—'}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
               <div className="border-t border-slate-100 px-4 py-2">
                 <p className="text-xs text-slate-400">
                   Mean {diag.shortName} along each edge of the {DATASET_STATS.innerDomainSize} inner domain (±7.5°).
+                  <span className="ml-1 text-amber-500 font-medium">anom′</span>
+                  {' '}= anomaly relative to ERA5 1991–2020 climatology.
                   Source: <code>step5_update_scientific_notes.py</code> → <code>results/ep_structure/composite_stats.json</code>.
                 </p>
               </div>

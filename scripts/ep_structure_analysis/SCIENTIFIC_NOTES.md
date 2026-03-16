@@ -607,6 +607,16 @@ The climatological wind speed is recovered as $V_{\text{clim}} = V_{\text{total}
 
 ---
 
+## 4.15 Boundary Flux Summary — Total vs Anomaly
+
+The table below compares the mean diagnostic field along each edge of the 15°×15° LEC
+subdomain for the **total** composite (EP1, EP2) and the **anomaly** composite
+(EP1′, EP2′ — departure from the ERA5 1991–2020 monthly climatology).
+
+{BOUNDARY_FLUX_TOTAL_ANOM_TABLE}
+
+---
+
 ## 5. Physical Interpretation
 
 **Status:** Analysis of spatial patterns and physical mechanisms is ongoing. Preliminary observations include:

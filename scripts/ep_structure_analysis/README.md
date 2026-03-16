@@ -211,6 +211,34 @@ Example output (with download process active):
 
 ### Scientific Documentation
 
+#### Anomaly notation (EP′)
+
+Several composite fields are computed as **anomalies relative to the ERA5 1991–2020
+monthly climatology** (WMO standard reference period). These are denoted with a prime
+symbol (′) both in figures and in statistical outputs:
+
+| Notation | Meaning |
+|----------|---------|
+| **EP1** | Composite using the *total* field (raw ERA5 value centred on cyclone) |
+| **EP1′** | Composite using the *anomaly* field: X′ = X − X̄ₘ, where X̄ₘ is the ERA5 30-year monthly mean (1991–2020) interpolated to the cyclone location and timestamp |
+| **EP2** | Same as EP1 for the EP2 sample |
+| **EP2′** | Same as EP1′ for the EP2 sample |
+
+The anomaly decomposition isolates the **synoptic-scale eddy signal** from the
+seasonal cycle and background climatology. For linear diagnostics (temperature
+advection, KE advection), X′ = X(u′, v′, T′) exactly. For non-linear diagnostics
+(PV, moisture flux divergence), the full anomaly is computed as exact subtraction:
+PV′ = PV(total) − PV(climatology).
+
+> **Note on AFC:** AFC is already computed from eddy winds (φ′, v⃗′), so it is
+> by construction an anomaly field. No additional anomaly version is generated.
+
+Both total and anomaly statistics are exported to:
+- `results/ep_structure/composite_stats.json` — fields `north`/`north_anom`, etc.
+- `web/src/content/composite_boundary_fluxes.json` — same structure for the web
+- `web/src/content/composite_domain_stats.json` — `inside_15x15` and `inside_15x15_anom`
+- `scripts/ep_structure_analysis/SCIENTIFIC_NOTES.md` — section 4.15 summary table
+
 #### PDF generation
 
 Generate a professional PDF version of SCIENTIFIC_NOTES.md:

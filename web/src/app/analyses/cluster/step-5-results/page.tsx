@@ -85,27 +85,6 @@ export default function Step5Page() {
           </div>
         </section>
 
-        {/* Extension point callout */}
-        <ResultSummaryCallout type="warning" title="Future Extension — Detailed Results">
-          <p>
-            This section will be expanded in a future iteration with additional results from
-            the exploratory analysis pipeline (<code>scripts/exploratory/</code>). Planned additions:
-          </p>
-          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
-            <li>Detailed EP1 vs EP2 intensity comparison (vorticity, pressure, deepening rate)</li>
-            <li>Seasonal and interannual variability breakdown</li>
-            <li>Genesis region analysis by EP</li>
-            <li>Individual EP Lorenz Phase Space diagrams from <code>figures/exploratory/lps_diagrams_by_ep/</code></li>
-            <li>Case study examples (three most intense cyclones)</li>
-            <li>Density diagrams with diabatic generation (Ge)</li>
-          </ul>
-          <p className="mt-2 text-xs text-slate-500">
-            Available figures: <code>figures/exploratory/lps_diagrams_by_ep/</code> (18 files),{' '}
-            <code>figures/exploratory/ep_analysis/</code> (4 plots + CSV),{' '}
-            <code>figures/exploratory/density_ge/</code> (20+ plots).
-          </p>
-        </ResultSummaryCallout>
-
         <ResultSummaryCallout type="result" title="Summary">
           <p>
             The cluster analysis successfully identifies three physically distinct Energy Patterns

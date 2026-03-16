@@ -515,6 +515,30 @@ export const KEY_REFERENCES: Reference[] = [
     journal: 'J. Atmos. Sci.',
     doi: '10.1175/1520-0469(1993)050<2038:DDOBWA>2.0.CO;2',
   },
+  {
+    id: 'brennan-vincent-1980',
+    authors: 'Brennan, F. E. and Vincent, D. G.',
+    year: 1980,
+    title: 'Zonal and eddy components of the synoptic-scale energy budget during intensification of Hurricane Carmen (1974)',
+    journal: 'Mon. Weather Rev. 108(7):954–965',
+    doi: '10.1175/1520-0493(1980)108<0954:ZAECOT>2.0.CO;2',
+  },
+  {
+    id: 'michaelides-1987',
+    authors: 'Michaelides, S. C.',
+    year: 1987,
+    title: 'Limited area energetics of Genoa cyclogenesis',
+    journal: 'Mon. Weather Rev. 115(1):13–26',
+    doi: '10.1175/1520-0493(1987)115<0013:LAEOGC>2.0.CO;2',
+  },
+  {
+    id: 'michaelides-1999',
+    authors: 'Michaelides, S. C., Prezerakos, N. G., and Flocas, H. A.',
+    year: 1999,
+    title: 'Quasi-Lagrangian energetics of an intense Mediterranean cyclone',
+    journal: 'Q. J. R. Meteorol. Soc. 125(553):139–168',
+    doi: '10.1002/qj.49712555307',
+  },
 ]
 
 // --- Dataset Statistics ---

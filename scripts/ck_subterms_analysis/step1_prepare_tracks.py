@@ -4,11 +4,13 @@ Step 1: Prepare Track Files for LorenzCycleToolkit
 This script converts ALL EP1 cyclone tracks to LorenzCycleToolkit input format.
 
 Prerequisites:
-- Run scripts/ep1_full_analysis/step1_select_all_ep1.py first
-- This creates results/ep1_full/all_ep1_cases.csv with ALL EP1 cyclones (no spatial restriction)
+- results/ep_structure/ep1_cases.csv must exist.
+  This file is produced by scripts/ep_structure_analysis/ and contains all EP1
+  cyclones (no spatial restriction) with their intensification-phase windows.
+  No other upstream script is required.
 
 Input:
-- results/ep1_full/all_ep1_cases.csv - ALL EP1 cyclones
+- results/ep_structure/ep1_cases.csv - ALL EP1 cyclones (from ep_structure_analysis)
 - Main track database (via load_tracks())
 
 Output Format (one file per cyclone):
@@ -36,7 +38,8 @@ from scripts.utils.load_data import load_tracks
 
 # Configuration
 BASE_DIR = Path(__file__).resolve().parents[2]
-ALL_EP1_CASES_FILE = BASE_DIR / "results" / "ep1_full" / "all_ep1_cases.csv"
+# Source of truth for EP1 cyclones: produced by scripts/ep_structure_analysis/
+ALL_EP1_CASES_FILE = BASE_DIR / "results" / "ep_structure" / "ep1_cases.csv"
 OUTPUT_DIR = BASE_DIR / "data" / "ck_analysis" / "tracks"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -122,17 +125,17 @@ def main():
     print("STEP 1: Preparing Track Files for LorenzCycleToolkit (ALL EP1)")
     print("=" * 80)
     
-    # Check if all EP1 cases file exists
+    # Check if EP1 cases file exists
     if not ALL_EP1_CASES_FILE.exists():
-        print(f"\n❌ Error: All EP1 cases file not found: {ALL_EP1_CASES_FILE}")
-        print("\nPlease run scripts/ep1_full_analysis/step1_select_all_ep1.py first.")
-        print("This will create the required file with ALL EP1 cyclones.")
+        print(f"\n❌ Error: EP1 cases file not found: {ALL_EP1_CASES_FILE}")
+        print("\nThis file is produced by scripts/ep_structure_analysis/.")
+        print("Ensure the ep_structure_analysis pipeline has been run first.")
         return 1
     
     # Load all EP1 cases
-    print(f"\n1. Loading ALL EP1 cyclones...")
+    print(f"\n1. Loading ALL EP1 cyclones from ep_structure_analysis...")
     all_ep1_cases = pd.read_csv(ALL_EP1_CASES_FILE)
-    print(f"   Found {len(all_ep1_cases)} EP1 cyclones (no spatial restriction)")
+    print(f"   Found {len(all_ep1_cases)} EP1 cyclones")
     
     # Load full track database
     print(f"\n2. Loading full track database...")

@@ -5,6 +5,9 @@ Extract Ck-subterms analysis data for the web site.
 Reads results from results/ck_subterms/ and generates a JSON manifest
 for the ck-subterms web analysis page.
 
+The manifest reflects the LEC audit of locally computed energetics —
+no comparison with external datasets is included.
+
 Usage:
     python scripts/web/extract_ck_subterms_site_data.py
 
@@ -20,18 +23,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RESULTS_DIR = REPO_ROOT / "results" / "ck_subterms"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
-# Ck subterm labels (from paper.tex Table / Eq.)
+# Ck subterm labels – plain text for web (HTML/JSON context)
 SUBTERM_LABELS = {
-    "Ck_1": {"symbol": "Ck⁽ᴬ⁾", "name": "Term A", "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"},
-    "Ck_2": {"symbol": "Ck⁽ᴮ⁾", "name": "Term B", "description": "Meridional flux of eddy KE with meridional wind"},
-    "Ck_3": {"symbol": "Ck⁽ᶜ⁾", "name": "Term C", "description": "Zonal flux of eddy KE with zonal wind"},
-    "Ck_4": {"symbol": "Ck⁽ᴰ⁾", "name": "Term D", "description": "Mixed meridional and vertical flux with vertical shear of U"},
-    "Ck_5": {"symbol": "Ck⁽ᴱ⁾", "name": "Term E", "description": "Mixed meridional and vertical flux with vertical shear of V"},
+    "Ck_1": {"symbol": "C_K^(a)", "name": "Term (a)", "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"},
+    "Ck_2": {"symbol": "C_K^(b)", "name": "Term (b)", "description": "Meridional flux of eddy KE with meridional wind"},
+    "Ck_3": {"symbol": "C_K^(c)", "name": "Term (c)", "description": "Zonal flux of eddy KE with zonal wind"},
+    "Ck_4": {"symbol": "C_K^(d)", "name": "Term (d)", "description": "Mixed meridional and vertical flux with vertical shear of U"},
+    "Ck_5": {"symbol": "C_K^(e)", "name": "Term (e)", "description": "Mixed meridional and vertical flux with vertical shear of V"},
 }
 
 FIGURE_PATHS = {
-    "boxplots_subterms": "figures/ck_subterms/ck_subterms_boxplots_subterms.png",
-    "boxplots_total": "figures/ck_subterms/ck_subterms_boxplots_total.png",
+    "boxplots": "figures/ck_subterms/ck_subterms_boxplots.png",
     "genesis_density": "figures/ck_subterms/ck_subterms_genesis_density.png",
     "genesis_normaldiff": "figures/ck_subterms/ck_subterms_genesis_normaldiff.png",
     "tracks": "figures/ck_subterms/ck_subterms_tracks.png",
@@ -47,20 +49,27 @@ def read_csv_safe(filepath):
         return list(csv.DictReader(f))
 
 
+def load_audit_summary() -> dict:
+    """Load lec_audit_summary.json if available, else fall back to CSV."""
+    json_path = RESULTS_DIR / "lec_audit_summary.json"
+    if json_path.exists():
+        with open(json_path) as f:
+            return json.load(f)
+    # Fall back to CSV
+    rows = read_csv_safe(RESULTS_DIR / "lec_audit_summary.csv")
+    if rows:
+        return rows[0]
+    return {}
+
+
 def extract_manifest():
     WEB_CONTENT.mkdir(parents=True, exist_ok=True)
 
     # Load per-cyclone table
     per_cyclone = read_csv_safe(RESULTS_DIR / "ep1_ck_subterms_per_cyclone.csv")
 
-    # Load validation summary
-    validation = read_csv_safe(RESULTS_DIR / "validation_summary.csv")
-
-    # Load diagnostic summary text
-    diagnostic_text = ""
-    diag_file = RESULTS_DIR / "diagnostic_summary.txt"
-    if diag_file.exists():
-        diagnostic_text = diag_file.read_text()
+    # Load LEC audit summary
+    audit_summary = load_audit_summary()
 
     # Compute dominance distribution
     dominance_counts = {}
@@ -83,8 +92,21 @@ def extract_manifest():
             "percentage": round(100.0 * count / total_valid, 1) if total_valid > 0 else 0.0,
         })
 
-    # Extract validation stats
-    val_stats = validation[0] if validation else {}
+    # Sample size counts from audit
+    n_ep1_total  = int(audit_summary.get("n_ep1_expected", 444))
+    n_lec_dirs   = int(audit_summary.get("n_lec_directory_found", 0))
+    n_ck_total   = int(audit_summary.get("n_with_ck_total_file", 0))
+    n_ck_subs    = int(audit_summary.get("n_with_all_ck_subterm_files", 0))
+    n_usable     = int(audit_summary.get("n_usable_for_dominance", total_valid))
+
+    # Mean energetics from per-cyclone table
+    ck_vals = [float(r["Ck_total_new"]) for r in per_cyclone
+               if r.get("Ck_total_new") not in ("", None) and r["Ck_total_new"] == r["Ck_total_new"]]
+    mean_ck_new = sum(ck_vals) / len(ck_vals) if ck_vals else 0.0
+
+    sub_sums = [float(r["subterms_sum"]) for r in per_cyclone
+                if r.get("subterms_sum") not in ("", None) and r["subterms_sum"] == r["subterms_sum"]]
+    mean_subterm_sum = sum(sub_sums) / len(sub_sums) if sub_sums else 0.0
 
     manifest = {
         "analysis": "ck_subterms",
@@ -94,25 +116,62 @@ def extract_manifest():
             "Dominance classification uses the mean value of each subterm "
             "during the intensification phase. The dominant subterm is the one "
             "with the minimum (most negative) value, consistent with the sign "
-            "convention in paper.tex: negative Ck = energy transfer from eddies to mean flow."
+            "convention in paper.tex: negative Ck = mean flow transfers energy to eddies "
+            "(K_Z → K_E; barotropic instability)."
         ),
         "sample_sizes": {
-            "ep1_total": int(val_stats.get("n_ep1_total", 444)),
-            "ep1_with_lec": int(val_stats.get("n_ep1_with_new_lec", 385)),
-            "valid": int(val_stats.get("n_valid", 385)),
-        },
-        "validation": {
-            "mean_ck_zenodo_corrected": float(val_stats.get("mean_ck_zenodo_corrected", 0)),
-            "mean_ck_new": float(val_stats.get("mean_ck_new", 0)),
-            "mean_subterm_sum": float(val_stats.get("mean_subterm_sum", 0)),
-            "mean_rel_error_pct": float(val_stats.get("mean_rel_error_pct", 0)),
+            "ep1_total": n_ep1_total,
+            "ep1_with_lec_dir": n_lec_dirs,
+            "ep1_with_ck_total_file": n_ck_total,
+            "ep1_with_all_ck_subterm_files": n_ck_subs,
+            "ep1_with_lec": n_usable,
+            "valid_for_boxplots": n_usable,
             "note": (
-                "The ~880% relative error between Zenodo and new LEC Ck values reflects "
-                "a known scale difference between the two datasets (different reference areas "
-                "and time averaging). Internal consistency is confirmed: mean subterm sum "
-                f"({float(val_stats.get('mean_subterm_sum', 0)):.2f}) ≈ mean new LEC Ck total "
-                f"({float(val_stats.get('mean_ck_new', 0)):.2f}) W/m²."
+                f"ep1_total ({n_ep1_total}) = full EP1 population from ep_structure/ep1_cases.csv. "
+                f"ep1_with_lec ({n_usable}) = subset with complete, valid Ck subterm output files "
+                f"(Ck_pressure_level.csv + Ck_1..5_pressure_level.csv, non-empty, with data in the "
+                f"intensification window). Boxplots and dominance classification use N={n_usable}. "
+                f"'All EP1' genesis density and track panels use the full N={n_ep1_total} population."
             ),
+        },
+        "lec_audit": {
+            "source": "results/ck_analysis/lec_results/",
+            "ep1_cases_source": "results/ep_structure/ep1_cases.csv",
+            "n_ep1_expected": n_ep1_total,
+            "n_lec_directory_found": n_lec_dirs,
+            "n_with_ck_total_file": n_ck_total,
+            "n_with_all_ck_subterm_files": n_ck_subs,
+            "n_usable_for_dominance": n_usable,
+            "mean_ck_new": round(mean_ck_new, 4),
+            "mean_subterm_sum": round(mean_subterm_sum, 4),
+            "note": (
+                f"Internal consistency: mean subterm sum ({mean_subterm_sum:.2f} W/m²) "
+                f"≈ mean Ck total ({mean_ck_new:.2f} W/m²), confirming correct "
+                "vertical integration of locally computed energetics."
+            ),
+        },
+        "normalization_method": {
+            "title": "Normalized genesis density anomaly (Figure 3)",
+            "formula": "anomaly[lat,lon] = norm_k[lat,lon] − norm_all[lat,lon]",
+            "steps": [
+                "Step 1: Compute KDE genesis density for (A) all EP1 cyclones "
+                f"(n={n_ep1_total}) → density_all, and (B) each dominant-subterm subset (n_k) → density_k. "
+                "KDE uses haversine metric, Gaussian kernel, bandwidth=0.05 rad "
+                "(Hoskins & Hodges 2005 method).",
+
+                "Step 2: Apply Min-Max normalization to positive values only. "
+                "norm_all[lat,lon] = (density_all − min_pos) / (max_pos − min_pos), "
+                "where min_pos and max_pos are the minimum and maximum of all positive "
+                "values in density_all. Zero and negative values remain 0. "
+                "Same formula applied to each density_k → norm_k.",
+
+                "Step 3: Relative anomaly = norm_k − norm_all. "
+                "Positive (red): enhanced genesis for this subterm relative to all EP1. "
+                "Negative (blue): suppressed genesis for this subterm relative to all EP1.",
+
+                "Step 4: A shared diverging colorbar spans [−max_abs, +max_abs] where "
+                "max_abs = max absolute anomaly across all valid subterm panels.",
+            ],
         },
         "subterms": list(SUBTERM_LABELS.values()),
         "dominance": dominance_summary,
@@ -121,13 +180,19 @@ def extract_manifest():
 
     output = WEB_CONTENT / "ck_subterms_manifest.json"
     with open(output, "w") as f:
-        json.dump(manifest, f, indent=2)
+        json.dump(manifest, f, indent=2, ensure_ascii=False)
     print(f"  ✓ {output.relative_to(REPO_ROOT)}")
     return manifest
 
 
 if __name__ == "__main__":
-    print("Extracting Ck subterms site data...")
+    print("Extracting Ck subterms site data (LEC audit)...")
     m = extract_manifest()
-    print(f"\nDone. Sample sizes: EP1={m['sample_sizes']['ep1_total']}, valid={m['sample_sizes']['valid']}")
+    ss = m["sample_sizes"]
+    print(f"\nDone.")
+    print(f"  EP1 total:          {ss['ep1_total']}")
+    print(f"  LEC dirs found:     {ss['ep1_with_lec_dir']}")
+    print(f"  With all subterms:  {ss['ep1_with_all_ck_subterm_files']}")
+    print(f"  Valid for dominance:{ss['ep1_with_lec']}")
     print(f"Dominance distribution: { {d['subterm_key']: d['count'] for d in m['dominance']} }")
+

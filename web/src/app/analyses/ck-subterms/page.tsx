@@ -28,17 +28,37 @@ interface DominanceEntry {
   percentage: number
 }
 
+interface LecAudit {
+  source: string
+  ep1_cases_source: string
+  n_ep1_expected: number
+  n_lec_directory_found: number
+  n_with_ck_total_file: number
+  n_with_all_ck_subterm_files: number
+  n_usable_for_dominance: number
+  mean_ck_new: number
+  mean_subterm_sum: number
+  note: string
+}
+
 interface CkSubtermsManifest {
   title: string
   phase: string
   phase_note: string
-  sample_sizes: { ep1_total: number; ep1_with_lec: number; valid: number }
-  validation: {
-    mean_ck_zenodo_corrected: number
-    mean_ck_new: number
-    mean_subterm_sum: number
-    mean_rel_error_pct: number
+  sample_sizes: {
+    ep1_total: number
+    ep1_with_lec_dir: number
+    ep1_with_ck_total_file: number
+    ep1_with_all_ck_subterm_files: number
+    ep1_with_lec: number
+    valid_for_boxplots: number
     note: string
+  }
+  lec_audit?: LecAudit
+  normalization_method?: {
+    title: string
+    formula: string
+    steps: string[]
   }
   subterms: SubtermInfo[]
   dominance: DominanceEntry[]
@@ -56,12 +76,14 @@ function loadManifest(): CkSubtermsManifest | null {
 export default function CkSubtermsPage() {
   const manifest = loadManifest()
   const n_ep1 = manifest?.sample_sizes.ep1_total ?? ENERGY_PATTERNS.EP1.count
-  const n_valid = manifest?.sample_sizes.valid ?? 385
+  const n_lec = manifest?.sample_sizes.ep1_with_lec ?? 385
+  const n_lec_dirs = manifest?.sample_sizes.ep1_with_lec_dir ?? n_lec
+  const n_ck_subs = manifest?.sample_sizes.ep1_with_all_ck_subterm_files ?? n_lec
   const dominance = manifest?.dominance ?? []
+  const lec_audit = manifest?.lec_audit
 
   const figures = {
-    boxplots_subterms: figureUrl('figures/ck_subterms/ck_subterms_boxplots_subterms.png'),
-    boxplots_total: figureUrl('figures/ck_subterms/ck_subterms_boxplots_total.png'),
+    boxplots: figureUrl('figures/ck_subterms/ck_subterms_boxplots.png'),
     genesis_density: figureUrl('figures/ck_subterms/ck_subterms_genesis_density.png'),
     genesis_normaldiff: figureUrl('figures/ck_subterms/ck_subterms_genesis_normaldiff.png'),
     tracks: figureUrl('figures/ck_subterms/ck_subterms_tracks.png'),
@@ -73,8 +95,8 @@ export default function CkSubtermsPage() {
       <AnalysisHero
         title="Ck Subterms Analysis"
         subtitle="EP1 — Barotropic Energy Conversion Decomposition"
-        badge="EP1 Validation"
-        description={`Decomposition of the barotropic kinetic energy conversion (Ck) into five subterms for EP1 cyclones (N=${n_ep1}). Dominance classification uses the intensification-phase mean of each subterm. Negative Ck indicates energy transfer from eddies to the mean flow.`}
+        badge="LEC Audit"
+        description={`Decomposition of the barotropic kinetic energy conversion (Ck) into five subterms for EP1 cyclones. Total EP1 population: N=${n_ep1}. Cyclones with complete, validated LEC subterm data (used for boxplots and dominance classification): N=${n_lec}. Genesis density and track panels use the full N=${n_ep1} population. Negative Ck indicates barotropic instability: mean flow transfers energy to eddies (K_Z → K_E).`}
       />
 
       <div className="space-y-10">
@@ -84,15 +106,47 @@ export default function CkSubtermsPage() {
             The barotropic conversion term C<sub>K</sub> represents the exchange of kinetic energy
             between cyclone-scale eddies and the background mean flow. In EP1 (the most energetically
             active cluster), C<sub>K</sub> is strongly <strong>negative</strong> during
-            intensification (mean ≈ −16.5 W m⁻²), meaning that{' '}
-            <em>eddies transfer energy to the mean flow</em> (K<sub>E</sub> → K<sub>Z</sub>). EP1
-            cyclones are therefore strong energy exporters, not typical barotropic-instability
-            systems (which would have C<sub>K</sub> &gt; 0). This analysis decomposes C<sub>K</sub>{' '}
+            intensification (mean ≈ −16.5 W m⁻²), indicating{' '}
+            <em>barotropic instability</em>: the mean flow transfers energy to the eddies (K<sub>Z</sub> → K<sub>E</sub>).
+            EP1 cyclones are therefore strongly driven by barotropic instability. This analysis
+            decomposes C<sub>K</sub>{' '}
             into five subterms (A–E) to identify which dynamical mechanism dominates this
-            eddy-to-mean-flow energy export during EP1 intensification, and whether genesis
+            mean-to-eddy energy transfer during EP1 intensification, and whether genesis
             location is systematically linked to a particular subterm.
           </p>
         </ResultSummaryCallout>
+
+        {/* LEC Audit metrics */}
+        <section>
+          <h2 className="mb-3 text-lg font-bold text-slate-900">LEC Results Audit</h2>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-5 text-sm leading-relaxed text-slate-700 space-y-3">
+            <p>
+              Each EP1 cyclone is audited against its locally computed LEC results in{' '}
+              <code className="rounded bg-white px-1 border border-emerald-200">results/ck_analysis/lec_results/</code>.
+              Eligibility requires the presence and integrity of all six pressure-level CSV files
+              ({' '}<code className="rounded bg-white px-1 border border-emerald-200">Ck_pressure_level.csv</code> and{' '}
+              <code className="rounded bg-white px-1 border border-emerald-200">Ck_1..5_pressure_level.csv</code>)
+              and at least one timestep within the intensification window.
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mt-3">
+              {[
+                { label: 'EP1 expected', value: n_ep1, note: 'full population' },
+                { label: 'LEC dirs found', value: n_lec_dirs, note: `${Math.round(100 * n_lec_dirs / n_ep1)}% of EP1` },
+                { label: 'With all Ck_1..5', value: n_ck_subs, note: `${Math.round(100 * n_ck_subs / n_ep1)}% of EP1` },
+                { label: 'Valid for dominance', value: n_lec, note: `used in figures` },
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg border border-emerald-200 bg-white p-3 text-center">
+                  <p className="text-2xl font-bold text-emerald-700">{item.value}</p>
+                  <p className="text-xs font-semibold text-slate-700 mt-0.5">{item.label}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{item.note}</p>
+                </div>
+              ))}
+            </div>
+            {lec_audit && (
+              <p className="text-xs text-slate-500 mt-2">{lec_audit.note}</p>
+            )}
+          </div>
+        </section>
 
         {/* Methodology */}
         <section>
@@ -100,14 +154,14 @@ export default function CkSubtermsPage() {
           <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm leading-relaxed text-slate-600 space-y-3">
             <p>
               <strong>Sign convention (paper.tex):</strong>{' '}
-              C<sub>K</sub> &lt; 0 → K<sub>E</sub> → K<sub>Z</sub> (eddies transfer energy to
-              the mean flow). C<sub>K</sub> &gt; 0 → K<sub>Z</sub> → K<sub>E</sub> (barotropic
-              instability; mean flow accelerates eddies). EP1 cyclones have large negative C<sub>K</sub>
-              — they are energy exporters, not barotropic-instability-driven systems.
+              C<sub>K</sub> &lt; 0 → K<sub>Z</sub> → K<sub>E</sub> (mean flow transfers energy
+              to the eddies; barotropic instability). C<sub>K</sub> &gt; 0 → K<sub>E</sub> → K<sub>Z</sub>{' '}
+              (eddies transfer energy to mean flow). EP1 cyclones have large negative C<sub>K</sub>
+              — they are strongly driven by barotropic instability (mean flow feeds eddies).
             </p>
             <p>
-              <strong>Subterm definition (paper.tex Eq. C_K):</strong> C<sub>K</sub> is
-              vertically integrated and decomposed into five terms (A–E) arising from horizontal
+              <strong>Subterm definition (paper.tex Eq. C<sub>K</sub>):</strong> C<sub>K</sub> is
+              vertically integrated and decomposed into five terms (a–e) arising from horizontal
               and vertical gradients of the background zonal and meridional wind. Each term is
               vertically integrated over pressure levels using{' '}
               <code className="rounded bg-slate-100 px-1">∑ (value × Δp / g)</code>, where
@@ -116,14 +170,81 @@ export default function CkSubtermsPage() {
             <p>
               <strong>Phase:</strong> The <em>intensification</em> phase is used for all
               dominance classification. Intensification windows are taken from{' '}
-              <code className="rounded bg-slate-100 px-1">results/ep1_full/all_ep1_cases.csv</code>.
+              <code className="rounded bg-slate-100 px-1">results/ep_structure/ep1_cases.csv</code>.
             </p>
             <p>
-              <strong>Normalization for density anomaly maps:</strong> Relative anomaly =
-              minmax_normalize(dominant-group density) − minmax_normalize(all-EP1 density).
-              Same formula as Figure 6 (genesis density KDE) in the paper. A shared diverging
-              colorbar spans the maximum absolute anomaly across all valid subterm panels.
+              <strong>LEC audit:</strong> Cases are audited from the directories in{' '}
+              <code className="rounded bg-slate-100 px-1">results/ck_analysis/lec_results/</code>.
+              Eligibility depends on the presence and integrity of{' '}
+              <code className="rounded bg-slate-100 px-1">Ck_pressure_level.csv</code> and{' '}
+              <code className="rounded bg-slate-100 px-1">Ck_1…Ck_5_pressure_level.csv</code>.
+              Dominance is only computed when all required files exist, are non-empty, and
+              contain valid data within the intensification window.
             </p>
+            <p>
+              <strong>Sample sizes:</strong>{' '}
+              Total EP1 population = <strong>N={n_ep1}</strong> (from{' '}
+              <code className="rounded bg-slate-100 px-1">ep_structure/ep1_cases.csv</code>).
+              Cyclones with complete, valid LEC output = <strong>N={n_lec}</strong>.
+              Boxplots and dominance classification use N={n_lec}.
+              The &#34;All EP1&#34; genesis density and track panels use the full N={n_ep1} population.
+            </p>
+          </div>
+        </section>
+
+        {/* Normalization methodology */}
+        <section>
+          <h2 className="mb-3 text-lg font-bold text-slate-900">
+            Normalization Methodology — Genesis Density Anomaly (Figure 3)
+          </h2>
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-5 text-sm leading-relaxed text-slate-700 space-y-3">
+            {manifest?.normalization_method ? (
+              <>
+                <p className="font-mono text-indigo-800 bg-white rounded px-3 py-2 border border-indigo-200">
+                  {manifest.normalization_method.formula}
+                </p>
+                <ol className="list-decimal list-inside space-y-2">
+                  {manifest.normalization_method.steps.map((step, i) => (
+                    <li key={i}>{step}</li>
+                  ))}
+                </ol>
+              </>
+            ) : (
+              <>
+                <p className="font-mono text-indigo-800 bg-white rounded px-3 py-2 border border-indigo-200">
+                  anomaly[lat, lon] = norm_k[lat, lon] − norm_all[lat, lon]
+                </p>
+                <ol className="list-decimal list-inside space-y-2">
+                  <li>
+                    <strong>Compute KDE genesis density</strong> for (A) all EP1 cyclones
+                    (N={n_ep1}) → <code className="rounded bg-slate-100 px-1">density_all</code>, and
+                    (B) each dominant-subterm subset (N<sub>k</sub>) → <code className="rounded bg-slate-100 px-1">density_k</code>.
+                    Uses haversine-metric Gaussian KDE with bandwidth = 0.05 rad (Hoskins &amp; Hodges 2005 method).
+                  </li>
+                  <li>
+                    <strong>Min-Max normalize positive values only</strong>{' '}
+                    (zero and negative values remain zero):
+                    <br />
+                    <code className="rounded bg-slate-100 px-1 ml-4">
+                      norm_all = (density_all − min_pos) / (max_pos − min_pos)
+                    </code>
+                    <br />
+                    where min_pos and max_pos are the minimum and maximum of all positive
+                    values in density_all. Same formula applied to density_k → norm_k.
+                  </li>
+                  <li>
+                    <strong>Relative anomaly</strong> ={' '}
+                    <code className="rounded bg-slate-100 px-1">norm_k − norm_all</code>.{' '}
+                    Positive (red): enhanced genesis for this subterm relative to all EP1.
+                    Negative (blue): suppressed genesis relative to all EP1.
+                  </li>
+                  <li>
+                    A <strong>shared diverging colorbar</strong> spans [−max_abs, +max_abs]
+                    where max_abs is the maximum absolute anomaly across all valid subterm panels.
+                  </li>
+                </ol>
+              </>
+            )}
           </div>
         </section>
 
@@ -154,7 +275,7 @@ export default function CkSubtermsPage() {
         {dominance.length > 0 && (
           <section>
             <h2 className="mb-4 text-lg font-bold text-slate-900">
-              Dominance Distribution (N={n_valid})
+              Dominance Distribution (N={n_lec} cyclones with valid LEC data)
             </h2>
             <div className="grid gap-3 sm:grid-cols-3">
               {dominance.filter((d) => d.count > 0).map((d) => (
@@ -167,7 +288,7 @@ export default function CkSubtermsPage() {
                     <TrendingDown className="h-4 w-4 text-slate-400" />
                   </div>
                   <p className="text-2xl font-bold text-slate-900">{d.count}</p>
-                  <p className="text-xs text-slate-500">{d.percentage}% of EP1 cyclones</p>
+                  <p className="text-xs text-slate-500">{d.percentage}% of cyclones with valid LEC data</p>
                   <p className="mt-1 text-xs text-slate-400 leading-relaxed">{d.name}</p>
                 </div>
               ))}
@@ -175,24 +296,13 @@ export default function CkSubtermsPage() {
           </section>
         )}
 
-        {/* Figure 1a — Subterm Boxplots */}
+        {/* Figure 1 — Combined Boxplots */}
         <section>
-          <h2 className="mb-4 text-lg font-bold text-slate-900">Figure 1a — Ck Subterms (A–E) Boxplots</h2>
+          <h2 className="mb-4 text-lg font-bold text-slate-900">Figure 1 — C<sub>K</sub> Boxplots: Subterms (a) and Total (b)</h2>
           <FigurePanel
-            src={figures.boxplots_subterms}
-            alt="Boxplots of Ck subterms A–E for EP1 cyclones during intensification (shared y-axis)"
-            caption={`Distribution of each C_K subterm (A–E) for the ${n_valid} EP1 cyclones during the intensification phase (shared y-axis). Values are intensification-phase means (vertically integrated, W m⁻²). Negative values indicate K_E → K_Z energy transfer. Whiskers = 5th–95th percentile.`}
-            source="scripts/ck_subterms_analysis/step3_validate_and_figures.py"
-          />
-        </section>
-
-        {/* Figure 1b — Total Ck Boxplot */}
-        <section>
-          <h2 className="mb-4 text-lg font-bold text-slate-900">Figure 1b — Total C_K Boxplot</h2>
-          <FigurePanel
-            src={figures.boxplots_total}
-            alt="Boxplot of total Ck for EP1 cyclones during intensification"
-            caption={`Distribution of total C_K for the ${n_valid} EP1 cyclones during the intensification phase (W m⁻²). Separated from the subterm figure to allow independent scaling. Negative values = K_E → K_Z (eddies export energy to mean flow). Whiskers = 5th–95th percentile.`}
+            src={figures.boxplots}
+            alt="Combined boxplot: C_K subterms (a-e) in left panel, total C_K in right panel"
+            caption={`Two-panel figure. Left panel (a): distribution of each C_K subterm (a–e) during the intensification phase (N=${n_lec} cyclones with valid LEC data). Right panel (b): total C_K. Both panels share W m⁻² on the y-axis but are independently scaled. Negative values indicate K_Z → K_E energy transfer (barotropic instability). Whiskers = 5th–95th percentile.`}
             source="scripts/ck_subterms_analysis/step3_validate_and_figures.py"
           />
         </section>
@@ -203,7 +313,7 @@ export default function CkSubtermsPage() {
           <FigurePanel
             src={figures.genesis_density}
             alt="Genesis density maps: all EP1 and subsets by dominant Ck subterm"
-            caption={`Multi-panel genesis density maps (KDE, Hoskins &amp; Hodges 2005 method). Top-left: all EP1 cyclones (N=${n_valid}). Remaining panels: cyclones where the named subterm is dominant during intensification. Units: cyclones / 10⁶ km² / year.`}
+            caption={`Multi-panel genesis density maps (KDE, Hoskins & Hodges 2005 method). Top-left: all EP1 cyclones (N=${n_ep1}, full population). Remaining panels: cyclones where the named subterm is dominant during intensification (N per panel shown in title). Per-panel colorbars; units: cyclones / 10⁶ km² / year.`}
             source="scripts/ck_subterms_analysis/step3_validate_and_figures.py"
           />
         </section>
@@ -225,43 +335,32 @@ export default function CkSubtermsPage() {
           <FigurePanel
             src={figures.tracks}
             alt="Full tracks of all EP1 systems and subsets by dominant Ck subterm"
-            caption={`Full cyclone tracks for all EP1 systems (N=${n_valid}) and subsets where each subterm dominates. Background tracks shown in grey for context. Coloured tracks correspond to the dominant-subterm subset.`}
+            caption={`Full cyclone tracks for all EP1 systems (N=${n_ep1}, full population) and subsets where each subterm dominates (N per panel shown in title). Background tracks shown in grey. Gold segments = intensification phase; green dots = genesis; red crosses = lysis.`}
             source="scripts/ck_subterms_analysis/step3_validate_and_figures.py"
           />
         </section>
-
-        {/* Validation note */}
-        {manifest?.validation && (
-          <ResultSummaryCallout type="warning" title="Validation Note">
-            <p>
-              {manifest.validation.note}
-            </p>
-            <p className="mt-2 text-xs text-slate-500">
-              Mean new LEC Ck: {manifest.validation.mean_ck_new.toFixed(2)} W/m² |{' '}
-              Mean subterm sum: {manifest.validation.mean_subterm_sum.toFixed(2)} W/m²
-            </p>
-          </ResultSummaryCallout>
-        )}
 
         {/* Data source */}
         <ResultSummaryCallout type="info" title="Data Sources">
           <ul className="space-y-1 text-sm">
             <li>
-              <strong>New LEC results:</strong>{' '}
+              <strong>LEC results (locally computed energetics):</strong>{' '}
               <code className="rounded bg-slate-100 px-1">results/ck_analysis/lec_results/</code>{' '}
-              — 385 EP1 cyclones with Ck subterms at vertical levels
+              — {n_lec} EP1 cyclones with complete Ck subterms at vertical levels (out of {n_ep1} total EP1)
             </li>
             <li>
               <strong>Intensification phases:</strong>{' '}
-              <code className="rounded bg-slate-100 px-1">results/ep1_full/all_ep1_cases.csv</code>
+              <code className="rounded bg-slate-100 px-1">results/ep_structure/ep1_cases.csv</code>
+              {' '}(produced by <code className="rounded bg-slate-100 px-1">scripts/ep_structure_analysis/</code>)
             </li>
             <li>
-              <strong>Cluster assignments:</strong>{' '}
-              <code className="rounded bg-slate-100 px-1">results/cluster/kmeans_clustered_data.csv</code>{' '}
-              (cluster 0 = EP1)
+              <strong>Audit files:</strong>{' '}
+              <code className="rounded bg-slate-100 px-1">results/ck_subterms/lec_audit_per_cyclone.csv</code>,{' '}
+              <code className="rounded bg-slate-100 px-1">lec_audit_summary.json</code>,{' '}
+              <code className="rounded bg-slate-100 px-1">lec_audit_report.txt</code>
             </li>
             <li>
-              <strong>Tracks:</strong> Zenodo dataset (7439 cyclones) via{' '}
+              <strong>Tracks:</strong> ERA5-based tracking database via{' '}
               <code className="rounded bg-slate-100 px-1">scripts/utils/load_data.py</code>
             </li>
           </ul>
@@ -270,3 +369,4 @@ export default function CkSubtermsPage() {
     </div>
   )
 }
+

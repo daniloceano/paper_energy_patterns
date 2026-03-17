@@ -3,8 +3,10 @@
 Run all Ck subterms analysis scripts in sequence.
 
 Prerequisites:
-- scripts/ep1_full_analysis/step1_select_all_ep1.py must be run first
-- This creates results/ep1_full/all_ep1_cases.csv with ALL EP1 cyclones
+- results/ep_structure/ep1_cases.csv must exist.
+  This is produced by scripts/ep_structure_analysis/ and is the new
+  source of truth for EP1 system selection.
+  The removed ep1_full_analysis workflow is no longer required.
 
 Usage:
     python scripts/ck_subterms_analysis/run_all.py
@@ -35,13 +37,12 @@ def main():
     print("Running Ck Subterms Analysis Pipeline (ALL EP1 CYCLONES)")
     print("=" * 80)
     
-    # Check prerequisites
-    required_file = PROJECT_ROOT / "results" / "ep1_full" / "all_ep1_cases.csv"
+    # Check prerequisites — new source of truth is ep_structure/ep1_cases.csv
+    required_file = PROJECT_ROOT / "results" / "ep_structure" / "ep1_cases.csv"
     if not required_file.exists():
         print(f"\n❌ Error: Required file not found: {required_file}")
-        print("\nPlease run the EP1 full selection analysis first:")
-        print("   python scripts/ep1_full_analysis/step1_select_all_ep1.py")
-        print("\nThis will create all_ep1_cases.csv with ALL EP1 cyclones (no spatial restriction).")
+        print("\nThis file is produced by scripts/ep_structure_analysis/.")
+        print("Ensure the ep_structure_analysis pipeline has been run first.")
         return 1
     
     successes = []

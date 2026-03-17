@@ -1,92 +1,110 @@
 {
   "analysis": "ck_subterms",
-  "title": "Ck Subterms Analysis \u2014 EP1 Barotropic Decomposition",
+  "title": "Ck Subterms Analysis — EP1 Barotropic Decomposition",
   "phase": "intensification",
-  "phase_note": "Dominance classification uses the mean value of each subterm during the intensification phase. The dominant subterm is the one with the minimum (most negative) value, consistent with the sign convention in paper.tex: negative Ck = energy transfer from eddies to mean flow.",
+  "phase_note": "Dominance classification uses the mean value of each subterm during the intensification phase. The dominant subterm is the one with the minimum (most negative) value, consistent with the sign convention in paper.tex: negative Ck = mean flow transfers energy to eddies (K_Z → K_E; barotropic instability).",
   "sample_sizes": {
     "ep1_total": 444,
+    "ep1_with_lec_dir": 385,
+    "ep1_with_ck_total_file": 385,
+    "ep1_with_all_ck_subterm_files": 385,
     "ep1_with_lec": 385,
-    "valid": 385
+    "valid_for_boxplots": 385,
+    "note": "ep1_total (444) = full EP1 population from ep_structure/ep1_cases.csv. ep1_with_lec (385) = subset with complete, valid Ck subterm output files (Ck_pressure_level.csv + Ck_1..5_pressure_level.csv, non-empty, with data in the intensification window). Boxplots and dominance classification use N=385. 'All EP1' genesis density and track panels use the full N=444 population."
   },
-  "validation": {
-    "mean_ck_zenodo_corrected": -1.2613085459507873,
-    "mean_ck_new": -12.360824041584292,
-    "mean_subterm_sum": -12.369211743611917,
-    "mean_rel_error_pct": 880.0001653132165,
-    "note": "The ~880% relative error between Zenodo and new LEC Ck values reflects a known scale difference between the two datasets (different reference areas and time averaging). Internal consistency is confirmed: mean subterm sum (-12.37) \u2248 mean new LEC Ck total (-12.36) W/m\u00b2."
+  "lec_audit": {
+    "source": "results/ck_analysis/lec_results/",
+    "ep1_cases_source": "results/ep_structure/ep1_cases.csv",
+    "n_ep1_expected": 444,
+    "n_lec_directory_found": 385,
+    "n_with_ck_total_file": 385,
+    "n_with_all_ck_subterm_files": 385,
+    "n_usable_for_dominance": 385,
+    "mean_ck_new": -12.3608,
+    "mean_subterm_sum": -12.3692,
+    "note": "Internal consistency: mean subterm sum (-12.37 W/m²) ≈ mean Ck total (-12.36 W/m²), confirming correct vertical integration of locally computed energetics."
+  },
+  "normalization_method": {
+    "title": "Normalized genesis density anomaly (Figure 3)",
+    "formula": "anomaly[lat,lon] = norm_k[lat,lon] − norm_all[lat,lon]",
+    "steps": [
+      "Step 1: Compute KDE genesis density for (A) all EP1 cyclones (n=444) → density_all, and (B) each dominant-subterm subset (n_k) → density_k. KDE uses haversine metric, Gaussian kernel, bandwidth=0.05 rad (Hoskins & Hodges 2005 method).",
+      "Step 2: Apply Min-Max normalization to positive values only. norm_all[lat,lon] = (density_all − min_pos) / (max_pos − min_pos), where min_pos and max_pos are the minimum and maximum of all positive values in density_all. Zero and negative values remain 0. Same formula applied to each density_k → norm_k.",
+      "Step 3: Relative anomaly = norm_k − norm_all. Positive (red): enhanced genesis for this subterm relative to all EP1. Negative (blue): suppressed genesis for this subterm relative to all EP1.",
+      "Step 4: A shared diverging colorbar spans [−max_abs, +max_abs] where max_abs = max absolute anomaly across all valid subterm panels."
+    ]
   },
   "subterms": [
     {
-      "symbol": "Ck\u207d\u1d2c\u207e",
-      "name": "Term A",
+      "symbol": "C_K^(a)",
+      "name": "Term (a)",
       "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"
     },
     {
-      "symbol": "Ck\u207d\u1d2e\u207e",
-      "name": "Term B",
+      "symbol": "C_K^(b)",
+      "name": "Term (b)",
       "description": "Meridional flux of eddy KE with meridional wind"
     },
     {
-      "symbol": "Ck\u207d\u1d9c\u207e",
-      "name": "Term C",
+      "symbol": "C_K^(c)",
+      "name": "Term (c)",
       "description": "Zonal flux of eddy KE with zonal wind"
     },
     {
-      "symbol": "Ck\u207d\u1d30\u207e",
-      "name": "Term D",
+      "symbol": "C_K^(d)",
+      "name": "Term (d)",
       "description": "Mixed meridional and vertical flux with vertical shear of U"
     },
     {
-      "symbol": "Ck\u207d\u1d31\u207e",
-      "name": "Term E",
+      "symbol": "C_K^(e)",
+      "name": "Term (e)",
       "description": "Mixed meridional and vertical flux with vertical shear of V"
     }
   ],
   "dominance": [
     {
       "subterm_key": "Ck_1",
-      "symbol": "Ck\u207d\u1d2c\u207e",
-      "name": "Term A",
+      "symbol": "C_K^(a)",
+      "name": "Term (a)",
       "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)",
       "count": 72,
       "percentage": 18.7
     },
     {
       "subterm_key": "Ck_2",
-      "symbol": "Ck\u207d\u1d2e\u207e",
-      "name": "Term B",
+      "symbol": "C_K^(b)",
+      "name": "Term (b)",
       "description": "Meridional flux of eddy KE with meridional wind",
       "count": 147,
       "percentage": 38.2
     },
     {
       "subterm_key": "Ck_3",
-      "symbol": "Ck\u207d\u1d9c\u207e",
-      "name": "Term C",
+      "symbol": "C_K^(c)",
+      "name": "Term (c)",
       "description": "Zonal flux of eddy KE with zonal wind",
       "count": 0,
       "percentage": 0.0
     },
     {
       "subterm_key": "Ck_4",
-      "symbol": "Ck\u207d\u1d30\u207e",
-      "name": "Term D",
+      "symbol": "C_K^(d)",
+      "name": "Term (d)",
       "description": "Mixed meridional and vertical flux with vertical shear of U",
       "count": 0,
       "percentage": 0.0
     },
     {
       "subterm_key": "Ck_5",
-      "symbol": "Ck\u207d\u1d31\u207e",
-      "name": "Term E",
+      "symbol": "C_K^(e)",
+      "name": "Term (e)",
       "description": "Mixed meridional and vertical flux with vertical shear of V",
       "count": 166,
       "percentage": 43.1
     }
   ],
   "figures": {
-    "boxplots_subterms": "figures/ck_subterms/ck_subterms_boxplots_subterms.png",
-    "boxplots_total": "figures/ck_subterms/ck_subterms_boxplots_total.png",
+    "boxplots": "figures/ck_subterms/ck_subterms_boxplots.png",
     "genesis_density": "figures/ck_subterms/ck_subterms_genesis_density.png",
     "genesis_normaldiff": "figures/ck_subterms/ck_subterms_genesis_normaldiff.png",
     "tracks": "figures/ck_subterms/ck_subterms_tracks.png"

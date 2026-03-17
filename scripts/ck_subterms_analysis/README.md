@@ -4,9 +4,9 @@
 
 The barotropic conversion term C_K (also written Ck) represents the transfer of kinetic energy
 between cyclone-scale eddies and the large-scale mean flow. In the limited-area, semi-Lagrangian
-Lorenz Energy Cycle framework used here, C_K enters the eddy kinetic energy (K_E) equation as a
-positive source: when C_K > 0 the mean flow feeds the eddies (barotropic instability, K_Z → K_E);
-when C_K < 0 the eddies feed the mean flow (K_E → K_Z).
+Lorenz Energy Cycle framework used here, the sign convention is:
+when C_K < 0 the mean flow transfers energy to the eddies (barotropic instability, K_Z → K_E);
+when C_K > 0 the eddies transfer energy to the mean flow (K_E → K_Z).
 
 The full expression for C_K (vertically integrated from pressure level p_t to p_b; paper.tex Eq.
 for C_K) is:
@@ -36,10 +36,10 @@ g = 9.8 m s⁻².
 
 $$\frac{\partial K_E}{\partial t} = BK_E + C_E + C_K + B\Phi_E - D_E$$
 
-- **C_K < 0**: K_E → K_Z (eddies export energy to mean flow). EP1 cyclones have mean C_K ≈ −16.5 W m⁻² — they are the strongest energy exporters among all Energy Patterns.
-- **C_K > 0**: K_Z → K_E (mean flow accelerates eddies; barotropic instability).
+- **C_K < 0**: K_Z → K_E (mean flow transfers energy to eddies; barotropic instability). EP1 cyclones have mean C_K ≈ −16.5 W m⁻² — they are the strongest barotropic-instability systems among all Energy Patterns.
+- **C_K > 0**: K_E → K_Z (eddies export energy to mean flow).
 
-Note: EP1 cyclones are NOT driven by barotropic instability (that would require C_K > 0). Instead, they have large negative C_K, reflecting intense eddy-to-mean energy export. The term "barotropic conversion" refers to the magnitude of C_K, regardless of sign.
+Note: EP1 cyclones ARE driven by barotropic instability (large negative C_K means the mean flow strongly feeds the eddies, K_Z → K_E). The dominant subterm is the one with the most negative intensification-phase mean, i.e., the one contributing most to this mean-to-eddy energy transfer.
 
 ### Energy Pattern 1 (EP1) Characteristics
 
@@ -51,25 +51,31 @@ EP1 cyclones exhibit the strongest energetic conversions in the Southwestern Atl
 
 ## Research Questions
 
-1. **Which C_K subterm dominates the eddy-to-mean energy export during EP1 intensification?**
+1. **Which C_K subterm dominates the barotropic instability (K_Z → K_E) during EP1 intensification?**
    - Dominance = subterm with minimum (most negative) intensification-phase mean
+   - Most negative = strongest contribution to mean-to-eddy energy transfer
    - Results: Ck⁽ᴱ⁾ (Term E, 43%), Ck⁽ᴮ⁾ (Term B, 38%), Ck⁽ᴬ⁾ (Term A, 19%)
 
 2. **Is genesis location linked to the dominant C_K subterm?**
    - Genesis density maps + normalized anomaly maps
 
-3. **How does the updated LorenzCycleToolkit decomposition compare with the Zenodo dataset?**
-   - Validation of new LEC results against Zenodo aggregated C_K
+3. **Coverage and integrity audit of locally computed Ck subterms**
+   - LEC audit: coverage and integrity of results/ck_analysis/lec_results/
    - Internal consistency: subterm sum ≈ total C_K
 
 ## Methodology
 
 ### Prerequisites
 
-**IMPORTANT**: This analysis requires the cluster analysis results:
-- `results/cluster/kmeans_clustered_data.csv` (produced by `scripts/cluster_analysis_energy_patterns/`)
-- This file contains the EP assignments for all cyclones, including all 444 EP1 cyclones
-- **No spatial restriction** — all EP1 cyclones regardless of genesis location are included
+**IMPORTANT**: This analysis requires the `ep_structure_analysis` results:
+- `results/ep_structure/ep1_cases.csv` (produced by `scripts/ep_structure_analysis/`)
+- This file is the **new source of truth** for EP1 cyclone selection, replacing the
+  removed `ep1_full_analysis` workflow (`results/ep1_full/all_ep1_cases.csv` is obsolete).
+- It contains all EP1 cyclones with their intensification-phase windows.
+- **No spatial restriction** — all EP1 cyclones regardless of genesis location are included.
+
+The `results/cluster/kmeans_clustered_data.csv` file (cluster analysis) is retained for
+backward compatibility but is no longer the primary source for EP1 IDs.
 
 ### Workflow Overview
 
@@ -92,7 +98,7 @@ Step 5: Statistical Analysis and Visualization
 **Objective**: Convert ALL EP1 cyclone tracks to LorenzCycleToolkit input format.
 
 **Input**:
-- `results/cluster/kmeans_clustered_data.csv` — EP assignments from cluster analysis (444 EP1 cyclones)
+- `results/ep_structure/ep1_cases.csv` — EP1 cyclones from ep_structure_analysis (new source of truth)
 - Main track database (via `load_tracks()`)
 
 **Output Format** (one file per cyclone):
@@ -255,11 +261,10 @@ results/ck_analysis/lec_results/{track_id}_ERA5_track/
 
 **Validation**:
 
-1. **Comparison with Zenodo Dataset**:
-   - Compare aggregated Ck from new analysis with old results
-   - Expected: Close agreement in total Ck values
-   - Difference: New analysis provides subterm breakdown
-
+1. **LEC Results Audit (locally computed energetics)**:
+   - Coverage check: verify presence and integrity of Ck CSV files for all EP1 cyclones
+   - Expected: all Ck_1..5_pressure_level.csv present and non-empty within intensification window
+   - Internal consistency: subterm sum ≈ total C_K (confirms correct vertical integration)
 2. **Consistency Checks**:
    - Mass budget conservation (total energy should be conserved)
    - Term magnitude reasonableness (compare with literature values)
@@ -336,7 +341,7 @@ results/ck_analysis/lec_results/{track_id}_ERA5_track/
 
 2. **Intensification Phase**:
    - Horizontal momentum flux (u'v') dominates
-   - Strong negative Ck (energy from eddies to mean flow)
+   - Strong negative Ck (mean flow feeds eddies; K_Z → K_E barotropic instability)
    - Peak subterm magnitudes
 
 3. **Mature Phase**:
@@ -356,8 +361,9 @@ results/ck_analysis/lec_results/{track_id}_ERA5_track/
 ### Data Sources
 
 1. **Cyclone Selection**:
-   - From `results/cluster/kmeans_clustered_data.csv` (cluster analysis results)
-   - 444 EP1 cyclones with complete lifecycle
+   - From `results/ep_structure/ep1_cases.csv` (produced by `scripts/ep_structure_analysis/`)
+   - This is the **new source of truth** — replaces the removed `ep1_full_analysis` workflow
+   - Contains EP1 cyclones with intensification-phase windows
    - No spatial domain restriction (all EP1 cyclones regardless of genesis location)
 
 3. **ERA5 Reanalysis**:
@@ -373,7 +379,7 @@ results/ck_analysis/lec_results/{track_id}_ERA5_track/
 
 ### LorenzCycleToolkit Updates
 
-**New Version Features** (compared to Zenodo dataset):
+**New Version Features** (term decomposition):
 
 1. **Term Decomposition**:
    - Previous: Only total Ck computed
@@ -440,7 +446,7 @@ figures/ck_analysis/
 ├── vertical_profiles.png         # Mean profiles by subterm
 ├── lifecycle_evolution.png       # Time evolution composites
 ├── phase_composites.png          # Boxplots by phase
-├── validation_plots.png          # Comparison with Zenodo data
+├── validation_plots.png          # LEC audit integrity plots
 └── statistical_summary.png       # Scatter plots and correlations
 ```
 

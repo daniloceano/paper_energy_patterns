@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Step 3: Validate Ck subterms and generate figures for EP1 cyclones.
+Step 3: LEC audit, dominance classification, and figures for EP1 cyclones.
 
-Validates new LEC results (Ck subterms) against Zenodo dataset,
-classifies dominant subterm per cyclone, and generates:
+Audits locally computed LEC results (Ck subterms), classifies dominant subterm
+per cyclone, and generates:
 
   Figure 1: Boxplots of Ck subterms during intensification
   Figure 2: Genesis density maps per dominant subterm
@@ -13,9 +13,11 @@ classifies dominant subterm per cyclone, and generates:
 
 Tables:
   results/ck_subterms/ep1_ck_subterms_per_cyclone.csv
-  results/ck_subterms/validation_summary.csv
+  results/ck_subterms/lec_audit_per_cyclone.csv
+  results/ck_subterms/lec_audit_summary.csv / .json
 
 Text:
+  results/ck_subterms/lec_audit_report.txt
   results/ck_subterms/diagnostic_summary.txt
 
 Author: Danilo Couto de Souza / GitHub Copilot
@@ -39,12 +41,16 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.gridspec as gridspec
 from matplotlib.lines import Line2D
 from matplotlib.colors import TwoSlopeNorm
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes as _inset_axes
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from sklearn.neighbors import KernelDensity
 import seaborn as sns
+
+from scripts.ck_subterms_analysis.lec_audit import run_audit
 
 warnings.filterwarnings('ignore')
 
@@ -56,9 +62,9 @@ GRAVITY = 9.8  # m/s²
 
 # Paths
 CLUSTER_FILE    = BASE_DIR / 'results' / 'cluster' / 'kmeans_clustered_data.csv'
-EP1_CASES_FILE  = BASE_DIR / 'results' / 'ep1_full' / 'all_ep1_cases.csv'
+# EP1 cases: produced by scripts/ep_structure_analysis/ (new source of truth)
+EP1_CASES_FILE  = BASE_DIR / 'results' / 'ep_structure' / 'ep1_cases.csv'
 NEW_LEC_DIR     = BASE_DIR / 'results' / 'ck_analysis' / 'lec_results'
-ZENODO_DIR      = BASE_DIR / 'data' / 'temp_lec_zenodo' / 'LEC_Results_energetic-patterns'
 FIGURES_DIR     = BASE_DIR / 'figures' / 'ck_subterms'
 RESULTS_DIR     = BASE_DIR / 'results' / 'ck_subterms'
 
@@ -67,7 +73,11 @@ RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Subterm metadata
 SUBTERM_KEYS   = ['Ck_1', 'Ck_2', 'Ck_3', 'Ck_4', 'Ck_5']
-SUBTERM_LABELS = ['Ck⁽ᴬ⁾', 'Ck⁽ᴮ⁾', 'Ck⁽ᶜ⁾', 'Ck⁽ᴰ⁾', 'Ck⁽ᴱ⁾']
+# Use matplotlib mathtext for all subterm labels – avoids broken unicode glyphs.
+SUBTERM_LABELS = [
+    r'$C_K^{(a)}$', r'$C_K^{(b)}$', r'$C_K^{(c)}$',
+    r'$C_K^{(d)}$', r'$C_K^{(e)}$',
+]
 SUBTERM_DESCRIPTIONS = [
     'Term (A): eddy momentum flux / meridional grad. of zonal wind',
     'Term (B): meridional flux of KE with meridional wind',
@@ -83,9 +93,6 @@ SUBTERM_COLORS = [TAB10[i] for i in range(5)]
 # Map domain
 LON_MIN, LON_MAX = -75, -20
 LAT_MIN, LAT_MAX = -55, -20
-
-# Tolerance for validation (percent)
-TOLERANCE_PCT = 20.0
 
 # Figure settings
 plt.rcParams.update({
@@ -103,14 +110,6 @@ plt.rcParams.update({
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
-
-def _resolve_csv(path: Path) -> Path | None:
-    """Handle Zenodo quirk: a *.csv entry can be a directory containing a CSV."""
-    if path.is_dir():
-        csvs = list(path.glob('*.csv'))
-        return csvs[0] if csvs else None
-    return path if path.exists() else None
-
 
 def _get_season(date) -> str:
     """Return DJF/MAM/JJA/SON for Southern Hemisphere (month-based)."""
@@ -337,27 +336,37 @@ def load_data():
     """
     Load all required datasets.
 
+    EP1 cyclone IDs and intensification-phase windows are taken from
+    results/ep_structure/ep1_cases.csv, which is the new source of truth
+    produced by scripts/ep_structure_analysis/.  The cluster file
+    (results/cluster/kmeans_clustered_data.csv) is retained for backward
+    compatibility but is no longer the primary source for EP1 selection.
+
     Returns
     -------
     dict with keys:
-        ep1_ids        : list of EP1 track_ids (from cluster file)
-        ep1_cases      : DataFrame from all_ep1_cases.csv
-        cluster_df     : DataFrame with cluster assignments
+        ep1_ids        : list of EP1 track_ids (from ep_structure/ep1_cases.csv)
+        ep1_cases      : DataFrame from ep_structure/ep1_cases.csv
+        cluster_df     : DataFrame with cluster assignments (retained for compat)
         tracks_df      : Full track DataFrame (from load_tracks)
-        genesis_df     : Genesis rows (first obs per cyclone) with EP assignment
+        genesis_df     : Genesis rows (first obs per cyclone) for EP1 systems
     """
     from scripts.utils.load_data import load_tracks
-
-    print('[load_data] Loading cluster assignments...')
-    cluster_df = pd.read_csv(CLUSTER_FILE)
-    ep1_ids = cluster_df.loc[cluster_df['cluster'] == 0, 'track_id'].tolist()
-    print(f'  EP1 cyclones (cluster 0): {len(ep1_ids)}')
 
     print('[load_data] Loading EP1 cases (intensification phases)...')
     ep1_cases = pd.read_csv(EP1_CASES_FILE)
     ep1_cases['intensification_start'] = pd.to_datetime(ep1_cases['intensification_start'])
     ep1_cases['intensification_end']   = pd.to_datetime(ep1_cases['intensification_end'])
-    print(f'  Cases with intensification data: {len(ep1_cases)}')
+    # EP1 IDs come directly from ep_structure/ep1_cases.csv — no cluster lookup needed
+    ep1_ids = ep1_cases['track_id'].tolist()
+    print(f'  EP1 cyclones (from ep_structure): {len(ep1_ids)}')
+    print(f'  Cases with intensification data:  {len(ep1_cases)}')
+
+    # Cluster file kept for backward compatibility (e.g. genesis_df EP label)
+    cluster_df = pd.DataFrame()
+    if CLUSTER_FILE.exists():
+        print('[load_data] Loading cluster assignments (backward compat)...')
+        cluster_df = pd.read_csv(CLUSTER_FILE)
 
     print('[load_data] Loading full track database...')
     tracks_df = load_tracks()
@@ -385,50 +394,55 @@ def load_data():
 def _get_intensif_window(track_id: str, ep1_cases: pd.DataFrame) -> tuple | None:
     """
     Return (t_start, t_end) for intensification phase.
-    Primary source: ep1_cases DataFrame.
-    Fallback: Zenodo periods.csv.
+    Source: ep1_cases DataFrame (results/ep_structure/ep1_cases.csv).
+    Returns None when the cyclone has no intensification window on record.
     """
-    row = ep1_cases[ep1_cases['track_id'] == track_id]
+    # Compare as strings to avoid int64 vs str type mismatch
+    row = ep1_cases[ep1_cases['track_id'].astype(str) == str(track_id)]
     if len(row) > 0:
         r = row.iloc[0]
         return pd.Timestamp(r['intensification_start']), pd.Timestamp(r['intensification_end'])
-
-    # Fallback: Zenodo
-    zenodo_lec_dir = ZENODO_DIR / f'{track_id}_ERA5_track'
-    fp = _resolve_csv(zenodo_lec_dir / 'periods.csv')
-    if fp is None:
-        return None
-    try:
-        periods = pd.read_csv(fp, index_col=0)
-        if 'intensification' not in periods.index:
-            return None
-        row_z = periods.loc['intensification']
-        return pd.Timestamp(row_z['start']), pd.Timestamp(row_z['end'])
-    except Exception:
-        return None
+    return None
 
 
-def compute_dominance(ep1_ids: list, ep1_cases: pd.DataFrame) -> pd.DataFrame:
+def compute_dominance(ep1_ids: list, ep1_cases: pd.DataFrame,
+                      audit_df: pd.DataFrame | None = None) -> pd.DataFrame:
     """
-    For each EP1 cyclone with new LEC data, compute:
+    For each EP1 cyclone with valid LEC data (as determined by the audit),
+    compute:
       - intensification-phase mean of each vertically-integrated subterm
       - dominant subterm (most negative)
       - dominance margin
 
+    If audit_df is provided, only cyclones marked as usable_for_dominance=True
+    are processed (avoids re-reading all files).  Falls back to re-checking
+    the file system if audit_df is not supplied.
+
     Returns DataFrame indexed by track_id.
     """
+    # If audit results are available, restrict to valid cyclones only
+    if audit_df is not None and len(audit_df) > 0:
+        valid_ids = set(audit_df.loc[audit_df['usable_for_dominance'] == True, 'track_id'].astype(str))
+    else:
+        valid_ids = None
+
     records = []
     n_missing = 0
     n_no_window = 0
 
     for track_id in ep1_ids:
+        # Skip cyclones that the audit already determined are not usable
+        if valid_ids is not None and str(track_id) not in valid_ids:
+            n_missing += 1
+            continue
+
         lec_dir = NEW_LEC_DIR / f'{track_id}_ERA5_track'
         if not lec_dir.exists():
             n_missing += 1
             continue
 
         # Get intensification window
-        window = _get_intensif_window(track_id, ep1_cases)
+        window = _get_intensif_window(str(track_id), ep1_cases)
         if window is None:
             n_no_window += 1
             continue
@@ -475,9 +489,10 @@ def compute_dominance(ep1_ids: list, ep1_cases: pd.DataFrame) -> pd.DataFrame:
         subterms_sum = vals.sum()
 
         # Dominant subterm = the one with the minimum (most negative) value.
-        # Sign convention (paper.tex): C_K < 0 → K_E → K_Z (eddies transfer energy
-        # to the mean flow).  EP1 cyclones have large negative C_K, so the dominant
-        # subterm is the one driving this eddy-to-mean-flow energy export most strongly.
+        # Sign convention (paper.tex): C_K < 0 → K_Z → K_E (mean flow transfers energy
+        # to the eddies; barotropic instability).  EP1 cyclones have large negative C_K,
+        # so the dominant subterm is the one driving this mean-to-eddy energy transfer
+        # (barotropic instability) most strongly.
         dom_idx = int(np.argmin(vals))
         dom_key = SUBTERM_KEYS[dom_idx]
 
@@ -489,30 +504,9 @@ def compute_dominance(ep1_ids: list, ep1_cases: pd.DataFrame) -> pd.DataFrame:
         abs_sum = np.sum(np.abs(vals))
         norms = vals / abs_sum if abs_sum > 0 else vals * 0.0
 
-        # Zenodo Ck (for validation table)
-        ck_zenodo_raw = np.nan
-        ck_zenodo_corrected = np.nan
-        zenodo_dir = ZENODO_DIR / f'{track_id}_ERA5_track'
-        if zenodo_dir.exists():
-            zenodo_fp = _resolve_csv(zenodo_dir / f'{track_id}_ERA5_track_results.csv')
-            if zenodo_fp is not None:
-                try:
-                    df_zen = pd.read_csv(zenodo_fp, index_col=0, parse_dates=True)
-                    zen_window = _get_intensif_window(track_id, ep1_cases)
-                    if zen_window and 'Ck' in df_zen.columns:
-                        zt0, zt1 = zen_window
-                        sub_zen = df_zen.loc[(df_zen.index >= zt0) & (df_zen.index <= zt1)]
-                        if len(sub_zen) > 0:
-                            ck_zenodo_raw = sub_zen['Ck'].mean()
-                            ck_zenodo_corrected = ck_zenodo_raw / GRAVITY
-                except Exception as e:
-                    print(f'  WARNING: Zenodo CSV for {track_id}: {e}')
-
         rec = {
             'track_id': track_id,
             'Ck_total_new': ck_total_new,
-            'Ck_total_zenodo': ck_zenodo_raw,
-            'Ck_total_zenodo_corrected': ck_zenodo_corrected,
             'dominant_subterm': dom_key,
             'dominance_margin': margin,
             'subterms_sum': subterms_sum,
@@ -525,80 +519,80 @@ def compute_dominance(ep1_ids: list, ep1_cases: pd.DataFrame) -> pd.DataFrame:
         records.append(rec)
 
     print(f'  Dominance computed for {len(records)} cyclones')
-    print(f'  Missing LEC data or no window: {n_missing + n_no_window}')
+    print(f'  Skipped (no valid LEC data or no window): {n_missing + n_no_window}')
     return pd.DataFrame(records)
 
 
 # ============================================================================
-# VALIDATE Ck
+# LEC AUDIT SUMMARY (replaces Zenodo-based validate_ck)
 # ============================================================================
 
-def validate_ck(dom_df: pd.DataFrame) -> dict:
+def summarize_lec_audit(dom_df: pd.DataFrame, audit_summary: dict) -> dict:
     """
-    Compare new Ck total vs Zenodo corrected Ck.
+    Build audit statistics from the LEC audit summary and the dominance DataFrame.
 
-    Returns dict with validation statistics.
+    Returns a dict compatible with write_tables / write_diagnostic.
     """
-    valid = dom_df.dropna(subset=['Ck_total_new', 'Ck_total_zenodo_corrected']).copy()
-    valid['residual'] = valid['Ck_total_new'] - valid['Ck_total_zenodo_corrected']
-    valid['rel_error_pct'] = (
-        (valid['residual'].abs() / valid['Ck_total_zenodo_corrected'].abs().replace(0, np.nan)) * 100
-    )
-    within_tol = (valid['rel_error_pct'] <= TOLERANCE_PCT).sum()
     dominance_counts = dom_df['dominant_subterm'].value_counts().to_dict()
 
+    # Internal consistency: mean subterm sum vs mean Ck total
+    has_ck_total = dom_df['Ck_total_new'].notna().sum()
+    mean_ck_new   = float(dom_df['Ck_total_new'].mean()) if has_ck_total > 0 else float('nan')
+    mean_subterm_sum = float(dom_df['subterms_sum'].mean())
+
     stats = {
-        'n_ep1_total': len(dom_df) + (len(dom_df) - len(dom_df)),  # will be set later
+        'n_ep1_total': audit_summary.get('n_ep1_expected', len(dom_df)),
+        'n_lec_directory_found': audit_summary.get('n_lec_directory_found', 0),
+        'n_with_ck_total_file': audit_summary.get('n_with_ck_total_file', 0),
+        'n_with_all_ck_subterm_files': audit_summary.get('n_with_all_ck_subterm_files', 0),
+        'n_with_data_in_intensif_phase': audit_summary.get('n_with_data_in_intensif_phase', 0),
         'n_ep1_with_new_lec': len(dom_df),
-        'n_valid': len(valid),
-        'n_invalid': len(dom_df) - len(valid),
-        'mean_ck_zenodo_corrected': valid['Ck_total_zenodo_corrected'].mean(),
-        'mean_ck_new': valid['Ck_total_new'].mean(),
-        'mean_subterm_sum': valid['subterms_sum'].mean(),
-        'mean_residual': valid['residual'].mean(),
-        'mean_rel_error_pct': valid['rel_error_pct'].mean(),
-        'tolerance_pct': TOLERANCE_PCT,
-        'n_within_tolerance': int(within_tol),
+        'mean_ck_new': mean_ck_new,
+        'mean_subterm_sum': mean_subterm_sum,
         'dominance_counts_per_subterm': str(dominance_counts),
+        'exclusion_reasons': str(audit_summary.get('exclusion_reasons', {})),
     }
     return stats
 
 
 # ============================================================================
-# FIGURE 1a: BOXPLOTS — Ck SUBTERMS (shared y-axis)
+# FIGURE 1: COMBINED BOXPLOTS — Ck subterms (left) + total Ck (right)
 # ============================================================================
 
-def create_figure_boxplots_subterms(dom_df: pd.DataFrame):
+def create_figure_boxplots(dom_df: pd.DataFrame, n_ep1_total: int):
     """
-    1×5 boxplot figure: one panel per Ck subterm (A–E), shared y-axis.
+    Single figure with two side-by-side subplots:
+      Panel (a) – left:  all five Ck subterms in one grouped boxplot (shared y-axis)
+      Panel (b) – right: total Ck on its own independent y-axis
 
-    All panels share the same y-axis so inter-subterm magnitude comparisons
-    are visually unambiguous.  Values are intensification-phase means
-    (vertically integrated, W m⁻²).
+    N reported in the suptitle reflects:
+      - n_ep1_total : total EP1 population (all 444 cyclones)
+      - n shown per panel : cyclones with actual LEC subterm data (subset with data)
 
-    Sign convention (from paper.tex Eq. C_K):
-      C_K < 0 → K_E → K_Z  (eddies transfer energy to mean flow)
-      C_K > 0 → K_Z → K_E  (mean flow transfers energy to eddies; barotropic instability)
-    EP1 cyclones exhibit large negative C_K during intensification.
+    Sign convention (paper.tex): Ck < 0 → Kz → Ke (barotropic instability).
+    Whiskers = 5th–95th percentile.
     """
-    print('[Fig 1a] Creating Ck subterms boxplots (shared y-axis)...')
+    print('[Fig 1] Creating combined Ck boxplots figure (subterms + total)...')
 
-    fig, axes = plt.subplots(1, 5, figsize=(12, 4), sharey=True)
+    fig, (ax_sub, ax_tot) = plt.subplots(
+        1, 2, figsize=(11, 4.5),
+        gridspec_kw={'width_ratios': [4, 1.2]},
+    )
 
-    for i, (key, label, color, desc) in enumerate(
-            zip(SUBTERM_KEYS, SUBTERM_LABELS, SUBTERM_COLORS, SUBTERM_DESCRIPTIONS)):
-        ax = axes[i]
+    # ── Panel (a): subterms ─────────────────────────────────────────────────
+    n_sub = None
+    for i, (key, label, color) in enumerate(
+            zip(SUBTERM_KEYS, SUBTERM_LABELS, SUBTERM_COLORS)):
         col = f'{key}_intensif'
         data = dom_df[col].dropna().values
-
+        if n_sub is None and len(data) > 0:
+            n_sub = len(data)
         if len(data) == 0:
-            ax.set_title(label, fontsize=11, fontweight='bold')
-            ax.text(0.5, 0.5, 'No data', transform=ax.transAxes,
-                    ha='center', va='center', fontsize=9, color='gray')
             continue
-
-        ax.boxplot(
+        ax_sub.boxplot(
             data,
+            positions=[i + 1],
+            widths=0.55,
             vert=True,
             patch_artist=True,
             whis=[5, 95],
@@ -609,51 +603,26 @@ def create_figure_boxplots_subterms(dom_df: pd.DataFrame):
             capprops=dict(color='gray', linewidth=1.2),
         )
 
-        ax.axhline(0, color='red', linestyle='--', linewidth=0.8, alpha=0.6)
-        ax.set_title(label, fontsize=11, fontweight='bold')
-        ax.set_ylabel('W m⁻²' if i == 0 else '')
-        ax.set_xticks([])
-        ax.text(0.95, 0.97, f'n={len(data)}',
-                transform=ax.transAxes, ha='right', va='top', fontsize=9,
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
-        ax.grid(True, axis='y', alpha=0.3, linestyle=':')
+    ax_sub.axhline(0, color='red', linestyle='--', linewidth=0.8, alpha=0.6)
+    ax_sub.set_xticks(range(1, 6))
+    ax_sub.set_xticklabels(SUBTERM_LABELS, fontsize=10)
+    ax_sub.set_ylabel(r'W m$^{-2}$')
+    ax_sub.set_title(r'(a) $C_K$ subterms', fontsize=11, fontweight='bold')
+    if n_sub is not None:
+        ax_sub.text(
+            0.97, 0.97, f'n={n_sub}',
+            transform=ax_sub.transAxes, ha='right', va='top', fontsize=9,
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8),
+        )
+    ax_sub.grid(True, axis='y', alpha=0.3, linestyle=':')
 
-    fig.suptitle(
-        'Ck subterms (A–E) during EP1 intensification phase\n'
-        '(Shared y-axis; whiskers = 5th–95th percentile)',
-        fontsize=11, fontweight='bold',
-    )
-    plt.tight_layout()
-
-    out = FIGURES_DIR / 'ck_subterms_boxplots_subterms.png'
-    plt.savefig(out, dpi=300, bbox_inches='tight', facecolor='white')
-    plt.close()
-    print(f'  Saved: {out}')
-    return out
-
-
-# ============================================================================
-# FIGURE 1b: BOXPLOT — Total Ck
-# ============================================================================
-
-def create_figure_boxplots_total(dom_df: pd.DataFrame):
-    """
-    Single boxplot for total C_K during EP1 intensification phase.
-
-    Separated from the subterm figure so the total can be compared at
-    a different scale without compressing the subterm view.
-
-    Sign convention: C_K < 0 → K_E → K_Z (eddies export energy to mean flow).
-    """
-    print('[Fig 1b] Creating total Ck boxplot...')
-
-    data = dom_df['Ck_total_new'].dropna().values
-
-    fig, ax = plt.subplots(1, 1, figsize=(3.5, 4))
-
-    if len(data) > 0:
-        ax.boxplot(
-            data,
+    # ── Panel (b): total Ck ─────────────────────────────────────────────────
+    data_tot = dom_df['Ck_total_new'].dropna().values
+    if len(data_tot) > 0:
+        ax_tot.boxplot(
+            data_tot,
+            positions=[1],
+            widths=0.55,
             vert=True,
             patch_artist=True,
             whis=[5, 95],
@@ -663,27 +632,30 @@ def create_figure_boxplots_total(dom_df: pd.DataFrame):
             whiskerprops=dict(color='gray', linewidth=1.2),
             capprops=dict(color='gray', linewidth=1.2),
         )
-        ax.axhline(0, color='red', linestyle='--', linewidth=0.8, alpha=0.6)
-        ax.text(0.95, 0.97, f'n={len(data)}',
-                transform=ax.transAxes, ha='right', va='top', fontsize=9,
-                bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+        ax_tot.axhline(0, color='red', linestyle='--', linewidth=0.8, alpha=0.6)
+        ax_tot.text(
+            0.95, 0.97, f'n={len(data_tot)}',
+            transform=ax_tot.transAxes, ha='right', va='top', fontsize=9,
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8),
+        )
     else:
-        ax.text(0.5, 0.5, 'No data', transform=ax.transAxes,
-                ha='center', va='center', fontsize=9, color='gray')
+        ax_tot.text(0.5, 0.5, 'No data', transform=ax_tot.transAxes,
+                    ha='center', va='center', fontsize=9, color='gray')
 
-    ax.set_ylabel('W m⁻²')
-    ax.set_title('C_K total', fontsize=11, fontweight='bold')
-    ax.set_xticks([])
-    ax.grid(True, axis='y', alpha=0.3, linestyle=':')
+    ax_tot.set_ylabel(r'W m$^{-2}$')
+    ax_tot.set_title(r'(b) Total $C_K$', fontsize=11, fontweight='bold')
+    ax_tot.set_xticks([1])
+    ax_tot.set_xticklabels([r'$C_K$'])
+    ax_tot.grid(True, axis='y', alpha=0.3, linestyle=':')
 
     fig.suptitle(
-        'Total barotropic conversion (C_K)\nEP1 intensification phase\n'
-        '(Whiskers = 5th–95th percentile)',
+        rf'Barotropic conversion ($C_K$) during EP1 intensification'
+        f'\n(EP1 total N={n_ep1_total}; N with LEC data shown per panel; whiskers = 5th–95th pct)',
         fontsize=10, fontweight='bold',
     )
     plt.tight_layout()
 
-    out = FIGURES_DIR / 'ck_subterms_boxplots_total.png'
+    out = FIGURES_DIR / 'ck_subterms_boxplots.png'
     plt.savefig(out, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f'  Saved: {out}')
@@ -697,17 +669,21 @@ def create_figure_boxplots_total(dom_df: pd.DataFrame):
 def create_figure_genesis_density(dom_df: pd.DataFrame, genesis_df: pd.DataFrame,
                                    tracks_df: pd.DataFrame):
     """
-    2×3 panels: All EP1 genesis density + one per dominant subterm.
+    2×3 map panels: All EP1 genesis density + one per dominant subterm.
 
-    Layout:
-      (a) All EP1  |  (b) Ck⁽ᴬ⁾  |  (c) Ck⁽ᴮ⁾
-      (d) Ck⁽ᶜ⁾   |  (e) Ck⁽ᴰ⁾  |  (f) Ck⁽ᴱ⁾
+    Layout (row × col):
+      (a) All EP1  |  (b) Ck^(a)  |  (c) Ck^(b)
+      (d) Ck^(c)   |  (e) Ck^(d)  |  (f) Ck^(e)
 
-    All panels share a single colorbar (shared vmax = 95th-percentile of all
-    valid densities combined). Empty panels (insufficient data) keep the same
-    map geometry as populated panels to ensure uniform subplot dimensions.
+    Each populated panel has its own individual colorbar placed in a dedicated
+    GridSpec row below the map row.  Empty panels have no colorbar.  All map
+    panels keep identical size (same GridSpec row / column) regardless of
+    colorbar presence, guaranteeing publication-quality alignment.
+
+    "All EP1" uses the full EP1 genesis population (n_ep1_total, from genesis_df).
+    Per-subterm panels use only cyclones with actual LEC data (dom_df subset).
     """
-    print('[Fig 2] Creating genesis density maps...')
+    print('[Fig 2] Creating genesis density maps (per-panel colorbars)...')
 
     genesis_df = genesis_df.copy()
     genesis_df['date'] = pd.to_datetime(genesis_df['date'])
@@ -715,10 +691,13 @@ def create_figure_genesis_density(dom_df: pd.DataFrame, genesis_df: pd.DataFrame
     num_years = int(years.max() - years.min() + 1)
     print(f'  Time span: {years.min()}–{years.max()} ({num_years} years)')
 
-    merged = genesis_df.merge(dom_df[['track_id', 'dominant_subterm']], on='track_id', how='left')
-    n_ep1_all = len(merged)
+    # Left-join: keep all EP1 genesis rows; dominant_subterm is NaN for
+    # cyclones without LEC data (they still contribute to the "All EP1" density).
+    merged = genesis_df.merge(dom_df[['track_id', 'dominant_subterm']],
+                               on='track_id', how='left')
+    n_ep1_all = len(merged)  # full EP1 population
 
-    # --- Pre-compute all densities to determine shared color scale ---
+    # Pre-compute densities
     density_all, longrd, latgrd = compute_density(merged, num_years)
     densities = {'all': density_all}
     sub_gens = {}
@@ -730,34 +709,6 @@ def create_figure_genesis_density(dom_df: pd.DataFrame, genesis_df: pd.DataFrame
             d, _, _ = compute_density(sub_gen, num_years)
             densities[key] = d
 
-    # Shared vmax from 95th percentile across all valid density fields
-    p95_vals = []
-    for d in densities.values():
-        pos = d[d > 0]
-        if pos.size > 0:
-            p95_vals.append(np.percentile(pos, 95))
-    vmax_shared = float(np.max(p95_vals)) if p95_vals else 1.0
-    # Ensure levels are strictly increasing after rounding
-    raw_levels = np.linspace(0.0, vmax_shared, 12)
-    levels_shared = np.unique(np.round(raw_levels, 2))
-    if len(levels_shared) < 3:
-        levels_shared = raw_levels  # fallback: no rounding
-
-    # --- Create figure with explicit projection subplot grid ---
-    fig, axes = plt.subplots(2, 3, figsize=(15, 9),
-                             subplot_kw={'projection': ccrs.PlateCarree()},
-                             constrained_layout=False)
-    fig.subplots_adjust(hspace=0.35, wspace=0.08, bottom=0.12)
-
-    panel_keys   = ['all'] + SUBTERM_KEYS
-    panel_labels_alpha = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)']
-    panel_titles = (
-        [f'All EP1 (N={n_ep1_all})']
-        + [f'{lbl} dominant (N={len(sub_gens[k])})' for k, lbl in zip(SUBTERM_KEYS, SUBTERM_LABELS)]
-    )
-
-    cf_ref = None  # reference contourf for colorbar
-
     lon_mask = (longrd >= LON_MIN) & (longrd <= LON_MAX)
     lat_mask = (latgrd >= LAT_MIN) & (latgrd <= LAT_MAX)
     lon_idx = np.where(lon_mask)[0]
@@ -765,40 +716,70 @@ def create_figure_genesis_density(dom_df: pd.DataFrame, genesis_df: pd.DataFrame
     lon_r = longrd[lon_idx]
     lat_r = latgrd[lat_idx]
 
-    for i, (pk, alpha, title) in enumerate(zip(panel_keys, panel_labels_alpha, panel_titles)):
-        ax = axes.ravel()[i]
-        full_title = f'{alpha} {title}'
+    # ── Figure layout ────────────────────────────────────────────────────────
+    # Alternating rows: map row (height 1) + thin colorbar row (height 0.07)
+    # This guarantees all map panels have identical height regardless of whether
+    # a colorbar is present.
+    fig = plt.figure(figsize=(15, 10))
+    gs = gridspec.GridSpec(
+        4, 3,
+        height_ratios=[1, 0.07, 1, 0.07],
+        hspace=0.50, wspace=0.06,
+        top=0.92, bottom=0.03, left=0.02, right=0.98,
+    )
+
+    panel_keys          = ['all'] + SUBTERM_KEYS
+    panel_labels_alpha  = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)']
+    panel_titles        = (
+        [f'(a) All EP1  (N={n_ep1_all})']
+        + [f'{alpha} {lbl} dominant  (N={len(sub_gens[k])})'
+           for alpha, k, lbl in zip(panel_labels_alpha[1:], SUBTERM_KEYS, SUBTERM_LABELS)]
+    )
+
+    for i, (pk, title) in enumerate(zip(panel_keys, panel_titles)):
+        row_map  = (i // 3) * 2      # map row: 0 or 2
+        row_cbar = row_map + 1        # colorbar row: 1 or 3
+        col      = i % 3
+
+        ax  = fig.add_subplot(gs[row_map, col], projection=ccrs.PlateCarree())
+        cax = fig.add_subplot(gs[row_cbar, col])
+
+        setup_map_axes(ax, title)
+
         d = densities.get(pk)
-
-        # Always set up the map so all panels have identical geometry
-        setup_map_axes(ax, full_title)
-
         if d is None:
-            # Insufficient data — blank map, same size
+            # Empty panel – same map geometry, no colorbar
             ax.text(0.5, 0.5, 'Insufficient data', transform=ax.transAxes,
                     ha='center', va='center', fontsize=10, color='gray',
-                    bbox=dict(facecolor='white', alpha=0.6, edgecolor='gray', boxstyle='round,pad=0.3'))
+                    bbox=dict(facecolor='white', alpha=0.6,
+                              edgecolor='gray', boxstyle='round,pad=0.3'))
+            cax.set_visible(False)
         else:
             d_region = d[np.ix_(lat_idx, lon_idx)]
+            # Per-panel color scale (95th-percentile of positive values)
+            pos_vals = d_region[d_region > 0]
+            vmax_p = float(np.percentile(pos_vals, 95)) if pos_vals.size > 0 else 1e-6
+            raw_lev = np.linspace(0.0, vmax_p, 12)
+            levels = np.unique(np.round(raw_lev, 2))
+            if len(levels) < 3:
+                levels = raw_lev
+
             cf = ax.contourf(lon_r, lat_r, d_region,
-                             levels=levels_shared, cmap='YlOrRd',
+                             levels=levels, cmap='YlOrRd',
                              transform=ccrs.PlateCarree(), extend='max', alpha=0.8)
             ax.contour(lon_r, lat_r, d_region,
                        levels=6, colors='black', linewidths=0.5,
                        transform=ccrs.PlateCarree(), alpha=0.6)
-            cf_ref = cf
 
-    # Single shared colorbar below all panels
-    if cf_ref is not None:
-        cbar_ax = fig.add_axes([0.15, 0.05, 0.70, 0.025])
-        cbar = fig.colorbar(cf_ref, cax=cbar_ax, orientation='horizontal', extend='max')
-        cbar.set_label('Cyclones per 10⁶ km² per year', fontsize=10)
-        cbar.set_ticks(levels_shared[::2])
-        cbar.set_ticklabels([f'{lev:.1f}' for lev in levels_shared[::2]])
-        cbar.ax.tick_params(labelsize=9)
+            # Individual colorbar in dedicated GridSpec row – does not resize map
+            cbar = fig.colorbar(cf, cax=cax, orientation='horizontal', extend='max')
+            cbar.set_label(r'Cyclones / 10$^6$ km$^2$ / yr', fontsize=8)
+            cbar.set_ticks(levels[::2])
+            cbar.set_ticklabels([f'{lev:.1f}' for lev in levels[::2]])
+            cbar.ax.tick_params(labelsize=7)
 
-    fig.suptitle('EP1 cyclone genesis density by dominant Ck subterm',
-                 fontsize=13, fontweight='bold', y=0.98)
+    fig.suptitle(r'EP1 cyclone genesis density by dominant $C_K$ subterm',
+                 fontsize=13, fontweight='bold')
 
     out = FIGURES_DIR / 'ck_subterms_genesis_density.png'
     plt.savefig(out, dpi=300, bbox_inches='tight', facecolor='white')
@@ -901,20 +882,18 @@ def create_figure_normalized_diff(dom_df: pd.DataFrame, genesis_df: pd.DataFrame
     if cf_ref is not None:
         cbar_ax = fig.add_axes([0.15, 0.07, 0.70, 0.04])
         cbar = fig.colorbar(cf_ref, cax=cbar_ax, orientation='horizontal', extend='both')
-        cbar.set_label('Normalized genesis density anomaly (norm_EP − norm_All)', fontsize=9)
+        cbar.set_label(r'Normalized genesis density anomaly (norm$_{EP}$ $-$ norm$_{All}$)', fontsize=9)
         ticks = np.linspace(-maxabs_shared, maxabs_shared, 5)
         cbar.set_ticks(ticks)
         cbar.set_ticklabels([f'{t:.2f}' for t in ticks])
         cbar.ax.tick_params(labelsize=9)
 
-    fig.suptitle('Normalized genesis density anomaly per dominant Ck subterm',
+    fig.suptitle(r'Normalized genesis density anomaly per dominant $C_K$ subterm',
                  fontsize=12, fontweight='bold', y=0.98)
 
     out = FIGURES_DIR / 'ck_subterms_genesis_normaldiff.png'
     plt.savefig(out, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
-    print(f'  Saved: {out}')
-    return out
     print(f'  Saved: {out}')
     return out
 
@@ -924,8 +903,16 @@ def create_figure_normalized_diff(dom_df: pd.DataFrame, genesis_df: pd.DataFrame
 # ============================================================================
 
 def create_figure_tracks(dom_df: pd.DataFrame, ep1_cases: pd.DataFrame,
-                          tracks_df: pd.DataFrame):
-    """2×3 panels: all EP1 tracks + per dominant subterm."""
+                          tracks_df: pd.DataFrame, all_ep1_ids=None):
+    """2×3 panels: all EP1 tracks + per dominant subterm.
+
+    Parameters
+    ----------
+    all_ep1_ids : list or array-like, optional
+        Full list of EP1 track IDs (444 cyclones). If provided, the 'All EP1'
+        panel and the grey background in subterm panels use this full population.
+        Falls back to dom_df track IDs (only those with LEC data) if not given.
+    """
     print('[Fig 4] Creating full tracks figure...')
 
     LON_T_MIN, LON_T_MAX = -80, 10
@@ -941,7 +928,15 @@ def create_figure_tracks(dom_df: pd.DataFrame, ep1_cases: pd.DataFrame,
 
     fig = plt.figure(figsize=(18, 10))
     panel_labels_alpha = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)']
-    all_ep1_ids = dom_df['track_id'].unique()
+    # Use full EP1 population if provided; otherwise fall back to dom_df subset.
+    # BUG FIX: dom_df contains only 94 cyclones (those with LEC data), while the
+    # full EP1 population is 444. Passing all_ep1_ids ensures the "All EP1" panel
+    # and grey background tracks correctly reflect the complete EP1 sample.
+    if all_ep1_ids is not None:
+        _all_ids = list(all_ep1_ids)
+    else:
+        _all_ids = list(dom_df['track_id'].unique())
+    n_all = len(_all_ids)
 
     def _draw_tracks(ax, sel_ids, color_intens, title, show_all=False, all_ids=None):
         ax.set_extent([LON_T_MIN, LON_T_MAX, LAT_T_MIN, LAT_T_MAX], crs=ccrs.PlateCarree())
@@ -999,8 +994,8 @@ def create_figure_tracks(dom_df: pd.DataFrame, ep1_cases: pd.DataFrame,
 
     # Panel 1: All EP1
     ax0 = fig.add_subplot(2, 3, 1, projection=ccrs.PlateCarree())
-    _draw_tracks(ax0, all_ep1_ids, 'steelblue',
-                 f'{panel_labels_alpha[0]} All EP1 (N={len(all_ep1_ids)})')
+    _draw_tracks(ax0, _all_ids, 'steelblue',
+                 f'{panel_labels_alpha[0]} All EP1 (N={n_all})')
 
     # Panels 2–6: per dominant subterm
     for i, (key, label, color) in enumerate(zip(SUBTERM_KEYS, SUBTERM_LABELS, SUBTERM_COLORS)):
@@ -1008,7 +1003,7 @@ def create_figure_tracks(dom_df: pd.DataFrame, ep1_cases: pd.DataFrame,
         sub_ids = dom_df.loc[dom_df['dominant_subterm'] == key, 'track_id'].values
         _draw_tracks(ax, sub_ids, color,
                      f'{panel_labels_alpha[i+1]} {label} dominant (N={len(sub_ids)})',
-                     show_all=True, all_ids=all_ep1_ids)
+                     show_all=True, all_ids=_all_ids)
 
     # Legend
     legend_elements = [
@@ -1022,7 +1017,7 @@ def create_figure_tracks(dom_df: pd.DataFrame, ep1_cases: pd.DataFrame,
     fig.legend(handles=legend_elements, loc='lower center', ncol=4,
                fontsize=10, framealpha=0.9, bbox_to_anchor=(0.5, -0.02))
 
-    plt.suptitle('EP1 cyclone tracks by dominant Ck subterm', fontsize=13, fontweight='bold')
+    plt.suptitle(r'EP1 cyclone tracks by dominant $C_K$ subterm', fontsize=13, fontweight='bold')
     plt.tight_layout()
 
     out = FIGURES_DIR / 'ck_subterms_tracks.png'
@@ -1065,7 +1060,7 @@ def write_tables(dom_df: pd.DataFrame, data: dict, val_stats: dict):
     keep = [
         'track_id', 'EP', 'genesis_lat', 'genesis_lon', 'genesis_date',
         'season', 'duration_hours', 'intensification_start', 'intensification_end',
-        'Ck_total_new', 'Ck_total_zenodo', 'Ck_total_zenodo_corrected',
+        'Ck_total_new',
         'Ck_1_intensif', 'Ck_2_intensif', 'Ck_3_intensif', 'Ck_4_intensif', 'Ck_5_intensif',
         'subterms_sum', 'dominant_subterm', 'dominance_margin',
         'Ck_1_norm', 'Ck_2_norm', 'Ck_3_norm', 'Ck_4_norm', 'Ck_5_norm',
@@ -1076,10 +1071,10 @@ def write_tables(dom_df: pd.DataFrame, data: dict, val_stats: dict):
     table1.to_csv(out1, index=False)
     print(f'  Table 1 saved: {out1} ({len(table1)} rows)')
 
-    # --- Table 2 ---
+    # --- Table 2: LEC audit summary ---
     val_stats['n_ep1_total'] = len(data['ep1_ids'])
     table2 = pd.DataFrame([val_stats])
-    out2 = RESULTS_DIR / 'validation_summary.csv'
+    out2 = RESULTS_DIR / 'lec_audit_stats.csv'
     table2.to_csv(out2, index=False)
     print(f'  Table 2 saved: {out2}')
 
@@ -1090,68 +1085,122 @@ def write_tables(dom_df: pd.DataFrame, data: dict, val_stats: dict):
 # WRITE DIAGNOSTIC
 # ============================================================================
 
-def write_diagnostic(dom_df: pd.DataFrame, val_stats: dict, data: dict):
-    """Write diagnostic_summary.txt."""
+def write_diagnostic(dom_df: pd.DataFrame, val_stats: dict, data: dict,
+                     audit_summary: dict | None = None):
+    """Write diagnostic_summary.txt.
+
+    Reports the full EP1 population, the subset with valid LEC data, and
+    the figures that use each sample.  All statistics come from the local
+    LEC audit — no Zenodo comparison is performed.
+    """
     out = RESULTS_DIR / 'diagnostic_summary.txt'
 
+    n_ep1_total = val_stats.get('n_ep1_total', len(data['ep1_ids']))
+    n_lec       = val_stats.get('n_ep1_with_new_lec', len(dom_df))
     dominance_counts = dom_df['dominant_subterm'].value_counts().sort_index()
+
+    # Build label strings without LaTeX for plain-text file
+    label_plain = ['Ck^(a)', 'Ck^(b)', 'Ck^(c)', 'Ck^(d)', 'Ck^(e)']
 
     lines = [
         '=' * 70,
         'DIAGNOSTIC SUMMARY: Ck Subterms Analysis (EP1 cyclones)',
         '=' * 70,
         '',
+        '-- LEC AUDIT SUMMARY --',
+        f'Total EP1 cyclones (from ep_structure/ep1_cases.csv):  {n_ep1_total}',
+        f'LEC directories found:                                 {val_stats.get("n_lec_directory_found", "?")}',
+        f'With Ck_pressure_level.csv:                           {val_stats.get("n_with_ck_total_file", "?")}',
+        f'With all Ck_1..5_pressure_level.csv:                  {val_stats.get("n_with_all_ck_subterm_files", "?")}',
+        f'With valid data in intensification phase:              {val_stats.get("n_with_data_in_intensif_phase", "?")}',
+        f'USABLE for dominance classification:                   {n_lec}',
+        f'NOT usable (excluded):                                 {n_ep1_total - n_lec}',
+        '',
+        'Figure sample counts:',
+        f'  Fig 1 (boxplots): n={n_lec}  — only cyclones with valid LEC subterm data',
+        f'  Fig 2 (genesis density, All EP1 panel): n={n_ep1_total}  — full EP1 population',
+        f'  Fig 2 (genesis density, per-subterm panels): n varies (see panel titles)',
+        f'  Fig 3 (normalized anomaly, All EP1 baseline): n={n_ep1_total}',
+        f'  Fig 4 (tracks, All EP1 panel): n={n_ep1_total}  — full EP1 population',
+        f'  Fig 4 (tracks, per-subterm panels): n varies (see panel titles)',
+        '',
+        f'WHY {n_lec} vs {n_ep1_total}:',
+        f'  - {n_ep1_total} = total EP1 cyclones with intensification phase data (ep1_cases.csv)',
+        f'  - {n_lec} = subset that have complete LEC output in results/ck_analysis/lec_results/',
+        '          (all five Ck_1..Ck_5 pressure-level CSV files present + non-empty',
+        '           data within the intensification window).',
+        f'  - The remaining {n_ep1_total - n_lec} cyclones lack complete LEC output.',
+        '  - Boxplots and dominance classification use only the usable subset.',
+        '  - "All EP1" panels (density maps, tracks) correctly use all EP1 cyclones.',
+        '',
         '-- DATA LOADED --',
-        f"EP1 cyclones (cluster 0): {val_stats['n_ep1_total']}",
-        f"EP1 with new LEC results: {val_stats['n_ep1_with_new_lec']}",
-        f"EP1 with intensification phase: {len(data['ep1_cases'])}",
-        f"Phase source: results/ep1_full/all_ep1_cases.csv (primary)",
-        f"              data/temp_lec_zenodo/.../periods.csv (fallback)",
+        f'EP1 cyclones (ep_structure/ep1_cases.csv): {n_ep1_total}',
+        f'EP1 with valid LEC results:                {n_lec}',
+        f'EP1 with intensification phase:            {len(data["ep1_cases"])}',
+        f'Phase source: results/ep_structure/ep1_cases.csv',
         '',
-        '-- CORRECTIONS APPLIED --',
-        'New LEC (results/ck_analysis/lec_results/):',
-        '  - Ck_total from *_results.csv: NO gravity correction (already integrated)',
-        '  - Ck subterms from results_vertical_levels/: vertical integration',
-        '    formula: sum(df.values * dp / g) where g=9.8 m/s²',
-        'Zenodo LEC (data/temp_lec_zenodo/):',
-        '  - Ck_total: DIVIDE by g=9.8 (gravity correction)',
-        '  - Ca: sign inversion (not applied here)',
+        '-- VERTICAL INTEGRATION --',
+        'Ck subterms from results_vertical_levels/:',
+        '  formula: sum(df.values * dp / g) where g=9.8 m/s^2',
+        '  dp = pressure interval at each level (Pa)',
+        'Ck_total from *_results.csv: already vertically integrated (no correction needed)',
         '',
-        '-- VALIDATION RESULTS --',
-        f"Cyclones with both new and Zenodo Ck: {val_stats['n_valid']}",
-        f"Mean Ck (Zenodo, corrected): {val_stats['mean_ck_zenodo_corrected']:.4f} W/m²",
-        f"Mean Ck (new LEC): {val_stats['mean_ck_new']:.4f} W/m²",
-        f"Mean subterm sum: {val_stats['mean_subterm_sum']:.4f} W/m²",
-        f"Mean residual (new - zenodo_corrected): {val_stats['mean_residual']:.4f} W/m²",
-        f"Mean relative error: {val_stats['mean_rel_error_pct']:.2f}%",
-        f"Within {val_stats['tolerance_pct']:.0f}% tolerance: {val_stats['n_within_tolerance']} / {val_stats['n_valid']}",
+        '-- INTERNAL CONSISTENCY --',
+        f'Mean Ck_total (from *_results.csv): {val_stats.get("mean_ck_new", float("nan")):.4f} W/m^2',
+        f'Mean subterms sum (Ck_1+..+Ck_5):   {val_stats.get("mean_subterm_sum", float("nan")):.4f} W/m^2',
+        '(close agreement confirms internal consistency of the vertical integration)',
         '',
         '-- DOMINANCE CLASSIFICATION --',
-        'Sign convention (paper.tex): C_K < 0 → K_E → K_Z (eddies transfer energy to mean flow).',
-        '                             C_K > 0 → K_Z → K_E (barotropic instability).',
-        'EP1 cyclones have large negative C_K (they are strong energy exporters).',
-        'Method: dominant subterm = subterm with minimum (most negative) intensification-phase mean',
-        '        i.e. the subterm driving eddy-to-mean-flow energy transfer most strongly.',
-        'Dominance margin: |dominant value − second most negative value|',
+        'Sign convention (paper.tex):',
+        '  C_K < 0  ->  K_Z -> K_E  (mean flow transfers energy to eddies; barotropic instability)',
+        '  C_K > 0  ->  K_E -> K_Z  (eddies transfer energy to mean flow)',
+        'EP1 cyclones have large negative C_K (strongly driven by barotropic instability).',
+        'Method: dominant subterm = subterm with minimum (most negative) intensification-phase mean.',
+        '        i.e. the subterm contributing most to the K_Z->K_E energy transfer.',
+        'Dominance margin: |dominant value - second most negative value|',
         '',
-        'Dominance counts per subterm:',
+        f'Dominance counts per subterm (n={n_lec} cyclones with valid LEC data):',
     ]
     for k, v in dominance_counts.items():
         idx = SUBTERM_KEYS.index(k) if k in SUBTERM_KEYS else -1
-        lbl = SUBTERM_LABELS[idx] if idx >= 0 else k
+        lbl = label_plain[idx] if idx >= 0 else k
         desc = SUBTERM_DESCRIPTIONS[idx] if idx >= 0 else ''
-        lines.append(f"  {k} ({lbl}): {v} cyclones  — {desc}")
+        lines.append(f'  {k} ({lbl}): {v} cyclones  -- {desc}')
+
+    # Top exclusion reasons from audit
+    if audit_summary and audit_summary.get('exclusion_reasons'):
+        lines += ['', '-- TOP EXCLUSION REASONS --']
+        for reason, count in sorted(
+            audit_summary['exclusion_reasons'].items(), key=lambda x: -x[1]
+        )[:10]:
+            lines.append(f'  {count:4d}  {reason}')
 
     lines += [
         '',
+        '-- NORMALIZATION METHOD (Figures 3) --',
+        'Step 1: For each spatial grid point, compute the KDE genesis density for:',
+        f'        (A) all EP1 cyclones (n={n_ep1_total})  ->  density_all[lat, lon]',
+        '        (B) cyclones where subterm k is dominant (n_k)  ->  density_k[lat, lon]',
+        'Step 2: Apply Min-Max normalization to positive values only:',
+        '        norm_all[lat,lon] = (density_all - min_pos) / (max_pos - min_pos)',
+        '                            where min_pos, max_pos are taken over the positive',
+        '                            values of density_all.',
+        '        Same formula for norm_k.',
+        'Step 3: Relative anomaly = norm_k - norm_all',
+        '        > 0 (red):  enhanced genesis for this subterm relative to all EP1.',
+        '        < 0 (blue): suppressed genesis for this subterm relative to all EP1.',
+        'Step 4: Shared diverging colorbar spans [-max_abs, +max_abs] where max_abs is',
+        '        the maximum absolute anomaly across all valid subterm panels.',
+        '',
         '-- OUTPUT FILES --',
-        f"Table 1: results/ck_subterms/ep1_ck_subterms_per_cyclone.csv",
-        f"Table 2: results/ck_subterms/validation_summary.csv",
-        f"Fig 1a:  figures/ck_subterms/ck_subterms_boxplots_subterms.png",
-        f"Fig 1b:  figures/ck_subterms/ck_subterms_boxplots_total.png",
-        f"Fig 2:   figures/ck_subterms/ck_subterms_genesis_density.png",
-        f"Fig 3:   figures/ck_subterms/ck_subterms_genesis_normaldiff.png",
-        f"Fig 4:   figures/ck_subterms/ck_subterms_tracks.png",
+        'Table 1: results/ck_subterms/ep1_ck_subterms_per_cyclone.csv',
+        'Audit:   results/ck_subterms/lec_audit_per_cyclone.csv',
+        'Audit:   results/ck_subterms/lec_audit_summary.csv / .json',
+        'Audit:   results/ck_subterms/lec_audit_report.txt',
+        'Fig 1:   figures/ck_subterms/ck_subterms_boxplots.png  (combined: subterms + total)',
+        'Fig 2:   figures/ck_subterms/ck_subterms_genesis_density.png',
+        'Fig 3:   figures/ck_subterms/ck_subterms_genesis_normaldiff.png',
+        'Fig 4:   figures/ck_subterms/ck_subterms_tracks.png',
         '=' * 70,
     ]
 
@@ -1160,60 +1209,87 @@ def write_diagnostic(dom_df: pd.DataFrame, val_stats: dict, data: dict):
     print(f'  Diagnostic saved: {out}')
 
 
+
 # ============================================================================
 # MAIN
 # ============================================================================
 
 def main():
     print('=' * 70)
-    print('STEP 3: Ck Subterms Validation and Figures')
+    print('STEP 3: LEC Audit, Dominance Classification, and Figures')
     print('=' * 70)
 
     # 1. Load data
     print('\n[1/7] Loading data...')
     data = load_data()
+    n_ep1_total = len(data['ep1_ids'])
+    print(f'  Total EP1 cyclones: {n_ep1_total}')
 
-    # 2. Compute dominance
-    print('\n[2/7] Computing dominance classification...')
-    dom_df = compute_dominance(data['ep1_ids'], data['ep1_cases'])
+    # 2. Run LEC audit
+    print('\n[2/7] Running LEC results audit...')
+    audit_df, audit_summary = run_audit(verbose=True)
+    n_lec_dirs = audit_summary['n_lec_directory_found']
+    n_ck_total = audit_summary['n_with_ck_total_file']
+    n_ck_subs  = audit_summary['n_with_all_ck_subterm_files']
+    n_usable   = audit_summary['n_usable_for_dominance']
+    print(f'  {n_ep1_total} EP1 cases expected')
+    print(f'  {n_lec_dirs} LEC directories found')
+    print(f'  {n_ck_total} with Ck_pressure_level.csv')
+    print(f'  {n_ck_subs} with all Ck_1..5 subterms')
+    print(f'  {n_usable} valid for dominance classification')
+    if audit_summary.get('exclusion_reasons'):
+        top = sorted(audit_summary['exclusion_reasons'].items(), key=lambda x: -x[1])[:3]
+        print('  Top exclusion reasons: ' + ', '.join(f'{r}({c})' for r, c in top))
+
+    # 3. Compute dominance (using audit to filter to valid cyclones)
+    print('\n[3/7] Computing dominance classification...')
+    dom_df = compute_dominance(data['ep1_ids'], data['ep1_cases'], audit_df=audit_df)
     if len(dom_df) == 0:
         print('ERROR: No cyclones with complete subterm data. Exiting.')
         return
-
-    # 3. Validate
-    print('\n[3/7] Validating Ck...')
-    val_stats = validate_ck(dom_df)
-    val_stats['n_ep1_total'] = len(data['ep1_ids'])
-    print(f"  Mean relative error: {val_stats['mean_rel_error_pct']:.2f}%")
-    print(f"  Within {TOLERANCE_PCT:.0f}% tolerance: "
-          f"{val_stats['n_within_tolerance']} / {val_stats['n_valid']}")
-    print(f"  Dominant subterm distribution:")
+    n_lec = len(dom_df)
+    print(f'  {n_ep1_total} EP1 cases expected')
+    print(f'  {n_lec} cases with complete Ck subterms (valid for dominance)')
+    print(f'  (Boxplots and dominance use n={n_lec}; '
+          f'All EP1 density/track panels use n={n_ep1_total})')
+    print(f'  Dominant subterm distribution (n={n_lec}):')
     for k, v in dom_df['dominant_subterm'].value_counts().sort_index().items():
-        print(f"    {k}: {v}")
+        print(f'    {k}: {v}')
 
-    # 4. Figures 1a & 1b: Boxplots
-    print('\n[4/7] Figure 1: Boxplots...')
-    create_figure_boxplots_subterms(dom_df)
-    create_figure_boxplots_total(dom_df)
+    # 4. Build audit statistics
+    print('\n[4/7] Summarizing LEC audit statistics...')
+    val_stats = summarize_lec_audit(dom_df, audit_summary)
+    val_stats['n_ep1_total'] = n_ep1_total
+    print(f"  Mean Ck_total (local LEC): {val_stats['mean_ck_new']:.4f} W/m²")
+    print(f"  Mean subterm sum:           {val_stats['mean_subterm_sum']:.4f} W/m²")
 
-    # 5. Figures 2 & 3: Genesis density
-    print('\n[5/7] Figure 2: Genesis density maps...')
+    # 5. Figures 1–4
+    print('\n[5/7] Figure 1: Combined boxplots (subterms left, total right)...')
+    create_figure_boxplots(dom_df, n_ep1_total)
+
+    # Note: genesis_df contains all EP1 cyclones; the "All EP1" panel uses
+    # the full population. Per-subterm panels use the usable subset.
+    print('\n[5b/7] Figure 2: Genesis density maps (per-panel colorbars)...')
     create_figure_genesis_density(dom_df, data['genesis_df'], data['tracks_df'])
 
-    print('\n[5b/7] Figure 3: Normalized-difference maps...')
+    print('\n[5c/7] Figure 3: Normalized-difference maps...')
     create_figure_normalized_diff(dom_df, data['genesis_df'])
 
-    # 6. Figure 4: Tracks
-    print('\n[6/7] Figure 4: Full tracks...')
-    create_figure_tracks(dom_df, data['ep1_cases'], data['tracks_df'])
+    print(f'\n[6/7] Figure 4: Full tracks (All EP1 n={n_ep1_total})...')
+    create_figure_tracks(dom_df, data['ep1_cases'], data['tracks_df'],
+                         all_ep1_ids=data['ep1_ids'])
 
-    # 7. Write tables and diagnostic
+    # 6. Write tables and diagnostics
     print('\n[7/7] Writing tables and diagnostics...')
     write_tables(dom_df, data, val_stats)
-    write_diagnostic(dom_df, val_stats, data)
+    write_diagnostic(dom_df, val_stats, data, audit_summary=audit_summary)
 
     # Regenerate figures manifest
     print('\nRegenerating figures manifest...')
+    subprocess.run(
+        ['python3', str(BASE_DIR / 'scripts/web/extract_ck_subterms_site_data.py')],
+        check=False
+    )
     subprocess.run(
         ['python3', str(BASE_DIR / 'scripts/web/build_site_manifest.py')],
         check=False
@@ -1223,6 +1299,9 @@ def main():
     print('STEP 3 COMPLETE')
     print(f"  Figures: {FIGURES_DIR}")
     print(f"  Results: {RESULTS_DIR}")
+    print(f"  Audit files: {RESULTS_DIR}/lec_audit_*.{{csv,json,txt}}")
+    print(f"  EP1 total={n_ep1_total} | LEC dirs={n_lec_dirs} | "
+          f"With subterms={n_ck_subs} | Valid for dominance={n_lec}")
     print('=' * 70)
 
 

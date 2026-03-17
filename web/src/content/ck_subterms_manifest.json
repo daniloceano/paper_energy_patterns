@@ -104,9 +104,9 @@
     }
   ],
   "figures": {
-    "boxplots": "figures/ck_subterms/ck_subterms_boxplots.png",
-    "genesis_density": "figures/ck_subterms/ck_subterms_genesis_density.png",
-    "genesis_normaldiff": "figures/ck_subterms/ck_subterms_genesis_normaldiff.png",
-    "tracks": "figures/ck_subterms/ck_subterms_tracks.png"
+    "boxplots": "https://<project-ref>.supabase.co/storage/v1/object/public/figures/ck_subterms/ck_subterms_boxplots.png",
+    "genesis_density": "https://<project-ref>.supabase.co/storage/v1/object/public/figures/ck_subterms/ck_subterms_genesis_density.png",
+    "genesis_normaldiff": "https://<project-ref>.supabase.co/storage/v1/object/public/figures/ck_subterms/ck_subterms_genesis_normaldiff.png",
+    "tracks": "https://<project-ref>.supabase.co/storage/v1/object/public/figures/ck_subterms/ck_subterms_tracks.png"
   }
 }

@@ -115,13 +115,18 @@ def main():
 
     # ── Step 3: Regenerate manifests ──────────────────────────────────────
     print("[ Step 3 ] Regenerate web/src/content/*.json manifests")
-    ok3 = run(
-        [PYTHON, "scripts/web/extract_composite_site_data.py"],
-        "extract_composite_site_data.py",
-        dry_run=args.dry_run,
-    )
-    if not ok3:
-        errors.append("Step 3: extract_composite_site_data.py failed")
+    manifest_scripts = [
+        ("scripts/web/build_site_manifest.py",         "build_site_manifest.py"),
+        ("scripts/web/extract_cluster_site_data.py",   "extract_cluster_site_data.py"),
+        ("scripts/web/extract_composite_site_data.py", "extract_composite_site_data.py"),
+        ("scripts/web/extract_ck_subterms_site_data.py", "extract_ck_subterms_site_data.py"),
+    ]
+    step3_ok = True
+    for script, desc in manifest_scripts:
+        ok = run([PYTHON, script], desc, dry_run=args.dry_run)
+        if not ok:
+            errors.append(f"Step 3: {desc} failed")
+            step3_ok = False
     print()
 
     # ── Step 4: Upload to Supabase Storage (optional) ────────────────────

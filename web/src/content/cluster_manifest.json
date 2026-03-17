@@ -22,7 +22,7 @@
         "n_clusters": "3",
         "n_samples": "3820",
         "n_features_used": "15",
-        "inertia": "73190.76535059507",
+        "inertia": "73190.76535059515",
         "n_init": "100",
         "random_state": "42",
         "cluster_0_size": "444",

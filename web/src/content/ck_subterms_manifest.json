@@ -36,27 +36,27 @@
   },
   "subterms": [
     {
-      "symbol": "C_K^(a)",
+      "symbol": "C_k^{(a)}",
       "name": "Term (a)",
       "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"
     },
     {
-      "symbol": "C_K^(b)",
+      "symbol": "C_k^{(b)}",
       "name": "Term (b)",
       "description": "Meridional flux of eddy KE with meridional wind"
     },
     {
-      "symbol": "C_K^(c)",
+      "symbol": "C_k^{(c)}",
       "name": "Term (c)",
       "description": "Zonal flux of eddy KE with zonal wind"
     },
     {
-      "symbol": "C_K^(d)",
+      "symbol": "C_k^{(d)}",
       "name": "Term (d)",
       "description": "Mixed meridional and vertical flux with vertical shear of U"
     },
     {
-      "symbol": "C_K^(e)",
+      "symbol": "C_k^{(e)}",
       "name": "Term (e)",
       "description": "Mixed meridional and vertical flux with vertical shear of V"
     }
@@ -64,7 +64,7 @@
   "dominance": [
     {
       "subterm_key": "Ck_1",
-      "symbol": "C_K^(a)",
+      "symbol": "C_k^{(a)}",
       "name": "Term (a)",
       "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)",
       "count": 72,
@@ -72,7 +72,7 @@
     },
     {
       "subterm_key": "Ck_2",
-      "symbol": "C_K^(b)",
+      "symbol": "C_k^{(b)}",
       "name": "Term (b)",
       "description": "Meridional flux of eddy KE with meridional wind",
       "count": 147,
@@ -80,7 +80,7 @@
     },
     {
       "subterm_key": "Ck_3",
-      "symbol": "C_K^(c)",
+      "symbol": "C_k^{(c)}",
       "name": "Term (c)",
       "description": "Zonal flux of eddy KE with zonal wind",
       "count": 0,
@@ -88,7 +88,7 @@
     },
     {
       "subterm_key": "Ck_4",
-      "symbol": "C_K^(d)",
+      "symbol": "C_k^{(d)}",
       "name": "Term (d)",
       "description": "Mixed meridional and vertical flux with vertical shear of U",
       "count": 0,
@@ -96,7 +96,7 @@
     },
     {
       "subterm_key": "Ck_5",
-      "symbol": "C_K^(e)",
+      "symbol": "C_k^{(e)}",
       "name": "Term (e)",
       "description": "Mixed meridional and vertical flux with vertical shear of V",
       "count": 166,

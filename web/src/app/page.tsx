@@ -2,6 +2,7 @@ import Link from 'next/link'
 import {
   BarChart3,
   Layers,
+  TrendingDown,
   Database,
   BookOpen,
   Microscope,
@@ -192,6 +193,12 @@ export default function HomePage() {
                 desc: 'ERA5 composite maps comparing EP1 vs EP2 atmospheric structure',
                 href: '/analyses/composites',
                 icon: Layers,
+              },
+              {
+                title: 'Ck Subterms Analysis',
+                desc: 'Decomposition of barotropic conversion into five subterms and dominance classification',
+                href: '/analyses/ck-subterms',
+                icon: TrendingDown,
               },
               {
                 title: 'Data & Methods',

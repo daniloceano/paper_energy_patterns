@@ -151,10 +151,20 @@ export default function MethodsPage() {
                 indicates barotropic energy extraction from the mean flow (EP1 hallmark).
               </p>
               <div className="mt-3">
-                <FormulaBlock
-                  formula="C_k = \int_{p_b}^{p_t} \left[ (u)_\lambda (v)_\lambda \frac{\partial \langle u \rangle_\lambda}{\partial y} \right] dp"
-                  label="Ck formula"
-                />
+                  <FormulaBlock
+                    formula={`\\begin{split}
+  C_K = \\int_{p_t}^{p_b} \\frac{1}{g} & \\Bigg( \\underbrace{ \\left[ \\frac{\\cos\\phi}{a} (u)_{\\lambda} (v)_{\\lambda} \\frac{\\partial}{\\partial\\phi} \\left(\\frac{[u]_{\\lambda}}{\\cos\\phi}\\right) \\right]_{\\lambda\\phi}}_{\\text{(A)}} + \\underbrace{\\left[ \\frac{(v)_{\\lambda}^2}{a} \\frac{\\partial [v]_{\\lambda}}{\\partial\\phi}\\right]_{\\lambda\\phi}}_{\\text{(B)}} + \\underbrace{\\left[ \\frac{\\tan\\phi}{a} (u)_{\\lambda}^2 [v]_{\\lambda}\\right]_{\\lambda\\phi}}_{\\text{(C)}}\\\\
+  & + \\underbrace{ \\left[(\\omega)_{\\lambda}  (u)_{\\lambda} \\frac{\\partial [u]_{\\lambda}}{\\partial p}\\right]_{\\lambda\\phi}}_{\\text{(D)}} + \\underbrace{ \\left[(\\omega)_{\\lambda}  (v)_{\\lambda} \\frac{\\partial [v]_{\\lambda}}{\\partial p}\\right]_{\\lambda\\phi}}_{\\text{(E)}} \\Bigg)  dp
+  \\end{split}`}
+                    label="Ck formula"
+                    terms={{
+                      '(A)': 'Eddy momentum flux × meridional gradient of zonal mean (barotropic instability)',
+                      '(B)': 'Meridional flux of eddy KE with meridional wind',
+                      '(C)': 'Meridional flux of zonal KE (tanφ term)',
+                      '(D)': 'Vertical flux related to zonal wind shear',
+                      '(E)': 'Vertical flux related to meridional wind shear',
+                    }}
+                  />
               </div>
             </div>
 

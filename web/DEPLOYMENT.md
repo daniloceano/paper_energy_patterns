@@ -21,10 +21,18 @@ As figuras são servidas como **assets estáticos do Next.js** a partir de `web/
 
 Quando as figuras científicas são regeneradas, você roda um script que copia apenas as necessárias para `web/public/figures/` e faz um commit.
 
+Fluxos suportados para as figuras
+--------------------------------
+
+1) Static (padrão): copie as figuras necessárias para `web/public/figures/`, commit e push. A Vercel servirá os assets em `/figures/...` automaticamente.
+
+2) Supabase (opcional): faça upload das figuras para o bucket público `figures` no Supabase e defina a variável `NEXT_PUBLIC_SUPABASE_FIGURES_URL` no painel da Vercel apontando para `https://<project>.supabase.co/storage/v1/object/public/figures`. **ATENÇÃO:** o upload para o Supabase não é feito por `git push` — é necessário executar `python scripts/web/upload_figures_to_supabase.py` explicitamente. O script também sugere o valor exato de `NEXT_PUBLIC_SUPABASE_FIGURES_URL` a ser configurado.
+
+
 **Supabase Storage** pode ser usado como alternativa (CDN externo), mas não é obrigatório. O site funciona sem ele.
 
 ---
-- **Vercel** → faz o build do site e referencia as figuras pelo URL do Supabase
+- **Vercel** → faz o build do site e referencia as figuras pelo URL do Supabase (se configurado). Importante: um `git push` NÃO envia figuras para o Supabase — é necessário executar o script de upload explicitamente.
 
 ---
 
@@ -203,8 +211,11 @@ git push
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. Upload figuras para Supabase (sua máquina)               │
+│    # Preview (dry-run):                                      │
+│    python scripts/web/upload_figures_to_supabase.py --dry-run │
+│    # Upload (writes to public bucket 'figures'):             │
 │    python scripts/web/upload_figures_to_supabase.py         │
-│    → figuras disponíveis em: supabase.co/.../figures/*      │
+│    → After success the script prints the exact NEXT_PUBLIC_SUPABASE_FIGURES_URL value to set in Vercel. │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼

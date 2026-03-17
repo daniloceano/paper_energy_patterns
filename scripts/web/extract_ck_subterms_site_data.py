@@ -25,11 +25,12 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
 # Ck subterm labels – plain text for web (HTML/JSON context)
 SUBTERM_LABELS = {
-    "Ck_1": {"symbol": "C_K^(a)", "name": "Term (a)", "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"},
-    "Ck_2": {"symbol": "C_K^(b)", "name": "Term (b)", "description": "Meridional flux of eddy KE with meridional wind"},
-    "Ck_3": {"symbol": "C_K^(c)", "name": "Term (c)", "description": "Zonal flux of eddy KE with zonal wind"},
-    "Ck_4": {"symbol": "C_K^(d)", "name": "Term (d)", "description": "Mixed meridional and vertical flux with vertical shear of U"},
-    "Ck_5": {"symbol": "C_K^(e)", "name": "Term (e)", "description": "Mixed meridional and vertical flux with vertical shear of V"},
+    # Use LaTeX-friendly notation for rendering in the web site (KaTeX)
+    "Ck_1": {"symbol": "C_k^{(a)}", "name": "Term (a)", "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"},
+    "Ck_2": {"symbol": "C_k^{(b)}", "name": "Term (b)", "description": "Meridional flux of eddy KE with meridional wind"},
+    "Ck_3": {"symbol": "C_k^{(c)}", "name": "Term (c)", "description": "Zonal flux of eddy KE with zonal wind"},
+    "Ck_4": {"symbol": "C_k^{(d)}", "name": "Term (d)", "description": "Mixed meridional and vertical flux with vertical shear of U"},
+    "Ck_5": {"symbol": "C_k^{(e)}", "name": "Term (e)", "description": "Mixed meridional and vertical flux with vertical shear of V"},
 }
 
 FIGURE_PATHS = {
@@ -38,6 +39,20 @@ FIGURE_PATHS = {
     "genesis_normaldiff": "figures/ck_subterms/ck_subterms_genesis_normaldiff.png",
     "tracks": "figures/ck_subterms/ck_subterms_tracks.png",
 }
+
+
+def supabase_base_from_env():
+    """Return the Supabase figures base URL if provided in the environment.
+
+    Checks both SUPABASE_FIGURES_URL and NEXT_PUBLIC_SUPABASE_FIGURES_URL for compatibility.
+    The returned base should not end with a slash.
+    """
+    import os
+
+    base = os.environ.get("SUPABASE_FIGURES_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_FIGURES_URL")
+    if not base:
+        return None
+    return base.rstrip('/')
 
 
 def read_csv_safe(filepath):
@@ -177,6 +192,24 @@ def extract_manifest():
         "dominance": dominance_summary,
         "figures": FIGURE_PATHS,
     }
+
+    # If a Supabase figures base URL is provided via env, convert local figure paths
+    # (figures/...) into full public URLs so the manifest can be consumed directly
+    # by the production site without committing image PNGs to the repo.
+    base = supabase_base_from_env()
+    if base:
+        figures_with_urls = {}
+        for k, rel in manifest["figures"].items():
+            # rel is like 'figures/ck_subterms/xxx.png' -> object path 'ck_subterms/xxx.png'
+            if isinstance(rel, str):
+                if rel.startswith('figures/'):
+                    object_key = rel.replace('figures/', '', 1)
+                else:
+                    object_key = rel
+            else:
+                object_key = rel
+            figures_with_urls[k] = f"{base}/{object_key}"
+        manifest["figures"] = figures_with_urls
 
     output = WEB_CONTENT / "ck_subterms_manifest.json"
     with open(output, "w") as f:

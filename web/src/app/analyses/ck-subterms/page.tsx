@@ -6,6 +6,7 @@ import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import FigurePanel from '@/components/analysis/FigurePanel'
 import { ENERGY_PATTERNS } from '@/lib/constants'
 import { readManifest, figureUrl } from '@/lib/utils'
+import InlineMath from '@/components/analysis/InlineMath'
 
 export const metadata: Metadata = {
   title: 'Ck Subterms Analysis — EP1 Barotropic Decomposition',
@@ -83,10 +84,14 @@ export default function CkSubtermsPage() {
   const lec_audit = manifest?.lec_audit
 
   const figures = {
-    boxplots: figureUrl('figures/ck_subterms/ck_subterms_boxplots.png'),
-    genesis_density: figureUrl('figures/ck_subterms/ck_subterms_genesis_density.png'),
-    genesis_normaldiff: figureUrl('figures/ck_subterms/ck_subterms_genesis_normaldiff.png'),
-    tracks: figureUrl('figures/ck_subterms/ck_subterms_tracks.png'),
+    boxplots:
+      manifest?.figures?.boxplots ?? figureUrl('figures/ck_subterms/ck_subterms_boxplots.png'),
+    genesis_density:
+      manifest?.figures?.genesis_density ?? figureUrl('figures/ck_subterms/ck_subterms_genesis_density.png'),
+    genesis_normaldiff:
+      manifest?.figures?.genesis_normaldiff ?? figureUrl('figures/ck_subterms/ck_subterms_genesis_normaldiff.png'),
+    tracks:
+      manifest?.figures?.tracks ?? figureUrl('figures/ck_subterms/ck_subterms_tracks.png'),
   }
 
   return (
@@ -262,7 +267,9 @@ export default function CkSubtermsPage() {
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs">
                       {String.fromCharCode(65 + i)}
                     </span>
-                    <span className="text-sm font-semibold text-slate-800">{s.symbol}</span>
+                    <span className="text-sm font-semibold text-slate-800">
+                      <InlineMath expr={s.symbol} />
+                    </span>
                   </div>
                   <p className="text-xs text-slate-500 leading-relaxed">{s.description}</p>
                 </div>
@@ -284,7 +291,7 @@ export default function CkSubtermsPage() {
                   className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-bold text-indigo-700">{d.symbol}</span>
+                    <span className="text-sm font-bold text-indigo-700"><InlineMath expr={d.symbol} /></span>
                     <TrendingDown className="h-4 w-4 text-slate-400" />
                   </div>
                   <p className="text-2xl font-bold text-slate-900">{d.count}</p>

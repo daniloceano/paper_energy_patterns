@@ -110,3 +110,6 @@ web/.env.local
 # Generated analysis figures served via Supabase Storage (not git)
 # Upload with: python scripts/web/upload_figures_to_supabase.py --dirs ck_subterms
 web/public/figures/ck_subterms/
+
+# Website secret keys
+.env.local

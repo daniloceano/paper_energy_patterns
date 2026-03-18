@@ -84,6 +84,12 @@
     "api_url": "/api/figures?path=figures/ep1_vertical/critical_levels_boxplot.png"
   },
   {
+    "filename": "all_ep1_tracks_overview.png",
+    "path": "figures/ep1_vertical/tracks/all_ep1_tracks_overview.png",
+    "category": "ep1_vertical",
+    "api_url": "/api/figures?path=figures/ep1_vertical/tracks/all_ep1_tracks_overview.png"
+  },
+  {
     "filename": "selected_tracks_overview.png",
     "path": "figures/ep1_vertical/tracks/selected_tracks_overview.png",
     "category": "ep1_vertical",
@@ -330,6 +336,12 @@
     "api_url": "/api/figures?path=figures/exploratory/density_ge/by_phase_ep/ep3_mat.png"
   },
   {
+    "filename": "ep_genesis_density_relative_kde.png",
+    "path": "figures/exploratory/ep_analysis/ep_genesis_density_relative_kde.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/ep_analysis/ep_genesis_density_relative_kde.png"
+  },
+  {
     "filename": "genesis_regions.png",
     "path": "figures/exploratory/ep_analysis/genesis_regions.png",
     "category": "exploratory",
@@ -352,6 +364,12 @@
     "path": "figures/exploratory/ep_analysis/seasonality.png",
     "category": "exploratory",
     "api_url": "/api/figures?path=figures/exploratory/ep_analysis/seasonality.png"
+  },
+  {
+    "filename": "kde_pairplot.png",
+    "path": "figures/exploratory/kde_pairplot.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/kde_pairplot.png"
   },
   {
     "filename": "ep1_lps_conversion_default.png",
@@ -426,6 +444,12 @@
     "api_url": "/api/figures?path=figures/exploratory/lps_diagrams_by_ep/ep3_lps_imports_zoom.png"
   },
   {
+    "filename": "scatter_density.png",
+    "path": "figures/exploratory/scatter_density.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/scatter_density.png"
+  },
+  {
     "filename": "19920472_lps_conversion.png",
     "path": "figures/exploratory/three_most_intense_cyclones/19920472_lps_conversion.png",
     "category": "exploratory",
@@ -480,16 +504,106 @@
     "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones/20070643_track.png"
   },
   {
-    "filename": "validation_vertical_integration.png",
-    "path": "figures/exploratory/validation_vertical_integration.png",
+    "filename": "three_most_intense_cyclones_lps_tracks.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_lps_tracks.png",
     "category": "exploratory",
-    "api_url": "/api/figures?path=figures/exploratory/validation_vertical_integration.png"
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_lps_tracks.png"
   },
   {
-    "filename": "20070643_lps_track_publication.png",
-    "path": "figures/main/20070643_lps_track_publication.png",
+    "filename": "19920472_lps_conversion_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19920472_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19920472_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "19920472_lps_imports_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19920472_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19920472_lps_imports_zoom.png"
+  },
+  {
+    "filename": "19920472_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19920472_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19920472_track.png"
+  },
+  {
+    "filename": "19950629_lps_conversion_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19950629_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19950629_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "19950629_lps_imports_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19950629_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19950629_lps_imports_zoom.png"
+  },
+  {
+    "filename": "19950629_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/19950629_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/19950629_track.png"
+  },
+  {
+    "filename": "20070643_lps_conversion_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_conversion_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_conversion_zoom.png"
+  },
+  {
+    "filename": "20070643_lps_imports_zoom.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_imports_zoom.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_imports_zoom.png"
+  },
+  {
+    "filename": "20070643_track.png",
+    "path": "figures/exploratory/three_most_intense_cyclones_zoom/20070643_track.png",
+    "category": "exploratory",
+    "api_url": "/api/figures?path=figures/exploratory/three_most_intense_cyclones_zoom/20070643_track.png"
+  },
+  {
+    "filename": "1_tracks_genesis_frequency.png",
+    "path": "figures/main/1_tracks_genesis_frequency.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/20070643_lps_track_publication.png"
+    "api_url": "/api/figures?path=figures/main/1_tracks_genesis_frequency.png"
+  },
+  {
+    "filename": "2_20070643_lps_track_publication.png",
+    "path": "figures/main/2_20070643_lps_track_publication.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/2_20070643_lps_track_publication.png"
+  },
+  {
+    "filename": "3_phase_density_2x2.png",
+    "path": "figures/main/3_phase_density_2x2.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/3_phase_density_2x2.png"
+  },
+  {
+    "filename": "4_lps_combined.png",
+    "path": "figures/main/4_lps_combined.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/4_lps_combined.png"
+  },
+  {
+    "filename": "5_ep_intensity_seasonality_trends.png",
+    "path": "figures/main/5_ep_intensity_seasonality_trends.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/5_ep_intensity_seasonality_trends.png"
+  },
+  {
+    "filename": "6_ep_genesis_density_kde.png",
+    "path": "figures/main/6_ep_genesis_density_kde.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/6_ep_genesis_density_kde.png"
+  },
+  {
+    "filename": "7_ep1_instability_composite_4x3.png",
+    "path": "figures/main/7_ep1_instability_composite_4x3.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/7_ep1_instability_composite_4x3.png"
   },
   {
     "filename": "S1_pca_clustering_validation.png",
@@ -498,21 +612,15 @@
     "api_url": "/api/figures?path=figures/main/S1_pca_clustering_validation.png"
   },
   {
-    "filename": "ep_genesis_density_kde.png",
-    "path": "figures/main/ep_genesis_density_kde.png",
+    "filename": "S2_selected_tracks.png",
+    "path": "figures/main/S2_selected_tracks.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/ep_genesis_density_kde.png"
+    "api_url": "/api/figures?path=figures/main/S2_selected_tracks.png"
   },
   {
-    "filename": "phase_density_2x2.png",
-    "path": "figures/main/phase_density_2x2.png",
+    "filename": "S3_vertical_levels.png",
+    "path": "figures/main/S3_vertical_levels.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/phase_density_2x2.png"
-  },
-  {
-    "filename": "tracks_genesis_frequency.png",
-    "path": "figures/main/tracks_genesis_frequency.png",
-    "category": "main",
-    "api_url": "/api/figures?path=figures/main/tracks_genesis_frequency.png"
+    "api_url": "/api/figures?path=figures/main/S3_vertical_levels.png"
   }
 ]

@@ -45,15 +45,24 @@ try:
 except ImportError:
     HAS_PSUTIL = False
 
+try:
+    import pandas as pd
+    HAS_PANDAS = True
+except ImportError:
+    HAS_PANDAS = False
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TRACKS_DIR   = PROJECT_ROOT / "data" / "ck_analysis" / "tracks"
-RESULTS_DIR  = PROJECT_ROOT / "results" / "ck_analysis" / "lec_results"
-LOG_DIR      = PROJECT_ROOT / "results" / "ck_analysis" / "logs"
+PROJECT_ROOT    = Path(__file__).resolve().parents[2]
+TRACKS_DIR      = PROJECT_ROOT / "data" / "ck_analysis" / "tracks"
+RESULTS_DIR     = PROJECT_ROOT / "results" / "ck_analysis" / "lec_results"
+LOG_DIR         = PROJECT_ROOT / "results" / "ck_analysis" / "logs"
 CYCLONE_LOG_DIR = LOG_DIR / "cyclones"
+
+# Source of truth: all expected EP1 cyclones (produced by ep_structure_analysis)
+ALL_EP1_CASES_FILE = PROJECT_ROOT / "results" / "ep_structure" / "ep1_cases.csv"
 
 # Maximum processing time threshold (24 hours)
 # Cyclones taking longer are considered stalled/interrupted
@@ -263,70 +272,105 @@ def get_cyclone_size_info(track_id: str) -> dict:
     return {"total_bytes": total_bytes, "file_count": file_count}
 
 
+def get_all_expected_track_ids():
+    """
+    Return the list of all expected track IDs, using ep1_cases.csv as source
+    of truth. Falls back to track files in TRACKS_DIR if ep1_cases.csv is
+    unavailable.
+
+    Returns (track_ids: list[str], source: str)
+    """
+    if ALL_EP1_CASES_FILE.exists() and HAS_PANDAS:
+        try:
+            df = pd.read_csv(ALL_EP1_CASES_FILE)
+            ids = [str(tid) for tid in df["track_id"].tolist()]
+            return ids, "ep1_cases.csv"
+        except Exception:
+            pass
+
+    # Fallback: derive from track files already prepared
+    track_files = sorted(TRACKS_DIR.glob("track_*.txt"))
+    ids = [f.stem.replace("track_", "") for f in track_files]
+    return ids, "tracks dir (fallback)"
+
+
 def scan_all_cyclones():
     """
-    Scan all track files and determine processing status.
-    
+    Scan all expected EP1 cyclones and determine processing status.
+
+    Uses ep1_cases.csv as the source of truth for the expected set.
+    Cyclones without a track file are reported as 'no_track'.
+
     Returns dict with:
-        - total: total number of cyclones
+        - total: total number of expected cyclones
+        - source: where the expected list came from
         - completed: list of completed track_ids
         - in_progress: list of in-progress track_ids
-        - pending: list of pending track_ids
+        - pending: list of pending track_ids (track file exists, no results)
+        - no_track: list of track_ids with no track file prepared yet
         - processing_times: dict of track_id -> processing time (seconds)
         - total_size_bytes: total disk usage
     """
-    # Get all track files
-    track_files = sorted(TRACKS_DIR.glob("track_*.txt"))
-    
-    if len(track_files) == 0:
+    all_ids, source = get_all_expected_track_ids()
+
+    if len(all_ids) == 0:
         return {
             "total": 0,
+            "source": source,
             "completed": [],
             "in_progress": [],
             "pending": [],
+            "no_track": [],
             "processing_times": {},
             "total_size_bytes": 0,
         }
-    
+
+    # Set of IDs that already have a track file
+    prepared_ids = {
+        f.stem.replace("track_", "")
+        for f in TRACKS_DIR.glob("track_*.txt")
+    }
+
     completed = []
     in_progress = []
     pending = []
+    no_track = []
     processing_times = {}
     total_size_bytes = 0
-    
-    for track_file in track_files:
-        # Extract track ID: track_19790205.txt -> 19790205
-        track_id = track_file.stem.replace('track_', '')
-        
+
+    for track_id in all_ids:
+        if track_id not in prepared_ids:
+            no_track.append(track_id)
+            continue
+
         status = get_cyclone_status(track_id)
-        
+
         if status == 'completed':
             completed.append(track_id)
-            
-            # Get processing time
+
             proc_time = get_processing_time(track_id)
             if proc_time is not None:
                 processing_times[track_id] = proc_time
-            
-            # Get disk usage
+
             size_info = get_cyclone_size_info(track_id)
             total_size_bytes += size_info["total_bytes"]
-            
+
         elif status == 'in_progress':
             in_progress.append(track_id)
-            
-            # Get disk usage (partial)
+
             size_info = get_cyclone_size_info(track_id)
             total_size_bytes += size_info["total_bytes"]
-            
-        else:  # pending
+
+        else:  # pending (track file exists, no result dir yet)
             pending.append(track_id)
-    
+
     return {
-        "total": len(track_files),
+        "total": len(all_ids),
+        "source": source,
         "completed": completed,
         "in_progress": in_progress,
         "pending": pending,
+        "no_track": no_track,
         "processing_times": processing_times,
         "total_size_bytes": total_size_bytes,
     }
@@ -388,9 +432,10 @@ def compute_statistics(scan_data: dict):
         min_time = min(times)
         max_time = max(times)
         
-        n_pending = len(scan_data["pending"]) + len(scan_data["in_progress"])
+        n_pending = (len(scan_data["pending"]) + len(scan_data["in_progress"])
+                     + len(scan_data.get("no_track", [])))
         eta_seconds = mean_time * n_pending if n_pending > 0 else 0
-        
+
         return {
             "mean_time": mean_time,
             "median_time": median_time,
@@ -453,8 +498,9 @@ def compute_statistics(scan_data: dict):
     margin_low = min(outliers_low) if outliers_low else min_time
     margin_high = max(outliers_high) if outliers_high else max_time
     
-    # ETA calculations
-    n_pending = len(scan_data["pending"]) + len(scan_data["in_progress"])
+    # ETA calculations — include cyclones without track file as not yet done
+    n_pending = (len(scan_data["pending"]) + len(scan_data["in_progress"])
+                 + len(scan_data.get("no_track", [])))
     eta_seconds = mean_time * n_pending if n_pending > 0 else 0
     eta_best = margin_low * n_pending if n_pending > 0 else 0
     eta_worst = margin_high * n_pending if n_pending > 0 else 0
@@ -540,21 +586,25 @@ def print_report(
     print("═" * W)
     
     # Progress bar
-    n_completed = len(scan_data["completed"])
-    n_in_progress = len(scan_data["in_progress"])
-    n_pending = len(scan_data["pending"])
-    n_total = scan_data["total"]
-    
+    n_completed    = len(scan_data["completed"])
+    n_in_progress  = len(scan_data["in_progress"])
+    n_pending      = len(scan_data["pending"])
+    n_no_track     = len(scan_data.get("no_track", []))
+    n_total        = scan_data["total"]
+    source         = scan_data.get("source", "tracks dir")
+
     print()
     print(f"  Progress  {_bar(n_completed, n_total)}")
+    print(f"  (Source: {source})")
     print()
-    print(f"  ✅ Completed:   {n_completed:>4}")
-    print(f"  ⚙️  Processing:  {n_in_progress:>4}  (directory created, awaiting final files)")
-    print(f"  ⏳ Pending:     {n_pending:>4}  (not started yet)")
-    print(f"  {'─' * 20}")
-    print(f"  📁 Total:       {n_total:>4} cyclones")
+    print(f"  ✅ Completed:      {n_completed:>4}")
+    print(f"  ⚙️  Processing:     {n_in_progress:>4}  (directory created, awaiting final files)")
+    print(f"  ⏳ Pending:        {n_pending:>4}  (track file ready, not yet started)")
+    print(f"  📋 No track file:  {n_no_track:>4}  (need to run step1 first)")
+    print(f"  {'─' * 24}")
+    print(f"  📁 Total expected: {n_total:>4} cyclones")
     print()
-    print(f"  💾 Disk:        {_fmt_bytes(scan_data['total_size_bytes'])}")
+    print(f"  💾 Disk:           {_fmt_bytes(scan_data['total_size_bytes'])}")
     print()
     
     # If there are in-progress cyclones, show current activity
@@ -630,8 +680,8 @@ def print_report(
             eta_time = datetime.now() + timedelta(seconds=stats["eta_seconds"])
             eta_time_str = eta_time.strftime("%Y-%m-%d %H:%M")
             
-            n_remaining = n_in_progress + n_pending
-            
+            n_remaining = n_in_progress + n_pending + n_no_track
+
             print(f"  ⏱  Estimated time remaining: {eta_str}")
             print(f"  🎯 Expected completion:     {eta_time_str}")
             
@@ -652,7 +702,7 @@ def print_report(
                 print(f"     (No outliers detected in timing data)")
                 
             print(f"     (Cyclones taking >{MAX_PROCESSING_HOURS}h excluded as likely interrupted)")
-        elif n_in_progress + n_pending == 0:
+        elif n_in_progress + n_pending + n_no_track == 0:
             print(f"  ✅ All cyclones completed!")
         else:
             print(f"  ⏱  ETA: Not yet available (need more completed cyclones)")
@@ -695,19 +745,33 @@ def print_report(
             else:
                 print(f"  {track_id}  completed {completed_time}")
     
-    # Pending (next 5)
+    # Pending (next 5) — track file ready but not yet started
     if len(scan_data["pending"]) > 0:
         print()
         print("  " + "─" * (W - 2))
-        print("  PENDING (next 5 not yet started)")
+        print("  PENDING — track file ready, not yet started (next 5)")
         print("  " + "─" * (W - 2))
-        
+
         for track_id in scan_data["pending"][:5]:
             print(f"  {track_id}")
-        
+
         if len(scan_data["pending"]) > 5:
             print(f"  ... and {len(scan_data['pending']) - 5} more")
-    
+
+    # No track file (need step1)
+    if len(scan_data.get("no_track", [])) > 0:
+        n_nt = len(scan_data["no_track"])
+        print()
+        print("  " + "─" * (W - 2))
+        print(f"  NO TRACK FILE — need to run step1_prepare_tracks.py ({n_nt} cyclones)")
+        print("  " + "─" * (W - 2))
+
+        for track_id in scan_data["no_track"][:5]:
+            print(f"  {track_id}")
+
+        if n_nt > 5:
+            print(f"  ... and {n_nt - 5} more")
+
     print()
     
     # Check for failed cyclones file
@@ -790,17 +854,20 @@ def main() -> None:
     )
     args = parser.parse_args()
     
-    # Check if tracks directory exists
-    if not TRACKS_DIR.exists():
-        print(f"\n❌  Tracks directory not found: {TRACKS_DIR}")
+    # Need at least one source of cyclone information
+    has_ep1_cases = ALL_EP1_CASES_FILE.exists() and HAS_PANDAS
+    has_tracks    = TRACKS_DIR.exists() and len(list(TRACKS_DIR.glob("track_*.txt"))) > 0
+
+    if not has_ep1_cases and not has_tracks:
+        print(f"\n❌  No cyclone data found.")
+        print(f"    Expected ep1_cases.csv at: {ALL_EP1_CASES_FILE}")
+        print(f"    Or track files in: {TRACKS_DIR}")
         print("    Run step1_prepare_tracks.py first.\n")
         sys.exit(1)
-    
-    track_files = list(TRACKS_DIR.glob("track_*.txt"))
-    if len(track_files) == 0:
-        print(f"\n❌  No track files found in: {TRACKS_DIR}")
-        print("    Run step1_prepare_tracks.py first.\n")
-        sys.exit(1)
+
+    if not has_ep1_cases:
+        print(f"  ⚠  ep1_cases.csv not found — using track files as total reference.")
+        print(f"     Install pandas and ensure {ALL_EP1_CASES_FILE} exists for accurate totals.\n")
     
     def _run_once() -> None:
         t0 = time.monotonic()

@@ -4,9 +4,27 @@ import Breadcrumbs from '@/components/layout/Breadcrumbs'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import FigurePanel from '@/components/analysis/FigurePanel'
+import FormulaBlock from '@/components/analysis/FormulaBlock'
 import { ENERGY_PATTERNS } from '@/lib/constants'
 import { readManifest, figureUrl } from '@/lib/utils'
 import InlineMath from '@/components/analysis/InlineMath'
+
+/**
+ * Resolve a figure URL from the manifest (or fall back to a default path).
+ *
+ * The manifest may contain:
+ *   • A full Supabase URL   → used as-is
+ *   • A relative local path → passed through figureUrl() to prepend '/'
+ *   • undefined             → fall back to figureUrl(fallback)
+ */
+function resolveFig(manifestPath: string | undefined, fallback: string): string {
+  if (!manifestPath) return figureUrl(fallback)
+  if (manifestPath.startsWith('http://') || manifestPath.startsWith('https://') || manifestPath.startsWith('/')) {
+    return manifestPath
+  }
+  // Relative path (e.g. "figures/ck_subterms/xxx.png") → convert to absolute URL
+  return figureUrl(manifestPath)
+}
 
 export const metadata: Metadata = {
   title: 'Ck Subterms Analysis — EP1 Barotropic Decomposition',
@@ -17,6 +35,7 @@ export const metadata: Metadata = {
 interface SubtermInfo {
   symbol: string
   name: string
+  katex?: string
   description: string
 }
 
@@ -84,14 +103,10 @@ export default function CkSubtermsPage() {
   const lec_audit = manifest?.lec_audit
 
   const figures = {
-    boxplots:
-      manifest?.figures?.boxplots ?? figureUrl('figures/ck_subterms/ck_subterms_boxplots.png'),
-    genesis_density:
-      manifest?.figures?.genesis_density ?? figureUrl('figures/ck_subterms/ck_subterms_genesis_density.png'),
-    genesis_normaldiff:
-      manifest?.figures?.genesis_normaldiff ?? figureUrl('figures/ck_subterms/ck_subterms_genesis_normaldiff.png'),
-    tracks:
-      manifest?.figures?.tracks ?? figureUrl('figures/ck_subterms/ck_subterms_tracks.png'),
+    boxplots:         resolveFig(manifest?.figures?.boxplots,          'figures/ck_subterms/ck_subterms_boxplots.png'),
+    genesis_density:  resolveFig(manifest?.figures?.genesis_density,   'figures/ck_subterms/ck_subterms_genesis_density.png'),
+    genesis_normaldiff: resolveFig(manifest?.figures?.genesis_normaldiff, 'figures/ck_subterms/ck_subterms_genesis_normaldiff.png'),
+    tracks:           resolveFig(manifest?.figures?.tracks,            'figures/ck_subterms/ck_subterms_tracks.png'),
   }
 
   return (
@@ -167,10 +182,11 @@ export default function CkSubtermsPage() {
             <p>
               <strong>Subterm definition (paper.tex Eq. C<sub>K</sub>):</strong> C<sub>K</sub> is
               vertically integrated and decomposed into five terms (a–e) arising from horizontal
-              and vertical gradients of the background zonal and meridional wind. Each term is
-              vertically integrated over pressure levels using{' '}
-              <code className="rounded bg-slate-100 px-1">∑ (value × Δp / g)</code>, where
-              Δp is the pressure-level interval (Pa) and g = 9.8 m s⁻².
+              and vertical gradients of the background zonal and meridional wind (see the{' '}
+              <em>C<sub>K</sub> Decomposition</em> section below for the full formula).
+              Each term is vertically integrated over pressure levels using{' '}
+              <InlineMath expr="\int_{p_b}^{p_t}\!\frac{1}{g}\,[\cdot]_{\lambda\phi}\,dp" />,
+              where <InlineMath expr="g = 9.8\,\mathrm{m\,s^{-2}}" />.
             </p>
             <p>
               <strong>Phase:</strong> The <em>intensification</em> phase is used for all
@@ -197,86 +213,102 @@ export default function CkSubtermsPage() {
           </div>
         </section>
 
-        {/* Normalization methodology */}
+        {/* Normalization methodology — mathematical formulation */}
         <section>
           <h2 className="mb-3 text-lg font-bold text-slate-900">
             Normalization Methodology — Genesis Density Anomaly (Figure 3)
           </h2>
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-5 text-sm leading-relaxed text-slate-700 space-y-3">
-            {manifest?.normalization_method ? (
-              <>
-                <p className="font-mono text-indigo-800 bg-white rounded px-3 py-2 border border-indigo-200">
-                  {manifest.normalization_method.formula}
-                </p>
-                <ol className="list-decimal list-inside space-y-2">
-                  {manifest.normalization_method.steps.map((step, i) => (
-                    <li key={i}>{step}</li>
-                  ))}
-                </ol>
-              </>
-            ) : (
-              <>
-                <p className="font-mono text-indigo-800 bg-white rounded px-3 py-2 border border-indigo-200">
-                  anomaly[lat, lon] = norm_k[lat, lon] − norm_all[lat, lon]
-                </p>
-                <ol className="list-decimal list-inside space-y-2">
-                  <li>
-                    <strong>Compute KDE genesis density</strong> for (A) all EP1 cyclones
-                    (N={n_ep1}) → <code className="rounded bg-slate-100 px-1">density_all</code>, and
-                    (B) each dominant-subterm subset (N<sub>k</sub>) → <code className="rounded bg-slate-100 px-1">density_k</code>.
-                    Uses haversine-metric Gaussian KDE with bandwidth = 0.05 rad (Hoskins &amp; Hodges 2005 method).
-                  </li>
-                  <li>
-                    <strong>Min-Max normalize positive values only</strong>{' '}
-                    (zero and negative values remain zero):
-                    <br />
-                    <code className="rounded bg-slate-100 px-1 ml-4">
-                      norm_all = (density_all − min_pos) / (max_pos − min_pos)
-                    </code>
-                    <br />
-                    where min_pos and max_pos are the minimum and maximum of all positive
-                    values in density_all. Same formula applied to density_k → norm_k.
-                  </li>
-                  <li>
-                    <strong>Relative anomaly</strong> ={' '}
-                    <code className="rounded bg-slate-100 px-1">norm_k − norm_all</code>.{' '}
-                    Positive (red): enhanced genesis for this subterm relative to all EP1.
-                    Negative (blue): suppressed genesis relative to all EP1.
-                  </li>
-                  <li>
-                    A <strong>shared diverging colorbar</strong> spans [−max_abs, +max_abs]
-                    where max_abs is the maximum absolute anomaly across all valid subterm panels.
-                  </li>
-                </ol>
-              </>
-            )}
+
+          {/* Step 1: KDE genesis density field */}
+          <div className="mb-4">
+            <p className="mb-2 text-sm font-semibold text-slate-700">
+              Step 1 — Kernel Density Estimation (Hoskins &amp; Hodges 2005)
+            </p>
+            <FormulaBlock
+              formula={String.raw`\rho(\varphi,\lambda) = \sum_{i=1}^{N} K_\sigma\!\left(d(\varphi,\lambda;\,\varphi_i,\lambda_i)\right)`}
+              terms={{
+                'd': 'haversine (great-circle) distance between grid point (φ,λ) and genesis point i',
+                'K_σ': 'Gaussian kernel with bandwidth σ = 0.05 rad',
+                'N': `number of cyclones in the set (N = ${n_ep1} for all-EP1; N = N_k for subterm-k subset)`,
+              }}
+              notes={`Two density fields are computed: ρ_all(φ,λ) from all N=${n_ep1} EP1 genesis points, and ρ_k(φ,λ) from the N_k genesis points of cyclones where subterm k is dominant.`}
+            />
+          </div>
+
+          {/* Step 2: Min-Max normalization */}
+          <div className="mb-4">
+            <p className="mb-2 text-sm font-semibold text-slate-700">
+              Step 2 — Min-Max Normalization (positive values only)
+            </p>
+            <FormulaBlock
+              formula={String.raw`\hat{\rho}(\varphi,\lambda) = \begin{cases} \dfrac{\rho(\varphi,\lambda) - \rho_{\min}^{+}}{\rho_{\max}^{+} - \rho_{\min}^{+}} & \text{if } \rho(\varphi,\lambda) > 0 \\ 0 & \text{otherwise} \end{cases}`}
+              terms={{
+                'ρ_min⁺': 'minimum density over all grid points where ρ > 0',
+                'ρ_max⁺': 'maximum density over all grid points where ρ > 0',
+              }}
+              notes="Applied independently to ρ_all → ρ̂_all and to each ρ_k → ρ̂_k. Zero and negative density values are clamped to 0."
+            />
+          </div>
+
+          {/* Step 3: Relative anomaly */}
+          <div className="mb-4">
+            <p className="mb-2 text-sm font-semibold text-slate-700">
+              Step 3 — Relative Genesis Density Anomaly
+            </p>
+            <FormulaBlock
+              formula={String.raw`\Delta\hat{\rho}_k(\varphi,\lambda) = \hat{\rho}_k(\varphi,\lambda) - \hat{\rho}_{\mathrm{all}}(\varphi,\lambda)`}
+              notes="Positive (red): cyclones dominated by subterm k show preferential genesis relative to all EP1. Negative (blue): suppressed genesis. A shared diverging colorbar spans [−Δmax, +Δmax] where Δmax = max|Δρ̂_k| across all subterm panels."
+            />
+          </div>
+
+          {/* Interpretation note */}
+          <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-xs text-slate-600 leading-relaxed">
+            <strong>Interpretation note:</strong> The normalization removes differences in subset size (N<sub>k</sub> varies from 0 to {n_lec} depending on the dominant subterm) and differences in absolute genesis density amplitude, allowing direct spatial comparison of preferred genesis regions across subterms. A value of +1 indicates that the subterm subset&apos;s genesis density is at maximum relative to its own spatial range; a value of 0 indicates the background EP1 level; a value of −1 indicates complete suppression relative to the all-EP1 baseline.
           </div>
         </section>
 
-        {/* Subterm metadata */}
-        {manifest?.subterms && manifest.subterms.length > 0 && (
-          <section>
-            <h2 className="mb-4 text-lg font-bold text-slate-900">Ck Subterms (A–E)</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {manifest.subterms.map((s, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
-                >
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs">
-                      {String.fromCharCode(65 + i)}
-                    </span>
-                    <span className="text-sm font-semibold text-slate-800">
-                      <InlineMath expr={s.symbol} />
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 leading-relaxed">{s.description}</p>
+        {/* Full C_K formula + subterm definitions */}
+        <section>
+          <h2 className="mb-4 text-lg font-bold text-slate-900">
+            C<sub>K</sub> Decomposition — Full Formula (paper.tex Eq.&nbsp;C<sub>K</sub>)
+          </h2>
+          <FormulaBlock
+            label="Barotropic conversion C_K (vertically integrated)"
+            formula={
+              String.raw`C_K = \int_{p_b}^{p_t} \frac{1}{g}\Bigl[\,T^{(a)} + T^{(b)} + T^{(c)} + T^{(d)} + T^{(e)}\,\Bigr]_{\!\lambda\phi}\,dp`
+            }
+            terms={{
+              '[·]_λφ': 'global area-weighted mean over longitude (λ) and latitude (φ)',
+              'g': 'gravitational acceleration (9.8 m s⁻²)',
+              'p_b, p_t': 'lower and upper pressure bounds of the integration',
+            }}
+            notes="Notation: [u]_λ = zonal mean of u; (u)_λ = eddy component (deviation from zonal mean); ω = vertical velocity in pressure coordinates; a = Earth radius."
+          />
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {(manifest?.subterms ?? []).map((s, i) => (
+              <div
+                key={i}
+                className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-indigo-700 font-bold text-xs">
+                    {String.fromCharCode(65 + i)}
+                  </span>
+                  <span className="text-sm font-semibold text-slate-800">
+                    <InlineMath expr={s.symbol} />
+                  </span>
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+                {s.katex && (
+                  <div className="mb-2 overflow-x-auto rounded bg-slate-50 px-2 py-1.5 text-sm">
+                    <InlineMath expr={`\\displaystyle ${s.katex}`} />
+                  </div>
+                )}
+                <p className="text-xs text-slate-500 leading-relaxed">{s.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* Dominance distribution */}
         {dominance.length > 0 && (

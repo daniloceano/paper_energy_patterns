@@ -36,69 +36,74 @@
   },
   "subterms": [
     {
-      "symbol": "C_k^{(a)}",
+      "symbol": "C_K^{(a)}",
       "name": "Term (a)",
-      "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"
+      "katex": "\\frac{\\cos\\phi}{a}\\,(u)_{\\!\\lambda}(v)_{\\!\\lambda}\\,\\frac{\\partial}{\\partial\\phi}\\!\\left(\\frac{[u]_{\\lambda}}{\\cos\\phi}\\right)",
+      "description": "Eddy momentum flux coupled with meridional gradient of mean zonal wind — primary barotropic instability mechanism."
     },
     {
-      "symbol": "C_k^{(b)}",
+      "symbol": "C_K^{(b)}",
       "name": "Term (b)",
-      "description": "Meridional flux of eddy KE with meridional wind"
+      "katex": "\\frac{(v)_{\\!\\lambda}^{2}}{a}\\,\\frac{\\partial\\,[v]_{\\lambda}}{\\partial\\phi}",
+      "description": "Meridional flux of eddy kinetic energy associated with the meridional gradient of mean meridional wind."
     },
     {
-      "symbol": "C_k^{(c)}",
+      "symbol": "C_K^{(c)}",
       "name": "Term (c)",
-      "description": "Zonal flux of eddy KE with zonal wind"
+      "katex": "\\frac{\\tan\\phi}{a}\\,(u)_{\\!\\lambda}^{2}\\,[v]_{\\lambda}",
+      "description": "Geometric (curvature) term: eddy zonal kinetic energy modulated by mean meridional wind and Earth's curvature."
     },
     {
-      "symbol": "C_k^{(d)}",
+      "symbol": "C_K^{(d)}",
       "name": "Term (d)",
-      "description": "Mixed meridional and vertical flux with vertical shear of U"
+      "katex": "(\\omega)_{\\!\\lambda}\\,(u)_{\\!\\lambda}\\,\\frac{\\partial\\,[u]_{\\lambda}}{\\partial p}",
+      "description": "Vertical flux of eddy zonal momentum coupled with the vertical shear of mean zonal wind."
     },
     {
-      "symbol": "C_k^{(e)}",
+      "symbol": "C_K^{(e)}",
       "name": "Term (e)",
-      "description": "Mixed meridional and vertical flux with vertical shear of V"
+      "katex": "(\\omega)_{\\!\\lambda}\\,(v)_{\\!\\lambda}\\,\\frac{\\partial\\,[v]_{\\lambda}}{\\partial p}",
+      "description": "Vertical flux of eddy meridional momentum coupled with the vertical shear of mean meridional wind."
     }
   ],
   "dominance": [
     {
       "subterm_key": "Ck_1",
-      "symbol": "C_k^{(a)}",
+      "symbol": "C_K^{(a)}",
       "name": "Term (a)",
-      "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)",
+      "description": "Eddy momentum flux coupled with meridional gradient of mean zonal wind — primary barotropic instability mechanism.",
       "count": 72,
       "percentage": 18.7
     },
     {
       "subterm_key": "Ck_2",
-      "symbol": "C_k^{(b)}",
+      "symbol": "C_K^{(b)}",
       "name": "Term (b)",
-      "description": "Meridional flux of eddy KE with meridional wind",
+      "description": "Meridional flux of eddy kinetic energy associated with the meridional gradient of mean meridional wind.",
       "count": 147,
       "percentage": 38.2
     },
     {
       "subterm_key": "Ck_3",
-      "symbol": "C_k^{(c)}",
+      "symbol": "C_K^{(c)}",
       "name": "Term (c)",
-      "description": "Zonal flux of eddy KE with zonal wind",
+      "description": "Geometric (curvature) term: eddy zonal kinetic energy modulated by mean meridional wind and Earth's curvature.",
       "count": 0,
       "percentage": 0.0
     },
     {
       "subterm_key": "Ck_4",
-      "symbol": "C_k^{(d)}",
+      "symbol": "C_K^{(d)}",
       "name": "Term (d)",
-      "description": "Mixed meridional and vertical flux with vertical shear of U",
+      "description": "Vertical flux of eddy zonal momentum coupled with the vertical shear of mean zonal wind.",
       "count": 0,
       "percentage": 0.0
     },
     {
       "subterm_key": "Ck_5",
-      "symbol": "C_k^{(e)}",
+      "symbol": "C_K^{(e)}",
       "name": "Term (e)",
-      "description": "Mixed meridional and vertical flux with vertical shear of V",
+      "description": "Vertical flux of eddy meridional momentum coupled with the vertical shear of mean meridional wind.",
       "count": 166,
       "percentage": 43.1
     }

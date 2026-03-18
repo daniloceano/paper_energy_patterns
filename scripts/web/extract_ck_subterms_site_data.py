@@ -23,14 +23,50 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RESULTS_DIR = REPO_ROOT / "results" / "ck_subterms"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
-# Ck subterm labels – plain text for web (HTML/JSON context)
+# Ck subterm labels — symbol, KaTeX formula (from paper.tex Eq. C_K), and description.
+#
+# Notation (following Peixoto & Oort 1992 via paper.tex):
+#   [u]_λ  = zonal mean of u
+#   (u)_λ  = eddy component of u (deviation from zonal mean)
+#   [·]_λφ = global area-weighted mean (λ and φ)
+#   ω      = vertical velocity in pressure coordinates
+#   a      = Earth radius, φ = latitude, p = pressure
+#
+# The full formula (paper.tex Eq. C_K) is:
+#   C_K = ∫(p_b→p_t) (1/g) [ T^(a) + T^(b) + T^(c) + T^(d) + T^(e) ]_λφ dp
+#
+# Each katex entry is the core integrand (no outer area-average or vertical-integral notation).
 SUBTERM_LABELS = {
-    # Use LaTeX-friendly notation for rendering in the web site (KaTeX)
-    "Ck_1": {"symbol": "C_k^{(a)}", "name": "Term (a)", "description": "Eddy momentum flux / meridional gradient of zonal wind (barotropic instability)"},
-    "Ck_2": {"symbol": "C_k^{(b)}", "name": "Term (b)", "description": "Meridional flux of eddy KE with meridional wind"},
-    "Ck_3": {"symbol": "C_k^{(c)}", "name": "Term (c)", "description": "Zonal flux of eddy KE with zonal wind"},
-    "Ck_4": {"symbol": "C_k^{(d)}", "name": "Term (d)", "description": "Mixed meridional and vertical flux with vertical shear of U"},
-    "Ck_5": {"symbol": "C_k^{(e)}", "name": "Term (e)", "description": "Mixed meridional and vertical flux with vertical shear of V"},
+    "Ck_1": {
+        "symbol": "C_K^{(a)}",
+        "name": "Term (a)",
+        "katex": r"\frac{\cos\phi}{a}\,(u)_{\!\lambda}(v)_{\!\lambda}\,\frac{\partial}{\partial\phi}\!\left(\frac{[u]_{\lambda}}{\cos\phi}\right)",
+        "description": "Eddy momentum flux coupled with meridional gradient of mean zonal wind — primary barotropic instability mechanism.",
+    },
+    "Ck_2": {
+        "symbol": "C_K^{(b)}",
+        "name": "Term (b)",
+        "katex": r"\frac{(v)_{\!\lambda}^{2}}{a}\,\frac{\partial\,[v]_{\lambda}}{\partial\phi}",
+        "description": "Meridional flux of eddy kinetic energy associated with the meridional gradient of mean meridional wind.",
+    },
+    "Ck_3": {
+        "symbol": "C_K^{(c)}",
+        "name": "Term (c)",
+        "katex": r"\frac{\tan\phi}{a}\,(u)_{\!\lambda}^{2}\,[v]_{\lambda}",
+        "description": "Geometric (curvature) term: eddy zonal kinetic energy modulated by mean meridional wind and Earth's curvature.",
+    },
+    "Ck_4": {
+        "symbol": "C_K^{(d)}",
+        "name": "Term (d)",
+        "katex": r"(\omega)_{\!\lambda}\,(u)_{\!\lambda}\,\frac{\partial\,[u]_{\lambda}}{\partial p}",
+        "description": "Vertical flux of eddy zonal momentum coupled with the vertical shear of mean zonal wind.",
+    },
+    "Ck_5": {
+        "symbol": "C_K^{(e)}",
+        "name": "Term (e)",
+        "katex": r"(\omega)_{\!\lambda}\,(v)_{\!\lambda}\,\frac{\partial\,[v]_{\lambda}}{\partial p}",
+        "description": "Vertical flux of eddy meridional momentum coupled with the vertical shear of mean meridional wind.",
+    },
 }
 
 FIGURE_PATHS = {

@@ -294,6 +294,50 @@ def get_all_expected_track_ids():
     return ids, "tracks dir (fallback)"
 
 
+def get_recently_completed(limit: int = 10):
+    """
+    Get most recently completed cyclones based on directory modification time.
+    
+    Returns list of tuples: (track_id, mtime_timestamp, days_ago)
+    """
+    completed_dirs = []
+    
+    for result_dir in RESULTS_DIR.iterdir():
+        if not result_dir.is_dir():
+            continue
+        
+        # Extract track_id from directory name
+        dir_name = result_dir.name
+        if not dir_name.endswith("_ERA5_track"):
+            continue
+        
+        track_id = dir_name.replace("_ERA5_track", "")
+        
+        # Check if completed (has results CSV)
+        results_csv = list(result_dir.glob("*_results.csv"))
+        if not results_csv:
+            continue
+        
+        # Get modification time of directory
+        try:
+            mtime = result_dir.stat().st_mtime
+            completed_dirs.append((track_id, mtime))
+        except Exception:
+            continue
+    
+    # Sort by mtime (most recent first)
+    completed_dirs.sort(key=lambda x: x[1], reverse=True)
+    
+    # Convert to human-readable format
+    now = time.time()
+    result = []
+    for track_id, mtime in completed_dirs[:limit]:
+        days_ago = (now - mtime) / 86400  # seconds to days
+        result.append((track_id, mtime, days_ago))
+    
+    return result
+
+
 def scan_all_cyclones():
     """
     Scan all expected EP1 cyclones and determine processing status.
@@ -310,6 +354,7 @@ def scan_all_cyclones():
         - no_track: list of track_ids with no track file prepared yet
         - processing_times: dict of track_id -> processing time (seconds)
         - total_size_bytes: total disk usage
+        - recently_completed: list of (track_id, mtime, days_ago) tuples
     """
     all_ids, source = get_all_expected_track_ids()
 
@@ -323,6 +368,7 @@ def scan_all_cyclones():
             "no_track": [],
             "processing_times": {},
             "total_size_bytes": 0,
+            "recently_completed": [],
         }
 
     # Set of IDs that already have a track file
@@ -364,6 +410,9 @@ def scan_all_cyclones():
         else:  # pending (track file exists, no result dir yet)
             pending.append(track_id)
 
+    # Get recently completed cyclones
+    recently_completed = get_recently_completed(limit=10)
+
     return {
         "total": len(all_ids),
         "source": source,
@@ -373,6 +422,7 @@ def scan_all_cyclones():
         "no_track": no_track,
         "processing_times": processing_times,
         "total_size_bytes": total_size_bytes,
+        "recently_completed": recently_completed,
     }
 
 
@@ -606,6 +656,20 @@ def print_report(
     print()
     print(f"  💾 Disk:           {_fmt_bytes(scan_data['total_size_bytes'])}")
     print()
+    
+    # Show recently completed cyclones
+    recently = scan_data.get("recently_completed", [])
+    if recently and n_completed > 0:
+        print(f"  🆕 Recently completed (last 5):")
+        for track_id, mtime, days_ago in recently[:5]:
+            if days_ago < 1:
+                time_str = f"{days_ago * 24:.1f}h ago"
+            elif days_ago < 7:
+                time_str = f"{days_ago:.1f}d ago"
+            else:
+                time_str = datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+            print(f"     • {track_id}  ({time_str})")
+        print()
     
     # If there are in-progress cyclones, show current activity
     if n_in_progress > 0:

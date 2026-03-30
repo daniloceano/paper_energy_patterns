@@ -26,11 +26,8 @@ Scripts are numbered according to the order of figures in the manuscript:
 - **`06_figure_genesis_density_kde.py`**  
   Figure 6: Genesis density using Kernel Density Estimation (Hoskins & Hodges method)
 
-- **`07_figure_ep1_instability_composite.py`**
-  Figure 7: EP1 instability composite (4×3 layout: RK, PV, EGR diagnostics)
-
-- **`08_figure_ep1_ep2_dynamical_composites.py`**
-  Figure 8: EP1 vs EP2 dynamical composites (3×2 layout — see full description below)
+- **`07_figure_ep1_ep2_dynamical_composites.py`**
+  Figure 7: EP1 vs EP2 dynamical composites (3×2 layout — see full description below)
 
 ### Supplementary Figures
 
@@ -75,6 +72,6 @@ Generated figures are saved to: `figures/main/`
 
 ## Notes
 
-- Figures S2, S3, and 8 depend on outputs from the `ep_structure_analysis` pipeline (`scripts/ep_structure_analysis/`). Run steps 1–3 of that pipeline first to generate the composites in `data/era5_ep_structure/`.
+- Figures S2, S3, and 7 depend on outputs from the `ep_structure_analysis` pipeline (`scripts/ep_structure_analysis/`). Run steps 1–3 of that pipeline first to generate the composites in `data/era5_ep_structure/`.
 - All scripts include configuration sections at the top for customizing plot parameters (colors, dimensions, labels, etc.) without modifying core logic.
 - For detailed figure descriptions, methodology, and scientific interpretation, see `figures/main/README.md`.

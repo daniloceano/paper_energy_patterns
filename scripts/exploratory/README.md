@@ -33,6 +33,7 @@ This directory holds scripts that were used to:
 | `precompute_composites.py` | Early prototype for precomputing ERA5 composites (superseded by `ep_structure_analysis/step3_precompute_composites.py`) |
 | `scatter_density.py` | Scatter density plots of energy term pairs |
 | `vertical_term_boxplots_ep1_ep2.py` | Box plots of vertical energy terms comparing EP1 and EP2 |
+| `07_figure_ep1_instability_composite_LEGACY.py` | **[DISCONTINUED]** EP1 instability composite figure (4×3 layout: RK, PV, EGR diagnostics) — discontinued analysis, moved from main figures |
 
 ---
 

@@ -344,6 +344,182 @@ python scripts/ep1_ibc_ibt_analysis/step3_precompute_composites.py
 # 2. Generate figure (reads precomputed composites, no per-case recomputation)
 python scripts/main/07_figure_ep1_instability_composite.py
 ```
+---
+
+### Figure 8: EP1 vs EP2 Dynamical Composites (3×2)
+**File:** `8_ep1_ep2_dynamical_composites.png`
+
+Compact, publication-ready figure comparing the composite dynamical structure
+of Energy Pattern 1 (EP1, n=444) and Energy Pattern 2 (EP2, n=979) cyclones
+during their intensification phase. The 3×2 layout groups diagnostics by physical
+mechanism (upper-level forcing, low-level frontal response, jet energetics),
+enabling a direct, visually coherent EP1-vs-EP2 comparison in a single figure.
+
+#### Panel Layout
+
+| | EP1 | EP2 |
+|---|---|---|
+| **Row 1** — Upper-level forcing / baroclinic environment | (a) | (b) |
+| **Row 2** — Low-level frontal / diabatic response | (c) | (d) |
+| **Row 3** — Jet energetics / barotropic favorability | (e) | (f) |
+
+#### Panel descriptions
+
+**(a)–(b) Upper-level forcing / baroclinic environment**
+
+| Element | Field | Variable | Units |
+|---|---|---|---|
+| Shading | PV anomaly at 200 hPa | `pv_200_anom` | PVU |
+| Contours | Eady Growth Rate ≥ 0.5 day⁻¹ | `egr` | day⁻¹ |
+| Thin contours | SLP anomaly | `msl_anom` | hPa |
+| Dashed box | LEC computation domain (15°×15°) | — | — |
+
+The 200 hPa PV anomaly captures the upper-level trough driving cyclogenesis
+(Hoskins et al. 1985; Davis & Emanuel 1991). Negative PV anomalies (enhanced
+negative PV in the Southern Hemisphere) correspond to a deepened upper-level
+trough co-located with the surface cyclone. EGR contours (only values ≥ 0.5 day⁻¹)
+delineate the enhanced-instability core of the baroclinic environment (Eady 1949;
+Lindzen & Farrell 1980; Besson et al. 2021). SLP anomaly contours (2-hPa interval)
+show the cyclone depression relative to climatology, consistent with the anomaly
+framework of the other fields in this row. EGR contour levels: [0.50, 0.55, 0.60] day⁻¹;
+no inline labels — contour lines serve as qualitative structural markers.
+
+**(c)–(d) Low-level frontal / diabatic response**
+
+| Element | Field | Variable | Units |
+|---|---|---|---|
+| Shading | PV anomaly at 850 hPa | `pv_850_anom` | PVU |
+| Contours (cold, dashed blue) | Negative T-advection | `adv_T_850` | K h⁻¹ |
+| Contours (warm, solid red) | Positive T-advection | `adv_T_850` | K h⁻¹ |
+| Vectors | Total wind at 850 hPa | `u_850`, `v_850` | m s⁻¹ |
+| Thin contours | Sea-level pressure (total) | `msl` | hPa |
+| Dashed box | LEC computation domain (15°×15°) | — | — |
+
+Low-level PV anomalies at 850 hPa reflect surface frontal / diabatic forcing
+from latent heat release and surface fluxes (Rossa et al. 2000; Lackmann 2011).
+Total temperature advection identifies the frontal structure: warm advection
+ahead of the trough and cold advection in the wake. The total field (not anomaly)
+shows the full advective forcing driving the frontal system. Total 850 hPa winds
+reveal the low-level circulation and the degree of coupling between the surface
+pressure field and the frontal wind shear. T-advection contour levels: ±0.040,
+±0.080, ±0.120 K h⁻¹ (total field range ≈ ±0.15 K h⁻¹).
+
+**(e)–(f) Jet-level energetics / barotropic favorability**
+
+| Element | Field | Variable | Units |
+|---|---|---|---|
+| Shading | Ageostrophic Flux Convergence at 250 hPa | `afc_250` | W m⁻² |
+| Vectors | Total wind at 250 hPa (speed ≥ 30 m s⁻¹) | `u_250`, `v_250` | m s⁻¹ |
+| Thin contours | Sea-level pressure (total) | `msl` | hPa |
+| Hatching | RK meridional sign-reversal mask | `rk_criterion_250` | (boolean) |
+| Dashed box | LEC computation domain (15°×15°) | — | — |
+
+AFC (Orlanski & Katzfey 1991; Orlanski & Sheldon 1993) quantifies whether
+ageostrophic geopotential flux is converging (AFC > 0, eddy KE source) or
+diverging (AFC < 0, eddy KE sink) at 250 hPa, directly linking to the
+energy-budget framework of the paper. Total 250 hPa wind vectors are shown
+only where wind speed ≥ 30 m s⁻¹, delineating the jet core and exit region
+where the AFC signal is physically meaningful. SLP total contours provide the
+surface cyclone reference. The hatching marks where the Rayleigh-Kuo necessary
+condition for barotropic instability is locally met (see RK hatching definition below).
+
+#### LEC computation box
+
+All panels show a dashed 15°×15° black rectangle centred at the cyclone position
+(storm-relative coordinates ±7.5° in both axes). This box marks the spatial domain
+used to compute the Lorenz Energy Cycle (LEC) budget terms — Ca, Ck, BAe, BKe, Ge, Ke
+— that define the Energy Pattern classification. Displaying it on the composite fields
+allows direct visual assessment of how each dynamical field relates to the region
+actually integrated to produce the LEC metrics.
+
+#### Why SLP appears as a thin contour in all rows
+
+SLP (2-hPa-interval contours, semi-transparent black, linewidth 0.45) provides
+a common spatial reference — the surface cyclone depression and surrounding pressure
+gradient — allowing the reader to relate each diagnostic field to the cyclone position
+without switching panels. Contours are intentionally subdued (alpha=0.40) so as not
+to compete with the primary diagnostic shading. Panels (a)–(b) use the **SLP anomaly**
+(`msl_anom`, consistent with the anomaly framework of the PV and EGR fields);
+panels (c)–(f) use the **total SLP** field (`msl`).
+
+#### Colormap and scaling design
+
+- **Colormaps:** All rows use `RdBu_r` (diverging, symmetric around zero).
+  PV@200 anom: blue = negative anomaly (deeper trough); red = positive.
+  PV@850 anom: blue = more negative PV (cyclonic); red = anticyclonic.
+  AFC: red = energy convergence (eddy KE source); blue = divergence (sink).
+- **Global limits:** Colormap limits are computed as `max(|field|)` over *both*
+  EPs before plotting, so both columns share identical colour scales. Any
+  EP1-vs-EP2 amplitude difference is directly readable from colour intensity.
+- **Number of shading levels:** 21 (np.linspace, symmetric), consistent with Figure 7.
+
+#### RK meridional sign-reversal hatching — full definition
+
+**Field:** `rk_criterion_250` — the Rayleigh-Kuo criterion ∂η/∂y at 250 hPa (m⁻¹ s⁻¹).
+
+**Mask definition:** for each grid point (i, j), the mask is True when:
+
+```
+nanmin( rk[i-w : i+w+1, j] ) < 0  AND  nanmax( rk[i-w : i+w+1, j] ) > 0
+```
+
+where `w = RK_HATCH_HALF_WINDOW = 1`, corresponding to a 3-point (0.5°) meridional
+neighbourhood on the 0.25° grid.
+
+**Physical justification:** The Rayleigh-Kuo theorem (Rayleigh 1880; Kuo 1949;
+Charney & Stern 1962) requires ∂η/∂y to change sign meridionally for barotropic
+instability to be possible. This mask identifies the *zero-crossing band* of ∂η/∂y
+along y — the transition zone between positive and negative absolute vorticity
+gradient. Hatching this band is physically more informative than hatching wherever
+`rk < 0` pointwise, which would mark large contiguous regions and obscure the
+transition structure. The hatching highlights where the necessary condition is
+*locally* met (≈6.8% of the EP1 domain, ≈3.3% of EP2), not just a diffuse region.
+
+**Implementation details:**
+- Zero values of `rk` are NOT treated as sign reversals (strict inequalities).
+- Boundary rows use truncated windows (no wrap-around, no extrapolation).
+- `np.nanmin`/`np.nanmax` handle any NaN values robustly.
+- `RK_HATCH_HALF_WINDOW` is configurable at the top of the script.
+- Rendered via `matplotlib.contourf` with `colors='none'` and `hatches=['///']`,
+  using `mpl.rc_context({'hatch.color': 'dimgray', 'hatch.linewidth': 0.35})`.
+
+Data source:
+- Precomputed composites: `data/era5_ep_structure/precomputed_composites_{ep1,ep2}.nc`
+- Generated by `scripts/ep_structure_analysis/step3_precompute_composites.py`
+- Grid: 121×121 points, 0.25° resolution, 30°×30° storm-relative domain (±15°)
+
+Variables used:
+
+| NetCDF variable | Units in file | Display units | Description |
+|---|---|---|---|
+| `pv_200_anom` | K m² kg⁻¹ s⁻¹ | PVU (×1e6) | PV anomaly at 200 hPa |
+| `pv_850_anom` | K m² kg⁻¹ s⁻¹ | PVU (×1e6) | PV anomaly at 850 hPa |
+| `egr` | day⁻¹ | day⁻¹ | Eady Growth Rate (500–850 hPa) |
+| `adv_T_850` | K s⁻¹ | K h⁻¹ (×3600) | Total temperature advection at 850 hPa |
+| `msl` | Pa | hPa (×0.01) | Mean sea-level pressure (total; rows c–f) |
+| `msl_anom` | Pa | hPa (×0.01) | SLP anomaly vs climatology (rows a–b) |
+| `afc_250` | W m⁻² | W m⁻² | Ageostrophic Flux Convergence at 250 hPa |
+| `u_250`, `v_250` | m s⁻¹ | m s⁻¹ | Total wind at 250 hPa (rows e–f, speed ≥ 30 m s⁻¹) |
+| `u_850`, `v_850` | m s⁻¹ | m s⁻¹ | Total wind at 850 hPa (rows c–d) |
+| `rk_criterion_250` | m⁻¹ s⁻¹ | m⁻¹ s⁻¹ | Rayleigh-Kuo criterion ∂η/∂y at 250 hPa |
+
+Outputs:
+- `figures/main/8_ep1_ep2_dynamical_composites.png` (300 DPI)
+
+Recreate:
+```bash
+# 1. Ensure composites are available
+python scripts/ep_structure_analysis/step3_precompute_composites.py
+# 2. Generate figure
+python scripts/main/08_figure_ep1_ep2_dynamical_composites.py
+```
+
+References:
+- **PV:** Hoskins et al. (1985); Davis & Emanuel (1991); Rossa et al. (2000)
+- **EGR:** Eady (1949); Lindzen & Farrell (1980); Besson et al. (2021, WCD)
+- **T-advection:** Sanders & Gyakum (1980); Sinclair (1994)
+- **AFC:** Orlanski & Katzfey (1991); Orlanski & Sheldon (1993)
+- **RK criterion:** Rayleigh (1880); Kuo (1949); Charney & Stern (1962)
 
 ---
 

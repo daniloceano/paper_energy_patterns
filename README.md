@@ -20,14 +20,26 @@ bash setup_environment.sh
 conda activate paper_energy_patterns
 ```
 
-### 2. Preprocess Data (Run Once)
+### 2. Preprocess Data (Optional, Run Once)
+
+**For most analyses**: Skip this step - scripts load data directly from GitHub
+
+**Required only for**:
+- Clustering pipeline → Run `python scripts/preprocess_data/preprocess_data.py` (creates energy_cache.parquet)
+- Vertical analysis (S3) → Run `python scripts/preprocess_data/download_lec_from_zenodo.py`
 
 ```bash
-# Download and cache all energy data for fast access
-python scripts/preprocess_data/run_all.py
+# Quick: Just what's needed for clustering
+python scripts/preprocess_data/preprocess_data.py  # ~5 min, 6 MB
+
+# Full: Everything (if doing vertical/exploratory analyses)
+python scripts/preprocess_data/run_all.py  # ~15 min, ~1.3 GB
 ```
 
-Expected outputs: `data/tracks_SAt_filtered_with_energetics_processed.csv`, `data/energy_cache.parquet`
+Expected outputs: 
+- `data/energy_cache.parquet` (required for clustering)
+- `data/tracks_SAt_filtered_with_energetics_processed.csv` (optional)
+- `data/temp_lec_zenodo/` (optional, for S3 figure)
 
 ### 3. Run Cluster Analysis (Energy Patterns)
 
@@ -96,17 +108,43 @@ See `scripts/README.md` for detailed information on each subdirectory.
 
 ## Data Sources
 
-### Cyclone Tracks and Energetics
+**Note**: Most scripts access data directly from GitHub without manual downloads. Preprocessing scripts cache data locally for faster repeated access.
 
+### Primary Source: GitHub (Auto-loaded by Scripts)
+
+**Cyclone Tracks**: `https://github.com/daniloceano/energetic_patterns_cyclones_south_atlantic`
+- **Access**: `load_tracks()` from `scripts/utils/load_data.py`
+- **Contents**: ~1,500 cyclones (1979-2020), track positions, lifecycle phases
+- **Used By**: Main figures (01, 05, 06, S2)
+- **No download needed**: Scripts fetch directly from GitHub
+
+### Zenodo Archives (Preprocessing Only)
+
+#### 1. Complete Tracks with Energetics
 - **DOI**: [10.5281/zenodo.18133432](https://doi.org/10.5281/zenodo.18133432)
-- **Description**: Combined cyclone tracks and semi-Lagrangian Lorenz Energy Cycle diagnostics (1979–2020, ~6,700 cyclones, 42 years)
-- **Access**: Downloaded automatically by `scripts/preprocess_data/extract_tracks_from_zenodo.py`
+- **Description**: Integrated tracks + energy time series (1-hourly tracks, 3-hourly energy)
+- **Access**: `scripts/preprocess_data/extract_tracks_from_zenodo.py`
+- **Output**: `data/tracks_SAt_filtered_with_energetics_processed.csv` (66 MB)
+- **Used By**: Exploratory individual cyclone scripts
 
-### LEC Results with Vertical Resolution
+#### 2. LEC Results with Vertical Resolution
+- **DOI**: [10.5281/zenodo.18243447](https://zenodo.org/records/18243447)
+- **Description**: Complete LEC results with 32 vertical levels (1000-100 hPa, 3-hourly)
+- **Access**: `scripts/preprocess_data/download_lec_from_zenodo.py`
+- **Output**: `data/temp_lec_zenodo/` (1.2 GB)
+- **Used By**: S3 figure (vertical structure), Ck subterms analysis
 
-- **DOI**: [10.5281/zenodo.18243447](https://doi.org/10.5281/zenodo.18243447)
-- **Description**: Complete LEC results with vertical resolution (~1,500 cyclones, 32 pressure levels, 3-hourly)
-- **Access**: Downloaded automatically by `scripts/preprocess_data/download_lec_from_zenodo.py`
+### Local Cache (Generated)
+
+- **energy_cache.parquet** (6 MB): Phase-averaged energy data for clustering
+  - Created by: `scripts/preprocess_data/preprocess_data.py`
+  - Essential for clustering pipeline
+  
+- **era5_ep_structure/** (400+ MB): ERA5 composites for EP1/EP2
+  - Created by: `scripts/ep_structure_analysis/` pipeline
+  - Used by: Figure 07 (dynamical composites)
+
+See `data/README.md` and `data/DATA_STRUCTURE.md` for complete documentation.
 
 ---
 

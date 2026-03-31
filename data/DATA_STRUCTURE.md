@@ -1,23 +1,48 @@
 # Data Structure Documentation
 
-This document describes the data structure for cyclone tracking and energetics analysis in the South Atlantic region.
+This document describes the data structure and sources for cyclone tracking and energetics analysis in the South Atlantic region.
 
 ---
 
-## 1. Integrated Tracks and Energetics Dataset
+## Overview: Data Sources Hierarchy
 
-**Source**: Zenodo ([DOI: 10.5281/zenodo.18133432](https://doi.org/10.5281/zenodo.18133432))  
-**File**: `tracks_SAt_filtered_with_energetics.csv`  
-**Format**: Long format - each row is a single UTC time step of a cyclone
+```
+PRIMARY SOURCES (Remote):
+├── GitHub: Tracks + Energy averages (Used by most scripts)
+│   ├── tracks_SAt_filtered_with_periods.csv
+│   └── csv_database_energy_by_periods/{track_id}_averages.csv
+│
+├── Zenodo Archive 1: Complete tracks with energetics (Preprocessing/Exploratory)
+│   └── DOI: 10.5281/zenodo.18133432
+│
+└── Zenodo Archive 2: LEC results with vertical resolution (Vertical analysis)
+    └── DOI: 10.5281/zenodo.18243447
+
+LOCAL CACHE (Generated):
+├── energy_cache.parquet          → Fast clustering pipeline access
+├── tracks_*_processed.csv        → Exploratory analysis cache
+├── era5_ep_structure/            → ERA5 composites
+└── temp_lec_zenodo/              → Extracted LEC vertical data
+```
+
+**Key Point**: Main analysis scripts (figures 01, 05, 06, S2) use **GitHub tracks**, not Zenodo. Zenodo is for preprocessing and specialized analyses.
+
+---
+
+## 1. GitHub Source - Cyclone Tracks (Primary)
+
+**URL**: `https://raw.githubusercontent.com/daniloceano/energetic_patterns_cyclones_south_atlantic/refs/heads/master/tracks_SAt_filtered/tracks_SAt_filtered_with_periods.csv`
+
+**Access Method**: `load_tracks()` from `scripts/utils/load_data.py`
 
 ### Dataset Characteristics:
 - **Period**: 1979-2020 (42 years)
+- **Cyclones**: ~1,500 unique systems
+- **Records**: ~30,000+ track points
 - **Tracking Method**: TRACK algorithm using 850 hPa relative vorticity
-- **Energy Method**: Semi-Lagrangian Lorenz Energy Cycle in 15°×15° storm-following domain
-- **Temporal Resolution**: 
-  - Track data (position, vorticity): 1-hourly
-  - Energy data (LEC terms): 3-hourly (may contain NaN at 1h and 2h marks)
-- **Regions**: ARG (Argentina), LA-PLATA (La Plata basin), SE-BR (Southeast Brazil)
+- **Temporal Resolution**: 1-hourly
+- **Load Time**: ~10 seconds
+- **Genesis Regions**: ARG (Argentina), LA-PLATA (La Plata basin), SE-BR (Southeast Brazil)
 
 ---
 
@@ -84,22 +109,72 @@ All energy terms in **W m⁻²** (Watts per square meter)
 
 ### Example Usage:
 ```python
-from load_data import load_energy_by_cyclone
+from scripts.utils.load_data import load_tracks
 
-# Load energy data for a specific cyclone
-energy = load_energy_by_cyclone('19790097')
+# Load tracks from GitHub (primary source)
+tracks = load_tracks()
+print(f"Loaded {tracks['track_id'].nunique()} cyclones")
 
-# Each row is a life cycle phase
-print(energy[['Az', 'Ae', 'Kz', 'Ke', 'Ca', 'Ce']])
+# Get genesis positions (first point of each track)
+genesis = tracks.groupby('track_id').first().reset_index()
+print(genesis[['track_id', 'lat vor', 'lon vor', 'region']])
 ```
 
 ---
 
-## 2. Preprocessed Phase-Averaged Energy Data
+## 2. GitHub Source - Energy Data by Cyclone
 
-**Source**: Generated locally using `scripts/analysis/preprocess_data.py`  
+**URL Base**: `https://raw.githubusercontent.com/daniloceano/energetic_patterns_cyclones_south_atlantic/master/csv_database_energy_by_periods`
+
+**Access Methods**: 
+- Single cyclone: `load_energy_by_cyclone(track_id)` 
+- Batch: `load_all_energy_data(track_ids, n_workers=50)`
+
+### Dataset Characteristics:
+- **Structure**: One CSV file per cyclone (`{track_id}_averages.csv`)
+- **Total Files**: ~1,500+ individual cyclone files
+- **Variables**: 18+ energy terms (see Section 1 for variable list)
+- **Format**: Phase-averaged values (one row per lifecycle phase)
+- **Load Time**: ~4-5 minutes for all cyclones (50 parallel workers)
+- **Used By**: Preprocessing pipeline → generates `energy_cache.parquet`
+
+### Example Usage:
+```python
+from scripts.utils.load_data import load_energy_by_cyclone
+
+# Load energy for specific cyclone
+energy = load_energy_by_cyclone('19790097')
+if energy is not None:
+    print(energy[['period', 'Az', 'Ae', 'Kz', 'Ke', 'Ca', 'Ck']])
+```
+
+---
+
+## 3. Zenodo Archive 1 - Complete Tracks with Energetics
+
+**DOI**: [10.5281/zenodo.18133432](https://doi.org/10.5281/zenodo.18133432)  
+**URL**: `https://zenodo.org/records/18133432/files/tracks_SAt_filtered_with_energetics.csv`
+
+### Dataset Characteristics:
+- **Size**: 180.8 MB compressed, ~63 MB uncompressed
+- **Format**: Long format CSV (each row = one timestep)
+- **Temporal Resolution**: 
+  - Track data (position, vorticity): 1-hourly
+  - Energy data (LEC terms): 3-hourly (NaN at intermediate hours)
+- **Download Script**: `scripts/preprocess_data/extract_tracks_from_zenodo.py`
+- **Local Cache**: `data/tracks_SAt_filtered_with_energetics_processed.csv` (66 MB)
+- **Used By**: Exploratory scripts for individual cyclone deep-dives
+
+**Note**: This is a **supplementary source** for detailed time-series analysis. Most scripts use GitHub tracks (Section 1) instead.
+
+---
+
+## 4. Local Cache - Preprocessed Phase-Averaged Energy Data
+
+**Source**: Generated locally using `scripts/preprocess_data/preprocess_data.py`  
 **File**: `data/energy_cache.parquet`  
-**Format**: Each row represents phase-averaged energy values for a cyclone
+**Input**: GitHub energy data (Section 2)  
+**Format**: Each row = one cyclone-phase combination with averaged energy values
 
 ### Dataset Characteristics:
 - **Processing**: Averages all energy terms within each life cycle phase
@@ -131,17 +206,24 @@ df.head()
 
 ### Usage:
 ```python
-from scripts.analysis.preprocess_data import load_cache
+from scripts.preprocess_data.preprocess_data import load_cache
 
-# Load preprocessed data
+# Load cached preprocessed data (fast!)
 df = load_cache()
+print(f"Loaded {len(df)} records in <1 second")
 
 # Filter by phase
-intensification_data = df[df['phase'] == 'intensification']
+intensification = df[df['period'] == 'intensification']
 
 # Analyze specific conversion
-mean_ca = df.groupby('phase')['Ca'].mean()
+mean_ca = df.groupby('period')['Ca'].mean()
 ```
+
+### Generation Command:
+```bash
+python scripts/preprocess_data/preprocess_data.py
+```
+Downloads all energy data from GitHub → filters complete lifecycles → saves Parquet cache.
 
 ### Advantages:
 - **Fast loading**: ~1-2 seconds vs several minutes for raw data
@@ -151,18 +233,22 @@ mean_ca = df.groupby('phase')['Ca'].mean()
 
 ---
 
-## 3. Complete LEC Results Dataset
+## 5. Zenodo Archive 2 - LEC Results with Vertical Resolution
 
-**Source**: Zenodo ([DOI: 10.5281/zenodo.18243447](https://zenodo.org/records/18243447))  
-**Location**: Remote (Zenodo) or local `data/lec_results/` (if downloaded)  
+**DOI**: [10.5281/zenodo.18243447](https://zenodo.org/records/18243447)  
+**URL**: `https://zenodo.org/records/18243447/files/LEC_Results_energetic-patterns_csv_only.tar.gz`  
+**Local Extract**: `data/temp_lec_zenodo/LEC_Results_energetic-patterns/`  
 **Format**: One directory per cyclone with multiple CSV files
 
 ### Dataset Characteristics:
+- **Size**: 634 MB compressed, ~1.2 GB extracted
 - **Period**: 1979-2020 (42 years)
 - **Cyclones**: ~1,500+ systems
 - **Analysis**: Full Lorenz Energy Cycle with vertical resolution
 - **Pressure Levels**: 32 levels from 1000 hPa to 100 hPa
 - **Temporal Resolution**: 3-hourly during each life cycle phase
+- **Download Script**: `scripts/preprocess_data/download_lec_from_zenodo.py`
+- **Used By**: S3 figure (vertical structure), Ck subterms analysis
 
 ### Directory Structure:
 ```
@@ -230,6 +316,14 @@ Cyclone track positions and metadata throughout life cycle
 ```
 (Equivalent to 10-1000 hPa)
 
+### Download and Extract:
+```bash
+# Download from Zenodo (one-time)
+python scripts/preprocess_data/download_lec_from_zenodo.py
+
+# Data extracted to: data/temp_lec_zenodo/LEC_Results_energetic-patterns/
+```
+
 ### Usage Examples:
 
 #### Load phase periods:
@@ -237,7 +331,8 @@ Cyclone track positions and metadata throughout life cycle
 import pandas as pd
 
 track_id = '19790006'
-periods = pd.read_csv(f'data/lec_results/{track_id}_ERA5_track/periods.csv', index_col=0)
+base_dir = 'data/temp_lec_zenodo/LEC_Results_energetic-patterns'
+periods = pd.read_csv(f'{base_dir}/{track_id}_ERA5_track/periods.csv', index_col=0)
 
 # Get intensification times
 start = pd.to_datetime(periods.loc['intensification', 'start'])
@@ -248,7 +343,7 @@ end = pd.to_datetime(periods.loc['intensification', 'end'])
 ```python
 # Load Ca (baroclinic conversion) by pressure level
 ca_levels = pd.read_csv(
-    f'data/lec_results/{track_id}_ERA5_track/Ca_level.csv',
+    f'{base_dir}/{track_id}_ERA5_track/Ca_level.csv',
     index_col=0, parse_dates=True
 )
 
@@ -266,13 +361,15 @@ pressure_hpa = ca_mean_profile.index.astype(float) / 100.0
 ```python
 from pathlib import Path
 
-lec_dir = Path('data/lec_results')
+lec_dir = Path('data/temp_lec_zenodo/LEC_Results_energetic-patterns')
 all_cyclones = [d.name.replace('_ERA5_track', '') 
                 for d in lec_dir.iterdir() 
                 if d.is_dir() and d.name.endswith('_ERA5_track')]
 
 print(f"Found {len(all_cyclones)} cyclones with LEC results")
 ```
+
+**Note**: This dataset is large (~1.2 GB). Only download if you need vertical resolution analysis.
 
 ### Applications:
 - **Vertical structure analysis**: Energy conversions by pressure level
@@ -283,33 +380,126 @@ print(f"Found {len(all_cyclones)} cyclones with LEC results")
 
 ---
 
+## 6. Local Generated - ERA5 Composite Data
+
+**Directory**: `data/era5_ep_structure/`  
+**Created By**: `scripts/ep_structure_analysis/` pipeline  
+**Used By**: `scripts/main/07_figure_ep1_ep2_dynamical_composites.py`
+
+### Files:
+- `precomputed_composites_ep1.nc` (~200 MB) - Composite of 444 EP1 cyclones
+- `precomputed_composites_ep2.nc` (~200 MB) - Composite of 979 EP2 cyclones
+- `era5_climatology_*.nc` (5 files) - 30-year monthly means (1991-2020)
+
+### Composite Variables:
+**Total-field diagnostics:**
+- `egr`: Eady Growth Rate (500-850 hPa) [day⁻¹]
+- `pv_200`, `pv_850`: Potential Vorticity [PVU]
+- `adv_T_850`: Temperature advection [K h⁻¹]
+- `div_q_975`: Moisture flux divergence [kg m⁻² h⁻¹]
+- `msl`: Mean sea level pressure [hPa]
+- `ke_adv_250`: KE advection [W m⁻²]
+- `u_250`, `v_250`, `u_850`, `v_850`: Wind components
+
+**Anomaly diagnostics:**
+- `pv_200_anom`, `pv_850_anom`, `adv_T_850_anom`, etc.
+
+### Generation:
+```bash
+# Run EP structure analysis pipeline
+cd scripts/ep_structure_analysis
+python step1_select_ep_tracks.py      # Select EP1/EP2 cases
+python step2_download_era5_parallel.py # Download ERA5 per case
+python step2_1_download_era5_monthly_means.py # Download climatology
+python step3_precompute_composites.py  # Create composites
+```
+
+---
+
 ## Data Access Summary
 
 ### Quick Reference:
 
-| Dataset | Source | File | Use Case |
-|---------|--------|------|----------|
-| **Tracks + Energetics** | [Zenodo 18133432](https://doi.org/10.5281/zenodo.18133432) | `tracks_SAt_filtered_with_energetics.csv` | Time series analysis, tracking |
-| **Phase-Averaged Energy** | Local preprocessing | `energy_cache.parquet` | Statistical analysis by phase |
-| **Complete LEC Results** | [Zenodo 18243447](https://zenodo.org/records/18243447) | `lec_results/{track_id}_ERA5_track/` | Vertical structure, detailed energetics |
+| Dataset | Source | Access Method | Primary Use |
+|---------|--------|---------------|-------------|
+| **Tracks (1-hourly)** | GitHub | `load_tracks()` | Main figures (01, 05, 06, S2) |
+| **Energy (phase-avg)** | GitHub | `load_energy_by_cyclone()` | Preprocessing pipeline |
+| **Energy Cache** | Local (generated) | `load_cache()` | Clustering analysis |
+| **Zenodo Tracks** | Zenodo 18133432 | Local CSV cache | Exploratory deep-dives |
+| **LEC Vertical** | Zenodo 18243447 | Direct CSV reads | S3 figure, Ck analysis |
+| **ERA5 Composites** | Local (generated) | `xarray.open_dataset()` | 07 figure (EP dynamics) |
 
-### Loading Functions:
+### Primary Loading Functions:
 
 ```python
-from scripts.utils.load_data import load_tracks, load_energy_by_cyclone
-from scripts.analysis.preprocess_data import load_cache
+# === MOST COMMON: GitHub tracks (used by most scripts) ===
+from scripts.utils.load_data import load_tracks
+tracks = load_tracks()  # ~10 sec load time
 
-# 1. Load tracks (time series, 1-hourly)
-tracks = load_tracks()
+# === Clustering pipeline: local cache ===
+from scripts.preprocess_data.preprocess_data import load_cache
+df = load_cache()  # <1 sec load time
 
-# 2. Load phase-averaged energy (fast, preprocessed)
-df = load_cache()
+# === Individual cyclone energy: GitHub ===
+from scripts.utils.load_data import load_energy_by_cyclone
+energy = load_energy_by_cyclone('19790097')  # Returns None if not found
 
-# 3. Load complete LEC results for specific cyclone (vertical levels)
+# === Vertical structure: Zenodo LEC ===
 import pandas as pd
 track_id = '19790006'
-ca_levels = pd.read_csv(f'data/lec_results/{track_id}_ERA5_track/Ca_level.csv',
+base_dir = 'data/temp_lec_zenodo/LEC_Results_energetic-patterns'
+ca_levels = pd.read_csv(f'{base_dir}/{track_id}_ERA5_track/Ca_level.csv',
                         index_col=0, parse_dates=True)
-periods = pd.read_csv(f'data/lec_results/{track_id}_ERA5_track/periods.csv',
-                      index_col=0)
+
+# === ERA5 composites: local NetCDF ===
+import xarray as xr
+ep1_composite = xr.open_dataset('data/era5_ep_structure/precomputed_composites_ep1.nc')
+```
+
+---
+
+## Data Pipeline Flowchart
+
+```
+┌─────────────────────────────────────────────────────┐
+│         REMOTE SOURCES (GitHub + Zenodo)            │
+├─────────────────────────────────────────────────────┤
+│ GitHub:                                             │
+│  • tracks_SAt_filtered_with_periods.csv             │
+│  • csv_database_energy_by_periods/*.csv             │
+│                                                     │
+│ Zenodo 18133432:                                    │
+│  • tracks_SAt_filtered_with_energetics.csv          │
+│                                                     │
+│ Zenodo 18243447:                                    │
+│  • LEC_Results_energetic-patterns.tar.gz            │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│      PREPROCESSING (scripts/preprocess_data/)       │
+├─────────────────────────────────────────────────────┤
+│ • preprocess_data.py → energy_cache.parquet         │
+│ • extract_tracks_from_zenodo.py → local CSV        │
+│ • download_lec_from_zenodo.py → temp_lec_zenodo/   │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│       LOCAL CACHE (data/ directory)                 │
+├─────────────────────────────────────────────────────┤
+│ • energy_cache.parquet (6 MB, fast access)         │
+│ • tracks_*_processed.csv (66 MB, exploratory)      │
+│ • temp_lec_zenodo/ (1.2 GB, vertical analysis)     │
+│ • era5_ep_structure/ (400+ MB, composites)         │
+└─────────────────────────────────────────────────────┘
+                         │
+                         ↓
+┌─────────────────────────────────────────────────────┐
+│          ANALYSIS & FIGURES                         │
+├─────────────────────────────────────────────────────┤
+│ Main Scripts → figures/main/                        │
+│ Clustering → results/cluster/                       │
+│ EP Structure → results/ep_structure/                │
+└─────────────────────────────────────────────────────┘
 ```

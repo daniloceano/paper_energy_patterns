@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure 8: EP1 vs EP2 Dynamical Composites — 3×2 Layout
+Figure 7: EP1 vs EP2 Dynamical Composites — 3×2 Layout
 
 Publication-ready figure comparing the composite dynamical structure of
 Energy Pattern 1 (EP1) and Energy Pattern 2 (EP2) cyclones during their
@@ -105,7 +105,7 @@ COMPOSITE_FILES = {
 # ── Output ───────────────────────────────────────────────────────────────────
 FIGURES_DIR = BASE_DIR / 'figures' / 'main'
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_PNG = FIGURES_DIR / '8_ep1_ep2_dynamical_composites.png'
+OUTPUT_PNG = FIGURES_DIR / '7_ep1_ep2_dynamical_composites.png'
 
 # ── Unit conversions ─────────────────────────────────────────────────────────
 PV_SCALE    = 1e6      # K m² kg⁻¹ s⁻¹ (SI)  →  PVU
@@ -434,7 +434,7 @@ def _add_colorbar(fig, gs_cell, im, label):
 
 def create_figure(ep_data, output_png):
     """
-    Create Figure 8: 3×2 EP1 vs EP2 dynamical composites.
+    Create 7: 3×2 EP1 vs EP2 dynamical composites.
 
     Colormap limits are computed *globally* across both EPs for each row,
     ensuring the shading scales are identical between the two columns and
@@ -616,9 +616,9 @@ def create_figure(ep_data, output_png):
 # ============================================================================
 
 def main():
-    """Generate Figure 8: EP1 vs EP2 dynamical composites (3×2)."""
+    """Generate Figure 7: EP1 vs EP2 dynamical composites (3×2)."""
     print("=" * 80)
-    print("FIGURE 8 — EP1 vs EP2 DYNAMICAL COMPOSITES (3×2)")
+    print("FIGURE 7 — EP1 vs EP2 DYNAMICAL COMPOSITES (3×2)")
     print("=" * 80)
 
     # ── Verify input files ───────────────────────────────────────────────────
@@ -659,7 +659,7 @@ def main():
     create_figure(ep_data, OUTPUT_PNG)
 
     print(f"\n{'='*80}")
-    print("Figure 8 complete!")
+    print("Figure 7 complete!")
     print(f"  PNG : {OUTPUT_PNG}")
     print(f"{'='*80}\n")
     return 0

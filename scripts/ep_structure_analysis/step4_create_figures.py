@@ -51,6 +51,7 @@ from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import warnings
 import logging
+import argparse
 from datetime import datetime
 
 warnings.filterwarnings("ignore")
@@ -65,6 +66,9 @@ FIGURES_DIR = PROJECT_ROOT / "figures" / "ep_structure"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Composite mode (set via --mode argument in main())
+COMPOSITE_MODE = "full_intensification"
 
 DPI = 300
 DOMAIN_SIZE = 30.0  # degrees
@@ -110,13 +114,14 @@ def setup_logging():
 
 
 def load_composites():
-    """Load precomputed EP1 and EP2 composites."""
+    """Load precomputed EP1 and EP2 composites for the current COMPOSITE_MODE."""
     datasets = {}
+    mode_suffix = f"_{COMPOSITE_MODE}"
     for ep in ["ep1", "ep2"]:
-        f = DATA_DIR / f"precomputed_composites_{ep}.nc"
+        f = DATA_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
         if not f.exists():
             logging.error(f"❌ File not found: {f}")
-            logging.error("   Run step3_precompute_composites.py first.")
+            logging.error(f"   Run step3_precompute_composites.py --mode {COMPOSITE_MODE} first.")
             return None
         datasets[ep.upper()] = xr.open_dataset(f)
         mb = f.stat().st_size / 1024 ** 2
@@ -138,6 +143,17 @@ def _add_lec_box(ax):
         label="LEC domain (15°×15°)",
     )
     ax.add_patch(rect)
+
+
+def _figure_path(base_name):
+    """Generate figure filename with mode suffix.
+    
+    Examples:
+        composite_egr.png → composite_egr_full_intensification.png
+        composite_egr.png → composite_egr_central_time.png
+    """
+    stem = base_name.replace(".png", "")
+    return FIGURES_DIR / f"{stem}_{COMPOSITE_MODE}.png"
 
 
 def _decorate_ax(ax, title, xlabel=True, ylabel=True):
@@ -236,7 +252,7 @@ def figure_wind250(datasets):
     fig.suptitle("250 hPa Total Wind — composite mean, Bentley style (EP1 vs EP2)",
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_wind250.png"
+    out = _figure_path("composite_wind250.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -286,7 +302,7 @@ def figure_egr(datasets):
     fig.suptitle("Eady Growth Rate (500–850 hPa, Besson et al. 2021) — EP1 vs EP2",
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_egr.png"
+    out = _figure_path("composite_egr.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -331,7 +347,7 @@ def figure_pv200(datasets):
 
     fig.suptitle("Potential Vorticity at 200 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_pv200.png"
+    out = _figure_path("composite_pv200.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -371,7 +387,7 @@ def figure_pv850(datasets):
 
     fig.suptitle("Potential Vorticity at 850 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_pv850.png"
+    out = _figure_path("composite_pv850.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -411,7 +427,7 @@ def figure_advT850(datasets):
 
     fig.suptitle("Temperature Advection at 850 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_advT850.png"
+    out = _figure_path("composite_advT850.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -504,7 +520,7 @@ def figure_moisture(datasets):
     fig.suptitle("Low-Level Moisture Transport at 975 hPa — EP1 vs EP2", 
                  fontsize=13, fontweight="bold", y=0.995)
     plt.tight_layout(rect=[0, 0, 1, 0.99])
-    out = FIGURES_DIR / "composite_moisture_flux.png"
+    out = _figure_path("composite_moisture_flux.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -551,7 +567,7 @@ def figure_slp(datasets):
 
     fig.suptitle("Sea Level Pressure — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_slp.png"
+    out = _figure_path("composite_slp.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -607,7 +623,7 @@ def figure_rk_criterion(datasets):
     fig.suptitle("Rayleigh-Kuo Instability Criterion at 250 hPa — EP1 vs EP2", 
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_rk_criterion.png"
+    out = _figure_path("composite_rk_criterion.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -663,7 +679,7 @@ def figure_ke_advection(datasets):
     fig.suptitle("Kinetic Energy Advection at 250 hPa — EP1 vs EP2", 
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_ke_advection.png"
+    out = _figure_path("composite_ke_advection.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -732,7 +748,7 @@ def figure_afc(datasets):
         fontsize=13, fontweight="bold", y=1.02,
     )
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_afc_250.png"
+    out = _figure_path("composite_afc_250.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -1004,7 +1020,7 @@ def figure_btcr(datasets):
         fontsize=13, fontweight="bold", y=1.02,
     )
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_btcr.png"
+    out = _figure_path("composite_btcr.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -1077,7 +1093,7 @@ def figure_wind250_anom(datasets):
         fontsize=13, fontweight="bold", y=1.02,
     )
     plt.tight_layout()
-    out = FIGURES_DIR / "composite_wind250_anom.png"
+    out = _figure_path("composite_wind250_anom.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -1088,10 +1104,24 @@ def figure_wind250_anom(datasets):
 # ============================================================================
 
 def main():
+    parser = argparse.ArgumentParser(description="Create EP structure composite figures")
+    parser.add_argument(
+        "--mode", "-m", type=str, default="full_intensification",
+        choices=["full_intensification", "central_time"],
+        help="Composite mode: 'full_intensification' (mean over all timesteps) or "
+             "'central_time' (use only central timestep). Default: full_intensification",
+    )
+    args = parser.parse_args()
+    
+    # Set global COMPOSITE_MODE
+    global COMPOSITE_MODE
+    COMPOSITE_MODE = args.mode
+    
     log_file = setup_logging()
     logging.info("=" * 70)
     logging.info("STEP 4: CREATE COMPOSITE FIGURES – EP1 vs EP2")
     logging.info("=" * 70)
+    logging.info(f"   Composite mode: {COMPOSITE_MODE}")
 
     datasets = load_composites()
     if datasets is None:

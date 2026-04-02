@@ -123,6 +123,12 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 DOMAIN_SIZE = 30.0    # degrees (30° × 30°)
 RESOLUTION = 0.25     # degrees
 
+# Composite mode: how to aggregate timesteps within intensification phase
+# -------------------------------------------------------------------------
+# "full_intensification" : mean over all timesteps (original behavior)
+# "central_time"         : use only the central timestep
+COMPOSITE_MODE = "full_intensification"  # set via --mode argument in main()
+
 # EGR quality control
 MIN_LAT = 5.0
 MAX_EGR_DAY = 5.0
@@ -992,9 +998,19 @@ def _process_single_case(track_id):
 
         ds_sub = extract_subdomain(ds, clat, clon, DOMAIN_SIZE)
 
-        # Mean over time
+        # Temporal aggregation depends on COMPOSITE_MODE
         tc = "valid_time" if "valid_time" in ds_sub.dims else "time"
-        ds_mean = ds_sub.mean(dim=tc)
+        
+        if COMPOSITE_MODE == "central_time":
+            # Use only the central timestep of intensification phase
+            n_times = len(ds_sub[tc])
+            if n_times == 0:
+                return track_id, None, "no_timesteps"
+            central_idx = n_times // 2  # for odd N: middle; for even N: just after middle
+            ds_mean = ds_sub.isel({tc: central_idx})
+        else:
+            # Default: mean over all timesteps (full_intensification)
+            ds_mean = ds_sub.mean(dim=tc)
 
         pc = "pressure_level" if "pressure_level" in ds_mean.coords else "level"
         levels = ds_mean[pc].values
@@ -1515,6 +1531,12 @@ def compute_composite(cases, ep_label, n_jobs=1):
     ds_out.attrs["n_failed"] = failed
     ds_out.attrs["domain_size_deg"] = DOMAIN_SIZE
     ds_out.attrs["resolution_deg"] = RESOLUTION
+    ds_out.attrs["composite_mode"] = COMPOSITE_MODE
+    ds_out.attrs["composite_mode_description"] = (
+        "full_intensification: mean over all timesteps in intensification phase" 
+        if COMPOSITE_MODE == "full_intensification" 
+        else "central_time: single central timestep of intensification phase"
+    )
 
     return ds_out
 
@@ -1530,10 +1552,21 @@ def main():
         help="Number of parallel workers for composite computation. "
              "Default: 1 (sequential). Recommended on remote server: 4-8.",
     )
+    parser.add_argument(
+        "--mode", "-m", type=str, default="full_intensification",
+        choices=["full_intensification", "central_time"],
+        help="Composite mode: 'full_intensification' (mean over all timesteps) or "
+             "'central_time' (use only central timestep). Default: full_intensification",
+    )
     args = parser.parse_args()
     n_jobs = args.jobs if args.jobs >= 1 else 1
+    
+    # Set global COMPOSITE_MODE
+    global COMPOSITE_MODE
+    COMPOSITE_MODE = args.mode
 
     log_file = setup_logging()
+    logging.info(f"   Composite mode: {COMPOSITE_MODE}")
     logging.info(f"   Parallel workers: {n_jobs}")
 
     # Load cases
@@ -1558,9 +1591,10 @@ def main():
         ds_ep1 = compute_composite(ep1_cases, "EP1", n_jobs=n_jobs)
         ds_ep2 = compute_composite(ep2_cases, "EP2", n_jobs=n_jobs)
 
-    # Save
-    out1 = DATA_DIR / "precomputed_composites_ep1.nc"
-    out2 = DATA_DIR / "precomputed_composites_ep2.nc"
+    # Save with mode suffix
+    mode_suffix = f"_{COMPOSITE_MODE}"
+    out1 = DATA_DIR / f"precomputed_composites_ep1{mode_suffix}.nc"
+    out2 = DATA_DIR / f"precomputed_composites_ep2{mode_suffix}.nc"
     ds_ep1.to_netcdf(out1)
     ds_ep2.to_netcdf(out2)
     logging.info(f"\n   ✓ Saved: {out1.name} ({out1.stat().st_size/1024**2:.1f} MB)")
@@ -1570,7 +1604,7 @@ def main():
     logging.info("✓ STEP 3 COMPLETE")
     logging.info("=" * 70)
     logging.info(f"Log: {log_file}")
-    logging.info("\nNext: python scripts/ep_structure_analysis/step4_create_figures.py")
+    logging.info(f"\nNext: python scripts/ep_structure_analysis/step4_create_figures.py --mode {COMPOSITE_MODE}")
 
 
 if __name__ == "__main__":

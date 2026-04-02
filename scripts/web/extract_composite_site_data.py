@@ -7,24 +7,29 @@ It reads the structured stats JSON produced by step5_update_scientific_notes.py
 and catalogs composite figures produced by step4_create_figures.py, then writes
 manifest files consumed by the Next.js web layer.
 
+The script now supports two composite modes:
+  - full_intensification: mean over all timesteps in intensification phase
+  - central_time: single central timestep of intensification phase
+
 Scientific computation source of truth: scripts/ep_structure_analysis/
-  - step4_create_figures.py  → figures/ep_structure/composite_*.png
-  - step5_update_scientific_notes.py → results/ep_structure/composite_stats.json
+  - step4_create_figures.py  → figures/ep_structure/composite_*_{mode}.png
+  - step5_update_scientific_notes.py → results/ep_structure/composite_stats_{mode}.json
 
 Data flow:
-  1. Run step4  → generates figures/ep_structure/composite_*.png
-  2. Run step5  → generates results/ep_structure/composite_stats.json
-  3. Run THIS   → generates web/src/content/composite_*.json  (web manifests)
+  1. Run step4  → generates figures/ep_structure/composite_*_{mode}.png
+  2. Run step5  → generates results/ep_structure/composite_stats_{mode}.json
+  3. Run THIS   → generates web/src/content/composite_*_{mode}.json  (web manifests)
 
 Usage:
-    python scripts/web/extract_composite_site_data.py
+    python scripts/web/extract_composite_site_data.py [--mode MODE]
 
 Outputs:
-    web/src/content/composite_domain_stats.json
-    web/src/content/composite_boundary_fluxes.json
-    web/src/content/composite_figures_manifest.json
+    web/src/content/composite_domain_stats_{mode}.json
+    web/src/content/composite_boundary_fluxes_{mode}.json
+    web/src/content/composite_figures_manifest_{mode}.json
 """
 
+import argparse
 import json
 from pathlib import Path
 
@@ -35,8 +40,12 @@ RESULTS_DIR = REPO_ROOT / "results" / "ep_structure"
 FIGURES_DIR = REPO_ROOT / "web" / "public" / "figures" / "ep_structure"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
+# Composite mode (set via --mode argument in main())
+COMPOSITE_MODE = "full_intensification"
+
 # Mapping from web diagnostic id to step4 figure filenames.
 # Must match DIAGNOSTIC_FIGURE_SLUGS in web/src/lib/constants.ts.
+# Note: filenames will have _{mode} suffix appended
 DIAGNOSTIC_FIGURE_MAP = {
     "egr":                      {"real": "composite_egr.png"},
     "pv-200":                   {"real": "composite_pv200.png",          "anom": "composite_pv200_anom.png"},
@@ -60,23 +69,34 @@ def build_figures_manifest():
 
     Returns a dict keyed by diagnostic_id with availability flags.
     Uses the API path format: 'figures/ep_structure/<filename>'
+    Filenames include the composite mode suffix.
     """
     manifest = {}
+    mode_suffix = f"_{COMPOSITE_MODE}"
+    
     for diag_id, filenames in DIAGNOSTIC_FIGURE_MAP.items():
-        real_path = FIGURES_DIR / filenames["real"]
+        # Add mode suffix to filenames
+        real_base = filenames["real"].replace(".png", f"{mode_suffix}.png")
+        real_path = FIGURES_DIR / real_base
+        
         anom_name = filenames.get("anom")
-        anom_path = FIGURES_DIR / anom_name if anom_name else None
+        if anom_name:
+            anom_base = anom_name.replace(".png", f"{mode_suffix}.png")
+            anom_path = FIGURES_DIR / anom_base
+        else:
+            anom_base = None
+            anom_path = None
 
         manifest[diag_id] = {
             "real": {
                 "exists": real_path.exists(),
-                "api_path": f"figures/ep_structure/{filenames['real']}",
+                "api_path": f"figures/ep_structure/{real_base}",
             },
         }
-        if anom_name:
+        if anom_base:
             manifest[diag_id]["anom"] = {
                 "exists": anom_path.exists() if anom_path else False,
-                "api_path": f"figures/ep_structure/{anom_name}",
+                "api_path": f"figures/ep_structure/{anom_base}",
             }
 
     return manifest
@@ -92,10 +112,11 @@ def load_domain_stats():
         is a subset of full30. This distinction is documented in step5.
       - inside_15x15_anom / outside_15x15_anom: same regions for anomaly composites
     """
-    stats_file = RESULTS_DIR / "composite_stats.json"
+    mode_suffix = f"_{COMPOSITE_MODE}"
+    stats_file = RESULTS_DIR / f"composite_stats{mode_suffix}.json"
     if not stats_file.exists():
         print(f"  ⚠ {stats_file.relative_to(REPO_ROOT)} not found.")
-        print("    Run scripts/ep_structure_analysis/step5_update_scientific_notes.py first.")
+        print(f"    Run scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode {COMPOSITE_MODE} first.")
         return [], []
 
     data = json.loads(stats_file.read_text())
@@ -103,9 +124,23 @@ def load_domain_stats():
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Extract composite data for web")
+    parser.add_argument(
+        "--mode", "-m", type=str, default="full_intensification",
+        choices=["full_intensification", "central_time"],
+        help="Composite mode: 'full_intensification' or 'central_time'. Default: full_intensification",
+    )
+    args = parser.parse_args()
+    
+    # Set global COMPOSITE_MODE
+    global COMPOSITE_MODE
+    COMPOSITE_MODE = args.mode
+    mode_suffix = f"_{COMPOSITE_MODE}"
+    
     print("=" * 60)
     print("EXTRACT COMPOSITE DATA FOR WEB (serializer only)")
     print("=" * 60)
+    print(f"Composite mode: {COMPOSITE_MODE}")
     ensure_output_dir()
 
     # 1. Catalog figures
@@ -114,12 +149,12 @@ def main():
     total = sum(1 for d in figures.values() for f in d.values() if f.get("exists"))
     print(f"   Found {total} composite figures on disk")
 
-    fig_path = WEB_CONTENT / "composite_figures_manifest.json"
+    fig_path = WEB_CONTENT / f"composite_figures_manifest{mode_suffix}.json"
     fig_path.write_text(json.dumps(figures, indent=2))
     print(f"   ✓ {fig_path.relative_to(REPO_ROOT)}")
 
     # 2. Load stats from step5 JSON
-    print("\n2. Reading domain stats from results/ep_structure/composite_stats.json...")
+    print(f"\n2. Reading domain stats from results/ep_structure/composite_stats{mode_suffix}.json...")
     domain_stats, boundary_fluxes = load_domain_stats()
 
     if not domain_stats:
@@ -130,11 +165,11 @@ def main():
         print(f"   Found {len(boundary_fluxes)} boundary flux entries")
 
     # 3. Write web manifests
-    stats_path = WEB_CONTENT / "composite_domain_stats.json"
+    stats_path = WEB_CONTENT / f"composite_domain_stats{mode_suffix}.json"
     stats_path.write_text(json.dumps(domain_stats, indent=2))
     print(f"   ✓ {stats_path.relative_to(REPO_ROOT)}")
 
-    fluxes_path = WEB_CONTENT / "composite_boundary_fluxes.json"
+    fluxes_path = WEB_CONTENT / f"composite_boundary_fluxes{mode_suffix}.json"
     fluxes_path.write_text(json.dumps(boundary_fluxes, indent=2))
     print(f"   ✓ {fluxes_path.relative_to(REPO_ROOT)}")
 

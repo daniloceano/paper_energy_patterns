@@ -112,6 +112,46 @@ throughout the study.
 
 ## Pipeline Structure
 
+### Composite Modes
+
+The pipeline supports **two composite methodologies** to aggregate cyclone fields during intensification:
+
+| Mode | Description | Timesteps Used | Output Suffix |
+|------|-------------|----------------|---------------|
+| **`full_intensification`** | Mean over all timesteps in intensification phase (original method) | All 6-hourly timesteps from phase start to end | `_full_intensification` |
+| **`central_time`** | Single central timestep of intensification phase | Middle timestep only (N//2 for N timesteps) | `_central_time` |
+
+**Key differences:**
+- `full_intensification` represents the *average structure* during the entire deepening period
+- `central_time` represents a *snapshot* at the peak/center of intensification
+- Both modes use identical selection criteria, fields, domain, and grid
+- All scripts support `--mode` flag to specify which mode to use
+
+**Central timestep definition:**
+- For N timesteps in intensification phase:
+  - Odd N: uses timestep at index N//2 (exact middle)
+  - Even N: uses timestep at index N//2 (round-up convention)
+- Example: N=5 → index 2 (3rd timestep), N=6 → index 3 (4th timestep)
+
+**Output file naming:**
+```
+# Precomputed composites (step 3)
+precomputed_composites_ep1_full_intensification.nc
+precomputed_composites_ep1_central_time.nc
+
+# Figures (step 4)
+composite_egr_full_intensification.png
+composite_egr_central_time.png
+
+# Stats JSON (step 5)
+composite_stats_full_intensification.json
+composite_stats_central_time.json
+
+# Web manifests
+composite_figures_manifest_full_intensification.json
+composite_domain_stats_central_time.json
+```
+
 ### Steps
 
 | Step | Script | Run on | Description |
@@ -342,8 +382,14 @@ nohup python scripts/ep_structure_analysis/step2_download_era5_parallel.py --job
 # Monitor download progress in another terminal
 python scripts/ep_structure_analysis/step2_monitor.py --watch
 
-# Step 3 – precompute composites
+# Step 3 – precompute composites (default: full_intensification mode)
 nohup python scripts/ep_structure_analysis/step3_precompute_composites.py &
+
+# Step 3 – precompute composites with central_time mode
+nohup python scripts/ep_structure_analysis/step3_precompute_composites.py --mode central_time &
+
+# Step 3 – use multiple workers for faster processing
+nohup python scripts/ep_structure_analysis/step3_precompute_composites.py --jobs 8 --mode central_time &
 ```
 
 ### Transfer to local machine
@@ -363,14 +409,21 @@ scp -i ~/Documents/Master/id_rsa.danilocs -C \
 ### Local execution (after transfer)
 
 ```bash
-# Step 4 – create figures
+# Step 4 – create figures (default: full_intensification mode)
 python scripts/ep_structure_analysis/step4_create_figures.py
+
+# Step 4 – create figures for central_time mode
+python scripts/ep_structure_analysis/step4_create_figures.py --mode central_time
 
 # Step 5 – update scientific notes with regional statistics
 python scripts/ep_structure_analysis/step5_update_scientific_notes.py
 
-# Step 5 – with PDF generation (requires pandoc + xelatex)
-python scripts/ep_structure_analysis/step5_update_scientific_notes.py --pdf
+# Step 5 – for central_time mode with PDF generation
+python scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode central_time --no-pdf
+
+# Web export – extract data for both modes
+python scripts/web/extract_composite_site_data.py --mode full_intensification
+python scripts/web/extract_composite_site_data.py --mode central_time
 ```
 
 **Step 5 computes:**

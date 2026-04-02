@@ -63,7 +63,50 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 
 ## 3. Methodology
 
-### 3.1 Diagnostic Fields Computed
+### 3.1 Composite Modes
+
+Two methodologies are available for aggregating cyclone fields during intensification:
+
+#### Full Intensification Mode (default)
+
+**Method:** Mean over all 6-hourly timesteps in the intensification phase
+
+**Rationale:**  
+- Captures the *average structure* during the entire deepening period
+- Reduces noise from individual timesteps
+- Represents the typical dynamical environment sustained throughout intensification
+- Consistent with traditional composite methodology (e.g., Sinclair 1997; Lim & Simmonds 2007)
+
+**Formula:** For each cyclone $i$, compute the phase-mean field:
+$$\bar{\phi}_i(\mathbf{x}) = \frac{1}{N_i} \sum_{t=1}^{N_i} \phi_i(\mathbf{x}, t)$$
+where $N_i$ is the number of timesteps in the intensification phase.
+
+The composite mean is then:
+$$\langle\phi\rangle(\mathbf{x}) = \frac{1}{M} \sum_{i=1}^{M} \bar{\phi}_i(\mathbf{x})$$
+where $M$ is the number of cyclones in the sample.
+
+#### Central Time Mode (new)
+
+**Method:** Single timestep at the temporal center of the intensification phase
+
+**Rationale:**  
+- Captures a *snapshot* at the peak/center of intensification
+- Avoids temporal smoothing that may obscure transient features
+- Useful for comparing instantaneous vs. phase-averaged structures
+- Isolates the most intense/active moment of deepening
+
+**Formula:** For each cyclone $i$, select the central timestep:
+$$t_{\text{center}} = \left\lfloor \frac{N_i}{2} \right\rfloor$$
+where $N_i$ is the number of timesteps. For odd $N_i$, this is the exact middle; for even $N_i$, this is the timestep just after the midpoint (round-up convention).
+
+The composite mean uses only this single timestep per cyclone:
+$$\langle\phi\rangle(\mathbf{x}) = \frac{1}{M} \sum_{i=1}^{M} \phi_i(\mathbf{x}, t_{\text{center}, i})$$
+
+**Example:**  
+- Intensification from 2020-06-10 00Z to 2020-06-12 18Z (12 timesteps, 54 hours)
+- Central timestep: index 6 → 2020-06-11 06Z (midpoint at 27 hours)
+
+### 3.3 Diagnostic Fields Computed
 
 | Diagnostic | Level(s) | Purpose | Key Reference |
 |------------|----------|---------|---------------|
@@ -92,7 +135,7 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 
 > **Note:** EGR is not decomposed into anomaly form. The EGR formula involves N² and vertical shear over a deep layer (500–850 hPa), making a clean temporal decomposition ill-defined. EGR is interpreted as a total-field baroclinic instability measure.
 
-### 3.2 Spherical Grid Spacing
+### 3.3 Spherical Grid Spacing
 
 All horizontal derivatives account for Earth's spherical geometry:
 
@@ -109,7 +152,7 @@ where $R_{\oplus} = 6.371 \times 10^6$ m, $\phi$ = latitude, $\lambda$ = longitu
 - ✅ Correct gradient signs regardless of coordinate direction
 - ✅ Uses `numpy.gradient()` for non-uniform grids
 
-### 3.3 Eady Growth Rate (EGR)
+### 3.4 Eady Growth Rate (EGR)
 
 **Formula:**
 $$\sigma_{EGR} = 0.31 \frac{|f|}{N} \left|\frac{\partial \vec{V}}{\partial z}\right|$$
@@ -126,7 +169,7 @@ where:
 - $|\phi| > 5°$ (avoid equatorial singularity)
 - $\sigma_{EGR} < 5$ day⁻¹ (cap unrealistic values)
 
-### 3.4 Potential Vorticity
+### 3.5 Potential Vorticity
 
 **Formula:**
 $$PV = -g \left(\zeta_\theta + f\right) \frac{\partial \theta}{\partial p}$$
@@ -139,7 +182,7 @@ where $\zeta_\theta$ = relative vorticity on isentropic surface, $\theta$ = pote
 
 **Units:** K m² kg⁻¹ s⁻¹ (SI), converted to PVU (1 PVU = 10⁻⁶ K m² kg⁻¹ s⁻¹) in figures
 
-### 3.5 Temperature Advection
+### 3.6 Temperature Advection
 
 **Formula:**
 $$\text{advT} = -\vec{V} \cdot \nabla T = -\left(u\frac{\partial T}{\partial x} + v\frac{\partial T}{\partial y}\right)$$
@@ -148,7 +191,7 @@ $$\text{advT} = -\vec{V} \cdot \nabla T = -\left(u\frac{\partial T}{\partial x} 
 **Sign Convention:** Positive = warm air advection; Negative = cold air advection  
 **Units:** K h⁻¹ (converted from K s⁻¹)
 
-### 3.6 Moisture Fields at 975 hPa
+### 3.7 Moisture Fields at 975 hPa
 
 **Specific Humidity (q):**
 - Direct measure of atmospheric moisture content
@@ -163,7 +206,7 @@ $$\nabla \cdot (q\vec{V}) = \frac{\partial (qu)}{\partial x} + \frac{\partial (q
 - Units: g kg⁻¹ s⁻¹ (composite files store values as kg kg⁻¹ s⁻¹ × 10³; figures plot as-is without further rescaling)
 - Key diabatic process in cyclone intensification (Banacos & Schultz, 2005)
 
-### 3.7 Rayleigh-Kuo Stability Criterion (250 hPa)
+### 3.8 Rayleigh-Kuo Stability Criterion (250 hPa)
 
 **Formula:**
 $$RK = \beta - \frac{\partial^2 u}{\partial y^2}$$
@@ -179,7 +222,7 @@ where:
 
 **References:** Rayleigh (1880), Kuo (1949), Charney & Stern (1962)
 
-### 3.8 Kinetic Energy Advection (250 hPa)
+### 3.9 Kinetic Energy Advection (250 hPa)
 
 **Formula:**
 $$\text{KE\_adv} = -\vec{V} \cdot \nabla(KE) = -\vec{V} \cdot \nabla\left(\frac{1}{2}(u^2 + v^2)\right)$$
@@ -193,7 +236,7 @@ $$\text{KE\_adv} = -\vec{V} \cdot \nabla(KE) = -\vec{V} \cdot \nabla\left(\frac{
 **Significance:**  
 Quantifies energy transport within the jet stream. Positive advection indicates regions where the flow pattern favors kinetic energy accumulation, potentially intensifying upper-level divergence and cyclone development.
 
-### 3.9 Ageostrophic Flux Convergence — AFC (250 hPa)
+### 3.10 Ageostrophic Flux Convergence — AFC (250 hPa)
 
 The AFC diagnostic quantifies the redistribution of **eddy kinetic energy** through pressure work by the ageostrophic component of the eddy wind, following Orlanski & Katzfey (1991) and Orlanski & Sheldon (1993).
 
@@ -221,7 +264,7 @@ $$AFC = -\nabla \cdot (\vec{v}_{ag}' \, \phi')$$
 
 > **Note on climatology data source:** The 30-year monthly climatology used as base state is described in Section 3.10.
 
-### 3.10 Anomaly Fields — Temporal Decomposition
+### 3.11 Anomaly Fields — Temporal Decomposition
 
 To isolate the **synoptic-scale eddy signature** of EP1 and EP2 cyclones from the background climatological state, five additional diagnostics are computed as anomaly (eddy perturbation) fields using the same temporal decomposition already applied to AFC.
 
@@ -273,7 +316,7 @@ The cross-terms (e.g. $-V_m \cdot \nabla T' - V' \cdot \nabla T_m$ for temperatu
 
 ---
 
-### 3.11 Barotropic Critical Region (BtCR) at 250 hPa
+### 3.12 Barotropic Critical Region (BtCR) at 250 hPa
 
 The BtCR concept, introduced by Rivière (2006), identifies jet-exit zones where the **low-frequency horizontal deformation field** dominates over rotation.  A synoptic-scale disturbance traversing such a region is forced into a preferred orientation that enables efficient extraction of baroclinic energy and can trigger explosive cyclogenesis.
 

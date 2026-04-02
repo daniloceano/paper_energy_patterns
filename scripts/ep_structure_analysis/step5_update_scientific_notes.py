@@ -39,6 +39,9 @@ DOCS_DIR = PROJECT_ROOT / "docs"
 SCRIPT_DIR = Path(__file__).resolve().parent
 NOTES_FILE = SCRIPT_DIR / "SCIENTIFIC_NOTES.md"
 
+# Composite mode (set via --mode argument in main())
+COMPOSITE_MODE = "full_intensification"
+
 # Domain definitions for regional statistics
 DOMAIN_FULL = 30.0  # degrees
 DOMAIN_LEC = 15.0   # degrees
@@ -133,7 +136,8 @@ def load_stats():
     stats = {}
 
     for ep in ["ep1", "ep2"]:
-        f = DATA_DIR / f"precomputed_composites_{ep}.nc"
+        mode_suffix = f"_{COMPOSITE_MODE}"
+        f = DATA_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
         if not f.exists():
             print(f"⚠️  Missing {f.name} — skipping {ep.upper()}")
             continue
@@ -410,11 +414,13 @@ def export_stats_json(stats):
 
     out = {
         "generated_at": stats.get("GENERATION_DATE", ""),
+        "composite_mode": COMPOSITE_MODE,
         "domain_stats": domain_stats,
         "boundary_fluxes": boundary_fluxes,
     }
 
-    out_path = RESULTS_DIR / "composite_stats.json"
+    mode_suffix = f"_{COMPOSITE_MODE}"
+    out_path = RESULTS_DIR / f"composite_stats{mode_suffix}.json"
     out_path.write_text(json.dumps(out, indent=2, ensure_ascii=False))
     print(f"   ✓ Exported structured stats to {out_path.relative_to(PROJECT_ROOT)}")
     return out_path
@@ -533,11 +539,22 @@ def generate_pdf():
 def main():
     parser = argparse.ArgumentParser(description="Update scientific notes for EP structure analysis")
     parser.add_argument("--no-pdf", action="store_true", help="Skip PDF generation")
+    parser.add_argument(
+        "--mode", "-m", type=str, default="full_intensification",
+        choices=["full_intensification", "central_time"],
+        help="Composite mode: 'full_intensification' (mean over all timesteps) or "
+             "'central_time' (use only central timestep). Default: full_intensification",
+    )
     args = parser.parse_args()
+    
+    # Set global COMPOSITE_MODE
+    global COMPOSITE_MODE
+    COMPOSITE_MODE = args.mode
 
     print("=" * 60)
     print("STEP 5: UPDATE SCIENTIFIC NOTES")
     print("=" * 60)
+    print(f"Composite mode: {COMPOSITE_MODE}")
 
     print("\n1. Computing statistics from composites...")
     stats = load_stats()

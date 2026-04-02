@@ -179,3 +179,45 @@ export interface DocumentInfo {
   path: string
   generatedFrom?: string
 }
+
+// --- Cyclone Explorer Types ---
+export interface CycloneTimestep {
+  index: number
+  time: string
+  track_point_index: number
+  panel_image: string
+  has_panel: boolean
+}
+
+export interface CycloneMetadata {
+  intensification_start: string
+  intensification_end: string
+  duration_hours: number
+  n_timesteps: number
+  center_lat: number
+  center_lon: number
+}
+
+export interface CycloneTrack {
+  lats: number[]
+  lons: number[]
+}
+
+export interface CycloneData {
+  track_id: string
+  ep_label: 'EP1' | 'EP2'
+  metadata: CycloneMetadata
+  track: CycloneTrack
+  timesteps: CycloneTimestep[]
+  available_fields: string[]
+}
+
+export interface CycloneExplorerManifest {
+  metadata: {
+    generated_at: string
+    total_cyclones: number
+    ep1_count: number
+    ep2_count: number
+  }
+  cyclones: Record<string, CycloneData>
+}

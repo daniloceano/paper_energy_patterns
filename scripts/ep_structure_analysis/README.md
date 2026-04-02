@@ -163,6 +163,66 @@ composite_domain_stats_central_time.json
 | 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP, RK, KE_adv) |
 | 4 | `step4_create_figures.py` | Local | Create EP1 vs EP2 composite figures |
 | 5 | `step5_update_scientific_notes.py` | Local | Populate SCIENTIFIC_NOTES.md with regional statistics + generate PDF |
+| 6 | `step6_generate_cyclone_explorer_panels.py` | Local/Remote | Generate individual cyclone multi-panel figures for temporal exploration |
+
+### Cyclone Explorer (`step6`)
+
+The Cyclone Explorer provides temporal visualization of individual cyclones during their intensification phase. It generates multi-panel figures for each timestep of each cyclone.
+
+**Purpose:**
+- Explore individual cyclone structure evolution through time
+- Visualize meteorological fields at each 6-hourly timestep
+- Highlight cyclone center on track
+
+**Panel layout (2×2):**
+| Panel | Field | Level/Description |
+|-------|-------|-------------------|
+| Top-left | SLP + Winds | Sea level pressure (shaded) + 850 hPa wind vectors |
+| Top-right | Temperature | Temperature at 850 hPa (°C) |
+| Bottom-left | Specific humidity | Specific humidity at 975 hPa (g/kg) |
+| Bottom-right | Geopotential | Geopotential height at 500 hPa (m) |
+
+**Output:**
+- `figures/cyclone_explorer/ep1/{track_id}/panel_t{NNN}.png` — EP1 timestep panels
+- `figures/cyclone_explorer/ep2/{track_id}/panel_t{NNN}.png` — EP2 timestep panels
+- `web/src/content/cyclone_explorer_manifest.json` — Manifest for web integration
+
+**Usage:**
+```bash
+# Generate panels for all cyclones with ERA5 data (parallel)
+python -m scripts.ep_structure_analysis.step6_generate_cyclone_explorer_panels --jobs 4
+
+# Generate for subset (testing)
+python -m scripts.ep_structure_analysis.step6_generate_cyclone_explorer_panels --subset 5
+
+# Extract manifest for web
+python -m scripts.web.extract_cyclone_explorer_data
+```
+
+**Manifest structure:**
+```json
+{
+  "metadata": {...},
+  "cyclones": {
+    "track_id": {
+      "track_id": "19790585",
+      "ep_label": "EP1",
+      "metadata": {
+        "intensification_start": "...",
+        "intensification_end": "...",
+        "n_timesteps": 8,
+        "center_lat": -38.13,
+        "center_lon": -29.19
+      },
+      "track": {"lats": [...], "lons": [...]},
+      "timesteps": [
+        {"index": 0, "time": "...", "track_idx": 27, "has_panel": true},
+        ...
+      ]
+    }
+  }
+}
+```
 
 ### Monthly climatology download (`step2_1_download_era5_monthly_means.py`)
 

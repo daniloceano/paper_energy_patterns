@@ -1,0 +1,140 @@
+[
+  {
+    "diagnostic_id": "egr",
+    "ep": "EP1",
+    "unit": "day\u207b\u00b9",
+    "inside_15x15": "0.78",
+    "outside_15x15": "0.67"
+  },
+  {
+    "diagnostic_id": "egr",
+    "ep": "EP2",
+    "unit": "day\u207b\u00b9",
+    "inside_15x15": "0.78",
+    "outside_15x15": "0.67"
+  },
+  {
+    "diagnostic_id": "pv-200",
+    "ep": "EP1",
+    "unit": "PVU",
+    "inside_15x15": "-5.18",
+    "outside_15x15": "-4.53"
+  },
+  {
+    "diagnostic_id": "pv-200",
+    "ep": "EP2",
+    "unit": "PVU",
+    "inside_15x15": "-4.93",
+    "outside_15x15": "-4.34"
+  },
+  {
+    "diagnostic_id": "pv-850",
+    "ep": "EP1",
+    "unit": "PVU",
+    "inside_15x15": "-0.51",
+    "outside_15x15": "-0.48"
+  },
+  {
+    "diagnostic_id": "pv-850",
+    "ep": "EP2",
+    "unit": "PVU",
+    "inside_15x15": "-0.56",
+    "outside_15x15": "-0.51"
+  },
+  {
+    "diagnostic_id": "temperature-advection",
+    "ep": "EP1",
+    "unit": "K h\u207b\u00b9",
+    "inside_15x15": "-0.189",
+    "outside_15x15": "-0.069",
+    "inside_15x15_anom": "-0.030",
+    "outside_15x15_anom": "-0.034"
+  },
+  {
+    "diagnostic_id": "temperature-advection",
+    "ep": "EP2",
+    "unit": "K h\u207b\u00b9",
+    "inside_15x15": "-0.183",
+    "outside_15x15": "-0.056",
+    "inside_15x15_anom": "-0.046",
+    "outside_15x15_anom": "-0.041"
+  },
+  {
+    "diagnostic_id": "moisture-flux-divergence",
+    "ep": "EP1",
+    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "inside_15x15": "-7.689e+01",
+    "outside_15x15": "-1.079e+01",
+    "inside_15x15_anom": "-6.358e+00",
+    "outside_15x15_anom": "-2.135e+00"
+  },
+  {
+    "diagnostic_id": "moisture-flux-divergence",
+    "ep": "EP2",
+    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "inside_15x15": "-1.440e+02",
+    "outside_15x15": "-3.732e+01",
+    "inside_15x15_anom": "-2.187e+01",
+    "outside_15x15_anom": "-9.790e-01"
+  },
+  {
+    "diagnostic_id": "slp",
+    "ep": "EP1",
+    "unit": "hPa",
+    "inside_15x15": "1005.6",
+    "outside_15x15": "1009.2"
+  },
+  {
+    "diagnostic_id": "slp",
+    "ep": "EP2",
+    "unit": "hPa",
+    "inside_15x15": "1002.0",
+    "outside_15x15": "1005.9"
+  },
+  {
+    "diagnostic_id": "ke-advection",
+    "ep": "EP1",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "-7.233e-03",
+    "outside_15x15": "-4.433e-03",
+    "inside_15x15_anom": "-1.174e-03",
+    "outside_15x15_anom": "-1.491e-03"
+  },
+  {
+    "diagnostic_id": "ke-advection",
+    "ep": "EP2",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "-5.489e-03",
+    "outside_15x15": "-2.745e-03",
+    "inside_15x15_anom": "1.154e-03",
+    "outside_15x15_anom": "4.270e-04"
+  },
+  {
+    "diagnostic_id": "afc",
+    "ep": "EP1",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "3.775e-03",
+    "outside_15x15": "4.871e-04"
+  },
+  {
+    "diagnostic_id": "afc",
+    "ep": "EP2",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "1.436e-03",
+    "outside_15x15": "-1.133e-03"
+  },
+  {
+    "diagnostic_id": "rk-criterion",
+    "ep": "EP1",
+    "unit": "s\u207b\u00b9",
+    "inside_15x15": "2.884e-11",
+    "outside_15x15": "2.246e-11"
+  },
+  {
+    "diagnostic_id": "rk-criterion",
+    "ep": "EP2",
+    "unit": "s\u207b\u00b9",
+    "inside_15x15": "2.400e-11",
+    "outside_15x15": "2.372e-11"
+  }
+]

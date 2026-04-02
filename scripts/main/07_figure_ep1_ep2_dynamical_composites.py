@@ -115,7 +115,7 @@ SLP_SCALE   = 1e-2     # Pa                  →  hPa
 # ── Row 1: EGR contour levels [day⁻¹] — only ≥ 0.5 day⁻¹ ───────────────────
 # Threshold of 0.5 day⁻¹ focuses on the enhanced-instability core.
 # Data range across both EPs is approximately 0.29–0.69 day⁻¹.
-EGR_CONTOUR_LEVELS = np.array([0.50, 0.55, 0.60])
+EGR_CONTOUR_LEVELS = np.array([0.50, 0.55, 0.60, 0.65])
 
 # ── Row 2: Total temperature advection contour levels [K h⁻¹] ───────────────
 # Total adv_T_850 range (K h⁻¹): ~−0.144 to +0.140.
@@ -489,15 +489,16 @@ def create_figure(ep_data, output_png):
         if col == 0:
             im_r0 = im
 
-        # EGR contours — only levels ≥ 0.5 day⁻¹, no inline labels
+        # EGR contours — only levels ≥ 0.5 day⁻¹, with inline labels
         egr_valid = EGR_CONTOUR_LEVELS[
             (EGR_CONTOUR_LEVELS >= np.nanmin(d['egr'])) &
             (EGR_CONTOUR_LEVELS <= np.nanmax(d['egr']))
         ]
         if len(egr_valid):
-            ax.contour(d['x_2d'], d['y_2d'], d['egr'],
+            cs_egr = ax.contour(d['x_2d'], d['y_2d'], d['egr'],
                        levels=egr_valid,
                        colors='k', linewidths=1.1, alpha=0.85, zorder=5)
+            ax.clabel(cs_egr, inline=True, fontsize=8, fmt='%.2f')
 
         # SLP anomaly contours (thin reference)
         _add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_anom_hpa'])

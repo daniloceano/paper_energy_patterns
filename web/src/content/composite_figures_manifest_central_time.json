@@ -11,8 +11,8 @@
       "api_path": "figures/ep_structure/composite_pv200_central_time.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_pv200_anom_central_time.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_pv200_anom.png"
     }
   },
   "pv-850": {
@@ -21,8 +21,8 @@
       "api_path": "figures/ep_structure/composite_pv850_central_time.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_pv850_anom_central_time.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_pv850_anom.png"
     }
   },
   "temperature-advection": {
@@ -31,8 +31,8 @@
       "api_path": "figures/ep_structure/composite_advT850_central_time.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_advT850_anom_central_time.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_advT850_anom.png"
     }
   },
   "moisture-flux-divergence": {
@@ -41,8 +41,8 @@
       "api_path": "figures/ep_structure/composite_moisture_flux_central_time.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_moisture_flux_anom_central_time.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_moisture_flux_anom.png"
     }
   },
   "slp": {
@@ -51,8 +51,8 @@
       "api_path": "figures/ep_structure/composite_slp_central_time.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_slp_anom_central_time.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_slp_anom.png"
     }
   },
   "rk-criterion": {
@@ -67,8 +67,8 @@
       "api_path": "figures/ep_structure/composite_ke_advection_central_time.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_ke_advection_anom_central_time.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_ke_advection_anom.png"
     }
   },
   "afc": {

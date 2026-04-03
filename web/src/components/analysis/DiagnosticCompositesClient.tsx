@@ -96,10 +96,11 @@ function DiagnosticCompositesContent({
   const hasAnomFigure = (anomFig?.exists ?? false) && diag.hasAnomaly
   const hasStats = diagStats.length > 0
 
-  // Build figure filename with mode suffix
+  // Build figure filename with mode suffix (only for real composites, not anomalies)
   const modeSuffix = `_${mode}`
   const realFigFilename = figSlug.real.replace('.png', `${modeSuffix}.png`)
-  const anomFigFilename = figSlug.anom?.replace('.png', `${modeSuffix}.png`)
+  // Anomalies do NOT get mode suffix - they're relative to climatology (mode-independent)
+  const anomFigFilename = figSlug.anom
 
   return (
     <div className="space-y-8">

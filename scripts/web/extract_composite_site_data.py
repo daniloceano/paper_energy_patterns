@@ -69,19 +69,23 @@ def build_figures_manifest():
 
     Returns a dict keyed by diagnostic_id with availability flags.
     Uses the API path format: 'figures/ep_structure/<filename>'
-    Filenames include the composite mode suffix.
+    
+    NOTE: Real (absolute) composites have mode suffix (_full_intensification or _central_time).
+    Anomaly composites do NOT have mode suffix — they are relative to climatology,
+    which is the same regardless of composite method.
     """
     manifest = {}
     mode_suffix = f"_{COMPOSITE_MODE}"
     
     for diag_id, filenames in DIAGNOSTIC_FIGURE_MAP.items():
-        # Add mode suffix to filenames
+        # Add mode suffix to REAL composites only
         real_base = filenames["real"].replace(".png", f"{mode_suffix}.png")
         real_path = FIGURES_DIR / real_base
         
+        # Anomalies do NOT get mode suffix (climatology is mode-independent)
         anom_name = filenames.get("anom")
         if anom_name:
-            anom_base = anom_name.replace(".png", f"{mode_suffix}.png")
+            anom_base = anom_name  # No mode suffix for anomalies
             anom_path = FIGURES_DIR / anom_base
         else:
             anom_base = None

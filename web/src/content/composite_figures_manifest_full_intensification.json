@@ -11,8 +11,8 @@
       "api_path": "figures/ep_structure/composite_pv200_full_intensification.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_pv200_anom_full_intensification.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_pv200_anom.png"
     }
   },
   "pv-850": {
@@ -21,8 +21,8 @@
       "api_path": "figures/ep_structure/composite_pv850_full_intensification.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_pv850_anom_full_intensification.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_pv850_anom.png"
     }
   },
   "temperature-advection": {
@@ -31,8 +31,8 @@
       "api_path": "figures/ep_structure/composite_advT850_full_intensification.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_advT850_anom_full_intensification.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_advT850_anom.png"
     }
   },
   "moisture-flux-divergence": {
@@ -41,8 +41,8 @@
       "api_path": "figures/ep_structure/composite_moisture_flux_full_intensification.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_moisture_flux_anom_full_intensification.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_moisture_flux_anom.png"
     }
   },
   "slp": {
@@ -51,8 +51,8 @@
       "api_path": "figures/ep_structure/composite_slp_full_intensification.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_slp_anom_full_intensification.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_slp_anom.png"
     }
   },
   "rk-criterion": {
@@ -67,8 +67,8 @@
       "api_path": "figures/ep_structure/composite_ke_advection_full_intensification.png"
     },
     "anom": {
-      "exists": false,
-      "api_path": "figures/ep_structure/composite_ke_advection_anom_full_intensification.png"
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_ke_advection_anom.png"
     }
   },
   "afc": {

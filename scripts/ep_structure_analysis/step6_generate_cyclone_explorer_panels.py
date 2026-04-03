@@ -5,7 +5,7 @@ Creates a 2×2 multi-panel figure for each timestep of each EP1/EP2 cyclone
 during their intensification phase. These panels enable temporal exploration
 of individual cyclones on the website.
 
-Panel Layout (2×2 grid, 15°×15° domain centered on cyclone):
+Panel Layout (2×2 grid, 30°×30° panel centered on cyclone; inner 15°×15° box shown):
   Top-left:     SLP + 850 hPa wind vectors
   Top-right:    Temperature 850 hPa
   Bottom-left:  Specific Humidity 975 hPa
@@ -55,7 +55,10 @@ LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 DPI = 150  # Lower than paper figures (trade-off size vs quality)
-DOMAIN_SIZE = 15.0  # degrees (smaller than composite's 30°)
+# Panels are a 30°×30° view centered on the cyclone; a 15°×15° box is overlaid
+DOMAIN_SIZE = 30.0  # degrees (panel domain)
+INNER_BOX_SIZE = 15.0  # degrees (visual box shown inside panel)
+INNER_BOX_HALF = INNER_BOX_SIZE / 2.0
 
 # Plotting style
 plt.rcParams.update({
@@ -185,6 +188,8 @@ def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id)
     
     # ────────────────────────────────────────────────────────────────────────
     # Top-left: SLP + 850 hPa wind vectors
+    # Panels are a 30°×30° view centered on the cyclone; an inner 15°×15° box is
+    # drawn to indicate the smaller composite region used elsewhere in the repo.
     # ────────────────────────────────────────────────────────────────────────
     ax = axes[0, 0]
     cs = ax.contourf(X, Y, msl, levels=15, cmap='RdYlBu_r', extend='both')
@@ -197,6 +202,13 @@ def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id)
               scale=VECTOR_SCALE, width=VECTOR_WIDTH, color='black', alpha=0.6)
     
     _add_cyclone_center_mark(ax)
+    # draw inner 15°×15° box centered at origin
+    try:
+        rect = mpatches.Rectangle((-INNER_BOX_HALF, -INNER_BOX_HALF), INNER_BOX_SIZE, INNER_BOX_SIZE,
+                                  linewidth=1, edgecolor='black', linestyle='--', facecolor='none', zorder=9)
+        ax.add_patch(rect)
+    except Exception:
+        pass
     ax.set_title("SLP + 850 hPa Winds", fontweight='bold')
     ax.set_xlabel("Longitude offset (°)")
     ax.set_ylabel("Latitude offset (°)")
@@ -209,6 +221,12 @@ def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id)
     cs = ax.contourf(X, Y, t_850, levels=15, cmap='RdBu_r', extend='both')
     ax.contour(X, Y, t_850, levels=10, colors='black', linewidths=0.5, alpha=0.4)
     _add_cyclone_center_mark(ax)
+    try:
+        rect = mpatches.Rectangle((-INNER_BOX_HALF, -INNER_BOX_HALF), INNER_BOX_SIZE, INNER_BOX_SIZE,
+                                  linewidth=1, edgecolor='black', linestyle='--', facecolor='none', zorder=9)
+        ax.add_patch(rect)
+    except Exception:
+        pass
     ax.set_title("Temperature 850 hPa", fontweight='bold')
     ax.set_xlabel("Longitude offset (°)")
     ax.set_ylabel("Latitude offset (°)")
@@ -220,6 +238,12 @@ def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id)
     ax = axes[1, 0]
     cs = ax.contourf(X, Y, q_975, levels=15, cmap='YlGnBu', extend='max')
     _add_cyclone_center_mark(ax)
+    try:
+        rect = mpatches.Rectangle((-INNER_BOX_HALF, -INNER_BOX_HALF), INNER_BOX_SIZE, INNER_BOX_SIZE,
+                                  linewidth=1, edgecolor='black', linestyle='--', facecolor='none', zorder=9)
+        ax.add_patch(rect)
+    except Exception:
+        pass
     ax.set_title("Specific Humidity 975 hPa", fontweight='bold')
     ax.set_xlabel("Longitude offset (°)")
     ax.set_ylabel("Latitude offset (°)")
@@ -232,6 +256,12 @@ def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id)
     cs = ax.contourf(X, Y, z_500, levels=15, cmap='viridis', extend='both')
     ax.contour(X, Y, z_500, levels=10, colors='white', linewidths=0.5, alpha=0.6)
     _add_cyclone_center_mark(ax)
+    try:
+        rect = mpatches.Rectangle((-INNER_BOX_HALF, -INNER_BOX_HALF), INNER_BOX_SIZE, INNER_BOX_SIZE,
+                                  linewidth=1, edgecolor='black', linestyle='--', facecolor='none', zorder=9)
+        ax.add_patch(rect)
+    except Exception:
+        pass
     ax.set_title("Geopotential 500 hPa", fontweight='bold')
     ax.set_xlabel("Longitude offset (°)")
     ax.set_ylabel("Latitude offset (°)")
@@ -248,11 +278,16 @@ def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id)
 def process_one_cyclone(task):
     """
     Generate panel figures for all timesteps of one cyclone.
-    
+
+    This function now centers each timestep on the cyclone position at that
+    timestep (nearest track point), instead of using a single fixed center for
+    the whole intensification phase. This ensures the explorer panels follow
+    the cyclone as it evolves.
+
     Parameters
     ----------
     task : tuple (track_id, ep_label, center_lat, center_lon)
-    
+
     Returns
     -------
     track_id : str
@@ -262,36 +297,60 @@ def process_one_cyclone(task):
     """
     track_id, ep_label, center_lat, center_lon = task
     track_id = str(track_id)
-    
+
     nc_file = DATA_DIR / f"{track_id}_era5.nc"
-    
+
     if not nc_file.exists():
         return track_id, 0, "missing_nc"
-    
+
     try:
         # Open NetCDF
         ds = xr.open_dataset(nc_file)
         tc = "valid_time" if "valid_time" in ds.dims else "time"
         n_times = len(ds[tc])
-        
+
+        # Load local tracks file (per-timestep cyclone positions)
+        tracks_file = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.csv"
+        if not tracks_file.exists():
+            # fallback: use fixed center for all timesteps (maintain previous behavior)
+            tracks_df = None
+            logging.warning(f"Tracks file not found: {tracks_file} — using fixed center")
+        else:
+            tracks_df = pd.read_csv(tracks_file, parse_dates=["date"])
+            tracks_df = tracks_df[tracks_df["track_id"] == int(track_id)] if tracks_df["track_id"].dtype != object else tracks_df[tracks_df["track_id"] == track_id]
+
         # Create output directory
         out_dir = FIGURES_DIR / ep_label.lower() / track_id
         out_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Generate panel for each timestep
         for t_idx in range(n_times):
             ds_t = ds.isel({tc: t_idx})
-            time_str = pd.to_datetime(ds[tc].values[t_idx]).strftime("%Y-%m-%d %H:%M UTC")
-            
-            fig = create_panel_figure(ds_t, center_lat, center_lon, time_str, track_id)
-            
+            # time value in NetCDF may be seconds since epoch
+            tval = ds[tc].values[t_idx]
+            time_ts = pd.to_datetime(tval)
+            time_str = time_ts.strftime("%Y-%m-%d %H:%M UTC")
+
+            # Determine cyclone center for this timestep (nearest track point)
+            if tracks_df is not None and not tracks_df.empty:
+                # Find nearest time in tracks_df
+                diffs = (tracks_df["date"] - time_ts).abs()
+                nearest = tracks_df.loc[diffs.idxmin()]
+                cur_lat = float(nearest["lat vor"]) if "lat vor" in nearest.index else float(nearest.get("lat", center_lat))
+                cur_lon = float(nearest["lon vor"]) if "lon vor" in nearest.index else float(nearest.get("lon", center_lon))
+            else:
+                # Use fixed center (previous behavior)
+                cur_lat, cur_lon = center_lat, center_lon
+
+            fig = create_panel_figure(ds_t, cur_lat, cur_lon, time_str, track_id)
+
             out_path = out_dir / f"panel_t{t_idx:03d}.png"
             fig.savefig(out_path, dpi=DPI, bbox_inches='tight')
             plt.close(fig)
-        
+
         ds.close()
         return track_id, n_times, None
-        
+
     except Exception as e:
         return track_id, 0, str(e)
 

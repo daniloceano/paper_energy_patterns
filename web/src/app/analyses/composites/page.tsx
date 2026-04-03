@@ -32,6 +32,23 @@ export default function CompositesPage() {
           </p>
         </ResultSummaryCallout>
 
+        <ResultSummaryCallout type="info" title="Composite Methods">
+          <p>
+            Each diagnostic page offers two composite methods:
+          </p>
+          <ul className="mt-2 list-inside list-disc text-sm">
+            <li>
+              <strong>Full Intensification:</strong> mean over all 6-hourly timesteps during the intensification phase
+            </li>
+            <li>
+              <strong>Central Time:</strong> single timestep at the temporal midpoint of the intensification phase
+            </li>
+          </ul>
+          <p className="mt-2">
+            Use the toggle on each diagnostic page to switch between methods and compare results.
+          </p>
+        </ResultSummaryCallout>
+
         <section>
           <h2 className="mb-3 text-lg font-bold text-slate-900">
             Domain Definition

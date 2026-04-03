@@ -54,8 +54,13 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 
 **Spatial Configuration:**
 - **Resolution:** 0.25° × 0.25°
-- **Domain:** 30° × 30° centered on cyclone track center
-- **Composite domain:** 15° × 15° (marked in figures)
+- **Domain:** 30° × 30° (or larger) downloaded per cyclone as a bounding box covering the entire intensification phase; this is a single NetCDF per cyclone stored in `data/era5_ep_structure`.
+- **Composite domain:** 15° × 15° (marked in figures). Panels are produced as 30° × 30° views centered on the cyclone with an inner 15° × 15° box overlaid to indicate the smaller composite region.
+
+**Centering behavior (audit & fix):**
+- Historically the plotting code used a single fixed center per cyclone (the intensification midpoint) to extract the 15°×15° subdomain for all timesteps, which could make the cyclone move relative to the panel.
+- The code has been updated so `step6_generate_cyclone_explorer_panels.py` now centers each timestep on the cyclone position at that timestep (nearest track point) ensuring the subdomain follows the cyclone through time.
+- To apply this fix to existing explorer assets, the panels must be regenerated for all cyclones (heavy I/O/CPU). The audit script `scripts/ep_structure_analysis/audit_storm_centering.py` documents the current centering status and can be used to identify which panels need re-generation.
 
 **Temporal Resolution:** 6-hourly
 

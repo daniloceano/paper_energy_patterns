@@ -217,11 +217,41 @@ python scripts/web/prepare_site.py --skip-science
 | `copy_figures_to_web.py` | Copia figuras para `web/public/figures/` (fallback local) | Chamado automaticamente pelo `prepare_site.py` |
 | `build_site_manifest.py` | Gera `cluster_manifest.json`, `figures_manifest.json`, `documents_manifest.json` | Chamado automaticamente pelo `prepare_site.py` |
 | `extract_cluster_site_data.py` | Gera manifests de PCA e K-Means (steps 2-4) | Chamado automaticamente pelo `prepare_site.py` |
-| `extract_composite_site_data.py` | Gera manifest de análise composta | Chamado automaticamente pelo `prepare_site.py` |
+| `extract_composite_site_data.py` | Gera manifest de análise composta | Chamado automaticamente pelo `prepare_site.py` para ambos os modos |
 | `extract_ck_subterms_site_data.py` | Gera manifest da análise de subtermos Ck | Chamado automaticamente pelo `prepare_site.py` |
 | `test_composite_json_fields.py` | Valida campos do manifest de composites | Uso em desenvolvimento/debugging |
 
 > **Regra geral:** use `prepare_site.py`. Os outros scripts são auxiliares chamados por ele.
+
+### Modos de compósitos
+
+A análise de compósitos suporta dois modos metodológicos:
+
+| Modo | Descrição | Arquivos gerados |
+|------|-----------|------------------|
+| `full_intensification` | Média temporal sobre toda a fase de intensificação | `*_full_intensification.png`, `*_full_intensification.json` |
+| `central_time` | Timestep central da fase de intensificação | `*_central_time.png`, `*_central_time.json` |
+
+Para gerar os assets de ambos os modos:
+```bash
+# Figuras
+python scripts/ep_structure_analysis/step4_create_figures.py --mode full_intensification
+python scripts/ep_structure_analysis/step4_create_figures.py --mode central_time
+
+# Stats JSON
+python scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode full_intensification
+python scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode central_time
+
+# Web manifests
+python scripts/web/extract_composite_site_data.py --mode full_intensification
+python scripts/web/extract_composite_site_data.py --mode central_time
+
+# Copiar figuras para web/public/
+cp figures/ep_structure/composite_*_full_intensification.png web/public/figures/ep_structure/
+cp figures/ep_structure/composite_*_central_time.png web/public/figures/ep_structure/
+```
+
+O site permite alternar entre os modos via toggle na interface de cada diagnóstico.
 
 ---
 
@@ -339,7 +369,7 @@ O bucket deve se chamar `figures` e ser público. Os arquivos são enviados com 
 |---------|---------|
 | `web/public/figures/` | Fallback estático das figuras (subconjunto pequeno) |
 | `web/src/content/*.json` | Manifests lidos em build-time pelo Next.js |
-| `results/ep_structure/composite_stats.json` | Estatísticas científicas |
+| `results/ep_structure/composite_stats_*.json` | Estatísticas científicas para ambos os modos de compósitos |
 | `scripts/web/*.py` | Scripts operacionais |
 | `web/**/*.ts`, `web/**/*.tsx` | Código do site |
 | `web/DEPLOYMENT.md` | Este guia |

@@ -169,6 +169,11 @@ composite_domain_stats_central_time.json
 
 The Cyclone Explorer provides temporal visualization of individual cyclones during their intensification phase. It generates multi-panel figures for each timestep of each cyclone.
 
+Important note on centering and domains:
+- ERA5 files are downloaded once per cyclone as a bounding box that covers the entire intensification phase (see `step2`); this produces NetCDF domains often larger than the plotting panel.
+- Panel generation (`step6`) now extracts a 30°×30° view centered on the cyclone for each timestep and overlays a dashed 15°×15° box to indicate the LEC/composite region. Previously a single fixed centre per cyclone was used for all timesteps, which could make the cyclone drift relative to the figure.
+- The code has been updated so that each panel is centered on the cyclone position at that timestep (nearest track point), ensuring the 30° view follows the cyclone through time while explicitly showing the 15° analysis box.
+
 **Purpose:**
 - Explore individual cyclone structure evolution through time
 - Visualize meteorological fields at each 6-hourly timestep

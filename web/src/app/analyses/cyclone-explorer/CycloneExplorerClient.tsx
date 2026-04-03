@@ -5,14 +5,51 @@ import Image from 'next/image'
 import type { CycloneExplorerManifest, CycloneData } from '@/lib/types'
 import { ENERGY_PATTERNS } from '@/lib/constants'
 
+// Simplified South Atlantic coastline (lon, lat pairs for SVG rendering)
+// Coverage: roughly -80°W to +50°E, -80°S to -10°S
+// This is a highly simplified version for visualization purposes
+const SOUTH_ATLANTIC_COASTLINE: Array<[number, number][]> = [
+  // South America east coast (south to north)
+  [
+    [-68.3, -54.9], [-66.5, -55.0], [-65.2, -54.6], [-64.0, -53.8], [-63.7, -52.3],
+    [-65.3, -51.6], [-68.4, -50.9], [-70.0, -50.7], [-72.0, -51.6], [-73.5, -51.4],
+    [-74.5, -52.0], [-73.8, -53.3], [-72.3, -53.5], [-70.5, -53.0], [-69.5, -52.2],
+  ],
+  // Patagonia / Argentina coast
+  [
+    [-69.5, -52.2], [-68.5, -50.1], [-66.8, -47.0], [-65.5, -45.0], [-65.0, -43.0],
+    [-64.0, -42.0], [-62.2, -38.8], [-58.5, -34.9], [-56.3, -34.9], [-53.5, -33.2],
+    [-52.5, -32.0], [-51.8, -30.0], [-49.8, -28.5], [-48.5, -26.5], [-47.0, -24.5],
+    [-46.0, -23.8], [-44.0, -23.0], [-43.0, -22.9], [-41.0, -22.0], [-40.0, -21.0],
+    [-39.0, -18.0], [-38.5, -13.0], [-35.0, -10.0],
+  ],
+  // Africa west coast (south to north) - simplified
+  [
+    [18.4, -34.8], [17.0, -33.0], [15.5, -29.0], [14.0, -26.5], [13.0, -22.5],
+    [12.0, -17.0], [11.5, -15.0], [12.5, -13.0], [13.5, -12.5],
+  ],
+]
+
 interface CycloneExplorerClientProps {
   manifest: CycloneExplorerManifest
 }
+
+// Panel types available for each timestep
+type PanelType = 'basic' // Currently only basic 2x2 panels are generated
+
+const PANEL_TYPES: { id: PanelType; label: string; description: string }[] = [
+  {
+    id: 'basic',
+    label: 'Basic Fields',
+    description: 'SLP + 850 hPa winds, Temperature 850 hPa, Specific Humidity 975 hPa, Geopotential 500 hPa',
+  },
+]
 
 export default function CycloneExplorerClient({ manifest }: CycloneExplorerClientProps) {
   const [selectedEP, setSelectedEP] = useState<'EP1' | 'EP2'>('EP1')
   const [selectedCycloneId, setSelectedCycloneId] = useState<string | null>(null)
   const [currentTimestepIdx, setCurrentTimestepIdx] = useState(0)
+  const [selectedPanelType, setSelectedPanelType] = useState<PanelType>('basic')
 
   // Filter cyclones by EP
   const cyclonesByEP = useMemo(() => {
@@ -155,11 +192,40 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
                 currentTimestepIdx={currentTimestepIdx}
                 epColor={ENERGY_PATTERNS[selectedCyclone.ep_label].color}
               />
+              <p className="mt-2 text-xs text-slate-500">
+                The track shows the full cyclone trajectory. The colored segment highlights the
+                intensification phase. The current timestep position is marked with a larger circle.
+              </p>
             </div>
           </div>
 
           {/* Right: Panel + Slider */}
           <div className="lg:col-span-2 space-y-4">
+            {/* Panel type selector (for future expansion) */}
+            {PANEL_TYPES.length > 1 && (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <label className="mb-2 block text-xs font-medium text-slate-500">
+                  Diagnostic Panel
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {PANEL_TYPES.map((pt) => (
+                    <button
+                      key={pt.id}
+                      onClick={() => setSelectedPanelType(pt.id)}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                        selectedPanelType === pt.id
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                      title={pt.description}
+                    >
+                      {pt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Temporal slider */}
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
@@ -188,6 +254,14 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
 
             {/* Panel image */}
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">
+                  Atmospheric Fields
+                </h3>
+                <span className="text-xs text-slate-500">
+                  30°×30° domain centered on cyclone
+                </span>
+              </div>
               {panelPath ? (
                 <div className="relative aspect-[10/9] w-full overflow-hidden rounded-lg bg-slate-50">
                   <Image
@@ -203,6 +277,11 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
                   Panel not available for this timestep
                 </div>
               )}
+              <p className="mt-3 text-xs text-slate-500">
+                <strong>Panel fields:</strong> SLP + 850 hPa wind vectors (top-left), 
+                Temperature 850 hPa (top-right), Specific humidity 975 hPa (bottom-left), 
+                Geopotential 500 hPa (bottom-right). Dashed box shows the 15°×15° LEC domain.
+              </p>
             </div>
           </div>
         </div>
@@ -218,7 +297,7 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
 }
 
 // ---------------------------------------------------------------------------
-// Track Map Component (SVG-based)
+// Track Map Component (SVG-based with coastline)
 // ---------------------------------------------------------------------------
 
 interface TrackMapProps {
@@ -229,25 +308,31 @@ interface TrackMapProps {
 }
 
 function TrackMap({ track, timesteps, currentTimestepIdx, epColor }: TrackMapProps) {
-  // Compute bounding box
+  // Compute bounding box with padding
   const minLat = Math.min(...track.lats)
   const maxLat = Math.max(...track.lats)
   const minLon = Math.min(...track.lons)
   const maxLon = Math.max(...track.lons)
 
-  const padding = 2 // degrees padding
+  const padding = 5 // degrees padding
   const latRange = maxLat - minLat + 2 * padding
   const lonRange = maxLon - minLon + 2 * padding
+  
+  // Compute actual bounds for coastline clipping
+  const viewMinLon = minLon - padding
+  const viewMaxLon = maxLon + padding
+  const viewMinLat = minLat - padding
+  const viewMaxLat = maxLat + padding
 
   const width = 280
-  const height = 200
+  const height = 220
 
   // Map coordinates to SVG
-  const toX = (lon: number) => ((lon - (minLon - padding)) / lonRange) * width
-  const toY = (lat: number) => height - ((lat - (minLat - padding)) / latRange) * height
+  const toX = (lon: number) => ((lon - viewMinLon) / lonRange) * width
+  const toY = (lat: number) => height - ((lat - viewMinLat) / latRange) * height
 
-  // Build path
-  const pathD = track.lats
+  // Build track path
+  const trackPathD = track.lats
     .map((lat, i) => {
       const x = toX(track.lons[i])
       const y = toY(lat)
@@ -265,15 +350,38 @@ function TrackMap({ track, timesteps, currentTimestepIdx, epColor }: TrackMapPro
   const firstIntTs = timesteps[0]
   const lastIntTs = timesteps[timesteps.length - 1]
 
+  // Build coastline paths (filter to visible region)
+  const coastlinePaths = SOUTH_ATLANTIC_COASTLINE.map((segment) => {
+    // Filter points that are roughly within view bounds (with some margin)
+    const visiblePoints = segment.filter(
+      ([lon, lat]) =>
+        lon >= viewMinLon - 10 &&
+        lon <= viewMaxLon + 10 &&
+        lat >= viewMinLat - 10 &&
+        lat <= viewMaxLat + 10
+    )
+    if (visiblePoints.length < 2) return null
+    return visiblePoints
+      .map(([lon, lat], i) => {
+        const x = toX(lon)
+        const y = toY(lat)
+        return i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`
+      })
+      .join(' ')
+  }).filter(Boolean)
+
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      className="w-full rounded-lg bg-slate-50"
-      style={{ maxHeight: '200px' }}
+      className="w-full rounded-lg bg-gradient-to-b from-slate-50 to-slate-100"
+      style={{ maxHeight: '220px' }}
     >
+      {/* Background ocean color */}
+      <rect x={0} y={0} width={width} height={height} fill="#e8f4fc" />
+
       {/* Grid lines */}
       {[...Array(5)].map((_, i) => {
-        const lat = minLat - padding + (i + 1) * (latRange / 6)
+        const lat = viewMinLat + (i + 1) * (latRange / 6)
         return (
           <line
             key={`lat-${i}`}
@@ -281,13 +389,14 @@ function TrackMap({ track, timesteps, currentTimestepIdx, epColor }: TrackMapPro
             y1={toY(lat)}
             x2={width}
             y2={toY(lat)}
-            stroke="#e2e8f0"
+            stroke="#cad5e0"
             strokeWidth={0.5}
+            strokeDasharray="2,2"
           />
         )
       })}
       {[...Array(5)].map((_, i) => {
-        const lon = minLon - padding + (i + 1) * (lonRange / 6)
+        const lon = viewMinLon + (i + 1) * (lonRange / 6)
         return (
           <line
             key={`lon-${i}`}
@@ -295,14 +404,28 @@ function TrackMap({ track, timesteps, currentTimestepIdx, epColor }: TrackMapPro
             y1={0}
             x2={toX(lon)}
             y2={height}
-            stroke="#e2e8f0"
+            stroke="#cad5e0"
             strokeWidth={0.5}
+            strokeDasharray="2,2"
           />
         )
       })}
 
+      {/* Coastline */}
+      {coastlinePaths.map((d, i) => (
+        <path
+          key={`coast-${i}`}
+          d={d as string}
+          fill="none"
+          stroke="#8b9cad"
+          strokeWidth={1.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+
       {/* Full track (light) */}
-      <path d={pathD} fill="none" stroke="#cbd5e1" strokeWidth={1.5} />
+      <path d={trackPathD} fill="none" stroke="#94a3b8" strokeWidth={1.5} />
 
       {/* Intensification segment (highlighted) */}
       {firstIntTs && lastIntTs && (
@@ -370,11 +493,17 @@ function TrackMap({ track, timesteps, currentTimestepIdx, epColor }: TrackMapPro
 
       {/* Legend */}
       <g transform="translate(8, 12)">
+        <rect x={-4} y={-8} width={90} height={18} fill="white" fillOpacity={0.85} rx={3} />
         <circle cx={0} cy={0} r={3} fill="#22c55e" />
         <text x={8} y={3} fontSize={8} fill="#64748b">Start</text>
         <circle cx={40} cy={0} r={3} fill="#ef4444" />
         <text x={48} y={3} fontSize={8} fill="#64748b">End</text>
       </g>
+
+      {/* Coordinate labels */}
+      <text x={width - 5} y={height - 5} fontSize={7} fill="#94a3b8" textAnchor="end">
+        {viewMinLon.toFixed(0)}°W – {viewMaxLon.toFixed(0)}°W
+      </text>
     </svg>
   )
 }

@@ -1,0 +1,98 @@
+[
+  {
+    "diagnostic_id": "temperature-advection",
+    "ep": "EP1",
+    "unit": "K h\u207b\u00b9",
+    "north": "-0.030",
+    "south": "-0.079",
+    "east": "-0.022",
+    "west": "-0.094",
+    "north_anom": "-0.057",
+    "south_anom": "0.021",
+    "east_anom": "-0.023",
+    "west_anom": "-0.007"
+  },
+  {
+    "diagnostic_id": "temperature-advection",
+    "ep": "EP2",
+    "unit": "K h\u207b\u00b9",
+    "north": "0.011",
+    "south": "-0.055",
+    "east": "0.058",
+    "west": "-0.088",
+    "north_anom": "-0.048",
+    "south_anom": "0.022",
+    "east_anom": "-0.029",
+    "west_anom": "-0.016"
+  },
+  {
+    "diagnostic_id": "moisture-flux-divergence",
+    "ep": "EP1",
+    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "north": "1.456e+01",
+    "south": "3.522e+01",
+    "east": "-7.553e+01",
+    "west": "5.112e+01",
+    "north_anom": "1.073e+01",
+    "south_anom": "-5.168e+00",
+    "east_anom": "-3.601e-01",
+    "west_anom": "-2.091e+00"
+  },
+  {
+    "diagnostic_id": "moisture-flux-divergence",
+    "ep": "EP2",
+    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "north": "-2.866e+01",
+    "south": "-1.359e+01",
+    "east": "-1.143e+02",
+    "west": "3.617e+01",
+    "north_anom": "8.352e+00",
+    "south_anom": "-8.519e+00",
+    "east_anom": "-1.422e+00",
+    "west_anom": "4.778e+00"
+  },
+  {
+    "diagnostic_id": "ke-advection",
+    "ep": "EP1",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "north": "1.165e-03",
+    "south": "-1.058e-02",
+    "east": "-3.349e-03",
+    "west": "-1.805e-03",
+    "north_anom": "-4.546e-04",
+    "south_anom": "-1.117e-03",
+    "east_anom": "-6.259e-04",
+    "west_anom": "-1.098e-04"
+  },
+  {
+    "diagnostic_id": "ke-advection",
+    "ep": "EP2",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "north": "4.173e-03",
+    "south": "-9.517e-03",
+    "east": "1.866e-03",
+    "west": "-3.653e-03",
+    "north_anom": "-3.210e-04",
+    "south_anom": "6.557e-05",
+    "east_anom": "-1.415e-04",
+    "west_anom": "2.944e-04"
+  },
+  {
+    "diagnostic_id": "afc",
+    "ep": "EP1",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "north": "2.122e-03",
+    "south": "-5.140e-04",
+    "east": "6.742e-04",
+    "west": "-1.881e-03"
+  },
+  {
+    "diagnostic_id": "afc",
+    "ep": "EP2",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "north": "5.687e-04",
+    "south": "-1.398e-03",
+    "east": "-3.255e-03",
+    "west": "1.544e-03"
+  }
+]

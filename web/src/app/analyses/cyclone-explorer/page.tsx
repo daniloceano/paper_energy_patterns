@@ -58,6 +58,18 @@ export default function CycloneExplorerPage() {
       />
 
       <div className="space-y-6">
+        {manifest.metadata.is_hotfix_subset && (
+          <ResultSummaryCallout type="warning" title="Limited Preview">
+            <p>
+              This explorer currently shows a curated subset of 10 cyclones per energy pattern, 
+              selected for optimal storm-centering quality. The full dataset (~1400 cyclones) 
+              will be available after infrastructure improvements. Current selection prioritizes 
+              cases where the cyclone remains well-centered within the 30°×30° domain throughout 
+              the intensification phase.
+            </p>
+          </ResultSummaryCallout>
+        )}
+
         <ResultSummaryCallout type="info" title="How to Use">
           <p>
             Select an Energy Pattern (EP1 or EP2) and a cyclone from the dropdown. Use the 
@@ -67,25 +79,9 @@ export default function CycloneExplorerPage() {
           </p>
         </ResultSummaryCallout>
 
-        <ResultSummaryCallout type="info" title="Featured Cases">
-          <p>
-            The explorer now includes representative cyclones already present in the EP1/EP2 data.
-            Use the quick-access cards inside the explorer to jump directly to the cases below.
-          </p>
-          <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURED_CYCLONES.map((item) => (
-              <li key={item.trackId} className="rounded-lg border border-slate-200 bg-white p-3">
-                <div className="font-medium text-slate-900">{item.trackId}</div>
-                <div className="text-xs uppercase tracking-wider text-slate-500">{item.title}</div>
-                <div className="mt-1 text-xs text-slate-600">{item.subtitle}</div>
-              </li>
-            ))}
-          </ul>
-        </ResultSummaryCallout>
-
         <CycloneExplorerClient
           manifest={manifest}
-          featuredCases={FEATURED_CYCLONES.map((item) => item)}
+          featuredCases={[]}
         />
 
         <ResultSummaryCallout type="info" title="Field Groups">

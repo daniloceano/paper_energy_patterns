@@ -645,6 +645,10 @@ def main():
                        help="Number of parallel workers (default: 1)")
     parser.add_argument("--subset", "-s", type=int, default=None,
                        help="Process only first N cyclones per EP (for testing)")
+    parser.add_argument("--track-ids", "-t", type=str, default=None,
+                       help="Comma-separated list of specific track IDs to process")
+    parser.add_argument("--selection-file", "-f", type=str, default=None,
+                       help="CSV file with track_id column to process specific cyclones")
     args = parser.parse_args()
     
     log_file = setup_logging()
@@ -674,7 +678,19 @@ def main():
     logging.info(f"   EP1 with ERA5 data: {len(ep1_cases)} cases")
     logging.info(f"   EP2 with ERA5 data: {len(ep2_cases)} cases")
     
-    if args.subset:
+    # Filter by specific track IDs if provided
+    if args.track_ids:
+        target_ids = set(args.track_ids.split(","))
+        ep1_cases = ep1_cases[ep1_cases["track_id"].astype(str).isin(target_ids)]
+        ep2_cases = ep2_cases[ep2_cases["track_id"].astype(str).isin(target_ids)]
+        logging.info(f"   Filtered to {len(target_ids)} specific track IDs")
+    elif args.selection_file:
+        selection = pd.read_csv(args.selection_file)
+        target_ids = set(selection["track_id"].astype(str).tolist())
+        ep1_cases = ep1_cases[ep1_cases["track_id"].astype(str).isin(target_ids)]
+        ep2_cases = ep2_cases[ep2_cases["track_id"].astype(str).isin(target_ids)]
+        logging.info(f"   Filtered to {len(target_ids)} track IDs from {args.selection_file}")
+    elif args.subset:
         ep1_cases = ep1_cases.head(args.subset) if not ep1_cases.empty else ep1_cases
         ep2_cases = ep2_cases.head(args.subset) if not ep2_cases.empty else ep2_cases
     

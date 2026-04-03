@@ -234,6 +234,8 @@ export interface CycloneExplorerManifest {
     synoptic_products?: CycloneExplorerProduct[]
     dynamic_products?: CycloneExplorerProduct[]
     figures_base_url?: string | null
+    is_hotfix_subset?: boolean
+    hotfix_note?: string
   }
   cyclones: Record<string, CycloneData>
 }

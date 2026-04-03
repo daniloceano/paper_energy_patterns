@@ -25,7 +25,7 @@ export default function ScientificNoteLinkCard({
           <p className="mt-1 text-sm text-slate-500">{description}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <a
-              href={`/api/figures?path=${encodeURIComponent(pdfPath)}`}
+              href={`/${pdfPath}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"

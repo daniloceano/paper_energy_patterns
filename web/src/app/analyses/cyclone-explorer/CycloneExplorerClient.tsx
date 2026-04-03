@@ -51,11 +51,15 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
   const [currentTimestepIdx, setCurrentTimestepIdx] = useState(0)
   const [selectedPanelType, setSelectedPanelType] = useState<PanelType>('basic')
 
-  // Filter cyclones by EP
+  // Filter cyclones by EP - only include those with at least one panel
   const cyclonesByEP = useMemo(() => {
     const ep1: CycloneData[] = []
     const ep2: CycloneData[] = []
     Object.values(manifest.cyclones).forEach((c) => {
+      // Only include cyclones that have at least one panel available
+      const hasAnyPanel = c.timesteps.some(t => t.has_panel)
+      if (!hasAnyPanel) return
+      
       if (c.ep_label === 'EP1') ep1.push(c)
       else if (c.ep_label === 'EP2') ep2.push(c)
     })

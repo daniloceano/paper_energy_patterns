@@ -185,7 +185,7 @@ export interface CycloneTimestep {
   index: number
   time: string
   track_point_index: number
-  panel_image: string
+  panel_image: string | null
   has_panel: boolean
 }
 

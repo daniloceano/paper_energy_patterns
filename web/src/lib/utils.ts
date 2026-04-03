@@ -59,6 +59,10 @@ export function readCSV(relativePath: string): Record<string, string>[] {
  *     → supabase: https://<project>.supabase.co/storage/v1/object/public/figures/cluster/pca_variance_wide.png
  */
 export function figureUrl(relativePath: string): string {
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('/')) {
+    return relativePath
+  }
+
   const storageBase = process.env.NEXT_PUBLIC_SUPABASE_FIGURES_URL
   if (storageBase) {
     // Strip leading "figures/" — the bucket root already corresponds to figures/

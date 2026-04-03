@@ -35,6 +35,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 
 import argparse
 import json
+import os
 import pandas as pd
 import xarray as xr
 import numpy as np
@@ -52,6 +53,34 @@ DATA_DIR = REPO_ROOT / "data" / "era5_ep_structure"
 RESULTS_DIR = REPO_ROOT / "results" / "ep_structure"
 FIGURES_DIR = REPO_ROOT / "figures" / "cyclone_explorer"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
+
+DYNAMIC_PRODUCTS = [
+    {
+        "id": "slp_pv850_wind850",
+        "label": "SLP + PV850 + wind850",
+        "description": "Sea level pressure with potential vorticity and wind vectors at 850 hPa.",
+    },
+    {
+        "id": "tadv_pv850_wind850",
+        "label": "Temperature advection + PV850 + wind850",
+        "description": "850 hPa temperature advection with PV and wind vectors.",
+    },
+    {
+        "id": "afc_keadvanom_wind250",
+        "label": "AFC250 + KE advection anomaly250 + wind250",
+        "description": "Ageostrophic flux convergence and KE advection anomaly at 250 hPa with jet-level wind vectors.",
+    },
+    {
+        "id": "rk_criterion_250",
+        "label": "RK criterion at 250 hPa",
+        "description": "Rayleigh-Kuo criterion map with 250 hPa flow context.",
+    },
+    {
+        "id": "btcr_critical_region",
+        "label": "Barotropic critical region",
+        "description": "BtCR effective deformation and dilatation-axis structure at 250 hPa.",
+    },
+]
 
 # Global tracks DataFrame (loaded once)
 TRACKS_DF = None
@@ -151,7 +180,27 @@ def find_track_indices_for_timesteps(track_times, intensification_times):
     return indices
 
 
-def extract_cyclone_data(track_id, ep_label):
+def supabase_base_from_env():
+    """Return figures base URL when provided via env vars."""
+    base = os.environ.get("SUPABASE_FIGURES_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_FIGURES_URL")
+    if base:
+        return base.rstrip("/")
+    return None
+
+
+def as_public_url(path_or_none, supabase_base):
+    """Convert figures/<...> path into public URL when Supabase base is set."""
+    if path_or_none is None:
+        return None
+    if not supabase_base:
+        return path_or_none
+    if path_or_none.startswith("http://") or path_or_none.startswith("https://"):
+        return path_or_none
+    bucket_rel = path_or_none.replace("figures/", "", 1)
+    return f"{supabase_base}/{bucket_rel}"
+
+
+def extract_cyclone_data(track_id, ep_label, supabase_base=None):
     """
     Extract all data for one cyclone.
     
@@ -209,18 +258,47 @@ def extract_cyclone_data(track_id, ep_label):
         time_str = time.strftime("%Y-%m-%dT%H:%M:%SZ")
         
         panel_path = None
+        synoptic_basic = None
+        dynamic_images = {}
+
         if panels_exist:
+            # Legacy synoptic path (kept for backward compatibility)
             panel_file = panel_dir / f"panel_t{t_idx:03d}.png"
             if panel_file.exists():
-                # Path relative to web/public/figures/
                 panel_path = f"figures/cyclone_explorer/{ep_label.lower()}/{track_id}/panel_t{t_idx:03d}.png"
+
+            # Explicit synoptic category path
+            syn_file = panel_dir / "synoptic_fields" / f"panel_t{t_idx:03d}.png"
+            if syn_file.exists():
+                synoptic_basic = f"figures/cyclone_explorer/{ep_label.lower()}/{track_id}/synoptic_fields/panel_t{t_idx:03d}.png"
+            else:
+                synoptic_basic = panel_path
+
+            # Dynamic category paths
+            for product in DYNAMIC_PRODUCTS:
+                pid = product["id"]
+                dyn_file = panel_dir / "dynamic_fields" / pid / f"panel_t{t_idx:03d}.png"
+                dynamic_images[pid] = (
+                    f"figures/cyclone_explorer/{ep_label.lower()}/{track_id}/dynamic_fields/{pid}/panel_t{t_idx:03d}.png"
+                    if dyn_file.exists()
+                    else None
+                )
         
         timesteps.append({
             "index": t_idx,
             "time": time_str,
             "track_point_index": track_idx,
-            "panel_image": panel_path,
-            "has_panel": panel_path is not None
+            "panel_image": as_public_url(panel_path, supabase_base),
+            "has_panel": panel_path is not None,
+            "images": {
+                "synoptic": {
+                    "basic": as_public_url(synoptic_basic, supabase_base),
+                },
+                "dynamic": {
+                    pid: as_public_url(dynamic_images.get(pid), supabase_base)
+                    for pid in [p["id"] for p in DYNAMIC_PRODUCTS]
+                },
+            },
         })
     
     # Build cyclone entry
@@ -259,6 +337,10 @@ def main():
     
     if args.subset:
         print(f"Subset mode: {args.subset} cyclones per EP")
+
+    supabase_base = supabase_base_from_env()
+    if supabase_base:
+        print(f"Supabase figures base detected: {supabase_base}")
     
     # Load cases
     ep1_cases = pd.read_csv(RESULTS_DIR / "ep1_cases.csv")
@@ -295,7 +377,7 @@ def main():
     print("\nExtracting EP1 cyclones...")
     for _, row in tqdm(ep1_cases.iterrows(), total=len(ep1_cases), desc="EP1"):
         track_id = row['track_id']
-        data = extract_cyclone_data(track_id, "EP1")
+        data = extract_cyclone_data(track_id, "EP1", supabase_base=supabase_base)
         if data:
             cyclones[track_id] = data
             ep1_count += 1
@@ -303,7 +385,7 @@ def main():
     print("\nExtracting EP2 cyclones...")
     for _, row in tqdm(ep2_cases.iterrows(), total=len(ep2_cases), desc="EP2"):
         track_id = row['track_id']
-        data = extract_cyclone_data(track_id, "EP2")
+        data = extract_cyclone_data(track_id, "EP2", supabase_base=supabase_base)
         if data:
             cyclones[track_id] = data
             ep2_count += 1
@@ -315,6 +397,16 @@ def main():
             "total_cyclones": len(cyclones),
             "ep1_count": ep1_count,
             "ep2_count": ep2_count,
+            "field_groups": ["synoptic", "dynamic"],
+            "synoptic_products": [
+                {
+                    "id": "basic",
+                    "label": "Synoptic fields",
+                    "description": "SLP, temperature, specific humidity and geopotential diagnostics in the cyclone-centered panel.",
+                }
+            ],
+            "dynamic_products": DYNAMIC_PRODUCTS,
+            "figures_base_url": supabase_base,
         },
         "cyclones": cyclones
     }

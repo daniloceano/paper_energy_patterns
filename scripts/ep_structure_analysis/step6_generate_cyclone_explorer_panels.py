@@ -1,23 +1,38 @@
 """
-Step 6: Generate Cyclone Explorer Multi-Panel Figures
+Step 6: Generate Cyclone Explorer Panels (Synoptic + Dynamic Fields)
 
-Creates a 2×2 multi-panel figure for each timestep of each EP1/EP2 cyclone
-during their intensification phase. These panels enable temporal exploration
-of individual cyclones on the website.
+Creates panel assets for each timestep of each EP1/EP2 cyclone during the
+intensification phase, keeping the existing synoptic 2x2 panel and adding
+dynamic diagnostics used in the project figures.
 
-Panel Layout (2×2 grid, 30°×30° panel centered on cyclone; inner 15°×15° box shown):
-  Top-left:     SLP + 850 hPa wind vectors
-  Top-right:    Temperature 850 hPa
-  Bottom-left:  Specific Humidity 975 hPa
-  Bottom-right: Geopotential 500 hPa
+Categories
+----------
+Synoptic fields (existing 2x2 panel):
+    - SLP + 850 hPa wind vectors
+    - Temperature 850 hPa
+    - Specific humidity 975 hPa
+    - Geopotential 500 hPa
 
-Output:
-  figures/cyclone_explorer/{ep_label}/{track_id}/panel_t{index:03d}.png
+Dynamic fields (single diagnostic per panel):
+    1) SLP + PV850 + wind850
+    2) Temperature advection850 + PV850 + wind850
+    3) AFC250 + KE advection anomaly250 + wind250 (speed >= 30 m/s)
+    4) RK criterion250 map
+    5) Barotropic critical region (BtCR) map
+
+Outputs
+-------
+Legacy synoptic path (kept for backward compatibility):
+    figures/cyclone_explorer/{ep_label}/{track_id}/panel_t{index:03d}.png
+
+Explicit category paths:
+    figures/cyclone_explorer/{ep_label}/{track_id}/synoptic_fields/panel_t{index:03d}.png
+    figures/cyclone_explorer/{ep_label}/{track_id}/dynamic_fields/{product}/panel_t{index:03d}.png
 
 Usage:
-  python scripts/ep_structure_analysis/step6_generate_cyclone_explorer_panels.py
-  python scripts/ep_structure_analysis/step6_generate_cyclone_explorer_panels.py --jobs 4
-  python scripts/ep_structure_analysis/step6_generate_cyclone_explorer_panels.py --subset 10
+    python scripts/ep_structure_analysis/step6_generate_cyclone_explorer_panels.py
+    python scripts/ep_structure_analysis/step6_generate_cyclone_explorer_panels.py --jobs 4
+    python scripts/ep_structure_analysis/step6_generate_cyclone_explorer_panels.py --subset 10
 
 Author: Danilo Couto de Souza
 Date: April 2026
@@ -35,11 +50,22 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib as mpl
 from matplotlib.colors import LinearSegmentedColormap
 from datetime import datetime
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 import warnings
+from metpy.units import units
+
+from scripts.ep_structure_analysis.step3_precompute_composites import (
+    compute_pv_at_level,
+    temperature_advection_850,
+    kinetic_energy_advection_250,
+    rayleigh_kuo_criterion_250,
+    ageostrophic_flux_convergence_250,
+    barotropic_critical_region_250,
+)
 
 warnings.filterwarnings("ignore")
 
@@ -79,6 +105,18 @@ plt.rcParams.update({
 VECTOR_SKIP = 8
 VECTOR_SCALE = 150
 VECTOR_WIDTH = 0.003
+
+CLIMATOLOGY_250_FILE = DATA_DIR / "era5_climatology_250hPa.nc"
+
+DYNAMIC_PRODUCTS = [
+    "slp_pv850_wind850",
+    "tadv_pv850_wind850",
+    "afc_keadvanom_wind250",
+    "rk_criterion_250",
+    "btcr_critical_region",
+]
+
+_CLIM_CACHE = {}
 
 
 # ============================================================================
@@ -127,11 +165,47 @@ def _add_cyclone_center_mark(ax, marker_size=100):
                linewidths=2, zorder=10, label='Cyclone center')
 
 
+def _sel_level(da, levels, pc, target_hpa):
+    """Select nearest pressure level from a DataArray."""
+    idx = int(np.argmin(np.abs(levels - target_hpa)))
+    return da.isel({pc: idx})
+
+
+def _load_climatology_250():
+    """Lazy-load 250 hPa climatology used in dynamic diagnostics."""
+    key = str(CLIMATOLOGY_250_FILE)
+    if key not in _CLIM_CACHE:
+        _CLIM_CACHE[key] = xr.open_dataset(CLIMATOLOGY_250_FILE) if CLIMATOLOGY_250_FILE.exists() else None
+    return _CLIM_CACHE[key]
+
+
+def _interp_clim_250_to_domain(case_month, lat_1d, lon_1d):
+    """Interpolate monthly climatology to current storm-relative subdomain."""
+    ds_clim = _load_climatology_250()
+    if ds_clim is None:
+        return None
+    return ds_clim.sel(month=case_month).interp(latitude=lat_1d, longitude=lon_1d, method="linear")
+
+
+def _meridional_sign_reversal_mask(field, half_window=1):
+    """Mask where field changes sign meridionally in a local window."""
+    ny, nx = field.shape
+    mask = np.zeros((ny, nx), dtype=bool)
+    for i in range(ny):
+        i0 = max(0, i - half_window)
+        i1 = min(ny, i + half_window + 1)
+        window = field[i0:i1, :]
+        col_min = np.nanmin(window, axis=0)
+        col_max = np.nanmax(window, axis=0)
+        mask[i, :] = (col_min < 0.0) & (col_max > 0.0)
+    return mask
+
+
 # ============================================================================
 # PANEL PLOTTING
 # ============================================================================
 
-def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id):
+def create_synoptic_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id):
     """
     Create 2×2 multi-panel figure for one timestep.
     
@@ -157,11 +231,8 @@ def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id)
     pc = "pressure_level" if "pressure_level" in ds_sub.coords else "level"
     levels = ds_sub[pc].values
     
-    def _idx(target_hPa):
-        return int(np.argmin(np.abs(levels - target_hPa)))
-    
     def _sel(da, target_hPa):
-        return da.isel({pc: _idx(target_hPa)})
+        return _sel_level(da, levels, pc, target_hPa)
     
     # Extract fields - select appropriate pressure levels
     u_850 = _sel(ds_sub["u"], 850).values
@@ -271,6 +342,197 @@ def create_panel_figure(ds_timestep, center_lat, center_lon, time_str, track_id)
     return fig
 
 
+def create_dynamic_panel_figure(ds_timestep, center_lat, center_lon, time_ts, track_id, product_id):
+    """Create single-panel dynamic diagnostic figure for one timestep."""
+    ds_sub = extract_subdomain(ds_timestep, center_lat, center_lon, DOMAIN_SIZE)
+    pc = "pressure_level" if "pressure_level" in ds_sub.coords else "level"
+    levels = ds_sub[pc].values
+
+    lats = ds_sub.latitude.values
+    lons = ds_sub.longitude.values
+    y = lats - center_lat
+    x = lons - center_lon
+    X, Y = np.meshgrid(x, y)
+
+    u850 = _sel_level(ds_sub["u"], levels, pc, 850) * units("m/s")
+    v850 = _sel_level(ds_sub["v"], levels, pc, 850) * units("m/s")
+    t850 = _sel_level(ds_sub["t"], levels, pc, 850) * units.kelvin
+    u250 = _sel_level(ds_sub["u"], levels, pc, 250) * units("m/s")
+    v250 = _sel_level(ds_sub["v"], levels, pc, 250) * units("m/s")
+    z250 = _sel_level(ds_sub["z"], levels, pc, 250) * units("m**2/s**2")
+
+    msl_da = ds_sub["msl"]
+    if pc in msl_da.dims:
+        msl_da = msl_da.isel({pc: 0})
+    msl = msl_da.values / 100.0
+
+    pv850 = compute_pv_at_level(
+        _sel_level(ds_sub["u"], levels, pc, 825) * units("m/s"),
+        _sel_level(ds_sub["u"], levels, pc, 850) * units("m/s"),
+        _sel_level(ds_sub["u"], levels, pc, 875) * units("m/s"),
+        _sel_level(ds_sub["v"], levels, pc, 825) * units("m/s"),
+        _sel_level(ds_sub["v"], levels, pc, 850) * units("m/s"),
+        _sel_level(ds_sub["v"], levels, pc, 875) * units("m/s"),
+        _sel_level(ds_sub["t"], levels, pc, 825) * units.kelvin,
+        _sel_level(ds_sub["t"], levels, pc, 850) * units.kelvin,
+        _sel_level(ds_sub["t"], levels, pc, 875) * units.kelvin,
+        np.array([
+            levels[int(np.argmin(np.abs(levels - 825)))],
+            levels[int(np.argmin(np.abs(levels - 850)))],
+            levels[int(np.argmin(np.abs(levels - 875)))],
+        ]) * 100.0,
+    ) * 1e6
+
+    tadv850 = temperature_advection_850(u850, v850, t850).metpy.unit_array.magnitude * 3600.0
+
+    case_month = pd.Timestamp(time_ts).month
+    clim250 = _interp_clim_250_to_domain(case_month, lats, lons)
+
+    fig, ax = plt.subplots(1, 1, figsize=(6.6, 6.2))
+    ax.set_xlabel("Longitude offset (deg)")
+    ax.set_ylabel("Latitude offset (deg)")
+    title_time = pd.Timestamp(time_ts).strftime("%Y-%m-%d %H:%M UTC")
+    ax.set_title(f"Track {track_id} - {title_time}", fontsize=10, fontweight="bold")
+
+    if product_id == "slp_pv850_wind850":
+        vmax = np.nanpercentile(np.abs(pv850), 98)
+        vmax = max(vmax, 0.1)
+        im = ax.contourf(X, Y, pv850, levels=np.linspace(-vmax, vmax, 21), cmap="RdBu_r", extend="both")
+        ax.contour(X, Y, msl, levels=10, colors="black", linewidths=0.8, alpha=0.4)
+        skip = VECTOR_SKIP
+        ax.quiver(X[::skip, ::skip], Y[::skip, ::skip],
+                  u850.values[::skip, ::skip], v850.values[::skip, ::skip],
+                  scale=120, width=VECTOR_WIDTH, color="gray", alpha=0.8)
+        cbar_label = "PV850 (PVU)"
+        subtitle = "SLP + PV at 850 hPa + wind at 850 hPa"
+
+    elif product_id == "tadv_pv850_wind850":
+        vmax = np.nanpercentile(np.abs(pv850), 98)
+        vmax = max(vmax, 0.1)
+        im = ax.contourf(X, Y, pv850, levels=np.linspace(-vmax, vmax, 21), cmap="RdBu_r", extend="both")
+        neg_levels = np.array([-0.12, -0.08, -0.04])
+        pos_levels = np.array([0.04, 0.08, 0.12])
+        neg = neg_levels[neg_levels >= np.nanmin(tadv850)]
+        pos = pos_levels[pos_levels <= np.nanmax(tadv850)]
+        if len(neg):
+            ax.contour(X, Y, tadv850, levels=neg, colors="steelblue", linewidths=1.2, linestyles="dashed")
+        if len(pos):
+            ax.contour(X, Y, tadv850, levels=pos, colors="firebrick", linewidths=1.2, linestyles="solid")
+        skip = VECTOR_SKIP
+        ax.quiver(X[::skip, ::skip], Y[::skip, ::skip],
+                  u850.values[::skip, ::skip], v850.values[::skip, ::skip],
+                  scale=120, width=VECTOR_WIDTH, color="gray", alpha=0.8)
+        ax.contour(X, Y, msl, levels=10, colors="black", linewidths=0.6, alpha=0.25)
+        cbar_label = "PV850 (PVU)"
+        subtitle = "Temperature advection + PV at 850 hPa + wind"
+
+    elif product_id == "afc_keadvanom_wind250":
+        if clim250 is None:
+            ax.text(0.5, 0.5, "250 hPa climatology unavailable", transform=ax.transAxes,
+                    ha="center", va="center", fontsize=10)
+            im = None
+            cbar_label = None
+            subtitle = "AFC + KE advection anomaly at 250 hPa"
+        else:
+            u250_p = u250 - (xr.DataArray(clim250["u_clim"].values, coords=u250.coords, dims=u250.dims) * units("m/s"))
+            v250_p = v250 - (xr.DataArray(clim250["v_clim"].values, coords=v250.coords, dims=v250.dims) * units("m/s"))
+            ke_adv_anom = kinetic_energy_advection_250(u250_p, v250_p).metpy.unit_array.magnitude
+            afc = ageostrophic_flux_convergence_250(
+                u250, v250, z250,
+                clim250["u_clim"], clim250["v_clim"], clim250["z_clim"],
+            ).values
+            vmax = np.nanpercentile(np.abs(afc), 98)
+            vmax = max(vmax, 1e-6)
+            im = ax.contourf(X, Y, afc, levels=np.linspace(-vmax, vmax, 21), cmap="RdBu_r", extend="both")
+            ka = np.nanpercentile(np.abs(ke_adv_anom), 90)
+            ka = max(ka, 1e-8)
+            ax.contour(X, Y, ke_adv_anom, levels=[-ka, -0.5 * ka], colors="steelblue", linewidths=1.1, linestyles="dashed")
+            ax.contour(X, Y, ke_adv_anom, levels=[0.5 * ka, ka], colors="firebrick", linewidths=1.1, linestyles="solid")
+
+            skip = VECTOR_SKIP
+            u_plot = u250.values[::skip, ::skip].copy()
+            v_plot = v250.values[::skip, ::skip].copy()
+            speed = np.sqrt(u_plot ** 2 + v_plot ** 2)
+            mask = speed < 30.0
+            u_plot[mask] = np.nan
+            v_plot[mask] = np.nan
+            ax.quiver(X[::skip, ::skip], Y[::skip, ::skip], u_plot, v_plot,
+                      scale=350, width=VECTOR_WIDTH, color="gray", alpha=0.9)
+            ax.contour(X, Y, msl, levels=10, colors="black", linewidths=0.6, alpha=0.25)
+            cbar_label = "AFC250 (m2 s-3)"
+            subtitle = "AFC250 + KE advection anomaly250 + wind > 30 m/s"
+
+    elif product_id == "rk_criterion_250":
+        rk = rayleigh_kuo_criterion_250(u250, v250).magnitude
+        vmax = np.nanpercentile(np.abs(rk), 98)
+        vmax = max(vmax, 1e-11)
+        im = ax.contourf(X, Y, rk, levels=np.linspace(-vmax, vmax, 21), cmap="RdBu_r", extend="both")
+        ax.contour(X, Y, rk, levels=[0], colors="black", linewidths=1.2)
+        skip = VECTOR_SKIP
+        ax.quiver(X[::skip, ::skip], Y[::skip, ::skip],
+                  u250.values[::skip, ::skip], v250.values[::skip, ::skip],
+                  scale=300, width=VECTOR_WIDTH, color="gray", alpha=0.7)
+        cbar_label = "RK criterion (s-1 m-1)"
+        subtitle = "RK criterion at 250 hPa"
+
+    elif product_id == "btcr_critical_region":
+        if clim250 is None:
+            ax.text(0.5, 0.5, "250 hPa climatology unavailable", transform=ax.transAxes,
+                    ha="center", va="center", fontsize=10)
+            im = None
+            cbar_label = None
+            subtitle = "Barotropic critical region (BtCR)"
+        else:
+            dm, da = barotropic_critical_region_250(clim250["u_clim"], clim250["v_clim"])
+            dm_scaled = dm * 1e9
+            vmax = np.nanpercentile(np.abs(dm_scaled), 98)
+            vmax = max(vmax, 0.1)
+            im = ax.contourf(X, Y, dm_scaled, levels=np.linspace(-vmax, vmax, 31), cmap="RdBu_r", extend="both")
+            ax.contour(X, Y, dm_scaled, levels=[0], colors="black", linewidths=1.2)
+
+            ws250 = np.sqrt(u250.values ** 2 + v250.values ** 2)
+            ax.contour(X, Y, ws250, levels=np.arange(20, 80, 10), colors="dimgray",
+                       linewidths=0.8, linestyles="--", alpha=0.6)
+
+            sk = VECTOR_SKIP
+            xx = X[::sk, ::sk]
+            yy = Y[::sk, ::sk]
+            aa = da[::sk, ::sk]
+            mask = ~np.isnan(aa)
+            if np.any(mask):
+                cos_a = np.where(mask, np.cos(aa), np.nan)
+                sin_a = np.where(mask, np.sin(aa), np.nan)
+                for sign in (+1, -1):
+                    ax.quiver(xx, yy, sign * cos_a, sign * sin_a,
+                              scale=0.7, scale_units="xy", headwidth=0,
+                              headlength=0, headaxislength=0, width=0.002,
+                              color="black", alpha=0.65, pivot="middle")
+
+            cbar_label = "Delta_m x 1e9 (s-2)"
+            subtitle = "Barotropic critical region (BtCR)"
+
+    else:
+        raise ValueError(f"Unknown dynamic product: {product_id}")
+
+    _add_cyclone_center_mark(ax, marker_size=90)
+    rect = mpatches.Rectangle(
+        (-INNER_BOX_HALF, -INNER_BOX_HALF), INNER_BOX_SIZE, INNER_BOX_SIZE,
+        linewidth=1.0, edgecolor="black", linestyle="--", facecolor="none", zorder=9
+    )
+    ax.add_patch(rect)
+    ax.set_xlim(-DOMAIN_SIZE / 2.0, DOMAIN_SIZE / 2.0)
+    ax.set_ylim(-DOMAIN_SIZE / 2.0, DOMAIN_SIZE / 2.0)
+    ax.text(0.01, 0.01, subtitle, transform=ax.transAxes, fontsize=8,
+            ha="left", va="bottom", bbox={"facecolor": "white", "alpha": 0.75, "edgecolor": "none"})
+
+    if im is not None and cbar_label:
+        cb = plt.colorbar(im, ax=ax, shrink=0.82)
+        cb.set_label(cbar_label, fontsize=8)
+
+    plt.tight_layout()
+    return fig
+
+
 # ============================================================================
 # PROCESSING
 # ============================================================================
@@ -322,6 +584,11 @@ def process_one_cyclone(task):
         # Create output directory
         out_dir = FIGURES_DIR / ep_label.lower() / track_id
         out_dir.mkdir(parents=True, exist_ok=True)
+        syn_dir = out_dir / "synoptic_fields"
+        syn_dir.mkdir(parents=True, exist_ok=True)
+        dyn_root = out_dir / "dynamic_fields"
+        for product in DYNAMIC_PRODUCTS:
+            (dyn_root / product).mkdir(parents=True, exist_ok=True)
 
         # Generate panel for each timestep
         for t_idx in range(n_times):
@@ -342,11 +609,24 @@ def process_one_cyclone(task):
                 # Use fixed center (previous behavior)
                 cur_lat, cur_lon = center_lat, center_lon
 
-            fig = create_panel_figure(ds_t, cur_lat, cur_lon, time_str, track_id)
+            fig = create_synoptic_panel_figure(ds_t, cur_lat, cur_lon, time_str, track_id)
 
             out_path = out_dir / f"panel_t{t_idx:03d}.png"
             fig.savefig(out_path, dpi=DPI, bbox_inches='tight')
             plt.close(fig)
+
+            # Explicit synoptic category path (same content)
+            syn_path = syn_dir / f"panel_t{t_idx:03d}.png"
+            fig = create_synoptic_panel_figure(ds_t, cur_lat, cur_lon, time_str, track_id)
+            fig.savefig(syn_path, dpi=DPI, bbox_inches='tight')
+            plt.close(fig)
+
+            # Dynamic products
+            for product in DYNAMIC_PRODUCTS:
+                fig_dyn = create_dynamic_panel_figure(ds_t, cur_lat, cur_lon, time_ts, track_id, product)
+                dyn_path = dyn_root / product / f"panel_t{t_idx:03d}.png"
+                fig_dyn.savefig(dyn_path, dpi=DPI, bbox_inches='tight')
+                plt.close(fig_dyn)
 
         ds.close()
         return track_id, n_times, None

@@ -47,11 +47,10 @@ def run(cmd: list[str], desc: str, dry_run: bool = False) -> bool:
 
 
 def check_figures_exist() -> tuple[int, int]:
-    """Check how many expected figures exist in web/public/figures/."""
-    from pathlib import Path
+    """Check figure inventory in web/public/figures/."""
     public_figures = REPO_ROOT / "web" / "public" / "figures"
     all_pngs = list(public_figures.rglob("*.png")) if public_figures.exists() else []
-    return len(all_pngs), 36  # 36 = expected count from copy_figures_to_web.py
+    return len(all_pngs), len(all_pngs)
 
 
 def main():
@@ -120,6 +119,7 @@ def main():
         ("scripts/web/extract_cluster_site_data.py",   "extract_cluster_site_data.py"),
         ("scripts/web/extract_composite_site_data.py", "extract_composite_site_data.py"),
         ("scripts/web/extract_ck_subterms_site_data.py", "extract_ck_subterms_site_data.py"),
+        ("scripts/web/extract_cyclone_explorer_data.py", "extract_cyclone_explorer_data.py"),
     ]
     step3_ok = True
     for script, desc in manifest_scripts:

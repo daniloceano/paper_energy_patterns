@@ -9,6 +9,10 @@
  * Checks for NEXT_PUBLIC_SUPABASE_FIGURES_URL to optionally serve from Supabase Storage.
  */
 export function figureUrl(relativePath: string): string {
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('/')) {
+    return relativePath
+  }
+
   const storageBase = process.env.NEXT_PUBLIC_SUPABASE_FIGURES_URL
   if (storageBase) {
     // Strip leading "figures/" — the bucket root already corresponds to figures/

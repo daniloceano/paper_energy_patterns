@@ -32,8 +32,10 @@ import shutil
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+    
 FIGURES_SRC = REPO_ROOT / "figures"
 FIGURES_DST = REPO_ROOT / "web" / "public" / "figures"
+SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
 
 # Figures the web site actually uses.
 # Keys are target paths relative to web/public/figures/.
@@ -116,6 +118,37 @@ def copy_figures(dry_run: bool = False) -> tuple[int, int, int]:
     return copied, missing, up_to_date
 
 
+def copy_cyclone_explorer_tree(dry_run: bool = False) -> tuple[int, int]:
+    """Copy all cyclone explorer assets recursively, preserving folder structure."""
+    src_root = FIGURES_SRC / "cyclone_explorer"
+    dst_root = FIGURES_DST / "cyclone_explorer"
+
+    if not src_root.exists():
+        print("  ⚠  MISSING   cyclone_explorer/ directory in figures/")
+        return 0, 0
+
+    copied = 0
+    up_to_date = 0
+    for src in sorted(src_root.rglob("*")):
+        if not src.is_file() or src.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+
+        rel = src.relative_to(src_root)
+        dst = dst_root / rel
+        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+            up_to_date += 1
+            continue
+
+        if dry_run:
+            print(f"  [dry-run]   cyclone_explorer/{rel}")
+        else:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            print(f"  ✓  cyclone_explorer/{rel}")
+        copied += 1
+
+    return copied, up_to_date
+
 def main():
     parser = argparse.ArgumentParser(
         description="Copy figures to web/public/figures/ for Vercel deployment."
@@ -136,9 +169,11 @@ def main():
 
     copied, missing, up_to_date = copy_figures(dry_run=args.dry_run)
 
+    cx_copied, cx_uptodate = copy_cyclone_explorer_tree(dry_run=args.dry_run)
+
     print()
-    print(f"  ✓ Copied        : {copied}")
-    print(f"  – Up-to-date    : {up_to_date}")
+    print(f"  ✓ Copied        : {copied + cx_copied}")
+    print(f"  – Up-to-date    : {up_to_date + cx_uptodate}")
     print(f"  ⚠ Source missing: {missing}")
 
     if missing > 0:
@@ -148,7 +183,7 @@ def main():
         print("    python scripts/ep_structure_analysis/step4_create_figures.py")
         print("    python scripts/cluster_analysis_energy_patterns/run_pipeline.py")
 
-    if not args.dry_run and copied > 0:
+    if not args.dry_run and (copied + cx_copied) > 0:
         print()
         print("  Next steps:")
         print("    git add web/public/figures/")

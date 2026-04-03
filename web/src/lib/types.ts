@@ -187,6 +187,18 @@ export interface CycloneTimestep {
   track_point_index: number
   panel_image: string | null
   has_panel: boolean
+  images?: {
+    synoptic: {
+      basic: string | null
+    }
+    dynamic: Record<string, string | null>
+  }
+}
+
+export interface CycloneExplorerProduct {
+  id: string
+  label: string
+  description: string
 }
 
 export interface CycloneMetadata {
@@ -218,6 +230,10 @@ export interface CycloneExplorerManifest {
     total_cyclones: number
     ep1_count: number
     ep2_count: number
+    field_groups?: string[]
+    synoptic_products?: CycloneExplorerProduct[]
+    dynamic_products?: CycloneExplorerProduct[]
+    figures_base_url?: string | null
   }
   cyclones: Record<string, CycloneData>
 }

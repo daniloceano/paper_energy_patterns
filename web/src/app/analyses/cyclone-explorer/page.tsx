@@ -6,6 +6,39 @@ import CycloneExplorerClient from './CycloneExplorerClient'
 import manifestData from '@/content/cyclone_explorer_manifest.json'
 import type { CycloneExplorerManifest } from '@/lib/types'
 
+const FEATURED_CYCLONES = [
+  {
+    trackId: '19790135',
+    title: 'EP1 reference cyclone',
+    subtitle: 'Long-lived case with dynamic assets available in the subset validation.',
+  },
+  {
+    trackId: '19790205',
+    title: 'EP1 mature case',
+    subtitle: 'Extended intensification phase, useful to inspect temporal evolution.',
+  },
+  {
+    trackId: '19800411',
+    title: 'EP1 spring case',
+    subtitle: 'Compact EP1 event with a clear intensification window.',
+  },
+  {
+    trackId: '19790048',
+    title: 'EP2 reference cyclone',
+    subtitle: 'Long-lived EP2 event with dynamic assets available in the subset validation.',
+  },
+  {
+    trackId: '19790669',
+    title: 'EP2 mature case',
+    subtitle: 'Representative EP2 cyclone with a broader temporal window.',
+  },
+  {
+    trackId: '19790933',
+    title: 'EP2 transition case',
+    subtitle: 'Useful to compare synoptic and dynamic fields in late spring conditions.',
+  },
+] as const
+
 export const metadata: Metadata = {
   title: 'Cyclone Explorer',
   description: 'Explore individual EP1 and EP2 cyclones through time during intensification.',
@@ -21,7 +54,7 @@ export default function CycloneExplorerPage() {
         title="Cyclone Explorer"
         subtitle="Individual Cyclone Temporal Analysis"
         badge="EP1 & EP2"
-        description={`Explore the temporal evolution of individual EP1 (N=${manifest.metadata.ep1_count}) and EP2 (N=${manifest.metadata.ep2_count}) cyclones during their intensification phase. Visualise track progression, sea level pressure, temperature, moisture, and geopotential fields at 6-hourly intervals.`}
+        description={`Explore the temporal evolution of individual EP1 (N=${manifest.metadata.ep1_count}) and EP2 (N=${manifest.metadata.ep2_count}) cyclones during intensification. Switch between Synoptic fields (baseline meteorological structure) and Dynamic fields (baroclinic/barotropic diagnostics) at each timestep.`}
       />
 
       <div className="space-y-6">
@@ -29,19 +62,36 @@ export default function CycloneExplorerPage() {
           <p>
             Select an Energy Pattern (EP1 or EP2) and a cyclone from the dropdown. Use the 
             temporal slider to navigate through the intensification phase. The track map 
-            highlights the current position, and the multi-panel figure shows atmospheric 
-            fields at each timestep.
+            highlights the current position. In the right panel, choose between Synoptic fields 
+            and Dynamic fields, then select the dynamic product when applicable.
           </p>
         </ResultSummaryCallout>
 
-        <CycloneExplorerClient manifest={manifest} />
+        <ResultSummaryCallout type="info" title="Featured Cases">
+          <p>
+            The explorer now includes representative cyclones already present in the EP1/EP2 data.
+            Use the quick-access cards inside the explorer to jump directly to the cases below.
+          </p>
+          <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+            {FEATURED_CYCLONES.map((item) => (
+              <li key={item.trackId} className="rounded-lg border border-slate-200 bg-white p-3">
+                <div className="font-medium text-slate-900">{item.trackId}</div>
+                <div className="text-xs uppercase tracking-wider text-slate-500">{item.title}</div>
+                <div className="mt-1 text-xs text-slate-600">{item.subtitle}</div>
+              </li>
+            ))}
+          </ul>
+        </ResultSummaryCallout>
 
-        <ResultSummaryCallout type="info" title="Panel Fields">
+        <CycloneExplorerClient
+          manifest={manifest}
+          featuredCases={FEATURED_CYCLONES.map((item) => item)}
+        />
+
+        <ResultSummaryCallout type="info" title="Field Groups">
           <ul className="list-inside list-disc space-y-1 text-sm">
-            <li><strong>Top-left:</strong> Sea Level Pressure (SLP) with 850 hPa wind vectors</li>
-            <li><strong>Top-right:</strong> Temperature at 850 hPa (°C)</li>
-            <li><strong>Bottom-left:</strong> Specific humidity at 975 hPa (g/kg)</li>
-            <li><strong>Bottom-right:</strong> Geopotential height at 500 hPa (m)</li>
+            <li><strong>Synoptic fields:</strong> Baseline meteorological environment (SLP, temperature, humidity, geopotential) in cyclone-centered coordinates.</li>
+            <li><strong>Dynamic fields:</strong> Diagnostics linked to cyclone dynamic structure, including PV, temperature advection, AFC, KE-advection anomaly, RK criterion and barotropic critical-region context.</li>
           </ul>
         </ResultSummaryCallout>
       </div>

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import Image from 'next/image'
 import type { CycloneExplorerManifest, CycloneData } from '@/lib/types'
 import { ENERGY_PATTERNS } from '@/lib/constants'
+import { figureUrl } from '@/lib/client-utils'
 
 // Simplified South Atlantic coastline (lon, lat pairs for SVG rendering)
 // Coverage: roughly -80°W to +50°E, -80°S to -10°S
@@ -32,24 +33,36 @@ const SOUTH_ATLANTIC_COASTLINE: Array<[number, number][]> = [
 
 interface CycloneExplorerClientProps {
   manifest: CycloneExplorerManifest
+  featuredCases: FeaturedCase[]
 }
 
-// Panel types available for each timestep
-type PanelType = 'basic' // Currently only basic 2x2 panels are generated
+type FieldCategory = 'synoptic' | 'dynamic'
 
-const PANEL_TYPES: { id: PanelType; label: string; description: string }[] = [
+interface FeaturedCase {
+  trackId: string
+  title: string
+  subtitle: string
+}
+
+const DEFAULT_SYNOPTIC_PRODUCTS = [
   {
     id: 'basic',
-    label: 'Basic Fields',
-    description: 'SLP + 850 hPa winds, Temperature 850 hPa, Specific Humidity 975 hPa, Geopotential 500 hPa',
+    label: 'Synoptic fields',
+    description: 'SLP, temperature, specific humidity and geopotential in a cyclone-centered panel.',
   },
 ]
 
-export default function CycloneExplorerClient({ manifest }: CycloneExplorerClientProps) {
+export default function CycloneExplorerClient({ manifest, featuredCases }: CycloneExplorerClientProps) {
   const [selectedEP, setSelectedEP] = useState<'EP1' | 'EP2'>('EP1')
   const [selectedCycloneId, setSelectedCycloneId] = useState<string | null>(null)
   const [currentTimestepIdx, setCurrentTimestepIdx] = useState(0)
-  const [selectedPanelType, setSelectedPanelType] = useState<PanelType>('basic')
+  const [selectedCategory, setSelectedCategory] = useState<FieldCategory>('synoptic')
+
+  const synopticProducts = manifest.metadata.synoptic_products ?? DEFAULT_SYNOPTIC_PRODUCTS
+  const dynamicProducts = manifest.metadata.dynamic_products ?? []
+  const [selectedDynamicProduct, setSelectedDynamicProduct] = useState<string>(
+    dynamicProducts[0]?.id ?? 'slp_pv850_wind850'
+  )
 
   // Filter cyclones by EP - only include those with at least one panel
   const cyclonesByEP = useMemo(() => {
@@ -81,10 +94,41 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
     setCurrentTimestepIdx(0)
   }
 
+  const handleFeaturedCaseSelect = (trackId: string) => {
+    const cyclone = manifest.cyclones[trackId]
+    if (!cyclone) return
+
+    setSelectedEP(cyclone.ep_label)
+    setSelectedCycloneId(trackId)
+    setCurrentTimestepIdx(0)
+    setSelectedCategory('synoptic')
+  }
+
   const currentTimestep = selectedCyclone?.timesteps[currentTimestepIdx]
-  const panelPath = selectedCyclone && currentTimestep?.has_panel
-    ? `/figures/cyclone_explorer/${selectedCyclone.ep_label.toLowerCase()}/${selectedCyclone.track_id}/panel_t${String(currentTimestep.index).padStart(3, '0')}.png`
-    : null
+
+  const selectedProductMeta =
+    selectedCategory === 'synoptic'
+      ? synopticProducts[0]
+      : dynamicProducts.find((p) => p.id === selectedDynamicProduct) ?? dynamicProducts[0]
+
+  const panelPath = useMemo(() => {
+    if (!selectedCyclone || !currentTimestep) return null
+    if (selectedCategory === 'synoptic') {
+      const synPath = currentTimestep.images?.synoptic?.basic ?? currentTimestep.panel_image
+      return synPath ? figureUrl(synPath) : null
+    }
+
+    const dynPath = currentTimestep.images?.dynamic?.[selectedDynamicProduct] ?? null
+    return dynPath ? figureUrl(dynPath) : null
+  }, [selectedCategory, selectedCyclone, currentTimestep, selectedDynamicProduct])
+
+  const hasAnyDynamic = useMemo(() => {
+    if (!selectedCyclone) return false
+    return selectedCyclone.timesteps.some((ts) => {
+      if (!ts.images?.dynamic) return false
+      return Object.values(ts.images.dynamic).some((v) => Boolean(v))
+    })
+  }, [selectedCyclone])
 
   return (
     <div className="space-y-6">
@@ -135,6 +179,62 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
             </select>
           </div>
         </div>
+
+        {featuredCases.length > 0 && (
+          <div className="mt-5 border-t border-slate-200 pt-4">
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Featured cases
+                </p>
+                <p className="text-xs text-slate-500">
+                  Quick access to representative cyclones already present in the EP1/EP2 data.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {featuredCases.map((item) => {
+                const cyclone = manifest.cyclones[item.trackId]
+                const active = selectedCycloneId === item.trackId
+                return (
+                  <button
+                    key={item.trackId}
+                    type="button"
+                    onClick={() => handleFeaturedCaseSelect(item.trackId)}
+                    className={`rounded-xl border p-3 text-left transition-all ${
+                      active
+                        ? 'border-slate-800 bg-slate-900 text-white shadow-md'
+                        : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold">
+                          {item.title}
+                        </div>
+                        <div className={`mt-0.5 text-xs ${active ? 'text-slate-200' : 'text-slate-500'}`}>
+                          {item.subtitle}
+                        </div>
+                      </div>
+                      <span
+                        className="rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wider"
+                        style={{
+                          backgroundColor: cyclone ? `${ENERGY_PATTERNS[cyclone.ep_label].color}20` : undefined,
+                          color: cyclone ? ENERGY_PATTERNS[cyclone.ep_label].color : undefined,
+                        }}
+                      >
+                        {cyclone?.ep_label ?? 'EP'}
+                      </span>
+                    </div>
+                    <div className={`mt-2 text-xs ${active ? 'text-slate-200' : 'text-slate-600'}`}>
+                      {item.trackId}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main content */}
@@ -205,30 +305,84 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
 
           {/* Right: Panel + Slider */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Panel type selector (for future expansion) */}
-            {PANEL_TYPES.length > 1 && (
-              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                <label className="mb-2 block text-xs font-medium text-slate-500">
-                  Diagnostic Panel
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {PANEL_TYPES.map((pt) => (
-                    <button
-                      key={pt.id}
-                      onClick={() => setSelectedPanelType(pt.id)}
-                      className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                        selectedPanelType === pt.id
-                          ? 'bg-indigo-600 text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                      title={pt.description}
-                    >
-                      {pt.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+              <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">
+                Field Category
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedCategory('synoptic')}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                    selectedCategory === 'synoptic'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                    </svg>
+                    Synoptic fields
+                  </span>
+                </button>
+                <button
+                  onClick={() => setSelectedCategory('dynamic')}
+                  className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
+                    selectedCategory === 'dynamic'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    Dynamic fields
+                  </span>
+                </button>
               </div>
-            )}
+
+              <div className="mt-3 rounded-lg bg-slate-50 p-3">
+                <p className="text-xs text-slate-600">
+                  {selectedCategory === 'synoptic' ? (
+                    <><strong className="text-indigo-700">Synoptic fields</strong> show the baseline meteorological environment: SLP, temperature, humidity and geopotential in cyclone-centered coordinates.</>
+                  ) : (
+                    <><strong className="text-purple-700">Dynamic fields</strong> reveal baroclinic and barotropic diagnostics linked to cyclone intensification: PV structure, temperature advection, AFC, KE advection and critical-region context.</>
+                  )}
+                </p>
+              </div>
+
+              {selectedCategory === 'dynamic' && (
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">
+                    Select Diagnostic
+                  </label>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {dynamicProducts.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedDynamicProduct(p.id)}
+                        className={`rounded-lg border p-2.5 text-left text-xs transition-all ${
+                          selectedDynamicProduct === p.id
+                            ? 'border-purple-500 bg-purple-50 text-purple-900 shadow-sm'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="font-medium leading-tight">{p.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                  {!hasAnyDynamic && (
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                      <p className="text-xs text-amber-800">
+                        <strong>Note:</strong> Dynamic assets are not yet available for this cyclone. 
+                        Assets are being progressively generated for the full dataset.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Temporal slider */}
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -260,17 +414,27 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">
-                  Atmospheric Fields
+                  {selectedCategory === 'synoptic' ? (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block h-2 w-2 rounded-full bg-indigo-500"></span>
+                      Synoptic Fields
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <span className="inline-block h-2 w-2 rounded-full bg-purple-500"></span>
+                      {selectedProductMeta?.label ?? 'Dynamic Fields'}
+                    </span>
+                  )}
                 </h3>
-                <span className="text-xs text-slate-500">
-                  30°×30° domain centered on cyclone
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
+                  30°×30° cyclone-centered
                 </span>
               </div>
               {panelPath ? (
-                <div className="relative aspect-[10/9] w-full overflow-hidden rounded-lg bg-slate-50">
+                <div className="relative aspect-[10/9] w-full overflow-hidden rounded-lg bg-slate-50 shadow-inner">
                   <Image
                     src={panelPath}
-                    alt={`Cyclone ${selectedCyclone.track_id} at timestep ${currentTimestepIdx}`}
+                    alt={`Cyclone ${selectedCyclone.track_id} at timestep ${currentTimestepIdx} - ${selectedProductMeta?.label ?? selectedCategory}`}
                     fill
                     className="object-contain"
                     priority
@@ -278,13 +442,17 @@ export default function CycloneExplorerClient({ manifest }: CycloneExplorerClien
                 </div>
               ) : (
                 <div className="flex aspect-[10/9] items-center justify-center rounded-lg bg-slate-100 text-sm text-slate-400">
-                  Panel not available for this timestep
+                  <div className="text-center">
+                    <svg className="mx-auto h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="mt-2">Panel not available for this timestep</p>
+                  </div>
                 </div>
               )}
               <p className="mt-3 text-xs text-slate-500">
-                <strong>Panel fields:</strong> SLP + 850 hPa wind vectors (top-left), 
-                Temperature 850 hPa (top-right), Specific humidity 975 hPa (bottom-left), 
-                Geopotential 500 hPa (bottom-right). Dashed box shows the 15°×15° LEC domain.
+                <strong>Product:</strong> {selectedProductMeta?.label ?? 'Not available'}.
+                <span className="ml-1 text-slate-400">{selectedProductMeta?.description ?? ''}</span>
               </p>
             </div>
           </div>

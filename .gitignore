@@ -108,8 +108,9 @@ web/.env.local
 # Do NOT add web/src/content/*.json here
 
 # Generated analysis figures served via Supabase Storage (not git)
-# Upload with: python scripts/web/upload_figures_to_supabase.py --dirs ck_subterms
+# Upload with: python scripts/web/upload_figures_to_supabase.py --dirs ck_subterms cyclone_explorer
 web/public/figures/ck_subterms/
+web/public/figures/cyclone_explorer/
 
 # Website secret keys
 .env.local

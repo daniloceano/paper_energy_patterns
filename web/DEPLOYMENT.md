@@ -282,6 +282,131 @@ NEXT_PUBLIC_SUPABASE_FIGURES_URL=https://xxxxxxxx.supabase.co/storage/v1/object/
 
 ---
 
+## Bundle Size Management (Vercel Function Limits)
+
+### The Problem
+
+Vercel has a **300 MB limit** per serverless function. When deploying Next.js with large static assets in `public/`, each route's function may include a copy of those assets, causing deployment failures like:
+
+```
+The Vercel Function "analyses/ck-subterms.rsc" is 309.78mb which exceeds the maximum size limit of 300mb
+```
+
+### Root Cause: cyclone_explorer
+
+The `public/figures/cyclone_explorer/` directory contains **498 files (211 MB)**—panels for individual cyclone exploration. This is too large to bundle with every serverless function.
+
+### Solution Architecture
+
+**DO:**
+- ✅ Store large asset collections (cyclone_explorer) **exclusively in Supabase Storage**
+- ✅ Use `.vercelignore` to exclude them from deployment
+- ✅ Keep manifests pointing to Supabase URLs
+- ✅ Only commit small, essential fallback figures to `public/`
+
+**DON'T:**
+- ❌ Commit 200+ MB of cyclone panels to `web/public/`
+- ❌ Import large JSON manifests directly in page components
+- ❌ Serialize heavy data structures in React Server Components
+- ❌ Assume "it builds locally" means it will deploy to Vercel
+
+### Implementation
+
+1. **`.vercelignore` (already configured):**
+   ```
+   # Exclude large cyclone_explorer figures from Vercel deployment
+   public/figures/cyclone_explorer/
+   ```
+
+2. **Upload to Supabase:**
+   ```bash
+   python scripts/web/upload_figures_to_supabase.py --dirs cyclone_explorer
+   ```
+
+3. **Verify manifest URLs point to Supabase:**
+   ```bash
+   grep "cyclone_explorer" web/src/content/cyclone_explorer_manifest.json | head -3
+   # Should show: https://xxx.supabase.co/storage/v1/object/public/figures/cyclone_explorer/...
+   ```
+
+4. **Set environment variable in Vercel:**
+   ```
+   NEXT_PUBLIC_SUPABASE_FIGURES_URL=https://<project>.supabase.co/storage/v1/object/public/figures
+   ```
+
+5. **Clean up local public/ (optional):**
+   ```bash
+   # cyclone_explorer is already .gitignored, so it won't be committed
+   # But if it exists locally, you can remove it:
+   rm -rf web/public/figures/cyclone_explorer/
+   ```
+
+### Prevention Guidelines
+
+When adding new content to the site:
+
+| Content Type | Max Size | Storage Strategy |
+|--------------|----------|------------------|
+| Individual figures (cluster, composites, ck_subterms) | <5 MB each | Supabase preferred, `public/` fallback OK |
+| Large collections (cyclone_explorer, animations) | >50 MB total | **Supabase only**, exclude from `public/` |
+| Manifests (JSON) | <200 KB each | Committed to `web/src/content/` |
+| Page bundles (per route) | <10 MB | Keep imports minimal, lazy-load heavy components |
+
+### What NOT to do
+
+❌ **Bad Pattern 1: Importing large manifests in page.tsx**
+```typescript
+// DON'T: Serializes entire manifest into RSC payload
+import fullData from '@/content/huge_manifest.json'
+```
+
+✅ **Good Pattern: Load on-demand**
+```typescript
+// Server Component reads at build time, doesn't serialize
+const data = readManifest('huge_manifest.json')
+// Only pass minimal props to Client Components
+```
+
+❌ **Bad Pattern 2: Committing large figure collections**
+```bash
+# DON'T
+git add web/public/figures/cyclone_explorer/*.png  # 498 files
+```
+
+✅ **Good Pattern: Supabase + .vercelignore**
+```bash
+# DO
+python scripts/web/upload_figures_to_supabase.py --dirs cyclone_explorer
+echo "public/figures/cyclone_explorer/" >> web/.vercelignore
+```
+
+❌ **Bad Pattern 3: Assuming local build = Vercel build**
+```bash
+npm run build  # ✓ Passes locally
+git push       # ✗ Fails on Vercel (function size limit)
+```
+
+✅ **Good Pattern: Verify bundle size**
+```bash
+# Check what's included in build
+du -sh web/.next/standalone/  # Should be <50 MB
+du -sh web/public/figures/*/  # Should exclude cyclone_explorer
+```
+
+### Monitoring Bundle Size
+
+After deployment, check function sizes:
+- Vercel Dashboard → Deployment Details → Functions tab
+- All routes should be **< 50 MB** (well below 300 MB limit)
+
+If any route exceeds 100 MB:
+1. Identify what's being bundled (check imports in that route's `page.tsx`)
+2. Move large assets to Supabase
+3. Add exclusions to `.vercelignore`
+4. Ensure manifests use Supabase URLs
+
+---
+
 ## Troubleshooting
 
 ### Figura não aparece no site (ícone quebrado)

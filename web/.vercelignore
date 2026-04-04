@@ -1,0 +1,3 @@
+# Exclude large cyclone_explorer figures from Vercel deployment
+# These are served from Supabase Storage instead
+public/figures/cyclone_explorer/

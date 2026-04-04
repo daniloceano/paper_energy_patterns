@@ -6,7 +6,17 @@ import FormulaBlock from '@/components/analysis/FormulaBlock'
 import FileProvenanceBadge from '@/components/analysis/FileProvenanceBadge'
 import DiagnosticCompositesClient from '@/components/analysis/DiagnosticCompositesClient'
 import { DIAGNOSTICS, FLUX_DIAGNOSTICS, DIAGNOSTIC_FIGURE_SLUGS } from '@/lib/constants'
-import { readManifest } from '@/lib/utils'
+
+// Direct JSON imports (bundled at build time, no fs.readFileSync at runtime)
+import fullStatsData from '@/content/composite_domain_stats_full_intensification.json'
+import fullFluxesData from '@/content/composite_boundary_fluxes_full_intensification.json'
+import fullFiguresData from '@/content/composite_figures_manifest_full_intensification.json'
+import centralStatsData from '@/content/composite_domain_stats_central_time.json'
+import centralFluxesData from '@/content/composite_boundary_fluxes_central_time.json'
+import centralFiguresData from '@/content/composite_figures_manifest_central_time.json'
+
+// Force static generation at build time
+export const dynamic = 'force-static'
 
 interface DiagnosticPageProps {
   params: Promise<{ diagnostic: string }>
@@ -47,14 +57,6 @@ interface FiguresManifest {
   }
 }
 
-function safeReadManifest<T>(filename: string, fallback: T): T {
-  try {
-    return readManifest<T>(filename)
-  } catch {
-    return fallback
-  }
-}
-
 export async function generateStaticParams() {
   return Object.values(DIAGNOSTICS).map((d) => ({
     diagnostic: d.slug,
@@ -78,16 +80,13 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
 
   const isFluxDiag = FLUX_DIAGNOSTICS.includes(diag.id)
 
-  // Load manifests for BOTH modes (graceful fallback when not yet generated)
-  // Full intensification
-  const fullStats = safeReadManifest<DomainStatEntry[]>('composite_domain_stats_full_intensification.json', [])
-  const fullFluxes = safeReadManifest<BoundaryFluxEntry[]>('composite_boundary_fluxes_full_intensification.json', [])
-  const fullFigures = safeReadManifest<FiguresManifest>('composite_figures_manifest_full_intensification.json', {})
-
-  // Central time
-  const centralStats = safeReadManifest<DomainStatEntry[]>('composite_domain_stats_central_time.json', [])
-  const centralFluxes = safeReadManifest<BoundaryFluxEntry[]>('composite_boundary_fluxes_central_time.json', [])
-  const centralFigures = safeReadManifest<FiguresManifest>('composite_figures_manifest_central_time.json', {})
+  // Use directly imported JSON data (bundled at build time)
+  const fullStats = fullStatsData as DomainStatEntry[]
+  const fullFluxes = fullFluxesData as BoundaryFluxEntry[]
+  const fullFigures = fullFiguresData as FiguresManifest
+  const centralStats = centralStatsData as DomainStatEntry[]
+  const centralFluxes = centralFluxesData as BoundaryFluxEntry[]
+  const centralFigures = centralFiguresData as FiguresManifest
 
   const figSlug = DIAGNOSTIC_FIGURE_SLUGS[diag.id]
 

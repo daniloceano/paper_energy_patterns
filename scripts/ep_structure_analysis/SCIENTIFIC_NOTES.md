@@ -55,12 +55,33 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 **Spatial Configuration:**
 - **Resolution:** 0.25° × 0.25°
 - **Domain:** 30° × 30° (or larger) downloaded per cyclone as a bounding box covering the entire intensification phase; this is a single NetCDF per cyclone stored in `data/era5_ep_structure`.
-- **Composite domain:** 15° × 15° (marked in figures). Panels are produced as 30° × 30° views centered on the cyclone with an inner 15° × 15° box overlaid to indicate the smaller composite region.
+- **Composite domain:** 30° × 30° centered on the cyclone for each timestep. Figures include an inner 15° × 15° box indicating the LEC computation domain.
 
-**Centering behavior (audit & fix):**
-- Historically the plotting code used a single fixed center per cyclone (the intensification midpoint) to extract the 15°×15° subdomain for all timesteps, which could make the cyclone move relative to the panel.
-- The code has been updated so `step6_generate_cyclone_explorer_panels.py` now centers each timestep on the cyclone position at that timestep (nearest track point) ensuring the subdomain follows the cyclone through time.
-- To apply this fix to existing explorer assets, the panels must be regenerated for all cyclones (heavy I/O/CPU). The audit script `scripts/ep_structure_analysis/audit_storm_centering.py` documents the current centering status and can be used to identify which panels need re-generation.
+**Storm-Centered Methodology (CRITICAL - Fixed 2026-04-03):**
+
+> ⚠️ **METHODOLOGICAL FIX:** Prior to 2026-04-03, the composite pipeline used a **FIXED domain center** per cyclone (the mean position during intensification), which was scientifically incorrect for storm-centered composites. An audit revealed that only ~15% of timesteps were adequately centered (within 222 km of the cyclone), with a mean offset of 1,079 km and maximum offset of 8,788 km.
+
+The corrected methodology now implements **per-timestep storm centering**:
+
+1. **For each timestep** during intensification, the cyclone center position is read from the track data (`data/tracks_SAt_filtered_with_energetics_processed.csv`).
+
+2. **The 30°×30° subdomain** is extracted from the pre-downloaded ERA5 data, centered on the actual cyclone position at that specific timestep (not a fixed mean position).
+
+3. **Diagnostic fields** are computed on this correctly-centered grid where the cyclone is always at the origin (x=0, y=0).
+
+4. **Composite aggregation** accumulates all storm-centered fields:
+   - **Full intensification mode:** ALL storm-centered timesteps from ALL cyclones
+   - **Central time mode:** Only the central timestep (storm-centered) from each cyclone
+
+**Statistics from reprocessing (2026-04-03):**
+| Mode | EP1 Cases | EP1 Timesteps | EP2 Cases | EP2 Timesteps | Skipped (no pos) | Skipped (oob) |
+|------|-----------|---------------|-----------|---------------|------------------|---------------|
+| Full | 444 | 3,172 | 979 | 6,828 | 1,481 | 3,495 |
+| Central | 442 | 442 | 978 | 978 | 0 | 0 |
+
+**Skipped timesteps:** Some timesteps are skipped when the cyclone position is not available in the track file (rare) or when the required 30°×30° subdomain extends outside the downloaded data envelope. This is expected for cyclones near the edge of the download region.
+
+**Old invalid products:** Moved to `_INVALID_METHODOLOGY_OLD/` directories (data and figures) with explanatory README files.
 
 **Temporal Resolution:** 6-hourly
 

@@ -120,14 +120,20 @@ RESULTS_DIR = PROJECT_ROOT / "results" / "ep_structure"
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
+# Tracks file for per-timestep cyclone positions
+TRACKS_FILE = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.csv"
+
 DOMAIN_SIZE = 30.0    # degrees (30° × 30°)
 RESOLUTION = 0.25     # degrees
 
 # Composite mode: how to aggregate timesteps within intensification phase
 # -------------------------------------------------------------------------
-# "full_intensification" : mean over all timesteps (original behavior)
-# "central_time"         : use only the central timestep
+# "full_intensification" : mean over all storm-centered timesteps
+# "central_time"         : use only the central timestep (storm-centered)
 COMPOSITE_MODE = "full_intensification"  # set via --mode argument in main()
+
+# Module-level cache for tracks DataFrame (loaded once per process)
+_TRACKS_CACHE = None
 
 # EGR quality control
 MIN_LAT = 5.0
@@ -181,6 +187,70 @@ def _load_clim(path, label, skip_msg):
             _CLIM_CACHE[path] = xr.open_dataset(path)
             logging.info(f"   Loaded {label} climatology: {path.name}")
     return _CLIM_CACHE[path]
+
+
+def _load_tracks():
+    """
+    Lazy-load the tracks DataFrame (cached for the process lifetime).
+    
+    Returns
+    -------
+    pd.DataFrame
+        Track data with columns: track_id, date, lon vor, lat vor, ...
+    """
+    global _TRACKS_CACHE
+    if _TRACKS_CACHE is None:
+        _TRACKS_CACHE = pd.read_csv(TRACKS_FILE, parse_dates=["date"])
+    return _TRACKS_CACHE
+
+
+def get_cyclone_positions_for_case(track_id, era5_times):
+    """
+    Get cyclone center positions for each timestep in the ERA5 file.
+    
+    Parameters
+    ----------
+    track_id : int
+        Cyclone track identifier.
+    era5_times : array-like of datetime64
+        Timestamps from the ERA5 NetCDF file.
+    
+    Returns
+    -------
+    dict
+        Mapping: time_index → (center_lat, center_lon) or None if not found.
+        Also includes 'central_idx' key for the central timestep index.
+    """
+    tracks = _load_tracks()
+    track_data = tracks[tracks["track_id"] == int(track_id)].copy()
+    
+    if len(track_data) == 0:
+        return {}
+    
+    positions = {}
+    for t_idx, era5_time in enumerate(era5_times):
+        era5_ts = pd.Timestamp(era5_time)
+        
+        # Find nearest track time (within 3 hours tolerance)
+        time_diffs = (track_data["date"] - era5_ts).abs()
+        min_diff = time_diffs.min()
+        
+        if min_diff <= pd.Timedelta(hours=3):
+            nearest_idx = time_diffs.idxmin()
+            nearest = track_data.loc[nearest_idx]
+            positions[t_idx] = (float(nearest["lat vor"]), float(nearest["lon vor"]))
+        else:
+            positions[t_idx] = None
+    
+    # Compute central timestep index
+    n_times = len(era5_times)
+    if n_times > 0:
+        # For odd N: exact middle; for even N: N//2 (just after middle)
+        positions["central_idx"] = n_times // 2
+    else:
+        positions["central_idx"] = None
+    
+    return positions
 
 
 # ============================================================================
@@ -927,12 +997,35 @@ def barotropic_critical_region_250(u_clim, v_clim):
 # ============================================================================
 
 def extract_subdomain(ds, center_lat, center_lon, domain_size):
-    """Interpolate dataset to regular centred grid."""
+    """
+    Extract and interpolate a subdomain centered on the given coordinates.
+    
+    The output grid is a RELATIVE (storm-centered) grid where the center
+    of the cyclone is at (0, 0) in relative coordinates.
+    
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Input dataset with latitude/longitude coordinates.
+    center_lat : float
+        Latitude of the cyclone center (degrees).
+    center_lon : float
+        Longitude of the cyclone center (degrees).
+    domain_size : float
+        Size of the domain in degrees (e.g., 30.0 for 30° × 30°).
+    
+    Returns
+    -------
+    xr.Dataset
+        Interpolated subdomain with latitude/longitude in ABSOLUTE coordinates.
+        The center of the grid corresponds to (center_lat, center_lon).
+    """
     half = domain_size / 2.0
     n = int(domain_size / RESOLUTION) + 1
     lat_target = np.linspace(center_lat + half, center_lat - half, n)
     lon_target = np.linspace(center_lon - half, center_lon + half, n)
 
+    # Select a slightly larger region to ensure interpolation works
     ds_sub = ds.sel(
         latitude=slice(center_lat + half + 1, center_lat - half - 1),
         longitude=slice(center_lon - half - 1, center_lon + half + 1),
@@ -941,365 +1034,396 @@ def extract_subdomain(ds, center_lat, center_lon, domain_size):
     return ds_sub.interp(latitude=lat_target, longitude=lon_target, method="linear")
 
 
+def check_subdomain_available(ds, center_lat, center_lon, domain_size):
+    """
+    Check if the requested subdomain is fully within the downloaded data extent.
+    
+    Returns
+    -------
+    bool
+        True if subdomain can be extracted, False otherwise.
+    str or None
+        Error message if subdomain cannot be extracted.
+    """
+    half = domain_size / 2.0
+    
+    ds_lat_min = float(ds.latitude.min())
+    ds_lat_max = float(ds.latitude.max())
+    ds_lon_min = float(ds.longitude.min())
+    ds_lon_max = float(ds.longitude.max())
+    
+    req_lat_min = center_lat - half
+    req_lat_max = center_lat + half
+    req_lon_min = center_lon - half
+    req_lon_max = center_lon + half
+    
+    if req_lat_min < ds_lat_min - 0.5 or req_lat_max > ds_lat_max + 0.5:
+        return False, f"lat out of bounds: need [{req_lat_min:.1f}, {req_lat_max:.1f}], have [{ds_lat_min:.1f}, {ds_lat_max:.1f}]"
+    if req_lon_min < ds_lon_min - 0.5 or req_lon_max > ds_lon_max + 0.5:
+        return False, f"lon out of bounds: need [{req_lon_min:.1f}, {req_lon_max:.1f}], have [{ds_lon_min:.1f}, {ds_lon_max:.1f}]"
+    
+    return True, None
+
+
 # ============================================================================
-# SINGLE-CASE PROCESSING (module-level for multiprocessing picklability)
+# SINGLE-TIMESTEP DIAGNOSTIC COMPUTATION
+# ============================================================================
+
+def _compute_diagnostics_for_timestep(ds_timestep, case_month):
+    """
+    Compute all diagnostics for a single storm-centered timestep.
+    
+    Parameters
+    ----------
+    ds_timestep : xr.Dataset
+        Storm-centered dataset for one timestep (no time dimension).
+    case_month : int
+        Calendar month (1-12) for climatology lookup.
+    
+    Returns
+    -------
+    dict
+        Dictionary of diagnostic fields (2-D ndarrays).
+    """
+    pc = "pressure_level" if "pressure_level" in ds_timestep.coords else "level"
+    levels = ds_timestep[pc].values
+
+    u_da = ds_timestep["u"]
+    v_da = ds_timestep["v"]
+    T_da = ds_timestep["t"]
+    z_da = ds_timestep["z"]
+    q_da = ds_timestep["q"]
+
+    def _idx(target_hPa):
+        return int(np.argmin(np.abs(levels - target_hPa)))
+
+    def _sel(da, target_hPa):
+        return da.isel({pc: _idx(target_hPa)})
+
+    # 2-D DataArrays with physical units attached
+    u_250 = _sel(u_da, 250) * units("m/s")
+    u_500 = _sel(u_da, 500) * units("m/s")
+    u_850 = _sel(u_da, 850) * units("m/s")
+    u_975 = _sel(u_da, 975) * units("m/s")
+    v_250 = _sel(v_da, 250) * units("m/s")
+    v_500 = _sel(v_da, 500) * units("m/s")
+    v_850 = _sel(v_da, 850) * units("m/s")
+    v_975 = _sel(v_da, 975) * units("m/s")
+    T_500 = _sel(T_da, 500) * units.kelvin
+    T_850 = _sel(T_da, 850) * units.kelvin
+    z_500 = _sel(z_da, 500) * units("m**2/s**2")
+    z_850 = _sel(z_da, 850) * units("m**2/s**2")
+    q_975 = _sel(q_da, 975) * units("kg/kg")
+
+    result = {}
+
+    # EGR
+    result["egr"] = eady_growth_rate(
+        u_500, v_500, u_850, v_850,
+        T_500, T_850, z_500, z_850,
+    )
+
+    # PV at 200 hPa
+    result["pv_200"] = compute_pv_at_level(
+        _sel(u_da, 175) * units("m/s"), _sel(u_da, 200) * units("m/s"), _sel(u_da, 225) * units("m/s"),
+        _sel(v_da, 175) * units("m/s"), _sel(v_da, 200) * units("m/s"), _sel(v_da, 225) * units("m/s"),
+        _sel(T_da, 175) * units.kelvin, _sel(T_da, 200) * units.kelvin, _sel(T_da, 225) * units.kelvin,
+        np.array([levels[_idx(175)], levels[_idx(200)], levels[_idx(225)]]) * 100.0,
+    )
+
+    # PV at 850 hPa
+    result["pv_850"] = compute_pv_at_level(
+        _sel(u_da, 825) * units("m/s"), _sel(u_da, 850) * units("m/s"), _sel(u_da, 875) * units("m/s"),
+        _sel(v_da, 825) * units("m/s"), _sel(v_da, 850) * units("m/s"), _sel(v_da, 875) * units("m/s"),
+        _sel(T_da, 825) * units.kelvin, _sel(T_da, 850) * units.kelvin, _sel(T_da, 875) * units.kelvin,
+        np.array([levels[_idx(825)], levels[_idx(850)], levels[_idx(875)]]) * 100.0,
+    )
+
+    # Temperature advection at 850 hPa
+    result["adv_T_850"] = temperature_advection_850(u_850, v_850, T_850)
+
+    # SLP
+    if "msl" in ds_timestep.data_vars:
+        msl_data = ds_timestep["msl"]
+        if pc in msl_data.dims:
+            msl_data = msl_data.isel({pc: 0})
+        result["msl"] = msl_data.values.squeeze()
+
+    # Winds / humidity for overlays
+    result["u_250"] = u_250.values
+    result["u_850"] = u_850.values
+    result["u_975"] = u_975.values
+    result["v_250"] = v_250.values
+    result["v_850"] = v_850.values
+    result["v_975"] = v_975.values
+    result["q_975"] = q_975.values
+
+    # Moisture flux divergence at 975 hPa
+    result["div_q_975"] = moisture_flux_divergence_975(u_975, v_975, q_975)
+
+    # Kinetic energy advection at 250 hPa
+    result["ke_adv_250"] = kinetic_energy_advection_250(u_250, v_250)
+
+    # Rayleigh-Kuo criterion at 250 hPa
+    result["rk_criterion_250"] = rayleigh_kuo_criterion_250(u_250, v_250)
+
+    # AFC and anomaly fields require climatology
+    case_lats = u_250.latitude.values
+    case_lons = u_250.longitude.values
+
+    def _interp_clim(ds_c):
+        return ds_c.sel(month=case_month).interp(
+            latitude=case_lats, longitude=case_lons, method="linear"
+        )
+
+    def _clim_prime(clim_2d_raw, ref_da, unit_str):
+        clim_da = (
+            xr.DataArray(clim_2d_raw.values, coords=ref_da.coords, dims=ref_da.dims)
+            * units(unit_str)
+        )
+        return ref_da - clim_da
+
+    def _prime(clim_ds, lev, da_field, clim_var, unit_str):
+        raw = clim_ds[clim_var].sel(pressure_level=float(lev))
+        return _clim_prime(raw, da_field, unit_str)
+
+    # AFC at 250 hPa
+    ds_clim = _load_clim(
+        CLIMATOLOGY_FILE, "250 hPa (AFC/KE adv)",
+        "Run step2_1 first. AFC and KE_adv anomaly will be skipped."
+    )
+    if ds_clim is not None:
+        clim_sub = _interp_clim(ds_clim)
+        z_250 = _sel(z_da, 250) * units("m**2/s**2")
+        result["afc_250"] = ageostrophic_flux_convergence_250(
+            u_250, v_250, z_250,
+            clim_sub["u_clim"], clim_sub["v_clim"], clim_sub["z_clim"],
+        )
+        btcr_dm, btcr_da = barotropic_critical_region_250(
+            clim_sub["u_clim"], clim_sub["v_clim"]
+        )
+        result["btcr_delta_m"] = btcr_dm
+        result["btcr_dil_angle"] = btcr_da
+
+        # KE advection anomaly
+        u_250_p = _clim_prime(clim_sub["u_clim"], u_250, "m/s")
+        v_250_p = _clim_prime(clim_sub["v_clim"], v_250, "m/s")
+        result["ke_adv_250_anom"] = kinetic_energy_advection_250(u_250_p, v_250_p)
+        result["u_250_prime"] = u_250_p.metpy.unit_array.magnitude
+        result["v_250_prime"] = v_250_p.metpy.unit_array.magnitude
+
+    # PV anomalies: TRUE ANOMALY = PV_total - PV_clim
+    # Note: This is DIFFERENT from PV(u', v', T') which is "eddy PV".
+    # PV is nonlinear, so PV(u+u', v+v', T+T') ≠ PV(u) + PV(u', v', T')
+    # For cyclones in SH, we expect NEGATIVE anomaly (more cyclonic than clim).
+    
+    # Helper to get climatological field with proper coordinates
+    def _get_clim_field(clim_ds, lev, var, unit_str, ref_da):
+        raw = clim_ds[var].sel(pressure_level=float(lev))
+        return xr.DataArray(raw.values, coords=ref_da.coords, dims=ref_da.dims) * units(unit_str)
+    
+    ds_pv200 = _load_clim(
+        CLIMATOLOGY_PV200_FILE, "PV200",
+        "Run step2_1 first. PV@200 anomaly will be skipped."
+    )
+    if ds_pv200 is not None:
+        c200 = _interp_clim(ds_pv200)
+        
+        u175_c = _get_clim_field(c200, 175, "u_clim", "m/s", _sel(u_da, 175))
+        u200_c = _get_clim_field(c200, 200, "u_clim", "m/s", _sel(u_da, 200))
+        u225_c = _get_clim_field(c200, 225, "u_clim", "m/s", _sel(u_da, 225))
+        v175_c = _get_clim_field(c200, 175, "v_clim", "m/s", _sel(v_da, 175))
+        v200_c = _get_clim_field(c200, 200, "v_clim", "m/s", _sel(v_da, 200))
+        v225_c = _get_clim_field(c200, 225, "v_clim", "m/s", _sel(v_da, 225))
+        T175_c = _get_clim_field(c200, 175, "t_clim", "K", _sel(T_da, 175))
+        T200_c = _get_clim_field(c200, 200, "t_clim", "K", _sel(T_da, 200))
+        T225_c = _get_clim_field(c200, 225, "t_clim", "K", _sel(T_da, 225))
+        
+        # Compute PV from climatological fields
+        pv_200_clim = compute_pv_at_level(
+            u175_c, u200_c, u225_c, v175_c, v200_c, v225_c, T175_c, T200_c, T225_c,
+            np.array([levels[_idx(175)], levels[_idx(200)], levels[_idx(225)]]) * 100.0,
+        )
+        # True anomaly = PV_total - PV_clim
+        result["pv_200_anom"] = result["pv_200"] - pv_200_clim
+
+    ds_pv850 = _load_clim(
+        CLIMATOLOGY_PV850_FILE, "PV850",
+        "Run step2_1 first. PV@850 and T_adv@850 anomaly will be skipped."
+    )
+    if ds_pv850 is not None:
+        c850 = _interp_clim(ds_pv850)
+        # Eddy fields for T advection anomaly (this uses eddy approach, which is appropriate)
+        u825_p = _prime(c850, 825, _sel(u_da, 825) * units("m/s"), "u_clim", "m/s")
+        u850_p = _prime(c850, 850, _sel(u_da, 850) * units("m/s"), "u_clim", "m/s")
+        u875_p = _prime(c850, 875, _sel(u_da, 875) * units("m/s"), "u_clim", "m/s")
+        v825_p = _prime(c850, 825, _sel(v_da, 825) * units("m/s"), "v_clim", "m/s")
+        v850_p = _prime(c850, 850, _sel(v_da, 850) * units("m/s"), "v_clim", "m/s")
+        v875_p = _prime(c850, 875, _sel(v_da, 875) * units("m/s"), "v_clim", "m/s")
+        T825_p = _prime(c850, 825, _sel(T_da, 825) * units.kelvin, "t_clim", "K")
+        T850_p = _prime(c850, 850, _sel(T_da, 850) * units.kelvin, "t_clim", "K")
+        T875_p = _prime(c850, 875, _sel(T_da, 875) * units.kelvin, "t_clim", "K")
+        
+        # PV 850 TRUE ANOMALY = PV_total - PV_clim
+        u825_c = _get_clim_field(c850, 825, "u_clim", "m/s", _sel(u_da, 825))
+        u850_c = _get_clim_field(c850, 850, "u_clim", "m/s", _sel(u_da, 850))
+        u875_c = _get_clim_field(c850, 875, "u_clim", "m/s", _sel(u_da, 875))
+        v825_c = _get_clim_field(c850, 825, "v_clim", "m/s", _sel(v_da, 825))
+        v850_c = _get_clim_field(c850, 850, "v_clim", "m/s", _sel(v_da, 850))
+        v875_c = _get_clim_field(c850, 875, "v_clim", "m/s", _sel(v_da, 875))
+        T825_c = _get_clim_field(c850, 825, "t_clim", "K", _sel(T_da, 825))
+        T850_c = _get_clim_field(c850, 850, "t_clim", "K", _sel(T_da, 850))
+        T875_c = _get_clim_field(c850, 875, "t_clim", "K", _sel(T_da, 875))
+        
+        pv_850_clim = compute_pv_at_level(
+            u825_c, u850_c, u875_c, v825_c, v850_c, v875_c, T825_c, T850_c, T875_c,
+            np.array([levels[_idx(825)], levels[_idx(850)], levels[_idx(875)]]) * 100.0,
+        )
+        # True anomaly = PV_total - PV_clim
+        result["pv_850_anom"] = result["pv_850"] - pv_850_clim
+        
+        # T advection anomaly uses eddy approach (appropriate for advection)
+        result["adv_T_850_anom"] = temperature_advection_850(u850_p, v850_p, T850_p)
+        result["u_850_prime"] = u850_p.metpy.unit_array.magnitude
+        result["v_850_prime"] = v850_p.metpy.unit_array.magnitude
+
+    ds_mfd975 = _load_clim(
+        CLIMATOLOGY_MFD975_FILE, "MFD975",
+        "Run step2_1 first. div_q@975 anomaly will be skipped."
+    )
+    if ds_mfd975 is not None:
+        c975 = _interp_clim(ds_mfd975)
+        u_975_p = _prime(c975, 975, u_975, "u_clim", "m/s")
+        v_975_p = _prime(c975, 975, v_975, "v_clim", "m/s")
+        q_975_p = _prime(c975, 975, q_975, "q_clim", "kg/kg")
+        result["div_q_975_anom"] = moisture_flux_divergence_975(u_975_p, v_975_p, q_975_p)
+        result["u_975_prime"] = u_975_p.metpy.unit_array.magnitude
+        result["v_975_prime"] = v_975_p.metpy.unit_array.magnitude
+
+    ds_clim_slp = _load_clim(
+        CLIMATOLOGY_SLP_FILE, "SLP",
+        "Run step2_1 with --groups slp to download. SLP anomaly will be skipped."
+    )
+    if "msl" in result and ds_clim_slp is not None:
+        c_slp = _interp_clim(ds_clim_slp)
+        result["msl_anom"] = result["msl"] - c_slp["msl_clim"].values
+
+    return result
+
+
+# ============================================================================
+# SINGLE-CASE PROCESSING WITH STORM-CENTERED APPROACH
 # ============================================================================
 
 def _process_single_case(track_id):
     """
-    Process one cyclone case: open ERA5, compute all diagnostics.
-
-    Module-level function so that ``ProcessPoolExecutor`` can pickle it.
-    Uses module-level constants DATA_DIR, DOMAIN_SIZE, RESOLUTION and
-    all diagnostic functions defined above.
-
+    Process one cyclone case with STORM-CENTERED approach per timestep.
+    
+    METHODOLOGY (CORRECTED):
+    -------------------------
+    For each timestep in the ERA5 file:
+      1. Get the cyclone center position from the track data
+      2. Extract a storm-centered subdomain around that position
+      3. Compute diagnostics on the storm-centered grid
+    
+    Depending on COMPOSITE_MODE:
+      - "full_intensification": Return list of ALL storm-centered timesteps
+      - "central_time": Return only the CENTRAL timestep (storm-centered)
+    
     Parameters
     ----------
     track_id : int
         Cyclone track identifier.
-
+    
     Returns
     -------
     track_id : int
-    result : dict or None
-        If successful, a dict with keys (all values are 2-D ndarrays (ny, nx))
-
-        Total-field diagnostics (always present when ERA5 file exists):
-          'egr', 'pv_200', 'pv_850', 'adv_T_850', 'div_q_975',
-          'ke_adv_250', 'rk_criterion_250'
-          'msl' (optional, only if msl variable present in ERA5 file)
-          'u_250', 'u_850', 'u_975', 'v_250', 'v_850', 'v_975', 'q_975'
-
-        Diagnostics requiring 250 hPa climatology (step2_1, group '250hPa'):
-          'afc_250', 'ke_adv_250_anom'
-
-        Diagnostics requiring multi-level climatologies (step2_1):
-          'pv_200_anom'     (requires pv200 climatology)
-          'pv_850_anom'     (requires pv850 climatology)
-          'adv_T_850_anom'  (requires pv850 climatology)
-          'div_q_975_anom'  (requires mfd975 climatology)
-          'msl_anom'        (requires slp climatology)
-
-        If the file is missing or an error occurs, returns None.
+    results : list of dict or None
+        List of diagnostic dicts (one per timestep used).
+        For central_time mode, this is a single-element list.
+        Returns None if no valid timesteps could be processed.
     error : str or None
         Error message if processing failed.
+    metadata : dict
+        Processing metadata (n_timesteps_total, n_timesteps_used, n_skipped, etc.)
     """
     nc_file = DATA_DIR / f"{track_id}_era5.nc"
     meta_file = DATA_DIR / f"{track_id}_metadata.csv"
 
     if not nc_file.exists() or not meta_file.exists():
-        return track_id, None, "file_missing"
+        return track_id, None, "file_missing", {}
 
     try:
         ds = xr.open_dataset(nc_file)
         meta = pd.read_csv(meta_file).iloc[0]
-        clat = meta["track_center_lat"]
-        clon = meta["track_center_lon"]
-
-        ds_sub = extract_subdomain(ds, clat, clon, DOMAIN_SIZE)
-
-        # Temporal aggregation depends on COMPOSITE_MODE
-        tc = "valid_time" if "valid_time" in ds_sub.dims else "time"
         
+        # Get time coordinate
+        tc = "valid_time" if "valid_time" in ds.dims else "time"
+        era5_times = ds[tc].values
+        n_times = len(era5_times)
+        
+        if n_times == 0:
+            ds.close()
+            return track_id, None, "no_timesteps", {}
+        
+        # Get cyclone positions for all timesteps
+        positions = get_cyclone_positions_for_case(track_id, era5_times)
+        central_idx = positions.get("central_idx", n_times // 2)
+        
+        # Determine which timesteps to process based on mode
         if COMPOSITE_MODE == "central_time":
-            # Use only the central timestep of intensification phase
-            n_times = len(ds_sub[tc])
-            if n_times == 0:
-                return track_id, None, "no_timesteps"
-            central_idx = n_times // 2  # for odd N: middle; for even N: just after middle
-            ds_mean = ds_sub.isel({tc: central_idx})
-        else:
-            # Default: mean over all timesteps (full_intensification)
-            ds_mean = ds_sub.mean(dim=tc)
-
-        pc = "pressure_level" if "pressure_level" in ds_mean.coords else "level"
-        levels = ds_mean[pc].values
-
-        # ── Keep DataArrays so lat/lon coords are visible during debugging ──
-        u_da = ds_mean["u"]
-        v_da = ds_mean["v"]
-        T_da = ds_mean["t"]
-        z_da = ds_mean["z"]
-        q_da = ds_mean["q"]
-
-        def _idx(target_hPa):
-            return int(np.argmin(np.abs(levels - target_hPa)))
-
-        def _sel(da, target_hPa):
-            return da.isel({pc: _idx(target_hPa)})
-
-        # ── 2-D DataArrays with physical units attached ───────────────────
-        u_250 = _sel(u_da, 250) * units("m/s")
-        u_500 = _sel(u_da, 500) * units("m/s")
-        u_850 = _sel(u_da, 850) * units("m/s")
-        u_975 = _sel(u_da, 975) * units("m/s")
-        v_250 = _sel(v_da, 250) * units("m/s")
-        v_500 = _sel(v_da, 500) * units("m/s")
-        v_850 = _sel(v_da, 850) * units("m/s")
-        v_975 = _sel(v_da, 975) * units("m/s")
-        T_500 = _sel(T_da, 500) * units.kelvin
-        T_850 = _sel(T_da, 850) * units.kelvin
-        z_500 = _sel(z_da, 500) * units("m**2/s**2")
-        z_850 = _sel(z_da, 850) * units("m**2/s**2")
-        q_975 = _sel(q_da, 975) * units("kg/kg")
-
-        result = {}
-
-        # ── EGR (500–850 hPa layer, Besson et al. 2021) ──────────
-        result["egr"] = eady_growth_rate(
-            u_500, v_500, u_850, v_850,
-            T_500, T_850, z_500, z_850,
-        )
-
-        # ── PV at 200 hPa (needs 175, 200, 225) ──────────────────
-        result["pv_200"] = compute_pv_at_level(
-            _sel(u_da, 175) * units("m/s"), _sel(u_da, 200) * units("m/s"), _sel(u_da, 225) * units("m/s"),
-            _sel(v_da, 175) * units("m/s"), _sel(v_da, 200) * units("m/s"), _sel(v_da, 225) * units("m/s"),
-            _sel(T_da, 175) * units.kelvin, _sel(T_da, 200) * units.kelvin, _sel(T_da, 225) * units.kelvin,
-            np.array([levels[_idx(175)], levels[_idx(200)], levels[_idx(225)]]) * 100.0,
-        )
-
-        # ── PV at 850 hPa (needs 825, 850, 875) ──────────────────
-        result["pv_850"] = compute_pv_at_level(
-            _sel(u_da, 825) * units("m/s"), _sel(u_da, 850) * units("m/s"), _sel(u_da, 875) * units("m/s"),
-            _sel(v_da, 825) * units("m/s"), _sel(v_da, 850) * units("m/s"), _sel(v_da, 875) * units("m/s"),
-            _sel(T_da, 825) * units.kelvin, _sel(T_da, 850) * units.kelvin, _sel(T_da, 875) * units.kelvin,
-            np.array([levels[_idx(825)], levels[_idx(850)], levels[_idx(875)]]) * 100.0,
-        )
-
-        # ── Temperature advection at 850 hPa ─────────────────────
-        result["adv_T_850"] = temperature_advection_850(u_850, v_850, T_850)
-
-        # ── SLP ───────────────────────────────────────────────────
-        if "msl" in ds_mean.data_vars:
-            msl_data = ds_mean["msl"]
-            if pc in msl_data.dims:
-                msl_data = msl_data.isel({pc: 0})
-            result["msl"] = msl_data.values.squeeze()
-
-        # ── Winds / humidity for overlays ─────────────────────────
-        result["u_250"] = u_250.values
-        result["u_850"] = u_850.values
-        result["u_975"] = u_975.values
-        result["v_250"] = v_250.values
-        result["v_850"] = v_850.values
-        result["v_975"] = v_975.values
-        result["q_975"] = q_975.values
-
-        # ── Moisture flux divergence at 975 hPa ──────────────────
-        result["div_q_975"] = moisture_flux_divergence_975(u_975, v_975, q_975)
-
-        # ── Kinetic energy advection at 250 hPa ──────────────────
-        result["ke_adv_250"] = kinetic_energy_advection_250(u_250, v_250)
-
-        # ── Rayleigh-Kuo criterion at 250 hPa ────────────────────
-        result["rk_criterion_250"] = rayleigh_kuo_criterion_250(u_250, v_250)
-
-        # ── AFC at 250 hPa (Orlanski & Katzfey 1991) ─────────────
-        ds_clim = _load_clim(
-            CLIMATOLOGY_FILE, "250 hPa (AFC/KE adv)",
-            "Run step2_1 first.  AFC and KE_adv anomaly will be skipped."
-        )
-        if ds_clim is not None:
-            # Determine calendar month from case metadata
-            case_month = pd.Timestamp(meta["start_time"]).month
-
-            # Extract climatology for this month and interpolate
-            # to the cyclone subdomain grid
-            clim_month = ds_clim.sel(month=case_month)
-
-            # Subdomain coordinates from the case grid
-            case_lats = u_250.latitude.values
-            case_lons = u_250.longitude.values
-
-            # Interpolate climatology to case subdomain
-            clim_sub = clim_month.interp(
-                latitude=case_lats,
-                longitude=case_lons,
-                method="linear",
-            )
-
-            z_250 = _sel(z_da, 250) * units("m**2/s**2")
-
-            result["afc_250"] = ageostrophic_flux_convergence_250(
-                u_250, v_250, z_250,
-                clim_sub["u_clim"], clim_sub["v_clim"], clim_sub["z_clim"],
-            )
-
-            # ── BtCR diagnostics (Rivière 2006) ──────────────────────────
-            # Computed from the LOW-FREQUENCY (climatological) winds only.
-            # BtCR is a property of the background deformation field;
-            # the instantaneous cyclone winds are NOT used here.
-            btcr_dm, btcr_da = barotropic_critical_region_250(
-                clim_sub["u_clim"], clim_sub["v_clim"]
-            )
-            result["btcr_delta_m"]  = btcr_dm
-            result["btcr_dil_angle"] = btcr_da
-
-        # ── ANOMALY FIELDS ────────────────────────────────────────
-        # Anomalies follow the same convention as AFC: eddy (primed)
-        # inputs are computed first by subtracting the 30-year
-        # monthly climatological mean, then the diagnostic is applied
-        # to the anomaly inputs.  This isolates the eddy contribution
-        # and is consistent with the AFC temporal decomposition.
-        #
-        # All climatologies are loaded lazily (once per process) and
-        # skipped gracefully if the file is missing.
-
-        # Re-use case_month / case_lats / case_lons if already set,
-        # otherwise compute them now.
-        if 'case_month' not in dir():
-            case_month = pd.Timestamp(meta["start_time"]).month
-            case_lats  = u_250.latitude.values
-            case_lons  = u_250.longitude.values
-
-        def _interp_clim(ds_c):
-            """Interpolate monthly climatology slice to case subdomain."""
-            return ds_c.sel(month=case_month).interp(
-                latitude=case_lats, longitude=case_lons, method="linear"
-            )
-
-        def _clim_prime(clim_2d_raw, ref_da, unit_str):
-            """
-            Compute eddy perturbation:  X' = X − ΨX̅_m  (instantaneous minus climatology).
-
-            This sign convention is standard in synoptic-meteorology and
-            cyclone-dynamics literature:
-              Trenberth (1984), Orlanski & Katzfey (1991), Decker & Martin (2005).
-
-            Positive anomaly means the instantaneous value exceeds the
-            seasonal climatological background; negative means it is below.
-
-            clim_2d_raw: plain xr.DataArray (2-D, from climatology file)
-            ref_da     : instantaneous unit-tagged DataArray (same shape)
-            """
-            clim_da = (
-                xr.DataArray(clim_2d_raw.values,
-                             coords=ref_da.coords,
-                             dims=ref_da.dims)
-                * units(unit_str)
-            )
-            return ref_da - clim_da  # X' = X − X̅_m
-
-        def _prime(clim_ds, lev, da_field, clim_var, unit_str):
-            """Convenience wrapper: select level from clim_ds then call _clim_prime."""
-            raw = clim_ds[clim_var].sel(pressure_level=float(lev))
-            return _clim_prime(raw, da_field, unit_str)
-
-        def _clim_da(clim_ds, lev, ref_da, clim_var, unit_str):
-            """Build a unit-tagged DataArray of the climatological field at `lev`.
-
-            Unlike ``_prime``, does NOT subtract from the instantaneous field;
-            used to evaluate diagnostics on the climatological mean itself
-            (e.g., for computing the exact PV anomaly as
-            PV_anom = PV(total) − PV(clim) rather than the nonlinear
-            approximation PV(u', v', T')).
-            """
-            raw = clim_ds[clim_var].sel(pressure_level=float(lev))
-            return (xr.DataArray(raw.values, coords=ref_da.coords, dims=ref_da.dims)
-                   * units(unit_str))
-
-        # ── KE advection anomaly (250 hPa, uses existing 250 hPa clim) ──
-        if ds_clim is not None:
-            c250 = _interp_clim(ds_clim)
-            u_250_p = _clim_prime(c250["u_clim"], u_250, "m/s")
-            v_250_p = _clim_prime(c250["v_clim"], v_250, "m/s")
-            result["ke_adv_250_anom"] = kinetic_energy_advection_250(u_250_p, v_250_p)
-            # Store eddy winds for anomaly figure overlays (X' = X − X̅_m)
-            result["u_250_prime"] = u_250_p.metpy.unit_array.magnitude
-            result["v_250_prime"] = v_250_p.metpy.unit_array.magnitude
-
-        # ── PV@200 anomaly (175/200/225 hPa) ─────────────────────
-        ds_clim_pv200 = _load_clim(
-            CLIMATOLOGY_PV200_FILE, "PV200",
-            "Run step2_1 first.  PV@200 anomaly will be skipped."
-        )
-        if ds_clim_pv200 is not None:
-            c200 = _interp_clim(ds_clim_pv200)
-            p3_200 = np.array([levels[_idx(175)], levels[_idx(200)], levels[_idx(225)]]) * 100.0
-
-            # Exact PV anomaly: PV(total) − PV(climatology).
-            # Using PV(u', v', T') instead would be the pure-eddy approximation
-            # which omits cross terms and can give the wrong sign in the SH
-            # (PV is nonlinear — see §3.10 note in SCIENTIFIC_NOTES.md).
-            pv_200_clim = compute_pv_at_level(
-                _clim_da(c200, 175, _sel(u_da, 175)*units("m/s"), "u_clim", "m/s"),
-                _clim_da(c200, 200, _sel(u_da, 200)*units("m/s"), "u_clim", "m/s"),
-                _clim_da(c200, 225, _sel(u_da, 225)*units("m/s"), "u_clim", "m/s"),
-                _clim_da(c200, 175, _sel(v_da, 175)*units("m/s"), "v_clim", "m/s"),
-                _clim_da(c200, 200, _sel(v_da, 200)*units("m/s"), "v_clim", "m/s"),
-                _clim_da(c200, 225, _sel(v_da, 225)*units("m/s"), "v_clim", "m/s"),
-                _clim_da(c200, 175, _sel(T_da, 175)*units.kelvin, "t_clim", "kelvin"),
-                _clim_da(c200, 200, _sel(T_da, 200)*units.kelvin, "t_clim", "kelvin"),
-                _clim_da(c200, 225, _sel(T_da, 225)*units.kelvin, "t_clim", "kelvin"),
-                p3_200,
-            )
-            result["pv_200_anom"] = result["pv_200"] - pv_200_clim
-
-        # ── T_adv@850 anomaly + PV@850 anomaly (825/850/875 hPa) ─
-        ds_clim_pv850 = _load_clim(
-            CLIMATOLOGY_PV850_FILE, "PV850",
-            "Run step2_1 first.  PV@850 and T_adv@850 anomalies will be skipped."
-        )
-        if ds_clim_pv850 is not None:
-            c850 = _interp_clim(ds_clim_pv850)
-
-            # Temperature advection anomaly uses eddy u', v', T' at 850 hPa
-            u_850_p = _prime(c850, 850, u_850, "u_clim", "m/s")
-            v_850_p = _prime(c850, 850, v_850, "v_clim", "m/s")
-            T_850_p = _prime(c850, 850, T_850, "t_clim", "kelvin")
-            result["adv_T_850_anom"] = temperature_advection_850(u_850_p, v_850_p, T_850_p)
-            # Store eddy winds for anomaly figure overlays (X' = X − X̅_m)
-            result["u_850_prime"] = u_850_p.metpy.unit_array.magnitude
-            result["v_850_prime"] = v_850_p.metpy.unit_array.magnitude
-
-            # Exact PV anomaly: PV(total) − PV(climatology).
-            # See §3.10 note in SCIENTIFIC_NOTES.md for rationale.
-            p3_850 = np.array([levels[_idx(825)], levels[_idx(850)], levels[_idx(875)]]) * 100.0
-            pv_850_clim = compute_pv_at_level(
-                _clim_da(c850, 825, _sel(u_da, 825)*units("m/s"), "u_clim", "m/s"),
-                _clim_da(c850, 850, _sel(u_da, 850)*units("m/s"), "u_clim", "m/s"),
-                _clim_da(c850, 875, _sel(u_da, 875)*units("m/s"), "u_clim", "m/s"),
-                _clim_da(c850, 825, _sel(v_da, 825)*units("m/s"), "v_clim", "m/s"),
-                _clim_da(c850, 850, _sel(v_da, 850)*units("m/s"), "v_clim", "m/s"),
-                _clim_da(c850, 875, _sel(v_da, 875)*units("m/s"), "v_clim", "m/s"),
-                _clim_da(c850, 825, _sel(T_da, 825)*units.kelvin, "t_clim", "kelvin"),
-                _clim_da(c850, 850, _sel(T_da, 850)*units.kelvin, "t_clim", "kelvin"),
-                _clim_da(c850, 875, _sel(T_da, 875)*units.kelvin, "t_clim", "kelvin"),
-                p3_850,
-            )
-            result["pv_850_anom"] = result["pv_850"] - pv_850_clim
-
-        # ── Moisture flux divergence anomaly (975 hPa) ────────────
-        ds_clim_mfd = _load_clim(
-            CLIMATOLOGY_MFD975_FILE, "MFD975",
-            "Run step2_1 first.  Moisture flux div anomaly will be skipped."
-        )
-        if ds_clim_mfd is not None:
-            c975 = _interp_clim(ds_clim_mfd)
-
-            u_975_p = _prime(c975, 975, u_975, "u_clim", "m/s")
-            v_975_p = _prime(c975, 975, v_975, "v_clim", "m/s")
-            q_975_p = _prime(c975, 975, q_975, "q_clim", "kg/kg")
-            result["div_q_975_anom"] = moisture_flux_divergence_975(u_975_p, v_975_p, q_975_p)
-            # Store eddy winds for anomaly figure overlays (X' = X − X̅_m)
-            result["u_975_prime"] = u_975_p.metpy.unit_array.magnitude
-            result["v_975_prime"] = v_975_p.metpy.unit_array.magnitude
-
-        # ── SLP anomaly ───────────────────────────────────────────
-        ds_clim_slp = _load_clim(
-            CLIMATOLOGY_SLP_FILE, "SLP",
-            "Run step2_1 with --groups slp to download.  SLP anomaly will be skipped."
-        )
-        if "msl" in result and ds_clim_slp is not None:
-            c_slp = _interp_clim(ds_clim_slp)
-            result["msl_anom"] = result["msl"] - c_slp["msl_clim"].values
-
+            timesteps_to_process = [central_idx]
+        else:  # full_intensification
+            timesteps_to_process = list(range(n_times))
+        
+        # Get case month for climatology
+        case_month = pd.Timestamp(meta["start_time"]).month
+        
+        # Process each timestep
+        results = []
+        n_skipped_no_pos = 0
+        n_skipped_out_of_bounds = 0
+        
+        for t_idx in timesteps_to_process:
+            pos = positions.get(t_idx)
+            
+            if pos is None:
+                n_skipped_no_pos += 1
+                continue
+            
+            center_lat, center_lon = pos
+            
+            # Check if subdomain is within downloaded data
+            ok, err_msg = check_subdomain_available(ds, center_lat, center_lon, DOMAIN_SIZE)
+            if not ok:
+                n_skipped_out_of_bounds += 1
+                continue
+            
+            # Extract storm-centered subdomain for this timestep
+            ds_t = ds.isel({tc: t_idx})
+            ds_centered = extract_subdomain(ds_t, center_lat, center_lon, DOMAIN_SIZE)
+            
+            # Compute diagnostics
+            diag = _compute_diagnostics_for_timestep(ds_centered, case_month)
+            results.append(diag)
+        
         ds.close()
-        return track_id, result, None
+        
+        proc_metadata = {
+            "n_timesteps_total": n_times,
+            "n_timesteps_requested": len(timesteps_to_process),
+            "n_timesteps_used": len(results),
+            "n_skipped_no_position": n_skipped_no_pos,
+            "n_skipped_out_of_bounds": n_skipped_out_of_bounds,
+        }
+        
+        if len(results) == 0:
+            return track_id, None, "no_valid_timesteps", proc_metadata
+        
+        return track_id, results, None, proc_metadata
 
     except Exception as e:
-        return track_id, None, f"{type(e).__name__}: {e}"
+        return track_id, None, f"{type(e).__name__}: {e}", {}
 
 
 # ============================================================================
@@ -1357,89 +1481,137 @@ def compute_composite(cases, ep_label, n_jobs=1):
                 pbar.update(1)
             pbar.close()
 
-    # ── Collect successful results into accumulators ──────────────────────
-    scalar_accum: dict[str, list] = {
-        "egr": [], "pv_200": [], "pv_850": [], "adv_T_850": [],
-        "div_q_975": [], "ke_adv_250": [], "rk_criterion_250": [],
-        "afc_250": [], "msl": [],
-        # Anomaly fields (computed from eddy/primed inputs)
-        "ke_adv_250_anom": [], "adv_T_850_anom": [], "div_q_975_anom": [],
-        "pv_200_anom": [], "pv_850_anom": [], "msl_anom": [],
-        # Eddy (primed) winds stored for anomaly figure overlays (X' = X − X̅_m)
-        "u_250_prime": [], "v_250_prime": [],
-        "u_850_prime": [], "v_850_prime": [],
-        "u_975_prime": [], "v_975_prime": [],
-        # BtCR diagnostics (computed from climatological / low-frequency winds)
-        "btcr_delta_m": [], "btcr_dil_angle": [],
+    # ── Collect successful results via INCREMENTAL AVERAGING ────────────────
+    # NEW: Each case returns a LIST of per-timestep results (storm-centered).
+    # The composite is built from ALL storm-centered timesteps across all cases.
+    # We use online/incremental mean to avoid memory issues with large N.
+    #
+    # IMPORTANT: Use per-cell counting to handle NaN values properly.
+    # Each timestep may have NaN at different grid locations (e.g., edge cells
+    # outside climatology domain). Using simple sum += arr would propagate NaN
+    # to ALL cells. Instead, we track valid counts per cell.
+    
+    # Initialize accumulators as None (will be set to first valid field shape)
+    sum_accum: dict[str, np.ndarray | None] = {
+        "egr": None, "pv_200": None, "pv_850": None, "adv_T_850": None,
+        "div_q_975": None, "ke_adv_250": None, "rk_criterion_250": None,
+        "afc_250": None, "msl": None,
+        # Anomaly fields
+        "ke_adv_250_anom": None, "adv_T_850_anom": None, "div_q_975_anom": None,
+        "pv_200_anom": None, "pv_850_anom": None, "msl_anom": None,
+        # Eddy winds
+        "u_250_prime": None, "v_250_prime": None,
+        "u_850_prime": None, "v_850_prime": None,
+        "u_975_prime": None, "v_975_prime": None,
+        # BtCR diagnostics
+        "btcr_delta_m": None, "btcr_dil_angle": None,
     }
-    level_accum: dict[str, dict[int, list]] = {
-        "u": {250: [], 850: [], 975: []},
-        "v": {250: [], 850: [], 975: []},
-        "q": {975: []},
+    # Per-cell count arrays to handle NaN properly
+    count_accum: dict[str, np.ndarray | None] = {k: None for k in sum_accum}
+    
+    # Wind / humidity at levels - per-cell accumulation
+    level_sum: dict[str, dict[int, np.ndarray | None]] = {
+        "u": {250: None, 850: None, 975: None},
+        "v": {250: None, 850: None, 975: None},
+        "q": {975: None},
     }
-    track_ids_ok: list[int] = []
-    processed = 0
-    failed = 0
+    # Per-cell count arrays to handle NaN properly
+    level_count: dict[str, dict[int, np.ndarray | None]] = {
+        "u": {250: None, 850: None, 975: None},
+        "v": {250: None, 850: None, 975: None},
+        "q": {975: None},
+    }
+    
+    # Statistics for logging
+    cases_ok = 0
+    cases_failed = 0
+    total_timesteps = 0
+    total_skipped_no_pos = 0
+    total_skipped_oob = 0
 
-    for tid, result, error in raw_results:
-        if result is None:
+    for tid, results_list, error, meta in raw_results:
+        if results_list is None:
             if error and error != "file_missing":
                 logging.warning(f"      Error {tid}: {error}")
-            failed += 1
+            cases_failed += 1
             continue
 
-        # Scalars (total fields)
-        for key in ("egr", "pv_200", "pv_850", "adv_T_850",
-                     "div_q_975", "ke_adv_250", "rk_criterion_250",
-                     "afc_250"):
-            if key in result:
-                scalar_accum[key].append(result[key])
-        if "msl" in result:
-            scalar_accum["msl"].append(result["msl"])
+        # Update statistics from metadata
+        total_timesteps += meta.get("n_timesteps_used", 0)
+        total_skipped_no_pos += meta.get("n_skipped_no_position", 0)
+        total_skipped_oob += meta.get("n_skipped_out_of_bounds", 0)
+        cases_ok += 1
 
-        # Anomaly fields (collected only when climatology was available)
-        for key in ("ke_adv_250_anom", "adv_T_850_anom", "div_q_975_anom",
-                     "pv_200_anom", "pv_850_anom", "msl_anom",
-                     "u_250_prime", "v_250_prime",
-                     "u_850_prime", "v_850_prime",
-                     "u_975_prime", "v_975_prime"):
-            if key in result:
-                scalar_accum[key].append(result[key])
+        # Accumulate each storm-centered timestep's results (sum accumulation)
+        # CRITICAL: Use per-cell NaN-aware accumulation to avoid NaN propagation.
+        # Each timestep may have NaN at different edge cells; simple += would
+        # spread NaN to all cells after enough timesteps.
+        for result in results_list:
+            # Scalars (total fields)
+            for key in list(sum_accum.keys()):
+                if key in result:
+                    arr = result[key]
+                    # Handle both ndarray and xarray DataArray
+                    if hasattr(arr, 'values'):
+                        arr = arr.values  # xarray DataArray
+                    if hasattr(arr, 'magnitude'):
+                        arr = arr.magnitude  # pint quantity
+                    if isinstance(arr, np.ndarray):
+                        arr_f64 = arr.astype(np.float64)
+                        valid_mask = ~np.isnan(arr_f64)
+                        if sum_accum[key] is None:
+                            # Initialize sum with NaN replaced by 0, count with valid mask
+                            sum_accum[key] = np.where(valid_mask, arr_f64, 0.0)
+                            count_accum[key] = valid_mask.astype(np.int32)
+                        else:
+                            # Add only valid values; increment count only where valid
+                            sum_accum[key] += np.where(valid_mask, arr_f64, 0.0)
+                            count_accum[key] += valid_mask.astype(np.int32)
 
-        # BtCR fields (collected only when 250 hPa climatology was available)
-        for key in ("btcr_delta_m", "btcr_dil_angle"):
-            if key in result:
-                scalar_accum[key].append(result[key])
+            # Winds / humidity at levels
+            for var in ("u", "v"):
+                for lv in (250, 850, 975):
+                    key = f"{var}_{lv}"
+                    if key in result:
+                        arr = result[key]
+                        if hasattr(arr, 'values'):
+                            arr = arr.values
+                        if hasattr(arr, 'magnitude'):
+                            arr = arr.magnitude
+                        if isinstance(arr, np.ndarray):
+                            arr_f64 = arr.astype(np.float64)
+                            valid_mask = ~np.isnan(arr_f64)
+                            if level_sum[var][lv] is None:
+                                level_sum[var][lv] = np.where(valid_mask, arr_f64, 0.0)
+                                level_count[var][lv] = valid_mask.astype(np.int32)
+                            else:
+                                level_sum[var][lv] += np.where(valid_mask, arr_f64, 0.0)
+                                level_count[var][lv] += valid_mask.astype(np.int32)
+            if "q_975" in result:
+                arr = result["q_975"]
+                if hasattr(arr, 'values'):
+                    arr = arr.values
+                if hasattr(arr, 'magnitude'):
+                    arr = arr.magnitude
+                if isinstance(arr, np.ndarray):
+                    arr_f64 = arr.astype(np.float64)
+                    valid_mask = ~np.isnan(arr_f64)
+                    if level_sum["q"][975] is None:
+                        level_sum["q"][975] = np.where(valid_mask, arr_f64, 0.0)
+                        level_count["q"][975] = valid_mask.astype(np.int32)
+                    else:
+                        level_sum["q"][975] += np.where(valid_mask, arr_f64, 0.0)
+                        level_count["q"][975] += valid_mask.astype(np.int32)
 
-        # Winds / humidity
-        for var in ("u", "v"):
-            for lv in (250, 850, 975):
-                level_accum[var][lv].append(result[f"{var}_{lv}"])
-        level_accum["q"][975].append(result["q_975"])
+    if total_timesteps == 0:
+        raise RuntimeError(f"No valid timesteps for {ep_label}")
+    
+    logging.info(f"      {ep_label}: cases_ok={cases_ok}, cases_failed={cases_failed}")
+    logging.info(f"      {ep_label}: total_timesteps={total_timesteps}, "
+                 f"skipped_no_pos={total_skipped_no_pos}, skipped_oob={total_skipped_oob}")
 
-        track_ids_ok.append(tid)
-        processed += 1
-
-    if processed == 0:
-        raise RuntimeError(f"No valid cases for {ep_label}")
-
-    logging.info(f"      {ep_label}: processed={processed}, failed={failed}")
-
-    # ── Assemble xr.DataArrays with track_id dimension ────────────────────
-    coords_yx = {"track_id": track_ids_ok, "y": y, "x": x}
-
-    def _make_da(arrays, name, long_name, units_str):
-        """Stack a list of 2-D (y, x) arrays → DataArray (track_id, y, x)."""
-        data = np.stack(arrays, axis=0)          # (n_cases, ny, nx)
-        return xr.DataArray(
-            data,
-            dims=["track_id", "y", "x"],
-            coords=coords_yx,
-            name=name,
-            attrs={"long_name": long_name, "units": units_str},
-        )
-
-    # Scalar / single-level derived fields
+    # ── Compute means from sum accumulators ───────────────────────────────
+    # Scalar / single-level derived fields specifications
     scalar_specs = {
         "egr":              ("Eady Growth Rate",                            "day-1"),
         "pv_200":           ("Potential Vorticity at 200 hPa",              "K m2 kg-1 s-1"),
@@ -1449,6 +1621,7 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "ke_adv_250":       ("KE Advection at 250 hPa",                     "m2 s-3"),
         "rk_criterion_250": ("Rayleigh-Kuo Criterion at 250 hPa",           "s-1 m-1"),
         "afc_250":          ("Ageostrophic Flux Convergence 250 hPa",        "m2 s-3"),
+        "msl":              ("Mean Sea Level Pressure",                      "Pa"),
         # Anomaly fields (eddy inputs relative to 30-yr monthly climatology)
         "ke_adv_250_anom":  ("KE Advection Anomaly at 250 hPa",             "m2 s-3"),
         "adv_T_850_anom":   ("Temperature Advection Anomaly at 850 hPa",    "K s-1"),
@@ -1467,75 +1640,51 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "btcr_delta_m":    ("BtCR Effective Deformation (sigma_m^2 - zeta_m^2)", "s-2"),
         "btcr_dil_angle":  ("BtCR Dilatation Axis Angle (where delta_m > 0)",    "rad"),
     }
-    da_scalars: dict[str, xr.DataArray] = {}
-    for var, (lname, ustr) in scalar_specs.items():
-        if scalar_accum[var]:
-            da_scalars[var] = _make_da(scalar_accum[var], var, lname, ustr)
+    
+    # ── Build output dataset (composite means) ────────────────────────────
+    data_vars: dict = {}
 
-    # Wind / humidity: build DataArray with an extra "level" dim  (track_id, level, y, x)
+    for var, (lname, ustr) in scalar_specs.items():
+        if sum_accum[var] is not None and count_accum[var] is not None:
+            # Per-cell mean: sum / count, with NaN where count == 0
+            cnt = count_accum[var].astype(np.float64)
+            mean_arr = np.where(cnt > 0, sum_accum[var] / cnt, np.nan)
+            data_vars[var] = (["y", "x"], mean_arr, {"long_name": lname, "units": ustr})
+
+    # Wind / humidity means at each level
     wind_specs = {
         "u": ("Zonal Wind",         "m s-1"),
         "v": ("Meridional Wind",    "m s-1"),
         "q": ("Specific Humidity",  "kg kg-1"),
     }
-    da_levels: dict[str, xr.DataArray] = {}
     for var, (lname, ustr) in wind_specs.items():
-        lev_dict = level_accum[var]
-        levs = sorted(lev_dict.keys())
-        stacked = np.stack(
-            [np.stack(lev_dict[lv], axis=0) for lv in levs],
-            axis=1,
-        )   # (n_cases, n_levels, ny, nx)
-        da_levels[var] = xr.DataArray(
-            stacked,
-            dims=["track_id", "level", "y", "x"],
-            coords={
-                "track_id": track_ids_ok,
-                "level": levs,
-                "y": y,
-                "x": x,
-            },
-            name=var,
-            attrs={"long_name": lname, "units": ustr},
-        )
-
-    # ── Build output dataset (composite means) ────────────────────────────
-    data_vars: dict = {}
-
-    for var, da in da_scalars.items():
-        data_vars[var] = (["y", "x"],
-                          da.mean(dim="track_id").values,
-                          da.attrs)
-
-    # Wind means at each level stored as e.g. u_250, u_850, u_975
-    for var, da in da_levels.items():
-        for lv in da.level.values:
-            key = f"{var}_{lv}"
-            data_vars[key] = (
-                ["y", "x"],
-                da.sel(level=lv).mean(dim="track_id").values,
-                {"long_name": f"{da.attrs['long_name']} at {lv} hPa",
-                 "units": da.attrs["units"]},
-            )
+        for lv in level_sum[var]:
+            if level_sum[var][lv] is not None and level_count[var][lv] is not None:
+                key = f"{var}_{lv}"
+                cnt = level_count[var][lv].astype(np.float64)
+                mean_arr = np.where(cnt > 0, level_sum[var][lv] / cnt, np.nan)
+                data_vars[key] = (["y", "x"], mean_arr,
+                                  {"long_name": f"{lname} at {lv} hPa", "units": ustr})
 
     ds_out = xr.Dataset(data_vars, coords={"x": x, "y": y})
 
-    if scalar_accum["msl"]:
-        msl_da = _make_da(scalar_accum["msl"], "msl",
-                          "Mean Sea Level Pressure", "Pa")
-        ds_out["msl"] = (["y", "x"], msl_da.mean(dim="track_id").values,
-                         msl_da.attrs)
-
     ds_out.attrs["ep_label"] = ep_label
-    ds_out.attrs["n_cases"] = processed
-    ds_out.attrs["n_failed"] = failed
+    ds_out.attrs["n_cases"] = cases_ok
+    ds_out.attrs["n_cases_failed"] = cases_failed
+    ds_out.attrs["n_timesteps"] = total_timesteps
+    ds_out.attrs["n_timesteps_skipped_no_position"] = total_skipped_no_pos
+    ds_out.attrs["n_timesteps_skipped_out_of_bounds"] = total_skipped_oob
     ds_out.attrs["domain_size_deg"] = DOMAIN_SIZE
     ds_out.attrs["resolution_deg"] = RESOLUTION
     ds_out.attrs["composite_mode"] = COMPOSITE_MODE
     ds_out.attrs["composite_mode_description"] = (
-        "full_intensification: mean over all timesteps in intensification phase" 
+        "full_intensification: mean over ALL storm-centered timesteps from intensification phase" 
         if COMPOSITE_MODE == "full_intensification" 
-        else "central_time: single central timestep of intensification phase"
+        else "central_time: only the CENTRAL storm-centered timestep of each cyclone"
+    )
+    ds_out.attrs["methodology"] = (
+        "STORM-CENTERED: Each timestep's domain is centered on the actual cyclone "
+        "position at that instant, extracted from the track data."
     )
 
     return ds_out

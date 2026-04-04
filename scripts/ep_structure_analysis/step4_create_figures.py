@@ -102,6 +102,29 @@ EP_LABELS = {"EP1": "EP1", "EP2": "EP2"}
 # HELPERS
 # ============================================================================
 
+def _safe_symmetric_levels(absmax, n_levels=21, min_absmax=1e-10):
+    """
+    Create symmetric contour levels, handling edge case where absmax is zero.
+    
+    Parameters
+    ----------
+    absmax : float
+        Maximum absolute value for symmetric range.
+    n_levels : int
+        Number of contour levels.
+    min_absmax : float
+        Minimum absmax to prevent invalid contour levels.
+    
+    Returns
+    -------
+    np.ndarray
+        Contour levels from -absmax to absmax.
+    """
+    if np.isnan(absmax) or absmax < min_absmax:
+        absmax = min_absmax
+    return np.linspace(-absmax, absmax, n_levels)
+
+
 def setup_logging():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     log_file = LOG_DIR / f"ep_structure_figures_{timestamp}.log"
@@ -404,7 +427,7 @@ def figure_advT850(datasets):
     for ep in ["EP1", "EP2"]:
         d = datasets[ep]["adv_T_850"].values * 3600  # K/h
         absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
-    clevels = np.linspace(-absmax, absmax, 21)
+    clevels = _safe_symmetric_levels(absmax, 21)
 
     for i, ep in enumerate(["EP1", "EP2"]):
         ax = axes[i]
@@ -589,7 +612,7 @@ def figure_rk_criterion(datasets):
     for ep in ["EP1", "EP2"]:
         data = datasets[ep]["rk_criterion_250"].values
         absmax = max(absmax, np.nanmax(np.abs(data)))
-    clevels = np.linspace(-absmax, absmax, 21)
+    clevels = _safe_symmetric_levels(absmax, 21)
 
     for i, ep in enumerate(["EP1", "EP2"]):
         ax = axes[i]
@@ -645,7 +668,7 @@ def figure_ke_advection(datasets):
     for ep in ["EP1", "EP2"]:
         data = datasets[ep]["ke_adv_250"].values
         absmax = max(absmax, np.nanmax(np.abs(data)))
-    clevels = np.linspace(-absmax, absmax, 21)
+    clevels = _safe_symmetric_levels(absmax, 21)
 
     for i, ep in enumerate(["EP1", "EP2"]):
         ax = axes[i]
@@ -714,7 +737,11 @@ def figure_afc(datasets):
     for ep in ["EP1", "EP2"]:
         d = datasets[ep]["afc_250"].values
         absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
-    clevels = np.linspace(-absmax, absmax, 21)
+    
+    # Safety: ensure valid contour levels
+    if absmax < 1e-10:
+        absmax = 1e-5  # fallback for all-zero data
+    clevels = _safe_symmetric_levels(absmax, 21)
 
     for i, ep in enumerate(["EP1", "EP2"]):
         ax = axes[i]
@@ -787,7 +814,7 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
         absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
     if absmax == 0.0:
         absmax = 1e-10  # guard against all-zero fields
-    clevels = np.linspace(-absmax, absmax, 21)
+    clevels = _safe_symmetric_levels(absmax, 21)
     wscale = wind_scale if wind_scale is not None else VECTOR_SCALE
 
     for i, ep in enumerate(["EP1", "EP2"]):
@@ -813,7 +840,7 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
 
     fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = FIGURES_DIR / out_name
+    out = _figure_path(out_name)  # Use _figure_path to add mode suffix
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
@@ -958,7 +985,7 @@ def figure_btcr(datasets):
     for ep in ["EP1", "EP2"]:
         arr = datasets[ep]["btcr_delta_m"].values * SCALE
         absmax = max(absmax, np.nanpercentile(np.abs(arr), 98))
-    clevels = np.linspace(-absmax, absmax, 41)
+    clevels = _safe_symmetric_levels(absmax, 41)
 
     for i, ep in enumerate(["EP1", "EP2"]):
         ax = axes[i]
@@ -1064,7 +1091,7 @@ def figure_wind250_anom(datasets):
         absmax = max(absmax, np.nanpercentile(np.abs(anom), 98))
     if absmax == 0.0:
         absmax = 1e-10
-    clevels = np.linspace(-absmax, absmax, 21)
+    clevels = _safe_symmetric_levels(absmax, 21)
 
     for i, ep in enumerate(["EP1", "EP2"]):
         ax = axes[i]

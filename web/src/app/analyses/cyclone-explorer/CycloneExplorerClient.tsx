@@ -1,10 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Image from 'next/image'
 import type { CycloneExplorerManifest, CycloneData } from '@/lib/types'
 import { ENERGY_PATTERNS } from '@/lib/constants'
 import { figureUrl } from '@/lib/client-utils'
+import FallbackImage from '@/components/analysis/FallbackImage'
 
 // Simplified South Atlantic coastline (lon, lat pairs for SVG rendering)
 // Coverage: roughly -80°W to +50°E, -80°S to -10°S
@@ -432,12 +432,11 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
               </div>
               {panelPath ? (
                 <div className="relative aspect-[10/9] w-full overflow-hidden rounded-lg bg-slate-50 shadow-inner">
-                  <Image
+                  <FallbackImage
                     src={panelPath}
                     alt={`Cyclone ${selectedCyclone.track_id} at timestep ${currentTimestepIdx} - ${selectedProductMeta?.label ?? selectedCategory}`}
                     fill
                     className="object-contain"
-                    priority
                   />
                 </div>
               ) : (

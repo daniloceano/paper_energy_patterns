@@ -1,13 +1,13 @@
 'use client'
 
 import { useMemo } from 'react'
-import Image from 'next/image'
 import CompositeModeSwitcher, { 
   CompositeModeProvider, 
   useCompositeMode, 
   type CompositeMode,
   MODE_INFO 
 } from '@/components/analysis/CompositeModeSwitcher'
+import FallbackImage from '@/components/analysis/FallbackImage'
 import { figureUrl } from '@/lib/client-utils'
 import { DATASET_STATS } from '@/lib/constants'
 import type { Diagnostic } from '@/lib/types'
@@ -125,13 +125,12 @@ function DiagnosticCompositesContent({
               </p>
             </div>
             <div className="p-4">
-              <Image
+              <FallbackImage
                 src={figureUrl(realFig!.api_path)}
                 alt={`${diag.name} composite — EP1 vs EP2 (${MODE_INFO[mode].label})`}
                 width={1200}
                 height={600}
                 className="w-full rounded-lg"
-                unoptimized
                 key={realFig!.api_path} // Force re-render on mode change
               />
             </div>
@@ -166,13 +165,12 @@ function DiagnosticCompositesContent({
                   </p>
                 </div>
                 <div className="p-4">
-                  <Image
+                  <FallbackImage
                     src={figureUrl(anomFig!.api_path)}
                     alt={`${diag.name} anomaly composite — EP1 vs EP2 (${MODE_INFO[mode].label})`}
                     width={1200}
                     height={600}
                     className="w-full rounded-lg"
-                    unoptimized
                     key={anomFig!.api_path}
                   />
                 </div>

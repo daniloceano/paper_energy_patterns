@@ -2,6 +2,13 @@
 
 Este guia documenta o fluxo completo de publicação do site, desde gerar as figuras até o deploy na Vercel. É destinado a qualquer pessoa que precise atualizar o projeto, mesmo sem lembrar os detalhes de uma sessão anterior.
 
+> **⚠️ CRITICAL DEPLOYMENT ORDER:**
+> 1. ✅ Upload figures to Supabase **FIRST**
+> 2. ✅ Set `NEXT_PUBLIC_SUPABASE_FIGURES_URL` in Vercel **SECOND**
+> 3. ✅ Deploy
+>
+> **If you skip step 1**, figures will fail to load (they fallback to `/figures/` but cyclone_explorer won't be there).
+
 ---
 
 ## Conceitos fundamentais
@@ -112,17 +119,33 @@ Para o site em produção (configurar no painel da Vercel):
 
 1. Importar o repositório na Vercel
 2. **Root Directory**: `web` (crítico — sem isso o build falha)
-3. Adicionar variável `NEXT_PUBLIC_SUPABASE_FIGURES_URL` com a URL do bucket
+3. **CRITICAL:** Do NOT add `NEXT_PUBLIC_SUPABASE_FIGURES_URL` until figures are uploaded (see below)
 
-### Upload inicial das figuras
+⚠️ **WARNING:** Setting `NEXT_PUBLIC_SUPABASE_FIGURES_URL` without uploading figures will cause all images to fail loading with fallback to local assets. The site will work, but figures may not load if they're not in `web/public/figures/`.
+
+### Upload inicial das figuras (REQUIRED before setting env var)
+
+**IMPORTANT:** Upload figures to Supabase BEFORE setting `NEXT_PUBLIC_SUPABASE_FIGURES_URL` in Vercel.
 
 ```bash
 # Da raiz do repositório:
 python scripts/web/upload_figures_to_supabase.py --dry-run   # preview
 python scripts/web/upload_figures_to_supabase.py             # upload real
+
+# CRITICAL: Upload includes ALL directories:
+#  - cluster/
+#  - main/
+#  - ep_structure/      (composite figures)
+#  - ck_subterms/
+#  - cyclone_explorer/  (excluded from git/vercel but MUST be in Supabase)
 ```
 
 O script imprime o valor exato de `NEXT_PUBLIC_SUPABASE_FIGURES_URL` ao final.
+
+**After successful upload:**
+1. Go to Vercel Dashboard → Your Project → Settings → Environment Variables
+2. Add `NEXT_PUBLIC_SUPABASE_FIGURES_URL` with the value printed by the script
+3. Redeploy the site
 
 ---
 

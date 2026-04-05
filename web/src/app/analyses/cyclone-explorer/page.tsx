@@ -6,36 +6,37 @@ import CycloneExplorerClient from './CycloneExplorerClient'
 import manifestData from '@/content/cyclone_explorer_manifest.json'
 import type { CycloneExplorerManifest } from '@/lib/types'
 
+// Featured cyclones: top 3 most intense from each EP based on max vor42
 const FEATURED_CYCLONES = [
   {
-    trackId: '19790135',
-    title: 'EP1 reference cyclone',
-    subtitle: 'Long-lived case with dynamic assets available in the subset validation.',
+    trackId: '19920472',
+    title: 'EP1 #1 most intense',
+    subtitle: 'Maximum relative vorticity at 850 hPa: 15.95 ×10⁻⁵ s⁻¹',
   },
   {
-    trackId: '19790205',
-    title: 'EP1 mature case',
-    subtitle: 'Extended intensification phase, useful to inspect temporal evolution.',
+    trackId: '19820917',
+    title: 'EP1 #2 most intense',
+    subtitle: 'Maximum relative vorticity at 850 hPa: 15.38 ×10⁻⁵ s⁻¹',
   },
   {
-    trackId: '19800411',
-    title: 'EP1 spring case',
-    subtitle: 'Compact EP1 event with a clear intensification window.',
+    trackId: '19920418',
+    title: 'EP1 #3 most intense',
+    subtitle: 'Maximum relative vorticity at 850 hPa: 14.98 ×10⁻⁵ s⁻¹',
   },
   {
-    trackId: '19790048',
-    title: 'EP2 reference cyclone',
-    subtitle: 'Long-lived EP2 event with dynamic assets available in the subset validation.',
+    trackId: '19950629',
+    title: 'EP2 #1 most intense',
+    subtitle: 'Maximum relative vorticity at 850 hPa: 15.53 ×10⁻⁵ s⁻¹',
   },
   {
-    trackId: '19790669',
-    title: 'EP2 mature case',
-    subtitle: 'Representative EP2 cyclone with a broader temporal window.',
+    trackId: '20070643',
+    title: 'EP2 #2 most intense',
+    subtitle: 'Maximum relative vorticity at 850 hPa: 15.48 ×10⁻⁵ s⁻¹',
   },
   {
-    trackId: '19790933',
-    title: 'EP2 transition case',
-    subtitle: 'Useful to compare synoptic and dynamic fields in late spring conditions.',
+    trackId: '19870253',
+    title: 'EP2 #3 most intense',
+    subtitle: 'Maximum relative vorticity at 850 hPa: 15.30 ×10⁻⁵ s⁻¹',
   },
 ] as const
 
@@ -69,6 +70,15 @@ export default function CycloneExplorerPage() {
             </p>
           </ResultSummaryCallout>
         )}
+
+        <ResultSummaryCallout type="info" title="Selection Criteria">
+          <p>
+            This explorer shows the <strong>10 most intense cyclones from each energy pattern</strong> (EP1 and EP2), 
+            selected based on maximum relative vorticity at 850 hPa (vor42) during the intensification phase. 
+            Intensity is defined by the peak absolute value of relative vorticity (units: 10⁻⁵ s⁻¹), 
+            a standard metric for cyclone strength in the Southern Hemisphere.
+          </p>
+        </ResultSummaryCallout>
 
         <ResultSummaryCallout type="info" title="How to Use">
           <p>

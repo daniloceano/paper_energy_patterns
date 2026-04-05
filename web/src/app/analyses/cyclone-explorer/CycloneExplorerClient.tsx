@@ -433,6 +433,7 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
               {panelPath ? (
                 <div className="relative aspect-[10/9] w-full overflow-hidden rounded-lg bg-slate-50 shadow-inner">
                   <FallbackImage
+                    key={panelPath}
                     src={panelPath}
                     alt={`Cyclone ${selectedCyclone.track_id} at timestep ${currentTimestepIdx} - ${selectedProductMeta?.label ?? selectedCategory}`}
                     fill
@@ -453,6 +454,12 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
                 <strong>Product:</strong> {selectedProductMeta?.label ?? 'Not available'}.
                 <span className="ml-1 text-slate-400">{selectedProductMeta?.description ?? ''}</span>
               </p>
+              {/* Debug info - shows current image path */}
+              {process.env.NODE_ENV === 'development' && panelPath && (
+                <p className="mt-1 text-[10px] font-mono text-slate-400 break-all">
+                  <span className="font-semibold">Path:</span> {panelPath}
+                </p>
+              )}
             </div>
           </div>
         </div>

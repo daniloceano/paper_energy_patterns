@@ -14,11 +14,13 @@
  * - First tries to load from Supabase (if NEXT_PUBLIC_SUPABASE_FIGURES_URL is set)
  * - On 404/error, automatically falls back to /figures/ (local public assets)
  * - Shows error state if both fail
+ * - REACTIVE: Updates the image when src prop changes (critical for explorers with
+ *   dynamic selection like Cyclone Explorer)
  */
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image, { ImageProps } from 'next/image'
 import { AlertCircle } from 'lucide-react'
 
@@ -37,6 +39,16 @@ export default function FallbackImage({
 }: FallbackImageProps) {
   const [currentSrc, setCurrentSrc] = useState(src)
   const [hasError, setHasError] = useState(false)
+  const prevSrcRef = useRef(src)
+
+  // Reset state when src prop changes (critical for reactivity!)
+  useEffect(() => {
+    if (src !== prevSrcRef.current) {
+      prevSrcRef.current = src
+      setCurrentSrc(src)
+      setHasError(false)
+    }
+  }, [src])
 
   const handleError = () => {
     // If src is a Supabase URL and we haven't tried fallback yet

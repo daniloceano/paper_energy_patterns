@@ -13,9 +13,16 @@ Selection Criteria:
 - ALL cyclones from these clusters are used (no additional lifecycle filtering)
 - Consistency: Same cyclones used in clustering are used here
 
+Intensity Subset:
+- Additionally selects the 10 most intense cyclones per EP group
+- Intensity metric: maximum Ke (eddy kinetic energy) during intensification
+- Used for the 'intense_10' composite mode in step3
+
 Output:
-- results/ep_structure/ep1_cases.csv
-- results/ep_structure/ep2_cases.csv
+- results/ep_structure/ep1_cases.csv           (all EP1 cyclones)
+- results/ep_structure/ep2_cases.csv           (all EP2 cyclones)
+- results/ep_structure/ep1_top10_intense.csv   (10 most intense EP1)
+- results/ep_structure/ep2_top10_intense.csv   (10 most intense EP2)
 - figures/ep_structure/tracks/ep1_tracks_overview.png
 - figures/ep_structure/tracks/ep2_tracks_overview.png
 
@@ -98,6 +105,92 @@ def get_intensification_info(track_id, tracks_df):
     center_lon = track_intens.loc[closest_idx, "lon vor"]
 
     return start_time, end_time, n_timesteps, center_lat, center_lon
+
+
+def get_max_ke_during_intensification(track_id):
+    """
+    Get maximum eddy kinetic energy (Ke) during intensification phase.
+    
+    This metric is used to rank cyclone intensity. Ke represents the kinetic
+    energy associated with the eddy (perturbation) component of the wind.
+    Higher Ke values indicate more energetically intense cyclones.
+    
+    Returns max Ke (float) or None if data unavailable.
+    """
+    lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
+    periods_file = _resolve_csv(lec_dir / "periods.csv")
+    results_file = _resolve_csv(lec_dir / f"{track_id}_ERA5_track_results.csv")
+    
+    if periods_file is None or results_file is None:
+        return None
+    
+    try:
+        periods = pd.read_csv(periods_file, index_col=0)
+        if "intensification" not in periods.index:
+            return None
+        
+        intensification = periods.loc["intensification"]
+        start_time = pd.to_datetime(intensification["start"])
+        end_time = pd.to_datetime(intensification["end"])
+        
+        # Load energetics results
+        results = pd.read_csv(results_file, index_col=0)
+        results.index = pd.to_datetime(results.index)
+        
+        # Filter to intensification period
+        mask = (results.index >= start_time) & (results.index <= end_time)
+        intens_data = results.loc[mask]
+        
+        if len(intens_data) == 0 or "Ke" not in intens_data.columns:
+            return None
+        
+        return intens_data["Ke"].max()
+    except Exception:
+        return None
+
+
+def select_top10_intense(ep_df, ep_label):
+    """
+    Select the 10 most intense cyclones from an EP group based on max Ke.
+    
+    Parameters
+    ----------
+    ep_df : DataFrame
+        DataFrame with track_id and other case info
+    ep_label : str
+        "EP1" or "EP2" for logging
+    
+    Returns
+    -------
+    DataFrame with the 10 most intense cases
+    """
+    print(f"\n   Selecting top 10 most intense {ep_label} cyclones...")
+    
+    # Get max Ke for each cyclone
+    ke_values = []
+    for _, row in ep_df.iterrows():
+        max_ke = get_max_ke_during_intensification(row["track_id"])
+        ke_values.append(max_ke)
+    
+    ep_df = ep_df.copy()
+    ep_df["max_ke"] = ke_values
+    
+    # Filter out cases without Ke data
+    valid = ep_df[ep_df["max_ke"].notna()]
+    n_valid = len(valid)
+    print(f"      Cases with Ke data: {n_valid}/{len(ep_df)}")
+    
+    if n_valid < 10:
+        print(f"      Warning: Only {n_valid} cases available, using all")
+        top10 = valid.nlargest(n_valid, "max_ke")
+    else:
+        top10 = valid.nlargest(10, "max_ke")
+    
+    # Report intensity range
+    print(f"      Max Ke range: {top10['max_ke'].min():.0f} – {top10['max_ke'].max():.0f} J/m²")
+    
+    # Drop max_ke column before returning (not needed in output)
+    return top10.drop(columns=["max_ke"])
 
 
 def plot_tracks(selected_df, tracks_df, ep_label, color):
@@ -279,7 +372,7 @@ def main():
     ep1_df = select_ep_cases("EP1", 0, tracks_df, clustered_df)
     ep2_df = select_ep_cases("EP2", 2, tracks_df, clustered_df)
 
-    # 4. Save
+    # 4. Save all cases
     print("\n4. Saving results...")
     ep1_csv = OUTPUT_DIR / "ep1_cases.csv"
     ep2_csv = OUTPUT_DIR / "ep2_cases.csv"
@@ -288,17 +381,29 @@ def main():
     print(f"   Saved: {ep1_csv}")
     print(f"   Saved: {ep2_csv}")
 
-    # 5. Visualisations
-    print("\n5. Creating track visualisations...")
+    # 5. Select and save top-10 most intense cyclones per EP
+    print("\n5. Selecting top-10 most intense cyclones per EP...")
+    ep1_top10 = select_top10_intense(ep1_df, "EP1")
+    ep2_top10 = select_top10_intense(ep2_df, "EP2")
+    
+    ep1_top10_csv = OUTPUT_DIR / "ep1_top10_intense.csv"
+    ep2_top10_csv = OUTPUT_DIR / "ep2_top10_intense.csv"
+    ep1_top10.to_csv(ep1_top10_csv, index=False)
+    ep2_top10.to_csv(ep2_top10_csv, index=False)
+    print(f"   Saved: {ep1_top10_csv}")
+    print(f"   Saved: {ep2_top10_csv}")
+
+    # 6. Visualisations
+    print("\n6. Creating track visualisations...")
     plot_tracks(ep1_df, tracks_df, "EP1", color="gold")
     plot_tracks(ep2_df, tracks_df, "EP2", color="dodgerblue")
 
-    # 6. Summary
+    # 7. Summary
     print("\n" + "=" * 70)
     print("STEP 1 COMPLETE")
     print("=" * 70)
-    print(f"   EP1 cases: {len(ep1_df)}")
-    print(f"   EP2 cases: {len(ep2_df)}")
+    print(f"   EP1 cases: {len(ep1_df)} (top-10 intense: {len(ep1_top10)})")
+    print(f"   EP2 cases: {len(ep2_df)} (top-10 intense: {len(ep2_top10)})")
     print(f"   Total:     {len(ep1_df) + len(ep2_df)}")
     print(
         f"\nNext step: python scripts/ep_structure_analysis/step2_download_era5_parallel.py"

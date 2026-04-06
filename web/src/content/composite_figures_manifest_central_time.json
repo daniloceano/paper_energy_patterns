@@ -42,10 +42,6 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_advT850_central_time.png"
     },
-    "anom": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_advT850_anom_central_time.png"
-    },
     "diff": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_advT850_diff_central_time.png"
@@ -93,10 +89,6 @@
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_ke_advection_central_time.png"
-    },
-    "anom": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_ke_advection_anom_central_time.png"
     },
     "diff": {
       "exists": true,

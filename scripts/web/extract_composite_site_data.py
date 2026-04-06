@@ -51,11 +51,11 @@ DIAGNOSTIC_FIGURE_MAP = {
     "egr":                      {"real": "composite_egr.png",                "diff": "composite_egr_diff.png"},
     "pv-200":                   {"real": "composite_pv200.png",          "anom": "composite_pv200_anom.png",          "diff": "composite_pv200_diff.png"},
     "pv-850":                   {"real": "composite_pv850.png",          "anom": "composite_pv850_anom.png",          "diff": "composite_pv850_diff.png"},
-    "temperature-advection":    {"real": "composite_advT850.png",        "anom": "composite_advT850_anom.png",        "diff": "composite_advT850_diff.png"},
+    "temperature-advection":    {"real": "composite_advT850.png",                                                     "diff": "composite_advT850_diff.png"},  # absolute field only
     "moisture-flux-divergence": {"real": "composite_moisture_flux.png",  "anom": "composite_moisture_flux_anom.png",  "diff": "composite_moisture_flux_diff.png"},
     "slp":                      {"real": "composite_slp.png",            "anom": "composite_slp_anom.png",            "diff": "composite_slp_diff.png"},
     "rk-criterion":             {"real": "composite_rk_criterion.png",                                                "diff": "composite_rk_criterion_diff.png"},
-    "ke-advection":             {"real": "composite_ke_advection.png",   "anom": "composite_ke_advection_anom.png",   "diff": "composite_ke_advection_diff.png"},
+    "ke-advection":             {"real": "composite_ke_advection.png",                                                "diff": "composite_ke_advection_diff.png"},  # absolute field only
     "afc":                      {"real": "composite_afc_250.png",                                                     "diff": "composite_afc_diff.png"},
     "btcr":                     {"real": "composite_btcr.png",                                                        "diff": "composite_btcr_diff.png"},
 }

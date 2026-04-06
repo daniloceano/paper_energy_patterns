@@ -42,10 +42,6 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_advT850_full_intensification.png"
     },
-    "anom": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_advT850_anom_full_intensification.png"
-    },
     "diff": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_advT850_diff_full_intensification.png"
@@ -93,10 +89,6 @@
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_ke_advection_full_intensification.png"
-    },
-    "anom": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_ke_advection_anom_full_intensification.png"
     },
     "diff": {
       "exists": true,

@@ -15,7 +15,8 @@ Selection Criteria:
 
 Intensity Subset:
 - Additionally selects the 10 most intense cyclones per EP group
-- Intensity metric: maximum Ke (eddy kinetic energy) during intensification
+- Intensity metric: maximum |vor42| (central relative vorticity at 850 hPa)
+- Consistent with intensity definition in 05_figure_intensity_seasonality_trends.py
 - Used for the 'intense_10' composite mode in step3
 
 Output:
@@ -107,56 +108,20 @@ def get_intensification_info(track_id, tracks_df):
     return start_time, end_time, n_timesteps, center_lat, center_lon
 
 
-def get_max_ke_during_intensification(track_id):
+def select_top10_intense(ep_df, tracks_df, ep_label):
     """
-    Get maximum eddy kinetic energy (Ke) during intensification phase.
+    Select the 10 most intense cyclones from an EP group based on max vorticity.
     
-    This metric is used to rank cyclone intensity. Ke represents the kinetic
-    energy associated with the eddy (perturbation) component of the wind.
-    Higher Ke values indicate more energetically intense cyclones.
-    
-    Returns max Ke (float) or None if data unavailable.
-    """
-    lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
-    periods_file = _resolve_csv(lec_dir / "periods.csv")
-    results_file = _resolve_csv(lec_dir / f"{track_id}_ERA5_track_results.csv")
-    
-    if periods_file is None or results_file is None:
-        return None
-    
-    try:
-        periods = pd.read_csv(periods_file, index_col=0)
-        if "intensification" not in periods.index:
-            return None
-        
-        intensification = periods.loc["intensification"]
-        start_time = pd.to_datetime(intensification["start"])
-        end_time = pd.to_datetime(intensification["end"])
-        
-        # Load energetics results
-        results = pd.read_csv(results_file, index_col=0)
-        results.index = pd.to_datetime(results.index)
-        
-        # Filter to intensification period
-        mask = (results.index >= start_time) & (results.index <= end_time)
-        intens_data = results.loc[mask]
-        
-        if len(intens_data) == 0 or "Ke" not in intens_data.columns:
-            return None
-        
-        return intens_data["Ke"].max()
-    except Exception:
-        return None
-
-
-def select_top10_intense(ep_df, ep_label):
-    """
-    Select the 10 most intense cyclones from an EP group based on max Ke.
+    Intensity metric: maximum |vor42| (central vorticity at 850 hPa) during the
+    cyclone's full lifecycle. This is consistent with standard cyclone intensity
+    definitions used throughout the project (see 05_figure_intensity_seasonality_trends.py).
     
     Parameters
     ----------
     ep_df : DataFrame
         DataFrame with track_id and other case info
+    tracks_df : DataFrame
+        Full tracks data with vor42 column
     ep_label : str
         "EP1" or "EP2" for logging
     
@@ -166,31 +131,31 @@ def select_top10_intense(ep_df, ep_label):
     """
     print(f"\n   Selecting top 10 most intense {ep_label} cyclones...")
     
-    # Get max Ke for each cyclone
-    ke_values = []
-    for _, row in ep_df.iterrows():
-        max_ke = get_max_ke_during_intensification(row["track_id"])
-        ke_values.append(max_ke)
+    # Get max vorticity (in module) for each cyclone from tracks data
+    # vor42 is already positive (absolute vorticity), so just take max
+    max_vor = tracks_df.groupby('track_id')['vor42'].max().reset_index()
+    max_vor.columns = ['track_id', 'max_vorticity']
     
+    # Merge with EP cases
     ep_df = ep_df.copy()
-    ep_df["max_ke"] = ke_values
+    ep_df = ep_df.merge(max_vor, on='track_id', how='left')
     
-    # Filter out cases without Ke data
-    valid = ep_df[ep_df["max_ke"].notna()]
+    # Filter out cases without vorticity data
+    valid = ep_df[ep_df["max_vorticity"].notna()]
     n_valid = len(valid)
-    print(f"      Cases with Ke data: {n_valid}/{len(ep_df)}")
+    print(f"      Cases with vorticity data: {n_valid}/{len(ep_df)}")
     
     if n_valid < 10:
         print(f"      Warning: Only {n_valid} cases available, using all")
-        top10 = valid.nlargest(n_valid, "max_ke")
+        top10 = valid.nlargest(n_valid, "max_vorticity")
     else:
-        top10 = valid.nlargest(10, "max_ke")
+        top10 = valid.nlargest(10, "max_vorticity")
     
     # Report intensity range
-    print(f"      Max Ke range: {top10['max_ke'].min():.0f} – {top10['max_ke'].max():.0f} J/m²")
+    print(f"      Max |vor42| range: {top10['max_vorticity'].min():.2f} – {top10['max_vorticity'].max():.2f} ×10⁻⁵ s⁻¹")
     
-    # Drop max_ke column before returning (not needed in output)
-    return top10.drop(columns=["max_ke"])
+    # Drop max_vorticity column before returning (not needed in output)
+    return top10.drop(columns=["max_vorticity"])
 
 
 def plot_tracks(selected_df, tracks_df, ep_label, color):
@@ -383,8 +348,8 @@ def main():
 
     # 5. Select and save top-10 most intense cyclones per EP
     print("\n5. Selecting top-10 most intense cyclones per EP...")
-    ep1_top10 = select_top10_intense(ep1_df, "EP1")
-    ep2_top10 = select_top10_intense(ep2_df, "EP2")
+    ep1_top10 = select_top10_intense(ep1_df, tracks_df, "EP1")
+    ep2_top10 = select_top10_intense(ep2_df, tracks_df, "EP2")
     
     ep1_top10_csv = OUTPUT_DIR / "ep1_top10_intense.csv"
     ep2_top10_csv = OUTPUT_DIR / "ep2_top10_intense.csv"

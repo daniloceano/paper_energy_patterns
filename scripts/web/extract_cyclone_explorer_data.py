@@ -56,9 +56,9 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
 DYNAMIC_PRODUCTS = [
     {
-        "id": "slp_pv850_wind850",
-        "label": "SLP + PV850 + wind850",
-        "description": "Sea level pressure with potential vorticity and wind vectors at 850 hPa.",
+        "id": "pv200_wind200",
+        "label": "PV200 + wind200",
+        "description": "Potential vorticity at 200 hPa with 200 hPa wind vectors. The 2 PVU contour marks the dynamical tropopause.",
     },
     {
         "id": "tadv_pv850_wind850",
@@ -74,11 +74,6 @@ DYNAMIC_PRODUCTS = [
         "id": "rk_criterion_250",
         "label": "RK criterion at 250 hPa",
         "description": "Rayleigh-Kuo criterion map with 250 hPa flow context.",
-    },
-    {
-        "id": "btcr_critical_region",
-        "label": "Barotropic critical region",
-        "description": "BtCR effective deformation and dilatation-axis structure at 250 hPa.",
     },
 ]
 

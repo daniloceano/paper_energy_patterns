@@ -103,6 +103,12 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <Breadcrumbs />
+      
+      {/* Navigation between diagnostics */}
+      <div className="mb-6">
+        <DiagnosticNav currentSlug={diag.slug} />
+      </div>
+      
       <DiagnosticHeader
         name={diag.name}
         shortName={diag.shortName}

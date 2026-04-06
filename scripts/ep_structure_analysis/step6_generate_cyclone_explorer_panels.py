@@ -109,11 +109,10 @@ VECTOR_WIDTH = 0.003
 CLIMATOLOGY_250_FILE = DATA_DIR / "era5_climatology_250hPa.nc"
 
 DYNAMIC_PRODUCTS = [
-    "slp_pv850_wind850",
+    "pv200_wind200",
     "tadv_pv850_wind850",
     "afc_keadvanom_wind250",
     "rk_criterion_250",
-    "btcr_critical_region",
 ]
 
 _CLIM_CACHE = {}
@@ -394,17 +393,39 @@ def create_dynamic_panel_figure(ds_timestep, center_lat, center_lon, time_ts, tr
     title_time = pd.Timestamp(time_ts).strftime("%Y-%m-%d %H:%M UTC")
     ax.set_title(f"Track {track_id} - {title_time}", fontsize=10, fontweight="bold")
 
-    if product_id == "slp_pv850_wind850":
-        vmax = np.nanpercentile(np.abs(pv850), 98)
+    if product_id == "pv200_wind200":
+        # Compute PV at 200 hPa using layers around 200 hPa
+        pv200 = compute_pv_at_level(
+            _sel_level(ds_sub["u"], levels, pc, 175) * units("m/s"),
+            _sel_level(ds_sub["u"], levels, pc, 200) * units("m/s"),
+            _sel_level(ds_sub["u"], levels, pc, 225) * units("m/s"),
+            _sel_level(ds_sub["v"], levels, pc, 175) * units("m/s"),
+            _sel_level(ds_sub["v"], levels, pc, 200) * units("m/s"),
+            _sel_level(ds_sub["v"], levels, pc, 225) * units("m/s"),
+            _sel_level(ds_sub["t"], levels, pc, 175) * units.kelvin,
+            _sel_level(ds_sub["t"], levels, pc, 200) * units.kelvin,
+            _sel_level(ds_sub["t"], levels, pc, 225) * units.kelvin,
+            np.array([
+                levels[int(np.argmin(np.abs(levels - 175)))],
+                levels[int(np.argmin(np.abs(levels - 200)))],
+                levels[int(np.argmin(np.abs(levels - 225)))],
+            ]) * 100.0,
+        ) * 1e6  # to PVU
+        
+        # Get 200 hPa wind for vectors
+        u200 = _sel_level(ds_sub["u"], levels, pc, 200)
+        v200 = _sel_level(ds_sub["v"], levels, pc, 200)
+        
+        vmax = np.nanpercentile(np.abs(pv200), 98)
         vmax = max(vmax, 0.1)
-        im = ax.contourf(X, Y, pv850, levels=np.linspace(-vmax, vmax, 21), cmap="RdBu_r", extend="both")
-        ax.contour(X, Y, msl, levels=10, colors="black", linewidths=0.8, alpha=0.4)
+        im = ax.contourf(X, Y, pv200, levels=np.linspace(-vmax, vmax, 21), cmap="RdBu_r", extend="both")
+        ax.contour(X, Y, pv200, levels=[2], colors="black", linewidths=1.5)  # 2 PVU = dynamical tropopause
         skip = VECTOR_SKIP
         ax.quiver(X[::skip, ::skip], Y[::skip, ::skip],
-                  u850.values[::skip, ::skip], v850.values[::skip, ::skip],
-                  scale=120, width=VECTOR_WIDTH, color="gray", alpha=0.8)
-        cbar_label = "PV850 (PVU)"
-        subtitle = "SLP + PV at 850 hPa + wind at 850 hPa"
+                  u200.values[::skip, ::skip], v200.values[::skip, ::skip],
+                  scale=300, width=VECTOR_WIDTH, color="gray", alpha=0.8)
+        cbar_label = "PV200 (PVU)"
+        subtitle = "PV at 200 hPa + wind at 200 hPa"
 
     elif product_id == "tadv_pv850_wind850":
         vmax = np.nanpercentile(np.abs(pv850), 98)
@@ -474,42 +495,6 @@ def create_dynamic_panel_figure(ds_timestep, center_lat, center_lon, time_ts, tr
                   scale=300, width=VECTOR_WIDTH, color="gray", alpha=0.7)
         cbar_label = "RK criterion (s-1 m-1)"
         subtitle = "RK criterion at 250 hPa"
-
-    elif product_id == "btcr_critical_region":
-        if clim250 is None:
-            ax.text(0.5, 0.5, "250 hPa climatology unavailable", transform=ax.transAxes,
-                    ha="center", va="center", fontsize=10)
-            im = None
-            cbar_label = None
-            subtitle = "Barotropic critical region (BtCR)"
-        else:
-            dm, da = barotropic_critical_region_250(clim250["u_clim"], clim250["v_clim"])
-            dm_scaled = dm * 1e9
-            vmax = np.nanpercentile(np.abs(dm_scaled), 98)
-            vmax = max(vmax, 0.1)
-            im = ax.contourf(X, Y, dm_scaled, levels=np.linspace(-vmax, vmax, 31), cmap="RdBu_r", extend="both")
-            ax.contour(X, Y, dm_scaled, levels=[0], colors="black", linewidths=1.2)
-
-            ws250 = np.sqrt(u250.values ** 2 + v250.values ** 2)
-            ax.contour(X, Y, ws250, levels=np.arange(20, 80, 10), colors="dimgray",
-                       linewidths=0.8, linestyles="--", alpha=0.6)
-
-            sk = VECTOR_SKIP
-            xx = X[::sk, ::sk]
-            yy = Y[::sk, ::sk]
-            aa = da[::sk, ::sk]
-            mask = ~np.isnan(aa)
-            if np.any(mask):
-                cos_a = np.where(mask, np.cos(aa), np.nan)
-                sin_a = np.where(mask, np.sin(aa), np.nan)
-                for sign in (+1, -1):
-                    ax.quiver(xx, yy, sign * cos_a, sign * sin_a,
-                              scale=0.7, scale_units="xy", headwidth=0,
-                              headlength=0, headaxislength=0, width=0.002,
-                              color="black", alpha=0.65, pivot="middle")
-
-            cbar_label = "Delta_m x 1e9 (s-2)"
-            subtitle = "Barotropic critical region (BtCR)"
 
     else:
         raise ValueError(f"Unknown dynamic product: {product_id}")

@@ -469,8 +469,8 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
                   </span>
                 </div>
                 
-                {/* Grid of all dynamic panels */}
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {/* Grid of all dynamic panels - 2×2 layout */}
+                <div className="grid grid-cols-2 gap-4">
                   {dynamicProducts.map((product) => {
                     const panelPath = dynamicPanelPaths[product.id]
                     return (
@@ -504,7 +504,7 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
                 </div>
                 
                 <p className="mt-4 text-xs text-slate-500">
-                  All available dynamic diagnostics for this timestep. Click any panel to view details.
+                  All available dynamic diagnostics for this timestep.
                 </p>
               </div>
             )}

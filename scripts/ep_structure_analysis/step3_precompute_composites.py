@@ -5,6 +5,31 @@ Computes spatial composites (30°×30° domain centred on the cyclone) for
 each EP group and saves a single NetCDF file per group with composite
 means on a regular 0.25° grid.
 
+USAGE
+-----
+  # Standard mode: all cyclones in EP1/EP2, mean over intensification phase
+  python step3_precompute_composites.py --mode full_intensification
+
+  # Central-time mode: all cyclones, only central timestep of each
+  python step3_precompute_composites.py --mode central_time
+
+  # Intense-10 mode: only the 10 most intense cyclones per EP (from CSV)
+  python step3_precompute_composites.py --mode intense_10
+
+  # Parallel processing (recommended on server)
+  python step3_precompute_composites.py --mode full_intensification --jobs 4
+
+COMPOSITE MODES
+---------------
+  full_intensification : Mean over ALL storm-centered timesteps during
+                         the intensification phase. Default mode.
+  central_time         : Use only the CENTRAL timestep (middle of
+                         intensification) for each cyclone.
+  intense_10           : Same as full_intensification, but uses only the
+                         10 most intense cyclones per EP group.
+                         Requires: results/ep_structure/ep1_top10_intense.csv
+                                   results/ep_structure/ep2_top10_intense.csv
+
 Total-field diagnostics (computed from instantaneous ERA5 fields):
   - EGR   — Eady Growth Rate, 500–850 hPa layer (Besson et al. 2021)
   - PV    — Potential Vorticity at 200 hPa (upper-level dynamics)
@@ -34,8 +59,8 @@ skipped gracefully if the files are absent):
   the pure-eddy (quadratic) term, omitting cross-terms (e.g. −V_m·∇T′ − V′·∇T_m).
 
 Output:
-  data/era5_ep_structure/precomputed_composites_ep1.nc
-  data/era5_ep_structure/precomputed_composites_ep2.nc
+  data/era5_ep_structure/precomputed_composites_ep1_{mode}.nc
+  data/era5_ep_structure/precomputed_composites_ep2_{mode}.nc
 
 ⚠ IMPORTANT — UNIT CONSISTENCY:
   All diagnostic functions receive xarray DataArrays with pint units attached
@@ -128,8 +153,9 @@ RESOLUTION = 0.25     # degrees
 
 # Composite mode: how to aggregate timesteps within intensification phase
 # -------------------------------------------------------------------------
-# "full_intensification" : mean over all storm-centered timesteps
-# "central_time"         : use only the central timestep (storm-centered)
+# "full_intensification" : mean over all storm-centered timesteps (all cases)
+# "central_time"         : use only the central timestep (all cases)
+# "intense_10"           : same as full_intensification, but only top-10 intense cyclones
 COMPOSITE_MODE = "full_intensification"  # set via --mode argument in main()
 
 # Module-level cache for tracks DataFrame (loaded once per process)
@@ -1695,7 +1721,24 @@ def compute_composite(cases, ep_label, n_jobs=1):
 # ============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Precompute EP structure composites")
+    parser = argparse.ArgumentParser(
+        description="Precompute EP structure composites",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Standard composite (all cases, mean over intensification phase)
+  python step3_precompute_composites.py --mode full_intensification
+
+  # Central-time composite (all cases, only central timestep)
+  python step3_precompute_composites.py --mode central_time
+
+  # Top-10 most intense cyclones per EP
+  python step3_precompute_composites.py --mode intense_10
+
+  # Parallel processing (recommended: 4-8 workers)
+  python step3_precompute_composites.py --mode full_intensification --jobs 4
+        """,
+    )
     parser.add_argument(
         "--jobs", "-j", type=int, default=1,
         help="Number of parallel workers for composite computation. "
@@ -1703,26 +1746,49 @@ def main():
     )
     parser.add_argument(
         "--mode", "-m", type=str, default="full_intensification",
-        choices=["full_intensification", "central_time"],
-        help="Composite mode: 'full_intensification' (mean over all timesteps) or "
-             "'central_time' (use only central timestep). Default: full_intensification",
+        choices=["full_intensification", "central_time", "intense_10"],
+        help="Composite mode: 'full_intensification' (mean over all timesteps), "
+             "'central_time' (use only central timestep), or "
+             "'intense_10' (top-10 most intense cyclones). Default: full_intensification",
     )
     args = parser.parse_args()
     n_jobs = args.jobs if args.jobs >= 1 else 1
     
     # Set global COMPOSITE_MODE
+    # For intense_10, the timestep aggregation is same as full_intensification
     global COMPOSITE_MODE
-    COMPOSITE_MODE = args.mode
+    if args.mode == "intense_10":
+        COMPOSITE_MODE = "full_intensification"  # timestep aggregation method
+    else:
+        COMPOSITE_MODE = args.mode
 
     log_file = setup_logging()
-    logging.info(f"   Composite mode: {COMPOSITE_MODE}")
+    logging.info(f"   Composite mode: {args.mode}")
+    if args.mode == "intense_10":
+        logging.info(f"   (Using full_intensification timestep aggregation for intense subset)")
     logging.info(f"   Parallel workers: {n_jobs}")
 
-    # Load cases
-    ep1_cases = pd.read_csv(RESULTS_DIR / "ep1_cases.csv")
-    ep2_cases = pd.read_csv(RESULTS_DIR / "ep2_cases.csv")
-    logging.info(f"   EP1: {len(ep1_cases)} cases")
-    logging.info(f"   EP2: {len(ep2_cases)} cases")
+    # Load cases based on mode
+    if args.mode == "intense_10":
+        # Use top-10 intense cyclones files
+        ep1_file = RESULTS_DIR / "ep1_top10_intense.csv"
+        ep2_file = RESULTS_DIR / "ep2_top10_intense.csv"
+        if not ep1_file.exists() or not ep2_file.exists():
+            logging.error(f"❌ intense_10 mode requires:")
+            logging.error(f"   {ep1_file}")
+            logging.error(f"   {ep2_file}")
+            logging.error("   Run step1 selection first or create these files manually.")
+            return
+        ep1_cases = pd.read_csv(ep1_file)
+        ep2_cases = pd.read_csv(ep2_file)
+        logging.info(f"   EP1: {len(ep1_cases)} most intense cases")
+        logging.info(f"   EP2: {len(ep2_cases)} most intense cases")
+    else:
+        # Standard: all cases
+        ep1_cases = pd.read_csv(RESULTS_DIR / "ep1_cases.csv")
+        ep2_cases = pd.read_csv(RESULTS_DIR / "ep2_cases.csv")
+        logging.info(f"   EP1: {len(ep1_cases)} cases")
+        logging.info(f"   EP2: {len(ep2_cases)} cases")
 
     # Check data availability
     avail = 0
@@ -1740,8 +1806,8 @@ def main():
         ds_ep1 = compute_composite(ep1_cases, "EP1", n_jobs=n_jobs)
         ds_ep2 = compute_composite(ep2_cases, "EP2", n_jobs=n_jobs)
 
-    # Save with mode suffix
-    mode_suffix = f"_{COMPOSITE_MODE}"
+    # Save with mode suffix (use args.mode for file naming)
+    mode_suffix = f"_{args.mode}"
     out1 = DATA_DIR / f"precomputed_composites_ep1{mode_suffix}.nc"
     out2 = DATA_DIR / f"precomputed_composites_ep2{mode_suffix}.nc"
     ds_ep1.to_netcdf(out1)
@@ -1753,7 +1819,7 @@ def main():
     logging.info("✓ STEP 3 COMPLETE")
     logging.info("=" * 70)
     logging.info(f"Log: {log_file}")
-    logging.info(f"\nNext: python scripts/ep_structure_analysis/step4_create_figures.py --mode {COMPOSITE_MODE}")
+    logging.info(f"\nNext: python scripts/ep_structure_analysis/step4_create_figures.py --mode {args.mode}")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@
 
 import { useState, createContext, useContext } from 'react'
 
-export type CompositeMode = 'full_intensification' | 'central_time'
+export type CompositeMode = 'full_intensification' | 'central_time' | 'intense_10'
 
 interface CompositeModeContextType {
   mode: CompositeMode
@@ -43,6 +43,11 @@ const MODE_INFO: Record<CompositeMode, { label: string; shortLabel: string; desc
     label: 'Central Time',
     shortLabel: 'Central',
     description: 'Single timestep at the temporal midpoint of the intensification phase',
+  },
+  intense_10: {
+    label: '10 Most Intense',
+    shortLabel: 'Top 10',
+    description: 'Composites from the 10 most intense cyclones of each energy pattern',
   },
 }
 

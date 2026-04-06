@@ -1053,6 +1053,213 @@ def figure_btcr(datasets):
     logging.info(f"    ✓ {out.name}")
 
 
+# ============================================================================
+# EP1 − EP2 DIFFERENCE FIGURE FUNCTIONS
+# ============================================================================
+
+def _diff_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
+              cmap="RdBu_r", n_levels=21):
+    """Generic single-panel (EP1 − EP2) difference figure builder.
+
+    Parameters
+    ----------
+    datasets     : dict with keys "EP1", "EP2" → xr.Dataset
+    var_key      : variable name inside each dataset
+    scale_factor : multiply raw values before plotting
+    unit_label   : colorbar label string
+    suptitle     : figure super-title
+    out_name     : output filename (no directory)
+    cmap         : diverging colormap name
+    n_levels     : number of contour levels (odd for symmetric)
+    """
+    if var_key not in datasets["EP1"] or var_key not in datasets["EP2"]:
+        logging.warning(f"    ⚠  {var_key} not in both composites — skipping difference figure")
+        return
+
+    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+
+    ds1 = datasets["EP1"]
+    ds2 = datasets["EP2"]
+    x, y = ds1.coords["x"].values, ds1.coords["y"].values
+
+    data1 = ds1[var_key].values * scale_factor
+    data2 = ds2[var_key].values * scale_factor
+    diff = data1 - data2  # EP1 − EP2
+
+    # Symmetric colour limits from 98th-percentile of |difference|
+    absmax = np.nanpercentile(np.abs(diff), 98)
+    if absmax == 0.0:
+        absmax = 1e-10
+    clevels = _safe_symmetric_levels(absmax, n_levels)
+
+    im = ax.contourf(x, y, diff, levels=clevels, cmap=cmap, extend="both")
+    ax.contour(x, y, diff, levels=[0], colors="black", linewidths=1.5)
+
+    n1 = int(ds1.attrs.get("n_cases", "?"))
+    n2 = int(ds2.attrs.get("n_cases", "?"))
+    _decorate_ax(ax, f"EP1 (n={n1}) − EP2 (n={n2})", ylabel=True)
+    _add_cbar(fig, ax, im, unit_label)
+
+    fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    out = _figure_path(out_name)
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
+def figure_egr_diff(datasets):
+    """EGR difference: EP1 − EP2."""
+    logging.info("  Creating EGR difference figure (EP1 − EP2)...")
+    _diff_fig(
+        datasets,
+        var_key="egr",
+        scale_factor=1.0,
+        unit_label="ΔEGR (day⁻¹)",
+        suptitle="Eady Growth Rate Difference (EP1 − EP2)",
+        out_name="composite_egr_diff.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_pv200_diff(datasets):
+    """PV at 200 hPa difference: EP1 − EP2."""
+    logging.info("  Creating PV@200 hPa difference figure (EP1 − EP2)...")
+    _diff_fig(
+        datasets,
+        var_key="pv_200",
+        scale_factor=1e6,
+        unit_label="ΔPV (PVU)",
+        suptitle="Potential Vorticity at 200 hPa Difference (EP1 − EP2)",
+        out_name="composite_pv200_diff.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_pv850_diff(datasets):
+    """PV at 850 hPa difference: EP1 − EP2."""
+    logging.info("  Creating PV@850 hPa difference figure (EP1 − EP2)...")
+    _diff_fig(
+        datasets,
+        var_key="pv_850",
+        scale_factor=1e6,
+        unit_label="ΔPV (PVU)",
+        suptitle="Potential Vorticity at 850 hPa Difference (EP1 − EP2)",
+        out_name="composite_pv850_diff.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_advT850_diff(datasets):
+    """Temperature advection at 850 hPa difference: EP1 − EP2."""
+    logging.info("  Creating temp advection @850 hPa difference figure (EP1 − EP2)...")
+    _diff_fig(
+        datasets,
+        var_key="adv_T_850",
+        scale_factor=3600.0,
+        unit_label="Δ(−V·∇T) (K h⁻¹)",
+        suptitle="Temperature Advection at 850 hPa Difference (EP1 − EP2)",
+        out_name="composite_advT850_diff.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_moisture_diff(datasets):
+    """Moisture flux divergence at 975 hPa difference: EP1 − EP2."""
+    logging.info("  Creating moisture flux divergence @975 hPa difference figure (EP1 − EP2)...")
+    _diff_fig(
+        datasets,
+        var_key="div_q_975",
+        scale_factor=1.0,
+        unit_label="Δ∇·(qV) (g kg⁻¹ s⁻¹)",
+        suptitle="Moisture Flux Divergence at 975 hPa Difference (EP1 − EP2)",
+        out_name="composite_moisture_flux_diff.png",
+        cmap="BrBG_r",
+    )
+
+
+def figure_slp_diff(datasets):
+    """SLP difference: EP1 − EP2."""
+    logging.info("  Creating SLP difference figure (EP1 − EP2)...")
+    _diff_fig(
+        datasets,
+        var_key="msl",
+        scale_factor=1.0 / 100.0,  # Pa → hPa
+        unit_label="ΔSLP (hPa)",
+        suptitle="Sea Level Pressure Difference (EP1 − EP2)",
+        out_name="composite_slp_diff.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_rk_criterion_diff(datasets):
+    """Rayleigh-Kuo criterion at 250 hPa difference: EP1 − EP2."""
+    logging.info("  Creating RK criterion @250 hPa difference figure (EP1 − EP2)...")
+    if "rk_criterion_250" not in datasets["EP1"]:
+        logging.warning("    ⚠  rk_criterion_250 not in composites — skipping difference figure")
+        return
+    _diff_fig(
+        datasets,
+        var_key="rk_criterion_250",
+        scale_factor=1e5,  # same as absolute figure
+        unit_label="ΔRK (×10⁻⁵ s⁻¹)",
+        suptitle="Rayleigh-Kuo Criterion at 250 hPa Difference (EP1 − EP2)",
+        out_name="composite_rk_criterion_diff.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_ke_advection_diff(datasets):
+    """KE advection at 250 hPa difference: EP1 − EP2."""
+    logging.info("  Creating KE advection @250 hPa difference figure (EP1 − EP2)...")
+    if "ke_adv_250" not in datasets["EP1"]:
+        logging.warning("    ⚠  ke_adv_250 not in composites — skipping difference figure")
+        return
+    _diff_fig(
+        datasets,
+        var_key="ke_adv_250",
+        scale_factor=1.0,
+        unit_label="ΔKE adv (m² s⁻³)",
+        suptitle="Kinetic Energy Advection at 250 hPa Difference (EP1 − EP2)",
+        out_name="composite_ke_advection_diff.png",
+        cmap="PuOr_r",
+    )
+
+
+def figure_afc_diff(datasets):
+    """AFC at 250 hPa difference: EP1 − EP2."""
+    logging.info("  Creating AFC @250 hPa difference figure (EP1 − EP2)...")
+    if "afc_250" not in datasets["EP1"]:
+        logging.warning("    ⚠  afc_250 not in composites — skipping difference figure")
+        return
+    _diff_fig(
+        datasets,
+        var_key="afc_250",
+        scale_factor=1.0,
+        unit_label="ΔAFC (m² s⁻³)",
+        suptitle="Ageostrophic Flux Convergence at 250 hPa Difference (EP1 − EP2)",
+        out_name="composite_afc_diff.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_btcr_diff(datasets):
+    """BtCR delta_m difference: EP1 − EP2."""
+    logging.info("  Creating BtCR difference figure (EP1 − EP2)...")
+    if "btcr_delta_m" not in datasets["EP1"]:
+        logging.warning("    ⚠  btcr_delta_m not in composites — skipping difference figure")
+        return
+    _diff_fig(
+        datasets,
+        var_key="btcr_delta_m",
+        scale_factor=1e9,
+        unit_label="ΔΔm (×10⁻⁹ s⁻²)",
+        suptitle="Barotropic Critical Region (Δm) Difference (EP1 − EP2)",
+        out_name="composite_btcr_diff.png",
+        cmap="RdBu_r",
+    )
+
+
 def figure_wind250_anom(datasets):
     """250 hPa wind speed anomaly: EP1 vs EP2, diverging shading.
 
@@ -1134,9 +1341,10 @@ def main():
     parser = argparse.ArgumentParser(description="Create EP structure composite figures")
     parser.add_argument(
         "--mode", "-m", type=str, default="full_intensification",
-        choices=["full_intensification", "central_time"],
-        help="Composite mode: 'full_intensification' (mean over all timesteps) or "
-             "'central_time' (use only central timestep). Default: full_intensification",
+        choices=["full_intensification", "central_time", "intense_10"],
+        help="Composite mode: 'full_intensification' (mean over all timesteps), "
+             "'central_time' (use only central timestep), or "
+             "'intense_10' (top 10 most intense cyclones). Default: full_intensification",
     )
     args = parser.parse_args()
     
@@ -1205,6 +1413,18 @@ def main():
 
     logging.info("\nCreating BtCR figures...")
     figure_btcr(datasets)
+
+    logging.info("\nCreating EP1 − EP2 difference figures...")
+    figure_egr_diff(datasets)
+    figure_pv200_diff(datasets)
+    figure_pv850_diff(datasets)
+    figure_advT850_diff(datasets)
+    figure_moisture_diff(datasets)
+    figure_slp_diff(datasets)
+    figure_rk_criterion_diff(datasets)
+    figure_ke_advection_diff(datasets)
+    figure_afc_diff(datasets)
+    figure_btcr_diff(datasets)
 
     # Close datasets
     for ds in datasets.values():

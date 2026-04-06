@@ -34,7 +34,7 @@ export default function CompositesPage() {
 
         <ResultSummaryCallout type="info" title="Composite Methods">
           <p>
-            Each diagnostic page offers two composite methods:
+            Each diagnostic page offers three composite methods:
           </p>
           <ul className="mt-2 list-inside list-disc text-sm">
             <li>
@@ -43,9 +43,14 @@ export default function CompositesPage() {
             <li>
               <strong>Central Time:</strong> single timestep at the temporal midpoint of the intensification phase
             </li>
+            <li>
+              <strong>10 Most Intense:</strong> composites from the 10 most intense cyclones of each pattern (based on peak relative vorticity)
+            </li>
           </ul>
           <p className="mt-2">
             Use the toggle on each diagnostic page to switch between methods and compare results.
+            Each page also shows an <strong>EP1 − EP2 difference map</strong> using diverging colormaps
+            to highlight where the two patterns differ most strongly.
           </p>
         </ResultSummaryCallout>
 

@@ -7,9 +7,10 @@ It reads the structured stats JSON produced by step5_update_scientific_notes.py
 and catalogs composite figures produced by step4_create_figures.py, then writes
 manifest files consumed by the Next.js web layer.
 
-The script now supports two composite modes:
+The script now supports three composite modes:
   - full_intensification: mean over all timesteps in intensification phase
   - central_time: single central timestep of intensification phase
+  - intense_10: composites from top 10 most intense cyclones of each EP
 
 Scientific computation source of truth: scripts/ep_structure_analysis/
   - step4_create_figures.py  → figures/ep_structure/composite_*_{mode}.png
@@ -45,18 +46,18 @@ COMPOSITE_MODE = "full_intensification"
 
 # Mapping from web diagnostic id to step4 figure filenames.
 # Must match DIAGNOSTIC_FIGURE_SLUGS in web/src/lib/constants.ts.
-# Note: filenames will have _{mode} suffix appended
+# Note: filenames will have _{mode} suffix appended for real composites
 DIAGNOSTIC_FIGURE_MAP = {
-    "egr":                      {"real": "composite_egr.png"},
-    "pv-200":                   {"real": "composite_pv200.png",          "anom": "composite_pv200_anom.png"},
-    "pv-850":                   {"real": "composite_pv850.png",          "anom": "composite_pv850_anom.png"},
-    "temperature-advection":    {"real": "composite_advT850.png",        "anom": "composite_advT850_anom.png"},
-    "moisture-flux-divergence": {"real": "composite_moisture_flux.png",  "anom": "composite_moisture_flux_anom.png"},
-    "slp":                      {"real": "composite_slp.png",            "anom": "composite_slp_anom.png"},
-    "rk-criterion":             {"real": "composite_rk_criterion.png"},
-    "ke-advection":             {"real": "composite_ke_advection.png",   "anom": "composite_ke_advection_anom.png"},
-    "afc":                      {"real": "composite_afc_250.png"},
-    "btcr":                     {"real": "composite_btcr.png"},
+    "egr":                      {"real": "composite_egr.png",                "diff": "composite_egr_diff.png"},
+    "pv-200":                   {"real": "composite_pv200.png",          "anom": "composite_pv200_anom.png",          "diff": "composite_pv200_diff.png"},
+    "pv-850":                   {"real": "composite_pv850.png",          "anom": "composite_pv850_anom.png",          "diff": "composite_pv850_diff.png"},
+    "temperature-advection":    {"real": "composite_advT850.png",        "anom": "composite_advT850_anom.png",        "diff": "composite_advT850_diff.png"},
+    "moisture-flux-divergence": {"real": "composite_moisture_flux.png",  "anom": "composite_moisture_flux_anom.png",  "diff": "composite_moisture_flux_diff.png"},
+    "slp":                      {"real": "composite_slp.png",            "anom": "composite_slp_anom.png",            "diff": "composite_slp_diff.png"},
+    "rk-criterion":             {"real": "composite_rk_criterion.png",                                                "diff": "composite_rk_criterion_diff.png"},
+    "ke-advection":             {"real": "composite_ke_advection.png",   "anom": "composite_ke_advection_anom.png",   "diff": "composite_ke_advection_diff.png"},
+    "afc":                      {"real": "composite_afc_250.png",                                                     "diff": "composite_afc_diff.png"},
+    "btcr":                     {"real": "composite_btcr.png",                                                        "diff": "composite_btcr_diff.png"},
 }
 
 
@@ -70,26 +71,34 @@ def build_figures_manifest():
     Returns a dict keyed by diagnostic_id with availability flags.
     Uses the API path format: 'figures/ep_structure/<filename>'
     
-    NOTE: Real (absolute) composites have mode suffix (_full_intensification or _central_time).
-    Anomaly composites do NOT have mode suffix — they are relative to climatology,
-    which is the same regardless of composite method.
+    NOTE: All composite figures (real, anomaly, diff) have mode suffix.
+    The mode affects both the composite method and which climatology reference is used.
     """
     manifest = {}
     mode_suffix = f"_{COMPOSITE_MODE}"
     
     for diag_id, filenames in DIAGNOSTIC_FIGURE_MAP.items():
-        # Add mode suffix to REAL composites only
+        # Add mode suffix to REAL composites
         real_base = filenames["real"].replace(".png", f"{mode_suffix}.png")
         real_path = FIGURES_DIR / real_base
         
-        # Anomalies do NOT get mode suffix (climatology is mode-independent)
+        # Anomalies also get mode suffix
         anom_name = filenames.get("anom")
         if anom_name:
-            anom_base = anom_name  # No mode suffix for anomalies
+            anom_base = anom_name.replace(".png", f"{mode_suffix}.png")
             anom_path = FIGURES_DIR / anom_base
         else:
             anom_base = None
             anom_path = None
+
+        # Difference figures also get mode suffix
+        diff_name = filenames.get("diff")
+        if diff_name:
+            diff_base = diff_name.replace(".png", f"{mode_suffix}.png")
+            diff_path = FIGURES_DIR / diff_base
+        else:
+            diff_base = None
+            diff_path = None
 
         manifest[diag_id] = {
             "real": {
@@ -101,6 +110,11 @@ def build_figures_manifest():
             manifest[diag_id]["anom"] = {
                 "exists": anom_path.exists() if anom_path else False,
                 "api_path": f"figures/ep_structure/{anom_base}",
+            }
+        if diff_base:
+            manifest[diag_id]["diff"] = {
+                "exists": diff_path.exists() if diff_path else False,
+                "api_path": f"figures/ep_structure/{diff_base}",
             }
 
     return manifest
@@ -131,8 +145,8 @@ def main():
     parser = argparse.ArgumentParser(description="Extract composite data for web")
     parser.add_argument(
         "--mode", "-m", type=str, default="full_intensification",
-        choices=["full_intensification", "central_time"],
-        help="Composite mode: 'full_intensification' or 'central_time'. Default: full_intensification",
+        choices=["full_intensification", "central_time", "intense_10"],
+        help="Composite mode: 'full_intensification', 'central_time', or 'intense_10'. Default: full_intensification",
     )
     args = parser.parse_args()
     

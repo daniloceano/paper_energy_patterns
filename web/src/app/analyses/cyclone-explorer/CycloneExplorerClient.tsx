@@ -384,7 +384,7 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
               )}
             </div>
 
-            {/* Temporal slider */}
+            {/* Temporal navigation: slider + prev/next buttons */}
             <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-slate-500">
@@ -396,14 +396,43 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
                   </span>
                 )}
               </div>
-              <input
-                type="range"
-                min={0}
-                max={selectedCyclone.timesteps.length - 1}
-                value={currentTimestepIdx}
-                onChange={(e) => setCurrentTimestepIdx(Number(e.target.value))}
-                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
-              />
+
+              {/* Prev/Next buttons + slider */}
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setCurrentTimestepIdx(Math.max(0, currentTimestepIdx - 1))}
+                  disabled={currentTimestepIdx === 0}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
+                  title="Previous timestep"
+                  aria-label="Previous timestep"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <input
+                  type="range"
+                  min={0}
+                  max={selectedCyclone.timesteps.length - 1}
+                  value={currentTimestepIdx}
+                  onChange={(e) => setCurrentTimestepIdx(Number(e.target.value))}
+                  className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                />
+
+                <button
+                  onClick={() => setCurrentTimestepIdx(Math.min(selectedCyclone.timesteps.length - 1, currentTimestepIdx + 1))}
+                  disabled={currentTimestepIdx === selectedCyclone.timesteps.length - 1}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-600 transition-all hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white"
+                  title="Next timestep"
+                  aria-label="Next timestep"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
               <div className="flex justify-between mt-1 text-xs text-slate-400">
                 <span>Start</span>
                 <span>End</span>

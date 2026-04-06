@@ -1,0 +1,126 @@
+{
+  "egr": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_egr_intense_10.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_egr_diff_intense_10.png"
+    }
+  },
+  "pv-200": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv200_intense_10.png"
+    },
+    "anom": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv200_anom.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv200_diff_intense_10.png"
+    }
+  },
+  "pv-850": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv850_intense_10.png"
+    },
+    "anom": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv850_anom.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv850_diff_intense_10.png"
+    }
+  },
+  "temperature-advection": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_advT850_intense_10.png"
+    },
+    "anom": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_advT850_anom.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_advT850_diff_intense_10.png"
+    }
+  },
+  "moisture-flux-divergence": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_moisture_flux_intense_10.png"
+    },
+    "anom": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_moisture_flux_anom.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_moisture_flux_diff_intense_10.png"
+    }
+  },
+  "slp": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_slp_intense_10.png"
+    },
+    "anom": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_slp_anom.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_slp_diff_intense_10.png"
+    }
+  },
+  "rk-criterion": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_rk_criterion_intense_10.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_rk_criterion_diff_intense_10.png"
+    }
+  },
+  "ke-advection": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_ke_advection_intense_10.png"
+    },
+    "anom": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_ke_advection_anom.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_ke_advection_diff_intense_10.png"
+    }
+  },
+  "afc": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_afc_250_intense_10.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_afc_diff_intense_10.png"
+    }
+  },
+  "btcr": {
+    "real": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_btcr_intense_10.png"
+    },
+    "diff": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_btcr_diff_intense_10.png"
+    }
+  }
+}

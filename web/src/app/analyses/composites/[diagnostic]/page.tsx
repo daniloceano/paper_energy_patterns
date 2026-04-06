@@ -14,6 +14,10 @@ import fullFiguresData from '@/content/composite_figures_manifest_full_intensifi
 import centralStatsData from '@/content/composite_domain_stats_central_time.json'
 import centralFluxesData from '@/content/composite_boundary_fluxes_central_time.json'
 import centralFiguresData from '@/content/composite_figures_manifest_central_time.json'
+// Intense 10 data (stub files created, will be populated when data is generated)
+import intense10StatsData from '@/content/composite_domain_stats_intense_10.json'
+import intense10FluxesData from '@/content/composite_boundary_fluxes_intense_10.json'
+import intense10FiguresData from '@/content/composite_figures_manifest_intense_10.json'
 
 // Force static generation at build time
 export const dynamic = 'force-static'
@@ -54,6 +58,7 @@ interface FiguresManifest {
   [diagId: string]: {
     real: FigureEntry
     anom?: FigureEntry
+    diff?: FigureEntry
   }
 }
 
@@ -87,6 +92,10 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
   const centralStats = centralStatsData as DomainStatEntry[]
   const centralFluxes = centralFluxesData as BoundaryFluxEntry[]
   const centralFigures = centralFiguresData as FiguresManifest
+  // Intense 10 (may be empty if files don't exist yet)
+  const intense10Stats = intense10StatsData as DomainStatEntry[]
+  const intense10Fluxes = intense10FluxesData as BoundaryFluxEntry[]
+  const intense10Figures = intense10FiguresData as FiguresManifest
 
   const figSlug = DIAGNOSTIC_FIGURE_SLUGS[diag.id]
 
@@ -137,6 +146,9 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
           centralFigures={centralFigures}
           centralStats={centralStats}
           centralFluxes={centralFluxes}
+          intense10Figures={intense10Figures}
+          intense10Stats={intense10Stats}
+          intense10Fluxes={intense10Fluxes}
         />
 
         <FileProvenanceBadge

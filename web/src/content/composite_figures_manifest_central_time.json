@@ -3,6 +3,10 @@
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_egr_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_egr_diff_central_time.png"
     }
   },
   "pv-200": {
@@ -13,6 +17,10 @@
     "anom": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_pv200_anom_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_pv200_diff_central_time.png"
     }
   },
   "pv-850": {
@@ -23,6 +31,10 @@
     "anom": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_pv850_anom_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_pv850_diff_central_time.png"
     }
   },
   "temperature-advection": {
@@ -33,6 +45,10 @@
     "anom": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_advT850_anom_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_advT850_diff_central_time.png"
     }
   },
   "moisture-flux-divergence": {
@@ -43,6 +59,10 @@
     "anom": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_moisture_flux_anom_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_moisture_flux_diff_central_time.png"
     }
   },
   "slp": {
@@ -53,12 +73,20 @@
     "anom": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_slp_anom_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_slp_diff_central_time.png"
     }
   },
   "rk-criterion": {
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_rk_criterion_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_rk_criterion_diff_central_time.png"
     }
   },
   "ke-advection": {
@@ -69,28 +97,30 @@
     "anom": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_ke_advection_anom_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_ke_advection_diff_central_time.png"
     }
   },
   "afc": {
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_afc_250_central_time.png"
+    },
+    "diff": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_afc_diff_central_time.png"
     }
   },
   "btcr": {
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_btcr_central_time.png"
-    }
-  },
-  "wind-250": {
-    "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_wind250_central_time.png"
     },
-    "anom": {
+    "diff": {
       "exists": true,
-      "api_path": "figures/ep_structure/composite_wind250_anom_central_time.png"
+      "api_path": "figures/ep_structure/composite_btcr_diff_central_time.png"
     }
   }
 }

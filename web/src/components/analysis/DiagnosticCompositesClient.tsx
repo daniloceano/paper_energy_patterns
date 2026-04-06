@@ -23,6 +23,7 @@ interface FiguresManifest {
   [diagId: string]: {
     real: FigureEntry
     anom?: FigureEntry
+    diff?: FigureEntry
   }
 }
 
@@ -51,7 +52,7 @@ interface BoundaryFluxEntry {
 // --- Props ---
 interface DiagnosticCompositesClientProps {
   diag: Diagnostic
-  figSlug: { real: string; anom?: string }
+  figSlug: { real: string; anom?: string; diff?: string }
   isFluxDiag: boolean
   // Full intensification data
   fullFigures: FiguresManifest
@@ -61,6 +62,10 @@ interface DiagnosticCompositesClientProps {
   centralFigures: FiguresManifest
   centralStats: DomainStatEntry[]
   centralFluxes: BoundaryFluxEntry[]
+  // Intense 10 data (optional, may not exist yet)
+  intense10Figures?: FiguresManifest
+  intense10Stats?: DomainStatEntry[]
+  intense10Fluxes?: BoundaryFluxEntry[]
 }
 
 function DiagnosticCompositesContent({
@@ -73,13 +78,28 @@ function DiagnosticCompositesContent({
   centralFigures,
   centralStats,
   centralFluxes,
+  intense10Figures,
+  intense10Stats,
+  intense10Fluxes,
 }: DiagnosticCompositesClientProps) {
   const { mode } = useCompositeMode()
 
   // Select data based on mode
-  const figuresManifest = mode === 'full_intensification' ? fullFigures : centralFigures
-  const domainStats = mode === 'full_intensification' ? fullStats : centralStats
-  const boundaryFluxes = mode === 'full_intensification' ? fullFluxes : centralFluxes
+  const figuresManifest = mode === 'full_intensification' 
+    ? fullFigures 
+    : mode === 'central_time' 
+      ? centralFigures 
+      : (intense10Figures ?? {})
+  const domainStats = mode === 'full_intensification' 
+    ? fullStats 
+    : mode === 'central_time' 
+      ? centralStats 
+      : (intense10Stats ?? [])
+  const boundaryFluxes = mode === 'full_intensification' 
+    ? fullFluxes 
+    : mode === 'central_time' 
+      ? centralFluxes 
+      : (intense10Fluxes ?? [])
 
   const diagStats = useMemo(() => domainStats.filter((s) => s.diagnostic_id === diag.id), [domainStats, diag.id])
   const diagFluxes = useMemo(() => boundaryFluxes.filter((f) => f.diagnostic_id === diag.id), [boundaryFluxes, diag.id])
@@ -92,8 +112,10 @@ function DiagnosticCompositesContent({
 
   const realFig = figInfo?.real
   const anomFig = figInfo?.anom
+  const diffFig = figInfo?.diff
   const hasRealFigure = realFig?.exists ?? false
   const hasAnomFigure = (anomFig?.exists ?? false) && diag.hasAnomaly
+  const hasDiffFigure = diffFig?.exists ?? false
   const hasStats = diagStats.length > 0
 
   // Build figure filename with mode suffix (only for real composites, not anomalies)
@@ -101,6 +123,8 @@ function DiagnosticCompositesContent({
   const realFigFilename = figSlug.real.replace('.png', `${modeSuffix}.png`)
   // Anomalies do NOT get mode suffix - they're relative to climatology (mode-independent)
   const anomFigFilename = figSlug.anom
+  // Difference figures DO get mode suffix
+  const diffFigFilename = figSlug.diff?.replace('.png', `${modeSuffix}.png`)
 
   return (
     <div className="space-y-8">
@@ -187,6 +211,47 @@ function DiagnosticCompositesContent({
             )}
           </div>
         )}
+
+        {/* EP1 − EP2 Difference composite */}
+        <div className="mt-4">
+          <h3 className="mb-2 text-sm font-semibold text-slate-700">
+            EP1 − EP2 Difference
+            <span className="ml-2 text-xs font-normal text-slate-400">
+              (point-by-point subtraction in storm-relative coordinates)
+            </span>
+          </h3>
+          {hasDiffFigure ? (
+            <div className="overflow-hidden rounded-xl border border-teal-200 bg-white">
+              <div className="border-b border-teal-100 bg-teal-50 px-4 py-3">
+                <p className="text-xs text-teal-700">
+                  <strong>Diverging scale:</strong> positive (warm colors) = EP1 &gt; EP2, negative (cool colors) = EP1 &lt; EP2.
+                </p>
+                <p className="mt-1 text-xs text-teal-500">
+                  Source: <code>figures/ep_structure/{diffFigFilename}</code>
+                </p>
+              </div>
+              <div className="p-4">
+                <FallbackImage
+                  src={figureUrl(diffFig!.api_path)}
+                  alt={`${diag.name} difference — EP1 minus EP2 (${MODE_INFO[mode].label})`}
+                  width={1000}
+                  height={800}
+                  className="w-full max-w-2xl mx-auto rounded-lg"
+                  key={diffFig!.api_path}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border-2 border-dashed border-teal-300 bg-teal-50/50 p-6 text-center">
+              <p className="text-sm font-medium text-teal-600">
+                {diag.shortName} difference (EP1 − EP2)
+              </p>
+              <p className="mt-1 text-xs text-teal-400">
+                Expected: <code>figures/ep_structure/{diffFigFilename ?? 'composite_*_diff.png'}</code>
+              </p>
+            </div>
+          )}
+        </div>
       </section>
 
       {/* Domain statistics */}

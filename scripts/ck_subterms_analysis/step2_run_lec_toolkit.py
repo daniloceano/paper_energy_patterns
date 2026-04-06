@@ -286,13 +286,28 @@ def is_already_processed(track_id):
     
     Checks for existence of results in project directory or LorenzCycleToolkit directory.
     Returns tuple: (is_processed, location) where location is 'project', 'lorenz', or None
+    
+    The function looks for evidence of completed LEC computation by checking for:
+    1. Main results file: {track_id}_ERA5_track_results.csv
+    2. Vertical levels directory: results_vertical_levels/
+    3. Log file with completion marker: log.{track_id}_ERA5
+    
+    A case is considered "already processed" if it has the results CSV file
+    (which is the primary output of LorenzCycleToolkit).
     """
     # Check in project results directory
     result_dir = RESULTS_DIR / f"{track_id}_ERA5_track"
     
     if result_dir.exists():
-        # Check for key output files - be more flexible about which files exist
-        # The toolkit may output different files depending on configuration
+        # Primary indicator: main results CSV file
+        # LorenzCycleToolkit generates: {track_id}_ERA5_track_results.csv
+        results_csv = result_dir / f"{track_id}_ERA5_track_results.csv"
+        
+        if results_csv.exists():
+            return True, 'project'
+        
+        # Fallback checks for older formats or partial results
+        # (kept for backwards compatibility)
         possible_files = [
             result_dir / "results.csv",
             result_dir / "periods.csv",
@@ -307,6 +322,13 @@ def is_already_processed(track_id):
     lorenz_result_dir = LORENZ_RESULTS_DIR / f"{track_id}_ERA5_track"
     
     if lorenz_result_dir.exists():
+        # Check for main results CSV
+        results_csv = lorenz_result_dir / f"{track_id}_ERA5_track_results.csv"
+        
+        if results_csv.exists():
+            return True, 'lorenz'
+        
+        # Fallback checks
         possible_files = [
             lorenz_result_dir / "results.csv",
             lorenz_result_dir / "periods.csv",

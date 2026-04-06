@@ -57,7 +57,7 @@ FIGURES_MANIFEST = {
     "main/4_lps_combined.png":                    "main/4_lps_combined.png",
     "main/5_ep_intensity_seasonality_trends.png":  "main/5_ep_intensity_seasonality_trends.png",
     "main/6_ep_genesis_density_kde.png":           "main/6_ep_genesis_density_kde.png",
-    "main/7_ep1_instability_composite_4x3.png":    "main/7_ep1_instability_composite_4x3.png",
+    "main/7_ep1_ep2_dynamical_composites.png":     "main/7_ep1_ep2_dynamical_composites.png",
     "main/S1_pca_clustering_validation.png":       "main/S1_pca_clustering_validation.png",
     "main/S2_selected_tracks.png":                 "main/S2_selected_tracks.png",
     "main/S3_vertical_levels.png":                 "main/S3_vertical_levels.png",
@@ -65,24 +65,8 @@ FIGURES_MANIFEST = {
     "main/2_20070643_lps_track_publication.png":   "main/2_20070643_lps_track_publication.png",
     "main/3_phase_density_2x2.png":                "main/3_phase_density_2x2.png",
 
-    # --- EP Structure composite figures (step4_create_figures.py output) ---
-    "ep_structure/composite_egr.png":                    "ep_structure/composite_egr.png",
-    "ep_structure/composite_pv200.png":                  "ep_structure/composite_pv200.png",
-    "ep_structure/composite_pv200_anom.png":             "ep_structure/composite_pv200_anom.png",
-    "ep_structure/composite_pv850.png":                  "ep_structure/composite_pv850.png",
-    "ep_structure/composite_pv850_anom.png":             "ep_structure/composite_pv850_anom.png",
-    "ep_structure/composite_advT850.png":                "ep_structure/composite_advT850.png",
-    "ep_structure/composite_advT850_anom.png":           "ep_structure/composite_advT850_anom.png",
-    "ep_structure/composite_moisture_flux.png":          "ep_structure/composite_moisture_flux.png",
-    "ep_structure/composite_moisture_flux_anom.png":     "ep_structure/composite_moisture_flux_anom.png",
-    "ep_structure/composite_slp.png":                    "ep_structure/composite_slp.png",
-    "ep_structure/composite_slp_anom.png":               "ep_structure/composite_slp_anom.png",
-    "ep_structure/composite_rk_criterion.png":           "ep_structure/composite_rk_criterion.png",
-    "ep_structure/composite_ke_advection.png":           "ep_structure/composite_ke_advection.png",
-    "ep_structure/composite_ke_advection_anom.png":      "ep_structure/composite_ke_advection_anom.png",
-    "ep_structure/composite_afc_250.png":                "ep_structure/composite_afc_250.png",
-    "ep_structure/composite_wind250.png":                "ep_structure/composite_wind250.png",
-    "ep_structure/composite_wind250_anom.png":           "ep_structure/composite_wind250_anom.png",
+    # NOTE: EP Structure composite figures are now copied dynamically via
+    # copy_ep_structure_tree() since they have mode suffixes (e.g., _full_intensification)
 }
 
 
@@ -149,6 +133,42 @@ def copy_cyclone_explorer_tree(dry_run: bool = False) -> tuple[int, int]:
 
     return copied, up_to_date
 
+
+def copy_ep_structure_tree(dry_run: bool = False) -> tuple[int, int]:
+    """Copy all EP structure figures (composites with mode suffixes).
+    
+    Since composite figures now have mode suffixes (e.g., _full_intensification,
+    _central_time, _intense_10), we copy them dynamically rather than listing
+    each one explicitly.
+    """
+    src_root = FIGURES_SRC / "ep_structure"
+    dst_root = FIGURES_DST / "ep_structure"
+
+    if not src_root.exists():
+        return 0, 0
+
+    copied = 0
+    up_to_date = 0
+    for src in sorted(src_root.glob("composite_*.png")):
+        if not src.is_file():
+            continue
+
+        dst = dst_root / src.name
+        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+            up_to_date += 1
+            continue
+
+        if dry_run:
+            print(f"  [dry-run]   ep_structure/{src.name}")
+        else:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            print(f"  ✓  ep_structure/{src.name}")
+        copied += 1
+
+    return copied, up_to_date
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Copy figures to web/public/figures/ for Vercel deployment."
@@ -169,21 +189,27 @@ def main():
 
     copied, missing, up_to_date = copy_figures(dry_run=args.dry_run)
 
+    # Copy cyclone explorer assets
     cx_copied, cx_uptodate = copy_cyclone_explorer_tree(dry_run=args.dry_run)
+    
+    # Copy EP structure composite figures (with mode suffixes)
+    ep_copied, ep_uptodate = copy_ep_structure_tree(dry_run=args.dry_run)
+
+    total_copied = copied + cx_copied + ep_copied
+    total_uptodate = up_to_date + cx_uptodate + ep_uptodate
 
     print()
-    print(f"  ✓ Copied        : {copied + cx_copied}")
-    print(f"  – Up-to-date    : {up_to_date + cx_uptodate}")
+    print(f"  ✓ Copied        : {total_copied}")
+    print(f"  – Up-to-date    : {total_uptodate}")
     print(f"  ⚠ Source missing: {missing}")
 
     if missing > 0:
         print()
         print("  Missing figures will show as placeholders in the site.")
         print("  Run the scientific pipeline to generate them:")
-        print("    python scripts/ep_structure_analysis/step4_create_figures.py")
         print("    python scripts/cluster_analysis_energy_patterns/run_pipeline.py")
 
-    if not args.dry_run and (copied + cx_copied) > 0:
+    if not args.dry_run and total_copied > 0:
         print()
         print("  Next steps:")
         print("    git add web/public/figures/")

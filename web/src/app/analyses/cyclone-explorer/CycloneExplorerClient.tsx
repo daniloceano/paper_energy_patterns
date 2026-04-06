@@ -44,25 +44,13 @@ interface FeaturedCase {
   subtitle: string
 }
 
-const DEFAULT_SYNOPTIC_PRODUCTS = [
-  {
-    id: 'basic',
-    label: 'Synoptic fields',
-    description: 'SLP, temperature, specific humidity and geopotential in a cyclone-centered panel.',
-  },
-]
-
 export default function CycloneExplorerClient({ manifest, featuredCases }: CycloneExplorerClientProps) {
   const [selectedEP, setSelectedEP] = useState<'EP1' | 'EP2'>('EP1')
   const [selectedCycloneId, setSelectedCycloneId] = useState<string | null>(null)
   const [currentTimestepIdx, setCurrentTimestepIdx] = useState(0)
   const [selectedCategory, setSelectedCategory] = useState<FieldCategory>('synoptic')
 
-  const synopticProducts = manifest.metadata.synoptic_products ?? DEFAULT_SYNOPTIC_PRODUCTS
   const dynamicProducts = manifest.metadata.dynamic_products ?? []
-  const [selectedDynamicProduct, setSelectedDynamicProduct] = useState<string>(
-    dynamicProducts[0]?.id ?? 'slp_pv850_wind850'
-  )
 
   // Filter cyclones by EP - only include those with at least one panel
   const cyclonesByEP = useMemo(() => {
@@ -106,21 +94,23 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
 
   const currentTimestep = selectedCyclone?.timesteps[currentTimestepIdx]
 
-  const selectedProductMeta =
-    selectedCategory === 'synoptic'
-      ? synopticProducts[0]
-      : dynamicProducts.find((p) => p.id === selectedDynamicProduct) ?? dynamicProducts[0]
-
-  const panelPath = useMemo(() => {
+  // Synoptic panel path
+  const synopticPanelPath = useMemo(() => {
     if (!selectedCyclone || !currentTimestep) return null
-    if (selectedCategory === 'synoptic') {
-      const synPath = currentTimestep.images?.synoptic?.basic ?? currentTimestep.panel_image
-      return synPath ? figureUrl(synPath) : null
-    }
+    const synPath = currentTimestep.images?.synoptic?.basic ?? currentTimestep.panel_image
+    return synPath ? figureUrl(synPath) : null
+  }, [selectedCyclone, currentTimestep])
 
-    const dynPath = currentTimestep.images?.dynamic?.[selectedDynamicProduct] ?? null
-    return dynPath ? figureUrl(dynPath) : null
-  }, [selectedCategory, selectedCyclone, currentTimestep, selectedDynamicProduct])
+  // All dynamic panel paths (for displaying all at once)
+  const dynamicPanelPaths = useMemo(() => {
+    if (!selectedCyclone || !currentTimestep) return {}
+    const paths: Record<string, string | null> = {}
+    for (const product of dynamicProducts) {
+      const dynPath = currentTimestep.images?.dynamic?.[product.id] ?? null
+      paths[product.id] = dynPath ? figureUrl(dynPath) : null
+    }
+    return paths
+  }, [selectedCyclone, currentTimestep, dynamicProducts])
 
   const hasAnyDynamic = useMemo(() => {
     if (!selectedCyclone) return false
@@ -129,6 +119,11 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
       return Object.values(ts.images.dynamic).some((v) => Boolean(v))
     })
   }, [selectedCyclone])
+
+  // Count available dynamic panels for current timestep
+  const availableDynamicCount = useMemo(() => {
+    return Object.values(dynamicPanelPaths).filter(Boolean).length
+  }, [dynamicPanelPaths])
 
   return (
     <div className="space-y-6">
@@ -338,6 +333,9 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                     Dynamic fields
+                    {availableDynamicCount > 0 && (
+                      <span className="ml-1 text-xs opacity-75">({availableDynamicCount})</span>
+                    )}
                   </span>
                 </button>
               </div>
@@ -347,39 +345,17 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
                   {selectedCategory === 'synoptic' ? (
                     <><strong className="text-indigo-700">Synoptic fields</strong> show the baseline meteorological environment: SLP, temperature, humidity and geopotential in cyclone-centered coordinates.</>
                   ) : (
-                    <><strong className="text-purple-700">Dynamic fields</strong> reveal baroclinic and barotropic diagnostics linked to cyclone intensification: PV structure, temperature advection, AFC, KE advection and critical-region context.</>
+                    <><strong className="text-purple-700">Dynamic fields</strong> reveal baroclinic and barotropic diagnostics linked to cyclone intensification: PV structure, temperature advection, AFC, KE advection and critical-region context. All available diagnostics are shown below.</>
                   )}
                 </p>
               </div>
 
-              {selectedCategory === 'dynamic' && (
-                <div className="mt-4 border-t border-slate-100 pt-4">
-                  <label className="mb-2 block text-xs font-medium uppercase tracking-wider text-slate-500">
-                    Select Diagnostic
-                  </label>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {dynamicProducts.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => setSelectedDynamicProduct(p.id)}
-                        className={`rounded-lg border p-2.5 text-left text-xs transition-all ${
-                          selectedDynamicProduct === p.id
-                            ? 'border-purple-500 bg-purple-50 text-purple-900 shadow-sm'
-                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'
-                        }`}
-                      >
-                        <div className="font-medium leading-tight">{p.label}</div>
-                      </button>
-                    ))}
-                  </div>
-                  {!hasAnyDynamic && (
-                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-                      <p className="text-xs text-amber-800">
-                        <strong>Note:</strong> Dynamic assets are not yet available for this cyclone. 
-                        Assets are being progressively generated for the full dataset.
-                      </p>
-                    </div>
-                  )}
+              {selectedCategory === 'dynamic' && !hasAnyDynamic && (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-xs text-amber-800">
+                    <strong>Note:</strong> Dynamic assets are not yet available for this cyclone. 
+                    Assets are being progressively generated for the full dataset.
+                  </p>
                 </div>
               )}
             </div>
@@ -439,57 +415,99 @@ export default function CycloneExplorerClient({ manifest, featuredCases }: Cyclo
               </div>
             </div>
 
-            {/* Panel image */}
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-900">
-                  {selectedCategory === 'synoptic' ? (
+            {/* Panel display - different layouts for synoptic vs dynamic */}
+            {selectedCategory === 'synoptic' ? (
+              /* Synoptic: Single 2x2 panel */
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900">
                     <span className="flex items-center gap-2">
                       <span className="inline-block h-2 w-2 rounded-full bg-indigo-500"></span>
                       Synoptic Fields
                     </span>
-                  ) : (
+                  </h3>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
+                    30°×30° cyclone-centered
+                  </span>
+                </div>
+                {synopticPanelPath ? (
+                  <div className="relative aspect-[10/9] w-full overflow-hidden rounded-lg bg-slate-50 shadow-inner">
+                    <FallbackImage
+                      key={synopticPanelPath}
+                      src={synopticPanelPath}
+                      alt={`Cyclone ${selectedCyclone.track_id} at timestep ${currentTimestepIdx} - Synoptic fields`}
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex aspect-[10/9] items-center justify-center rounded-lg bg-slate-100 text-sm text-slate-400">
+                    <div className="text-center">
+                      <svg className="mx-auto h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="mt-2">Panel not available for this timestep</p>
+                    </div>
+                  </div>
+                )}
+                <p className="mt-3 text-xs text-slate-500">
+                  <strong>Synoptic fields:</strong> SLP, temperature, specific humidity and geopotential diagnostics.
+                </p>
+              </div>
+            ) : (
+              /* Dynamic: Grid showing ALL panels at once */
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900">
                     <span className="flex items-center gap-2">
                       <span className="inline-block h-2 w-2 rounded-full bg-purple-500"></span>
-                      {selectedProductMeta?.label ?? 'Dynamic Fields'}
+                      Dynamic Fields
                     </span>
-                  )}
-                </h3>
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
-                  30°×30° cyclone-centered
-                </span>
-              </div>
-              {panelPath ? (
-                <div className="relative aspect-[10/9] w-full overflow-hidden rounded-lg bg-slate-50 shadow-inner">
-                  <FallbackImage
-                    key={panelPath}
-                    src={panelPath}
-                    alt={`Cyclone ${selectedCyclone.track_id} at timestep ${currentTimestepIdx} - ${selectedProductMeta?.label ?? selectedCategory}`}
-                    fill
-                    className="object-contain"
-                  />
+                  </h3>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-medium text-slate-500">
+                    30°×30° cyclone-centered
+                  </span>
                 </div>
-              ) : (
-                <div className="flex aspect-[10/9] items-center justify-center rounded-lg bg-slate-100 text-sm text-slate-400">
-                  <div className="text-center">
-                    <svg className="mx-auto h-10 w-10 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p className="mt-2">Panel not available for this timestep</p>
-                  </div>
+                
+                {/* Grid of all dynamic panels */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {dynamicProducts.map((product) => {
+                    const panelPath = dynamicPanelPaths[product.id]
+                    return (
+                      <div key={product.id} className="rounded-lg border border-slate-100 bg-slate-50/50 p-2">
+                        <h4 className="mb-2 text-xs font-semibold text-purple-800 leading-tight">
+                          {product.label}
+                        </h4>
+                        {panelPath ? (
+                          <div className="relative aspect-square w-full overflow-hidden rounded-md bg-white shadow-inner">
+                            <FallbackImage
+                              key={panelPath}
+                              src={panelPath}
+                              alt={`${product.label} - Cyclone ${selectedCyclone.track_id} at timestep ${currentTimestepIdx}`}
+                              fill
+                              className="object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex aspect-square items-center justify-center rounded-md bg-slate-100 text-xs text-slate-400">
+                            <div className="text-center px-2">
+                              <svg className="mx-auto h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                              <p className="mt-1">Not available</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-              )}
-              <p className="mt-3 text-xs text-slate-500">
-                <strong>Product:</strong> {selectedProductMeta?.label ?? 'Not available'}.
-                <span className="ml-1 text-slate-400">{selectedProductMeta?.description ?? ''}</span>
-              </p>
-              {/* Debug info - shows current image path */}
-              {process.env.NODE_ENV === 'development' && panelPath && (
-                <p className="mt-1 text-[10px] font-mono text-slate-400 break-all">
-                  <span className="font-semibold">Path:</span> {panelPath}
+                
+                <p className="mt-4 text-xs text-slate-500">
+                  All available dynamic diagnostics for this timestep. Click any panel to view details.
                 </p>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (

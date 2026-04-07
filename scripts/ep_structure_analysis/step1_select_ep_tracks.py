@@ -1,34 +1,38 @@
 """
-Step 1: Select EP1 and EP2 Cyclone Tracks for Structure Analysis
+Step 1: Select EP1, EP2, EP3, and EPALL Cyclone Tracks for Structure Analysis
 
-Selects ALL cyclones from Energy Pattern 1 (EP1, cluster 0) and Energy Pattern 2
-(EP2, cluster 2) for composite analysis during their entire intensification phase.
+Selects ALL cyclones from Energy Patterns 1, 2, and 3 for composite analysis
+during their entire intensification phase.
 
 IMPORTANT: The clustering was performed on cyclones already filtered for complete
 lifecycle (incipient → intensification → mature → decay). Therefore, ALL cyclones
 in the cluster file already satisfy this criterion and should NOT be filtered again.
 
 Selection Criteria:
-- Belongs to EP1 (cluster 0) OR EP2 (cluster 2) from kmeans_clustered_data.csv
-- ALL cyclones from these clusters are used (no additional lifecycle filtering)
-- Consistency: Same cyclones used in clustering are used here
+- EP1: Cluster 0 (444 cyclones, 11.6%) - High energy conversions
+- EP2: Cluster 2 (979 cyclones, 25.6%) - Moderate conversions
+- EP3: Cluster 1 (2,397 cyclones, 62.7%) - Weak/background energetics
+- EPALL: Union of all three EPs (3,820 cyclones, 100%)
 
 Intensity Subset:
 - Additionally selects the 10 most intense cyclones per EP group
 - Intensity metric: maximum |vor42| (central relative vorticity at 850 hPa)
-- Consistent with intensity definition in 05_figure_intensity_seasonality_trends.py
 - Used for the 'intense_10' composite mode in step3
 
 Output:
 - results/ep_structure/ep1_cases.csv           (all EP1 cyclones)
 - results/ep_structure/ep2_cases.csv           (all EP2 cyclones)
+- results/ep_structure/ep3_cases.csv           (all EP3 cyclones)
+- results/ep_structure/epall_cases.csv         (all cyclones)
 - results/ep_structure/ep1_top10_intense.csv   (10 most intense EP1)
 - results/ep_structure/ep2_top10_intense.csv   (10 most intense EP2)
+- results/ep_structure/ep3_top10_intense.csv   (10 most intense EP3)
 - figures/ep_structure/tracks/ep1_tracks_overview.png
 - figures/ep_structure/tracks/ep2_tracks_overview.png
+- figures/ep_structure/tracks/ep3_tracks_overview.png
 
 Author: Danilo Couto de Souza
-Date: February 2026
+Date: April 2026
 """
 
 import sys
@@ -43,6 +47,10 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from matplotlib.lines import Line2D
 from scripts.utils.load_data import load_tracks
+from scripts.utils.ep_mapping import (
+    CLUSTER_TO_EP, EP_TO_CLUSTER, ALL_EPS, EP_LABELS, EP_COLORS,
+    get_ep_label, get_ep_abbrev, get_ep_color
+)
 
 # Configuration
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -53,9 +61,6 @@ FIGURES_DIR = PROJECT_ROOT / "figures" / "ep_structure" / "tracks"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 LEC_DATA_DIR = PROJECT_ROOT / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 DPI = 300
-
-# Cluster → EP mapping
-CLUSTER_TO_EP = {0: 1, 2: 2}  # cluster 0 → EP1, cluster 2 → EP2
 
 
 def _resolve_csv(path: Path):
@@ -113,26 +118,11 @@ def select_top10_intense(ep_df, tracks_df, ep_label):
     Select the 10 most intense cyclones from an EP group based on max vorticity.
     
     Intensity metric: maximum |vor42| (central vorticity at 850 hPa) during the
-    cyclone's full lifecycle. This is consistent with standard cyclone intensity
-    definitions used throughout the project (see 05_figure_intensity_seasonality_trends.py).
-    
-    Parameters
-    ----------
-    ep_df : DataFrame
-        DataFrame with track_id and other case info
-    tracks_df : DataFrame
-        Full tracks data with vor42 column
-    ep_label : str
-        "EP1" or "EP2" for logging
-    
-    Returns
-    -------
-    DataFrame with the 10 most intense cases
+    cyclone's full lifecycle.
     """
     print(f"\n   Selecting top 10 most intense {ep_label} cyclones...")
     
-    # Get max vorticity (in module) for each cyclone from tracks data
-    # vor42 is already positive (absolute vorticity), so just take max
+    # Get max vorticity for each cyclone from tracks data
     max_vor = tracks_df.groupby('track_id')['vor42'].max().reset_index()
     max_vor.columns = ['track_id', 'max_vorticity']
     
@@ -154,7 +144,6 @@ def select_top10_intense(ep_df, tracks_df, ep_label):
     # Report intensity range
     print(f"      Max |vor42| range: {top10['max_vorticity'].min():.2f} – {top10['max_vorticity'].max():.2f} ×10⁻⁵ s⁻¹")
     
-    # Drop max_vorticity column before returning (not needed in output)
     return top10.drop(columns=["max_vorticity"])
 
 
@@ -257,14 +246,15 @@ def plot_tracks(selected_df, tracks_df, ep_label, color):
     print(f"   Saved: {out_path}")
 
 
-def select_ep_cases(ep_label, cluster_id, tracks_df, clustered_df):
+def select_ep_cases(ep_num, tracks_df, clustered_df):
     """
     Select all cases from an EP cluster.
     
     IMPORTANT: NO FILTERING by lifecycle - all cyclones in the cluster are used.
-    The clustering was already performed on complete-lifecycle cyclones only.
-    Re-filtering here would create inconsistency with the cluster analysis.
     """
+    cluster_id = EP_TO_CLUSTER[ep_num]
+    ep_label = get_ep_label(ep_num)
+    
     print(f"\n── {ep_label} (cluster {cluster_id}) ──")
 
     ep_cyclones = clustered_df[clustered_df["cluster"] == cluster_id]
@@ -280,6 +270,7 @@ def select_ep_cases(ep_label, cluster_id, tracks_df, clustered_df):
             cases.append(
                 {
                     "track_id": track_id,
+                    "ep": ep_num,
                     "intensification_start": start_time,
                     "intensification_end": end_time,
                     "n_timesteps": n_timesteps,
@@ -308,10 +299,10 @@ def select_ep_cases(ep_label, cluster_id, tracks_df, clustered_df):
 
 def main():
     print("=" * 70)
-    print("STEP 1: SELECT EP1 + EP2 CYCLONE TRACKS FOR STRUCTURE ANALYSIS")
+    print("STEP 1: SELECT EP1 + EP2 + EP3 CYCLONE TRACKS FOR STRUCTURE ANALYSIS")
     print("=" * 70)
     print()
-    print("IMPORTANT: All cyclones from the cluster were already filtered for")
+    print("IMPORTANT: All cyclones from the clusters were already filtered for")
     print("complete lifecycle during the clustering analysis. NO additional")
     print("filtering is applied here to ensure consistency.")
     
@@ -322,9 +313,9 @@ def main():
 
     clustered_df = pd.read_csv(CLUSTER_FILE)
     print(f"   Total clustered cyclones: {len(clustered_df)}")
-    for cid, ep in CLUSTER_TO_EP.items():
-        n = (clustered_df["cluster"] == cid).sum()
-        print(f"   EP{ep} (cluster {cid}): {n} cyclones")
+    for cluster_id, ep_num in sorted(CLUSTER_TO_EP.items()):
+        n = (clustered_df["cluster"] == cluster_id).sum()
+        print(f"   {get_ep_label(ep_num)} (cluster {cluster_id}): {n} cyclones")
 
     # 2. Load tracks
     print("\n2. Loading track data...")
@@ -334,42 +325,54 @@ def main():
     # 3. Select cases for each EP
     print("\n3. Selecting cases per EP...")
 
-    ep1_df = select_ep_cases("EP1", 0, tracks_df, clustered_df)
-    ep2_df = select_ep_cases("EP2", 2, tracks_df, clustered_df)
+    ep_dfs = {}
+    for ep_num in ALL_EPS:
+        ep_dfs[ep_num] = select_ep_cases(ep_num, tracks_df, clustered_df)
 
-    # 4. Save all cases
+    # 4. Create EPALL (union of all EPs)
+    print("\n── EPALL (all EPs combined) ──")
+    epall_df = pd.concat([ep_dfs[ep] for ep in ALL_EPS], ignore_index=True)
+    print(f"   Total EPALL cyclones: {len(epall_df)}")
+    print(f"   Total timesteps: {epall_df['n_timesteps'].sum()}")
+
+    # 5. Save all cases
     print("\n4. Saving results...")
-    ep1_csv = OUTPUT_DIR / "ep1_cases.csv"
-    ep2_csv = OUTPUT_DIR / "ep2_cases.csv"
-    ep1_df.to_csv(ep1_csv, index=False)
-    ep2_df.to_csv(ep2_csv, index=False)
-    print(f"   Saved: {ep1_csv}")
-    print(f"   Saved: {ep2_csv}")
-
-    # 5. Select and save top-10 most intense cyclones per EP
-    print("\n5. Selecting top-10 most intense cyclones per EP...")
-    ep1_top10 = select_top10_intense(ep1_df, tracks_df, "EP1")
-    ep2_top10 = select_top10_intense(ep2_df, tracks_df, "EP2")
+    for ep_num in ALL_EPS:
+        ep_abbrev = get_ep_abbrev(ep_num)
+        csv_path = OUTPUT_DIR / f"{ep_abbrev}_cases.csv"
+        ep_dfs[ep_num].to_csv(csv_path, index=False)
+        print(f"   Saved: {csv_path}")
     
-    ep1_top10_csv = OUTPUT_DIR / "ep1_top10_intense.csv"
-    ep2_top10_csv = OUTPUT_DIR / "ep2_top10_intense.csv"
-    ep1_top10.to_csv(ep1_top10_csv, index=False)
-    ep2_top10.to_csv(ep2_top10_csv, index=False)
-    print(f"   Saved: {ep1_top10_csv}")
-    print(f"   Saved: {ep2_top10_csv}")
+    epall_csv = OUTPUT_DIR / "epall_cases.csv"
+    epall_df.to_csv(epall_csv, index=False)
+    print(f"   Saved: {epall_csv}")
 
-    # 6. Visualisations
+    # 6. Select and save top-10 most intense cyclones per EP
+    print("\n5. Selecting top-10 most intense cyclones per EP...")
+    for ep_num in ALL_EPS:
+        ep_label = get_ep_label(ep_num)
+        ep_abbrev = get_ep_abbrev(ep_num)
+        top10 = select_top10_intense(ep_dfs[ep_num], tracks_df, ep_label)
+        top10_csv = OUTPUT_DIR / f"{ep_abbrev}_top10_intense.csv"
+        top10.to_csv(top10_csv, index=False)
+        print(f"   Saved: {top10_csv}")
+
+    # 7. Visualisations
     print("\n6. Creating track visualisations...")
-    plot_tracks(ep1_df, tracks_df, "EP1", color="gold")
-    plot_tracks(ep2_df, tracks_df, "EP2", color="dodgerblue")
+    for ep_num in ALL_EPS:
+        ep_label = get_ep_label(ep_num)
+        color = get_ep_color(ep_num)
+        plot_tracks(ep_dfs[ep_num], tracks_df, ep_label, color)
 
-    # 7. Summary
+    # 8. Summary
     print("\n" + "=" * 70)
     print("STEP 1 COMPLETE")
     print("=" * 70)
-    print(f"   EP1 cases: {len(ep1_df)} (top-10 intense: {len(ep1_top10)})")
-    print(f"   EP2 cases: {len(ep2_df)} (top-10 intense: {len(ep2_top10)})")
-    print(f"   Total:     {len(ep1_df) + len(ep2_df)}")
+    for ep_num in ALL_EPS:
+        ep_label = get_ep_label(ep_num)
+        n_cases = len(ep_dfs[ep_num])
+        print(f"   {ep_label} cases: {n_cases}")
+    print(f"   EPALL total: {len(epall_df)}")
     print(
         f"\nNext step: python scripts/ep_structure_analysis/step2_download_era5_parallel.py"
     )

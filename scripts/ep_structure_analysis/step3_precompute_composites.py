@@ -1,13 +1,18 @@
 """
-Step 3: Precompute Composites for EP1 & EP2
+Step 3: Precompute Composites for EP1, EP2, EP3, and EPALL
 
 Computes spatial composites (30°×30° domain centred on the cyclone) for
 each EP group and saves a single NetCDF file per group with composite
 means on a regular 0.25° grid.
 
+NEW IN THIS VERSION (April 2026):
+- Supports ALL THREE Energy Patterns: EP1, EP2, EP3, and EPALL (total)
+- Computes EPALL-relative anomalies: EPx_total - EPALL_total
+- Legacy climatology-based anomalies retained for AFC/BtCR only
+
 USAGE
 -----
-  # Standard mode: all cyclones in EP1/EP2, mean over intensification phase
+  # Standard mode: all cyclones, mean over intensification phase
   python step3_precompute_composites.py --mode full_intensification
 
   # Central-time mode: all cyclones, only central timestep of each
@@ -27,8 +32,6 @@ COMPOSITE MODES
                          intensification) for each cyclone.
   intense_10           : Same as full_intensification, but uses only the
                          10 most intense cyclones per EP group.
-                         Requires: results/ep_structure/ep1_top10_intense.csv
-                                   results/ep_structure/ep2_top10_intense.csv
 
 Total-field diagnostics (computed from instantaneous ERA5 fields):
   - EGR   — Eady Growth Rate, 500–850 hPa layer (Besson et al. 2021)
@@ -46,21 +49,23 @@ Total-field diagnostics (computed from instantaneous ERA5 fields):
             computed from climatological (low-frequency) winds; identifies
             regions where deformation dominates rotation (Rivière 2006)
 
-Anomaly diagnostics (eddy perturbation relative to 30-year WMO monthly
-climatology 1991–2020, produced by step2_1_download_era5_monthly_means.py;
-skipped gracefully if the files are absent):
-  - pv_200_anom     — PV anomaly at 200 hPa  (eddy u′,v′,T′ at 175/200/225 hPa)
-  - pv_850_anom     — PV anomaly at 850 hPa  (eddy u′,v′,T′ at 825/850/875 hPa)
-  - adv_T_850_anom  — Temperature advection anomaly at 850 hPa  (−V′·∇T′)
-  - div_q_975_anom  — Moisture flux divergence anomaly at 975 hPa  (∇·(q′V′))
-  - ke_adv_250_anom — KE advection anomaly at 250 hPa  (−V′·∇(½|V′|²))
-  - msl_anom        — SLP anomaly  (msl − climatological monthly mean)
-  Note: anomaly diagnostics for non-linear fields (PV, div_q) capture only
-  the pure-eddy (quadratic) term, omitting cross-terms (e.g. −V_m·∇T′ − V′·∇T_m).
+ANOMALY DEFINITIONS
+-------------------
+NEW (April 2026): EPALL-relative anomalies:
+  - EPx_anomaly = EPx_composite - EPALL_composite
+  - This isolates what distinguishes each EP from the "average" cyclone
+  - Applied to: EGR, PV, temperature advection, moisture flux, SLP,
+                KE advection, RK criterion
+
+LEGACY (kept for specific diagnostics):
+  - AFC and BtCR use monthly climatology by construction (Rivière 2006)
+  - These cannot be meaningfully defined as EPALL-relative
 
 Output:
   data/era5_ep_structure/precomputed_composites_ep1_{mode}.nc
   data/era5_ep_structure/precomputed_composites_ep2_{mode}.nc
+  data/era5_ep_structure/precomputed_composites_ep3_{mode}.nc
+  data/era5_ep_structure/precomputed_composites_epall_{mode}.nc
 
 ⚠ IMPORTANT — UNIT CONSISTENCY:
   All diagnostic functions receive xarray DataArrays with pint units attached
@@ -1716,20 +1721,74 @@ def compute_composite(cases, ep_label, n_jobs=1):
     return ds_out
 
 
+def compute_epall_relative_anomalies(ds_epx, ds_epall, ep_label):
+    """
+    Compute EPALL-relative anomaly fields: EPx_composite - EPALL_composite.
+    
+    This is the new anomaly definition (April 2026) that isolates what
+    distinguishes each EP from the "average" cyclone.
+    
+    Parameters
+    ----------
+    ds_epx : xr.Dataset
+        Composite dataset for EPx (EP1, EP2, or EP3).
+    ds_epall : xr.Dataset
+        Composite dataset for EPALL (all cyclones).
+    ep_label : str
+        Label for logging (e.g., "EP1").
+    
+    Returns
+    -------
+    xr.Dataset
+        Updated EPx dataset with new anomaly variables added.
+    """
+    # List of variables to compute EPALL-relative anomalies for
+    anom_vars = [
+        "egr", "pv_200", "pv_850", "adv_T_850", "div_q_975",
+        "ke_adv_250", "rk_criterion_250", "msl",
+        "u_250", "v_250", "u_850", "v_850", "u_975", "v_975", "q_975",
+    ]
+    
+    anomalies = {}
+    for var in anom_vars:
+        if var in ds_epx and var in ds_epall:
+            epx_val = ds_epx[var].values
+            epall_val = ds_epall[var].values
+            anom_val = epx_val - epall_val
+            
+            anom_key = f"{var}_minus_epall"
+            anomalies[anom_key] = (
+                ["y", "x"],
+                anom_val,
+                {
+                    "long_name": f"{ds_epx[var].attrs.get('long_name', var)} (EPx - EPALL)",
+                    "units": ds_epx[var].attrs.get("units", ""),
+                    "anomaly_type": "EPALL-relative",
+                    "description": f"{ep_label} composite minus EPALL composite",
+                },
+            )
+    
+    # Add anomaly variables to dataset
+    for key, (dims, data, attrs) in anomalies.items():
+        ds_epx[key] = xr.DataArray(data, dims=dims, attrs=attrs)
+    
+    return ds_epx
+
+
 # ============================================================================
 # MAIN
 # ============================================================================
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Precompute EP structure composites",
+        description="Precompute EP structure composites for EP1, EP2, EP3, and EPALL",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Standard composite (all cases, mean over intensification phase)
+  # Standard composite (all EPs, mean over intensification phase)
   python step3_precompute_composites.py --mode full_intensification
 
-  # Central-time composite (all cases, only central timestep)
+  # Central-time composite (all EPs, only central timestep)
   python step3_precompute_composites.py --mode central_time
 
   # Top-10 most intense cyclones per EP
@@ -1737,6 +1796,16 @@ Examples:
 
   # Parallel processing (recommended: 4-8 workers)
   python step3_precompute_composites.py --mode full_intensification --jobs 4
+
+Output files:
+  - precomputed_composites_ep1_{mode}.nc
+  - precomputed_composites_ep2_{mode}.nc
+  - precomputed_composites_ep3_{mode}.nc
+  - precomputed_composites_epall_{mode}.nc
+
+EPALL-relative anomalies (new in April 2026):
+  - Each EPx file contains *_minus_epall variables
+  - Example: egr_minus_epall = EP1_egr - EPALL_egr
         """,
     )
     parser.add_argument(
@@ -1768,57 +1837,85 @@ Examples:
         logging.info(f"   (Using full_intensification timestep aggregation for intense subset)")
     logging.info(f"   Parallel workers: {n_jobs}")
 
+    # Define EP groups to process
+    ep_groups = ["ep1", "ep2", "ep3"]
+    
     # Load cases based on mode
-    if args.mode == "intense_10":
-        # Use top-10 intense cyclones files
-        ep1_file = RESULTS_DIR / "ep1_top10_intense.csv"
-        ep2_file = RESULTS_DIR / "ep2_top10_intense.csv"
-        if not ep1_file.exists() or not ep2_file.exists():
-            logging.error(f"❌ intense_10 mode requires:")
-            logging.error(f"   {ep1_file}")
-            logging.error(f"   {ep2_file}")
-            logging.error("   Run step1 selection first or create these files manually.")
-            return
-        ep1_cases = pd.read_csv(ep1_file)
-        ep2_cases = pd.read_csv(ep2_file)
-        logging.info(f"   EP1: {len(ep1_cases)} most intense cases")
-        logging.info(f"   EP2: {len(ep2_cases)} most intense cases")
-    else:
-        # Standard: all cases
-        ep1_cases = pd.read_csv(RESULTS_DIR / "ep1_cases.csv")
-        ep2_cases = pd.read_csv(RESULTS_DIR / "ep2_cases.csv")
-        logging.info(f"   EP1: {len(ep1_cases)} cases")
-        logging.info(f"   EP2: {len(ep2_cases)} cases")
+    ep_cases = {}
+    for ep in ep_groups:
+        if args.mode == "intense_10":
+            case_file = RESULTS_DIR / f"{ep}_top10_intense.csv"
+        else:
+            case_file = RESULTS_DIR / f"{ep}_cases.csv"
+        
+        if not case_file.exists():
+            logging.warning(f"   ⚠ {case_file.name} not found, skipping {ep.upper()}")
+            continue
+        
+        ep_cases[ep] = pd.read_csv(case_file)
+        n_cases = len(ep_cases[ep])
+        label = "most intense cases" if args.mode == "intense_10" else "cases"
+        logging.info(f"   {ep.upper()}: {n_cases} {label}")
+
+    if not ep_cases:
+        logging.error("❌ No case files found. Run step1 first.")
+        return
 
     # Check data availability
-    avail = 0
-    for _, row in pd.concat([ep1_cases, ep2_cases]).iterrows():
-        if (DATA_DIR / f"{row['track_id']}_era5.nc").exists():
-            avail += 1
-    logging.info(f"   Available data files: {avail}/{len(ep1_cases)+len(ep2_cases)}")
+    all_cases = pd.concat(ep_cases.values())
+    avail = sum(1 for _, row in all_cases.iterrows() 
+                if (DATA_DIR / f"{row['track_id']}_era5.nc").exists())
+    logging.info(f"   Available data files: {avail}/{len(all_cases)}")
     if avail == 0:
         logging.error("❌ No ERA5 files found. Run step2 first.")
         return
 
-    # Compute composites
+    # Compute composites for each EP
+    ep_datasets = {}
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore")
-        ds_ep1 = compute_composite(ep1_cases, "EP1", n_jobs=n_jobs)
-        ds_ep2 = compute_composite(ep2_cases, "EP2", n_jobs=n_jobs)
+        for ep, cases in ep_cases.items():
+            ep_label = ep.upper()
+            ds = compute_composite(cases, ep_label, n_jobs=n_jobs)
+            ep_datasets[ep] = ds
 
-    # Save with mode suffix (use args.mode for file naming)
+    # Compute EPALL composite (union of all EPs)
+    logging.info("\n   Computing EPALL composite (union of all EPs)...")
+    epall_cases = pd.concat(ep_cases.values(), ignore_index=True)
+    logging.info(f"   EPALL: {len(epall_cases)} total cases")
+    
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore")
+        ds_epall = compute_composite(epall_cases, "EPALL", n_jobs=n_jobs)
+
+    # Compute EPALL-relative anomalies for each EP
+    logging.info("\n   Computing EPALL-relative anomalies...")
+    for ep, ds in ep_datasets.items():
+        ep_label = ep.upper()
+        ep_datasets[ep] = compute_epall_relative_anomalies(ds, ds_epall, ep_label)
+        logging.info(f"      ✓ {ep_label}: Added *_minus_epall variables")
+
+    # Save composites with mode suffix
     mode_suffix = f"_{args.mode}"
-    out1 = DATA_DIR / f"precomputed_composites_ep1{mode_suffix}.nc"
-    out2 = DATA_DIR / f"precomputed_composites_ep2{mode_suffix}.nc"
-    ds_ep1.to_netcdf(out1)
-    ds_ep2.to_netcdf(out2)
-    logging.info(f"\n   ✓ Saved: {out1.name} ({out1.stat().st_size/1024**2:.1f} MB)")
-    logging.info(f"   ✓ Saved: {out2.name} ({out2.stat().st_size/1024**2:.1f} MB)")
+    
+    for ep, ds in ep_datasets.items():
+        out_path = DATA_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
+        ds.to_netcdf(out_path)
+        mb = out_path.stat().st_size / 1024**2
+        logging.info(f"   ✓ Saved: {out_path.name} ({mb:.1f} MB)")
+    
+    out_epall = DATA_DIR / f"precomputed_composites_epall{mode_suffix}.nc"
+    ds_epall.to_netcdf(out_epall)
+    mb = out_epall.stat().st_size / 1024**2
+    logging.info(f"   ✓ Saved: {out_epall.name} ({mb:.1f} MB)")
 
     logging.info("\n" + "=" * 70)
     logging.info("✓ STEP 3 COMPLETE")
     logging.info("=" * 70)
     logging.info(f"Log: {log_file}")
+    logging.info(f"\nOutput files:")
+    for ep in list(ep_datasets.keys()) + ["epall"]:
+        logging.info(f"   - precomputed_composites_{ep}{mode_suffix}.nc")
     logging.info(f"\nNext: python scripts/ep_structure_analysis/step4_create_figures.py --mode {args.mode}")
 
 

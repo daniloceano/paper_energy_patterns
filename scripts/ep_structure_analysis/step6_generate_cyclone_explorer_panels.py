@@ -1,7 +1,7 @@
 """
 Step 6: Generate Cyclone Explorer Panels (Synoptic + Dynamic Fields)
 
-Creates panel assets for each timestep of each EP1/EP2 cyclone during the
+Creates panel assets for each timestep of each EP1/EP2/EP3 cyclone during the
 intensification phase, keeping the existing synoptic 2x2 panel and adding
 dynamic diagnostics used in the project figures.
 
@@ -57,6 +57,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from tqdm import tqdm
 import warnings
 from metpy.units import units
+
+from scripts.utils.ep_mapping import ALL_EPS, EP_LABELS
 
 from scripts.ep_structure_analysis.step3_precompute_composites import (
     compute_pv_at_level,
@@ -641,53 +643,59 @@ def main():
     if args.subset:
         logging.info(f"   Subset mode: {args.subset} cyclones per EP")
     
-    # Load cases
-    ep1_cases = pd.read_csv(RESULTS_DIR / "ep1_cases.csv")
-    ep2_cases = pd.read_csv(RESULTS_DIR / "ep2_cases.csv")
+    # Load cases for EP1, EP2, EP3
+    ep_cases = {}
+    for ep in ["ep1", "ep2", "ep3"]:
+        case_file = RESULTS_DIR / f"{ep}_cases.csv"
+        if case_file.exists():
+            ep_cases[ep.upper()] = pd.read_csv(case_file)
+        else:
+            logging.warning(f"   ⚠ {case_file.name} not found, skipping {ep.upper()}")
+            ep_cases[ep.upper()] = pd.DataFrame()
     
     # Filter to only cases with ERA5 data available
-    ep1_with_data = []
-    for _, row in ep1_cases.iterrows():
-        track_id = str(row['track_id'])
-        if (DATA_DIR / f"{track_id}_era5.nc").exists():
-            ep1_with_data.append(row)
-    ep1_cases = pd.DataFrame(ep1_with_data) if ep1_with_data else pd.DataFrame()
-    
-    ep2_with_data = []
-    for _, row in ep2_cases.iterrows():
-        track_id = str(row['track_id'])
-        if (DATA_DIR / f"{track_id}_era5.nc").exists():
-            ep2_with_data.append(row)
-    ep2_cases = pd.DataFrame(ep2_with_data) if ep2_with_data else pd.DataFrame()
-    
-    logging.info(f"   EP1 with ERA5 data: {len(ep1_cases)} cases")
-    logging.info(f"   EP2 with ERA5 data: {len(ep2_cases)} cases")
+    for ep_label, cases_df in ep_cases.items():
+        if cases_df.empty:
+            continue
+        with_data = []
+        for _, row in cases_df.iterrows():
+            track_id = str(row['track_id'])
+            if (DATA_DIR / f"{track_id}_era5.nc").exists():
+                with_data.append(row)
+        ep_cases[ep_label] = pd.DataFrame(with_data) if with_data else pd.DataFrame()
+        logging.info(f"   {ep_label} with ERA5 data: {len(ep_cases[ep_label])} cases")
     
     # Filter by specific track IDs if provided
     if args.track_ids:
         target_ids = set(args.track_ids.split(","))
-        ep1_cases = ep1_cases[ep1_cases["track_id"].astype(str).isin(target_ids)]
-        ep2_cases = ep2_cases[ep2_cases["track_id"].astype(str).isin(target_ids)]
+        for ep_label in ep_cases:
+            if not ep_cases[ep_label].empty:
+                ep_cases[ep_label] = ep_cases[ep_label][
+                    ep_cases[ep_label]["track_id"].astype(str).isin(target_ids)
+                ]
         logging.info(f"   Filtered to {len(target_ids)} specific track IDs")
     elif args.selection_file:
         selection = pd.read_csv(args.selection_file)
         target_ids = set(selection["track_id"].astype(str).tolist())
-        ep1_cases = ep1_cases[ep1_cases["track_id"].astype(str).isin(target_ids)]
-        ep2_cases = ep2_cases[ep2_cases["track_id"].astype(str).isin(target_ids)]
+        for ep_label in ep_cases:
+            if not ep_cases[ep_label].empty:
+                ep_cases[ep_label] = ep_cases[ep_label][
+                    ep_cases[ep_label]["track_id"].astype(str).isin(target_ids)
+                ]
         logging.info(f"   Filtered to {len(target_ids)} track IDs from {args.selection_file}")
     elif args.subset:
-        ep1_cases = ep1_cases.head(args.subset) if not ep1_cases.empty else ep1_cases
-        ep2_cases = ep2_cases.head(args.subset) if not ep2_cases.empty else ep2_cases
+        for ep_label in ep_cases:
+            if not ep_cases[ep_label].empty:
+                ep_cases[ep_label] = ep_cases[ep_label].head(args.subset)
     
-    logging.info(f"   EP1: {len(ep1_cases)} cases")
-    logging.info(f"   EP2: {len(ep2_cases)} cases")
+    for ep_label, cases_df in ep_cases.items():
+        logging.info(f"   {ep_label}: {len(cases_df)} cases")
     
     # Combine and prepare task list (track_id, ep_label, center_lat, center_lon)
     tasks = []
-    for _, row in ep1_cases.iterrows():
-        tasks.append((row['track_id'], 'EP1', row['center_lat'], row['center_lon']))
-    for _, row in ep2_cases.iterrows():
-        tasks.append((row['track_id'], 'EP2', row['center_lat'], row['center_lon']))
+    for ep_label, cases_df in ep_cases.items():
+        for _, row in cases_df.iterrows():
+            tasks.append((row['track_id'], ep_label, row['center_lat'], row['center_lon']))
     
     logging.info(f"\n   Total tasks: {len(tasks)}")
     logging.info(f"   Output: {FIGURES_DIR}")

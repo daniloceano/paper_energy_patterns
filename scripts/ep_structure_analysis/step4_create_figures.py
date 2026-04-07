@@ -1,9 +1,13 @@
 """
-Step 4: Create EP1 vs EP2 Composite Comparison Figures
+Step 4: Create EP1, EP2, EP3, and EPALL Composite Comparison Figures
 
-For each diagnostic field, creates a side-by-side composite figure:
-  Left  panel: EP1
-  Right panel: EP2
+For each diagnostic field, creates multi-panel composite figures:
+
+  TOTAL FIELD FIGURES (4 panels):
+    - EP1, EP2, EP3, EPALL
+
+  EPALL-RELATIVE ANOMALY FIGURES (3 panels):
+    - EP1 - EPALL, EP2 - EPALL, EP3 - EPALL
 
 Fields plotted (total fields):
   1. EGR (500–850 hPa, Besson et al. 2021) — shaded
@@ -15,19 +19,12 @@ Fields plotted (total fields):
   7. RK criterion at 250 hPa              — shaded (negative = unstable)
   8. KE advection at 250 hPa              — shaded (positive = acceleration)
   9. AFC at 250 hPa (Orlanski & Katzfey 1991) — shaded (positive = eddy KE source)
+  10. BtCR at 250 hPa                       — barotropic critical region
 
-Anomaly fields (departure from 1991–2020 WMO climatology):
-  10. PV anomaly at 200 hPa            — composite_pv200_anom.png
-  11. PV anomaly at 850 hPa            — composite_pv850_anom.png
-  12. Temp advection anomaly 850       — composite_advT850_anom.png
-  13. Moisture flux div anomaly        — composite_moisture_flux_anom.png
-  14. KE advection anomaly 250         — composite_ke_advection_anom.png
-  15. SLP anomaly                      — composite_slp_anom.png
-  16. 250 hPa wind speed anomaly       — composite_wind250_anom.png
-
-Note: EGR is not decomposed into anomaly form (no climatology downloaded).
-Note: AFC anomaly uses the same temporal decomposition as the total field
-      (AFC is already computed from eddy geopotential departures).
+EPALL-relative anomaly fields (NEW April 2026):
+  - EPx anomaly = EPx composite - EPALL composite
+  - This isolates what distinguishes each EP from the "average" cyclone
+  - Applied to: EGR, PV, temperature advection, moisture flux, SLP, etc.
 
 Each panel includes a 15°×15° dashed box indicating the LEC computation domain.
 
@@ -35,7 +32,7 @@ Output:
   figures/ep_structure/composite_*.png
 
 Author: Danilo Couto de Souza
-Date: February 2026
+Date: April 2026
 """
 
 import sys
@@ -53,6 +50,8 @@ import warnings
 import logging
 import argparse
 from datetime import datetime
+
+from scripts.utils.ep_mapping import ALL_EPS, EP_LABELS, EP_COLORS, EPALL_LABEL
 
 warnings.filterwarnings("ignore")
 
@@ -94,8 +93,8 @@ VECTOR_SKIP = 16
 VECTOR_SCALE = 250
 VECTOR_WIDTH = 0.004
 
-EP_COLORS = {"EP1": "gold", "EP2": "dodgerblue"}
-EP_LABELS = {"EP1": "EP1", "EP2": "EP2"}
+EP_PANEL_COLORS = {"EP1": "gold", "EP2": "dodgerblue", "EP3": "limegreen", "EPALL": "gray"}
+EP_PANEL_LABELS = {"EP1": "EP1 (High conversions)", "EP2": "EP2 (Moderate)", "EP3": "EP3 (Weak)", "EPALL": "All Cyclones"}
 
 
 # ============================================================================
@@ -137,18 +136,22 @@ def setup_logging():
 
 
 def load_composites():
-    """Load precomputed EP1 and EP2 composites for the current COMPOSITE_MODE."""
+    """Load precomputed EP1, EP2, EP3, and EPALL composites for the current COMPOSITE_MODE."""
     datasets = {}
     mode_suffix = f"_{COMPOSITE_MODE}"
-    for ep in ["ep1", "ep2"]:
+    for ep in ["ep1", "ep2", "ep3", "epall"]:
         f = DATA_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
         if not f.exists():
-            logging.error(f"❌ File not found: {f}")
-            logging.error(f"   Run step3_precompute_composites.py --mode {COMPOSITE_MODE} first.")
-            return None
+            logging.warning(f"   ⚠ File not found: {f.name}")
+            continue
         datasets[ep.upper()] = xr.open_dataset(f)
         mb = f.stat().st_size / 1024 ** 2
         logging.info(f"   Loaded {ep.upper()}: {f.name} ({mb:.1f} MB)")
+    
+    if not datasets:
+        logging.error(f"❌ No composite files found for mode {COMPOSITE_MODE}")
+        logging.error(f"   Run step3_precompute_composites.py --mode {COMPOSITE_MODE} first.")
+        return None
     return datasets
 
 
@@ -200,12 +203,38 @@ def _add_cbar(fig, ax, im, label):
     return cbar
 
 
+def _get_available_eps(datasets):
+    """Return list of available EP keys in standard order."""
+    all_possible = ["EP1", "EP2", "EP3", "EPALL"]
+    return [ep for ep in all_possible if ep in datasets]
+
+
+def _create_multipanel_fig(n_panels, panel_width=7, panel_height=6):
+    """Create figure with variable number of panels."""
+    if n_panels <= 2:
+        fig, axes = plt.subplots(1, n_panels, figsize=(panel_width * n_panels, panel_height))
+    elif n_panels <= 4:
+        ncols = 2
+        nrows = (n_panels + 1) // 2
+        fig, axes = plt.subplots(nrows, ncols, figsize=(panel_width * ncols, panel_height * nrows))
+        axes = axes.flatten()
+    else:
+        ncols = 3
+        nrows = (n_panels + 2) // 3
+        fig, axes = plt.subplots(nrows, ncols, figsize=(panel_width * ncols, panel_height * nrows))
+        axes = axes.flatten()
+    
+    if n_panels == 1:
+        axes = [axes]
+    return fig, axes
+
+
 # ============================================================================
 # FIGURE FUNCTIONS
 # ============================================================================
 
 def figure_wind250(datasets):
-    """250 hPa total wind composite: EP1 vs EP2, Bentley style.
+    """250 hPa total wind composite: EP1, EP2, EP3, EPALL (Bentley style).
 
     Produces wind-speed shading using a Bentley-inspired colormap that only
     assigns colour to winds ≥ 30 m/s (jet threshold); sub-threshold regions
@@ -219,7 +248,8 @@ def figure_wind250(datasets):
     """
     logging.info("  Creating 250 hPa total wind composite figure (Bentley style)...")
 
-    if "u_250" not in datasets["EP1"] or "v_250" not in datasets["EP1"]:
+    eps = _get_available_eps(datasets)
+    if "u_250" not in datasets[eps[0]] or "v_250" not in datasets[eps[0]]:
         logging.warning("    ⚠  u_250/v_250 not in composites — skipping wind250 figure")
         return
 
@@ -240,9 +270,9 @@ def figure_wind250(datasets):
     jet_threshold = 30                  # m/s
     levels = np.arange(30, 115, 5)
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    fig, axes = _create_multipanel_fig(len(eps))
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
@@ -268,11 +298,11 @@ def figure_wind250(datasets):
         )
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — 250 hPa total wind speed (m s⁻¹) + wind barbs  [n={n}]",
-                     ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — 250 hPa wind (m s⁻¹)  [n={n}]",
+                     ylabel=(i % 2 == 0))
         _add_cbar(fig, ax, im, "Wind speed (m s⁻¹)")
 
-    fig.suptitle("250 hPa Total Wind — composite mean, Bentley style (EP1 vs EP2)",
+    fig.suptitle("250 hPa Total Wind — composite mean (Bentley style)",
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = _figure_path("composite_wind250.png")
@@ -282,20 +312,21 @@ def figure_wind250(datasets):
 
 
 def figure_egr(datasets):
-    """EGR composite: EP1 vs EP2, with 850 hPa wind vectors.
+    """EGR composite: EP1, EP2, EP3, EPALL with 850 hPa wind vectors.
 
     EGR is computed over the 500–850 hPa layer following Besson et al. (2021).
     """
     logging.info("  Creating EGR composite figure (500–850 hPa layer)...")
 
-    if "egr" not in datasets["EP1"]:
+    eps = _get_available_eps(datasets)
+    if "egr" not in datasets[eps[0]]:
         logging.warning("    ⚠  EGR not in composites — skipping")
         return
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    fig, axes = _create_multipanel_fig(len(eps))
 
     vmin, vmax = None, None
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         ds = datasets[ep]
         d = ds["egr"].values
         lo = np.nanpercentile(d, 1)
@@ -305,7 +336,7 @@ def figure_egr(datasets):
 
     clevels = np.linspace(max(vmin, 0), vmax, 21)  # EGR ≥ 0
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
@@ -319,10 +350,10 @@ def figure_egr(datasets):
                       color="black", alpha=0.8, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — EGR 500–850 hPa + 850 hPa wind  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — EGR 500–850 hPa  [n={n}]", ylabel=(i % 2 == 0))
         _add_cbar(fig, ax, im, "EGR (day⁻¹)")
 
-    fig.suptitle("Eady Growth Rate (500–850 hPa, Besson et al. 2021) — EP1 vs EP2",
+    fig.suptitle("Eady Growth Rate (500–850 hPa, Besson et al. 2021)",
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = _figure_path("composite_egr.png")
@@ -332,21 +363,22 @@ def figure_egr(datasets):
 
 
 def figure_pv200(datasets):
-    """PV at 200 hPa: EP1 vs EP2, with 250 hPa wind vectors."""
+    """PV at 200 hPa: EP1, EP2, EP3, EPALL with 250 hPa wind vectors."""
     logging.info("  Creating PV@200 hPa composite figure...")
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    eps = _get_available_eps(datasets)
+    fig, axes = _create_multipanel_fig(len(eps))
 
     # Common colour scale
     vmin, vmax = None, None
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         d = datasets[ep]["pv_200"].values * 1e6  # PVU
         lo, hi = np.nanpercentile(d, 2), np.nanpercentile(d, 98)
         vmin = lo if vmin is None else min(vmin, lo)
         vmax = hi if vmax is None else max(vmax, hi)
     clevels = np.linspace(vmin, vmax, 21)
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
@@ -365,10 +397,10 @@ def figure_pv200(datasets):
                       color="gray", alpha=0.8, scale=VECTOR_SCALE, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — PV at 200 hPa + 250 hPa wind  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — PV at 200 hPa  [n={n}]", ylabel=(i % 2 == 0))
         _add_cbar(fig, ax, im, "PV (PVU)")
 
-    fig.suptitle("Potential Vorticity at 200 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Potential Vorticity at 200 hPa", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = _figure_path("composite_pv200.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
@@ -377,20 +409,21 @@ def figure_pv200(datasets):
 
 
 def figure_pv850(datasets):
-    """PV at 850 hPa: EP1 vs EP2, with 850 hPa wind vectors."""
+    """PV at 850 hPa: EP1, EP2, EP3, EPALL with 850 hPa wind vectors."""
     logging.info("  Creating PV@850 hPa composite figure...")
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    eps = _get_available_eps(datasets)
+    fig, axes = _create_multipanel_fig(len(eps))
 
     vmin, vmax = None, None
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         d = datasets[ep]["pv_850"].values * 1e6
         lo, hi = np.nanpercentile(d, 2), np.nanpercentile(d, 98)
         vmin = lo if vmin is None else min(vmin, lo)
         vmax = hi if vmax is None else max(vmax, hi)
     clevels = np.linspace(vmin, vmax, 21)
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
@@ -405,10 +438,10 @@ def figure_pv850(datasets):
                       color="black", alpha=0.7, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — PV at 850 hPa + 850 hPa wind  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — PV at 850 hPa  [n={n}]", ylabel=(i % 2 == 0))
         _add_cbar(fig, ax, im, "PV (PVU)")
 
-    fig.suptitle("Potential Vorticity at 850 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Potential Vorticity at 850 hPa", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = _figure_path("composite_pv850.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
@@ -417,19 +450,20 @@ def figure_pv850(datasets):
 
 
 def figure_advT850(datasets):
-    """Temperature advection at 850 hPa: EP1 vs EP2."""
+    """Temperature advection at 850 hPa: EP1, EP2, EP3, EPALL."""
     logging.info("  Creating temp advection @850 hPa composite figure...")
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    eps = _get_available_eps(datasets)
+    fig, axes = _create_multipanel_fig(len(eps))
 
     # Symmetric colour scale
     absmax = 0
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         d = datasets[ep]["adv_T_850"].values * 3600  # K/h
         absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
     clevels = _safe_symmetric_levels(absmax, 21)
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
@@ -445,10 +479,10 @@ def figure_advT850(datasets):
                       color="black", alpha=0.7, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — T advection at 850 hPa + 850 hPa wind  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — T advection at 850 hPa  [n={n}]", ylabel=(i % 2 == 0))
         _add_cbar(fig, ax, im, "−V·∇T (K h⁻¹)")
 
-    fig.suptitle("Temperature Advection at 850 hPa — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Temperature Advection at 850 hPa", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = _figure_path("composite_advT850.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
@@ -457,13 +491,28 @@ def figure_advT850(datasets):
 
 
 def figure_moisture(datasets):
-    """Moisture and moisture flux divergence at 975 hPa: EP1 vs EP2."""
+    """Moisture and moisture flux divergence at 975 hPa: EP1, EP2, EP3, EPALL."""
     logging.info("  Creating moisture flux composite figure...")
 
-    fig, axes = plt.subplots(2, 2, figsize=(16, 14))
+    eps = _get_available_eps(datasets)
+    nrows = 2  # q_975 and div_q_975
+    ncols = len(eps)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 12))
+    if ncols == 1:
+        axes = axes.reshape(nrows, 1)
 
     # Row 1: Specific humidity (g/kg) with wind vectors
-    for i, ep in enumerate(["EP1", "EP2"]):
+    q_min, q_max = None, None
+    for ep in eps:
+        ds = datasets[ep]
+        if "q_975" in ds:
+            q975_gkg = ds["q_975"].values * 1000.0
+            lo, hi = np.nanpercentile(q975_gkg, 5), np.nanpercentile(q975_gkg, 95)
+            q_min = lo if q_min is None else min(q_min, lo)
+            q_max = hi if q_max is None else max(q_max, hi)
+    q_levels = np.linspace(q_min or 0, q_max or 1, 21)
+    
+    for i, ep in enumerate(eps):
         ax = axes[0, i]
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
@@ -476,13 +525,6 @@ def figure_moisture(datasets):
         # Convert to g/kg
         q975_gkg = ds["q_975"].values * 1000.0
         
-        # Determine common color scale
-        if i == 0:
-            q_min = np.nanpercentile(q975_gkg, 5)
-            q_max = np.nanpercentile(q975_gkg, 95)
-        
-        q_levels = np.linspace(q_min, q_max, 21)
-        
         im = ax.contourf(x, y, q975_gkg, levels=q_levels, cmap="YlGnBu", extend="both")
         
         # 975 hPa wind vectors
@@ -492,20 +534,20 @@ def figure_moisture(datasets):
                       color="black", alpha=0.7, scale=80, width=VECTOR_WIDTH)
         
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — Specific humidity at 975 hPa + 975 hPa wind  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — q at 975 hPa  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, "q (g kg⁻¹)")
     
     # Row 2: Moisture flux divergence (g kg⁻¹ s⁻¹)
     # Symmetric color scale
     absmax_div = 0
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         if "div_q_975" in datasets[ep]:
             d = datasets[ep]["div_q_975"].values
             absmax_div = max(absmax_div, np.nanpercentile(np.abs(d), 95))
     
-    div_levels = np.linspace(-absmax_div, absmax_div, 21)
+    div_levels = np.linspace(-absmax_div, absmax_div, 21) if absmax_div > 0 else np.linspace(-1e-10, 1e-10, 21)
     
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[1, i]
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
@@ -519,15 +561,16 @@ def figure_moisture(datasets):
         
         im = ax.contourf(x, y, div_q, levels=div_levels, cmap="RdBu_r", extend="both")
         
-        # Contour convergence zones (negative divergence)
-        cs_conv = ax.contour(x, y, div_q, levels=[-absmax_div*0.5, -absmax_div*0.25],
-                             colors="blue", linewidths=1.5, linestyles="--")
-        ax.clabel(cs_conv, inline=True, fontsize=8, fmt="%.1e")
-        
-        # Contour divergence zones (positive divergence)
-        cs_div = ax.contour(x, y, div_q, levels=[absmax_div*0.25, absmax_div*0.5],
-                            colors="red", linewidths=1.5, linestyles="--")
-        ax.clabel(cs_div, inline=True, fontsize=8, fmt="%.1e")
+        if absmax_div > 0:
+            # Contour convergence zones (negative divergence)
+            cs_conv = ax.contour(x, y, div_q, levels=[-absmax_div*0.5, -absmax_div*0.25],
+                                 colors="blue", linewidths=1.5, linestyles="--")
+            ax.clabel(cs_conv, inline=True, fontsize=8, fmt="%.1e")
+            
+            # Contour divergence zones (positive divergence)
+            cs_div = ax.contour(x, y, div_q, levels=[absmax_div*0.25, absmax_div*0.5],
+                                colors="red", linewidths=1.5, linestyles="--")
+            ax.clabel(cs_div, inline=True, fontsize=8, fmt="%.1e")
         
         # 975 hPa wind vectors
         if "u_975" in ds and "v_975" in ds:
@@ -536,11 +579,11 @@ def figure_moisture(datasets):
                       color="black", alpha=0.6, scale=80, width=VECTOR_WIDTH)
         
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — Moisture flux divergence at 975 hPa + 975 hPa wind  [n={n}]",
+        _decorate_ax(ax, f"{ep} — Moisture flux div at 975 hPa  [n={n}]",
                      ylabel=(i == 0))
         _add_cbar(fig, ax, im, "∇·(qV) (g kg⁻¹ s⁻¹)")
     
-    fig.suptitle("Low-Level Moisture Transport at 975 hPa — EP1 vs EP2", 
+    fig.suptitle("Low-Level Moisture Transport at 975 hPa", 
                  fontsize=13, fontweight="bold", y=0.995)
     plt.tight_layout(rect=[0, 0, 1, 0.99])
     out = _figure_path("composite_moisture_flux.png")
@@ -550,12 +593,13 @@ def figure_moisture(datasets):
 
 
 def figure_slp(datasets):
-    """SLP composite: EP1 vs EP2, with 850 hPa wind vectors."""
+    """SLP composite: EP1, EP2, EP3, EPALL with 850 hPa wind vectors."""
     logging.info("  Creating SLP composite figure...")
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    eps = _get_available_eps(datasets)
+    fig, axes = _create_multipanel_fig(len(eps))
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
@@ -585,10 +629,10 @@ def figure_slp(datasets):
                       color="black", alpha=0.7, scale=100, width=VECTOR_WIDTH)
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — SLP contours + 850 hPa wind  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep} — SLP + 850 hPa wind  [n={n}]", ylabel=(i % 2 == 0))
         _add_cbar(fig, ax, im, "SLP (hPa)")
 
-    fig.suptitle("Sea Level Pressure — EP1 vs EP2", fontsize=13, fontweight="bold", y=1.02)
+    fig.suptitle("Sea Level Pressure", fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = _figure_path("composite_slp.png")
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
@@ -597,24 +641,25 @@ def figure_slp(datasets):
 
 
 def figure_rk_criterion(datasets):
-    """Rayleigh-Kuo criterion at 250 hPa: EP1 vs EP2."""
+    """Rayleigh-Kuo criterion at 250 hPa: EP1, EP2, EP3, EPALL."""
     logging.info("  Creating RK criterion @250 hPa composite figure...")
     
+    eps = _get_available_eps(datasets)
     # Check if RK criterion exists
-    if "rk_criterion_250" not in datasets["EP1"]:
+    if "rk_criterion_250" not in datasets[eps[0]]:
         logging.warning("    ⚠️  RK criterion not in composites - skipping")
         return
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    fig, axes = _create_multipanel_fig(len(eps))
 
     # Symmetric color scale around zero
     absmax = 0
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         data = datasets[ep]["rk_criterion_250"].values
         absmax = max(absmax, np.nanmax(np.abs(data)))
     clevels = _safe_symmetric_levels(absmax, 21)
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         
@@ -629,21 +674,21 @@ def figure_rk_criterion(datasets):
         ax.contour(x, y, rk, levels=[0], colors="black", linewidths=1.5, linestyles="-")
         
         # Wind vectors at 250 hPa
-        u = ds["u_250"].values
-        v = ds["v_250"].values
-        skip = slice(None, None, VECTOR_SKIP)
-        ax.quiver(
-            x[skip], y[skip], u[skip, skip], v[skip, skip],
-            scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5
-        )
+        if "u_250" in ds and "v_250" in ds:
+            u = ds["u_250"].values
+            v = ds["v_250"].values
+            skip = slice(None, None, VECTOR_SKIP)
+            ax.quiver(
+                x[skip], y[skip], u[skip, skip], v[skip, skip],
+                scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5
+            )
         
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — RK criterion at 250 hPa + 250 hPa wind  [n={n}]",
-                     xlabel=(i == 0), ylabel=(i == 0))
-        if i == 1:
-            _add_cbar(fig, ax, im, "RK criterion (s⁻¹ m⁻¹)")
+        _decorate_ax(ax, f"{ep} — RK criterion at 250 hPa  [n={n}]",
+                     xlabel=True, ylabel=(i % 2 == 0))
+        _add_cbar(fig, ax, im, "RK criterion (s⁻¹ m⁻¹)")
 
-    fig.suptitle("Rayleigh-Kuo Instability Criterion at 250 hPa — EP1 vs EP2", 
+    fig.suptitle("Rayleigh-Kuo Instability Criterion at 250 hPa", 
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = _figure_path("composite_rk_criterion.png")
@@ -653,24 +698,25 @@ def figure_rk_criterion(datasets):
 
 
 def figure_ke_advection(datasets):
-    """Kinetic energy advection at 250 hPa: EP1 vs EP2."""
+    """Kinetic energy advection at 250 hPa: EP1, EP2, EP3, EPALL."""
     logging.info("  Creating KE advection @250 hPa composite figure...")
     
+    eps = _get_available_eps(datasets)
     # Check if KE advection exists
-    if "ke_adv_250" not in datasets["EP1"]:
+    if "ke_adv_250" not in datasets[eps[0]]:
         logging.warning("    ⚠️  KE advection not in composites - skipping")
         return
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    fig, axes = _create_multipanel_fig(len(eps))
 
     # Symmetric color scale
     absmax = 0
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         data = datasets[ep]["ke_adv_250"].values
         absmax = max(absmax, np.nanmax(np.abs(data)))
     clevels = _safe_symmetric_levels(absmax, 21)
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         
@@ -685,21 +731,21 @@ def figure_ke_advection(datasets):
         ax.contour(x, y, ke_adv, levels=[0], colors="black", linewidths=1.5, linestyles="-")
         
         # Wind vectors at 250 hPa
-        u = ds["u_250"].values
-        v = ds["v_250"].values
-        skip = slice(None, None, VECTOR_SKIP)
-        ax.quiver(
-            x[skip], y[skip], u[skip, skip], v[skip, skip],
-            scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5
-        )
+        if "u_250" in ds and "v_250" in ds:
+            u = ds["u_250"].values
+            v = ds["v_250"].values
+            skip = slice(None, None, VECTOR_SKIP)
+            ax.quiver(
+                x[skip], y[skip], u[skip, skip], v[skip, skip],
+                scale=VECTOR_SCALE, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5
+            )
         
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — KE advection at 250 hPa + 250 hPa wind  [n={n}]",
-                     xlabel=(i == 0), ylabel=(i == 0))
-        if i == 1:
-            _add_cbar(fig, ax, im, "KE advection (m² s⁻³)")
+        _decorate_ax(ax, f"{ep} — KE advection at 250 hPa  [n={n}]",
+                     xlabel=True, ylabel=(i % 2 == 0))
+        _add_cbar(fig, ax, im, "KE advection (m² s⁻³)")
 
-    fig.suptitle("Kinetic Energy Advection at 250 hPa — EP1 vs EP2", 
+    fig.suptitle("Kinetic Energy Advection at 250 hPa", 
                  fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
     out = _figure_path("composite_ke_advection.png")
@@ -782,16 +828,191 @@ def figure_afc(datasets):
 
 
 # ============================================================================
-# ANOMALY FIGURE FUNCTIONS
+# ANOMALY FIGURE FUNCTIONS (EPALL-relative)
+# ============================================================================
+
+def _epall_anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
+                    cmap="RdBu_r", wind_u=None, wind_v=None, wind_scale=None):
+    """Generic multi-panel EPALL-relative anomaly figure builder.
+    
+    Creates a figure showing EP1-EPALL, EP2-EPALL, EP3-EPALL.
+    Uses the *_minus_epall variables computed in step3.
+
+    Parameters
+    ----------
+    datasets     : dict with keys "EP1", "EP2", "EP3", "EPALL" → xr.Dataset
+    var_key      : base variable name (e.g., "egr"), will look for var_key + "_minus_epall"
+    scale_factor : multiply raw values before plotting (e.g. 3600 for K/s→K/h)
+    unit_label   : colorbar label string
+    suptitle     : figure super-title
+    out_name     : output filename (no directory)
+    cmap         : diverging colormap name
+    wind_u/v     : variable keys for optional quiver overlay
+    wind_scale   : quiver scale (default: VECTOR_SCALE)
+    """
+    anom_key = f"{var_key}_minus_epall"
+    
+    # Get EPs that have the anomaly variable (exclude EPALL)
+    eps = [ep for ep in ["EP1", "EP2", "EP3"] if ep in datasets and anom_key in datasets[ep]]
+    
+    if not eps:
+        logging.warning(f"    ⚠  {anom_key} not in composites — skipping EPALL-relative anomaly figure")
+        return
+
+    fig, axes = _create_multipanel_fig(len(eps), panel_width=6, panel_height=6)
+
+    # Symmetric colour limits from 98th-percentile of |anomaly| across all EPs
+    absmax = 0.0
+    for ep in eps:
+        d = datasets[ep][anom_key].values * scale_factor
+        absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
+    if absmax == 0.0:
+        absmax = 1e-10  # guard against all-zero fields
+    clevels = _safe_symmetric_levels(absmax, 21)
+    wscale = wind_scale if wind_scale is not None else VECTOR_SCALE
+
+    for i, ep in enumerate(eps):
+        ax = axes[i]
+        ds = datasets[ep]
+        x, y = ds.coords["x"].values, ds.coords["y"].values
+        data = ds[anom_key].values * scale_factor
+
+        im = ax.contourf(x, y, data, levels=clevels, cmap=cmap, extend="both")
+        ax.contour(x, y, data, levels=[0], colors="black", linewidths=1.2)
+
+        if wind_u and wind_v and wind_u in ds and wind_v in ds:
+            skip = slice(None, None, VECTOR_SKIP)
+            ax.quiver(
+                x[skip], y[skip],
+                ds[wind_u].values[skip, skip], ds[wind_v].values[skip, skip],
+                scale=wscale, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5,
+            )
+
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{ep} − EPALL  [n={n}]", ylabel=(i % 2 == 0))
+        _add_cbar(fig, ax, im, unit_label)
+
+    fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    out = _figure_path(out_name)
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
+def figure_egr_epall_anom(datasets):
+    """EGR EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
+    logging.info("  Creating EGR EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="egr",
+        scale_factor=1.0,
+        unit_label="ΔEGR (day⁻¹)",
+        suptitle="Eady Growth Rate Anomaly (EPx − EPALL)",
+        out_name="composite_egr_anom_epall.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_pv200_epall_anom(datasets):
+    """PV@200 EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
+    logging.info("  Creating PV@200 EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="pv_200",
+        scale_factor=1e6,
+        unit_label="ΔPV (PVU)",
+        suptitle="PV Anomaly at 200 hPa (EPx − EPALL)",
+        out_name="composite_pv200_anom_epall.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_pv850_epall_anom(datasets):
+    """PV@850 EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
+    logging.info("  Creating PV@850 EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="pv_850",
+        scale_factor=1e6,
+        unit_label="ΔPV (PVU)",
+        suptitle="PV Anomaly at 850 hPa (EPx − EPALL)",
+        out_name="composite_pv850_anom_epall.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_advT850_epall_anom(datasets):
+    """Temperature advection EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
+    logging.info("  Creating temp advection EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="adv_T_850",
+        scale_factor=3600.0,
+        unit_label="Δ(−V·∇T) (K h⁻¹)",
+        suptitle="Temperature Advection Anomaly at 850 hPa (EPx − EPALL)",
+        out_name="composite_advT850_anom_epall.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_slp_epall_anom(datasets):
+    """SLP EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
+    logging.info("  Creating SLP EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="msl",
+        scale_factor=0.01,  # Pa to hPa
+        unit_label="ΔSLP (hPa)",
+        suptitle="Sea Level Pressure Anomaly (EPx − EPALL)",
+        out_name="composite_slp_anom_epall.png",
+        cmap="RdBu_r",
+    )
+
+
+def figure_ke_advection_epall_anom(datasets):
+    """KE advection EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
+    logging.info("  Creating KE advection EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="ke_adv_250",
+        scale_factor=1.0,
+        unit_label="ΔKE adv (m² s⁻³)",
+        suptitle="Kinetic Energy Advection Anomaly at 250 hPa (EPx − EPALL)",
+        out_name="composite_ke_advection_anom_epall.png",
+        cmap="PuOr_r",
+    )
+
+
+def figure_rk_criterion_epall_anom(datasets):
+    """RK criterion EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
+    logging.info("  Creating RK criterion EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="rk_criterion_250",
+        scale_factor=1.0,
+        unit_label="ΔRK (s⁻¹ m⁻¹)",
+        suptitle="Rayleigh-Kuo Criterion Anomaly at 250 hPa (EPx − EPALL)",
+        out_name="composite_rk_criterion_anom_epall.png",
+        cmap="RdBu_r",
+    )
+
+
+# ============================================================================
+# LEGACY CLIMATOLOGY-BASED ANOMALY FIGURES (kept for AFC, BtCR)
 # ============================================================================
 
 def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
               cmap="RdBu_r", wind_u=None, wind_v=None, wind_scale=None):
-    """Generic two-panel (EP1 / EP2) anomaly figure builder.
+    """Generic multi-panel climatology-based anomaly figure builder.
+    
+    NOTE: This is the legacy climatology-based anomaly definition.
+    Kept for diagnostics that inherently require climatological decomposition
+    (AFC, BtCR).
 
     Parameters
     ----------
-    datasets     : dict with keys "EP1", "EP2" → xr.Dataset
+    datasets     : dict with EP keys → xr.Dataset
     var_key      : variable name inside each dataset
     scale_factor : multiply raw values before plotting (e.g. 3600 for K/s→K/h)
     unit_label   : colorbar label string
@@ -801,15 +1022,16 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
     wind_u/v     : variable keys for optional quiver overlay
     wind_scale   : quiver scale (default: VECTOR_SCALE)
     """
-    if var_key not in datasets["EP1"]:
+    eps = [ep for ep in ["EP1", "EP2", "EP3"] if ep in datasets and var_key in datasets[ep]]
+    if not eps:
         logging.warning(f"    ⚠  {var_key} not in composites — skipping anomaly figure")
         return
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    fig, axes = _create_multipanel_fig(len(eps), panel_width=6, panel_height=6)
 
-    # Symmetric colour limits from 98th-percentile of |anomaly| across both EPs
+    # Symmetric colour limits from 98th-percentile of |anomaly| across all EPs
     absmax = 0.0
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         d = datasets[ep][var_key].values * scale_factor
         absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
     if absmax == 0.0:
@@ -817,7 +1039,7 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
     clevels = _safe_symmetric_levels(absmax, 21)
     wscale = wind_scale if wind_scale is not None else VECTOR_SCALE
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x, y = ds.coords["x"].values, ds.coords["y"].values
@@ -835,7 +1057,7 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
             )
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{EP_LABELS[ep]}  [n={n}]", ylabel=(i == 0))
+        _decorate_ax(ax, f"{ep}  [n={n}]", ylabel=(i % 2 == 0))
         _add_cbar(fig, ax, im, unit_label)
 
     fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)
@@ -847,14 +1069,14 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
 
 
 def figure_pv200_anom(datasets):
-    """PV anomaly at 200 hPa: EP1 vs EP2, with 250 hPa anomaly wind vectors."""
-    logging.info("  Creating PV anomaly @200 hPa composite figure...")
+    """PV anomaly at 200 hPa: climatology-based (legacy)."""
+    logging.info("  Creating PV anomaly @200 hPa (climatology-based)...")
     _anom_fig(
         datasets,
         var_key="pv_200_anom",
         scale_factor=1e6,
         unit_label="ΔPV (PVU)",
-        suptitle="PV Anomaly at 200 hPa (departure from 1991–2020 climatology) — EP1 vs EP2",
+        suptitle="PV Anomaly at 200 hPa (departure from 1991–2020 climatology)",
         out_name="composite_pv200_anom.png",
         cmap="RdBu_r",
         wind_u="u_250_prime",
@@ -864,14 +1086,14 @@ def figure_pv200_anom(datasets):
 
 
 def figure_pv850_anom(datasets):
-    """PV anomaly at 850 hPa: EP1 vs EP2, with 850 hPa anomaly wind vectors."""
-    logging.info("  Creating PV anomaly @850 hPa composite figure...")
+    """PV anomaly at 850 hPa: climatology-based (legacy)."""
+    logging.info("  Creating PV anomaly @850 hPa (climatology-based)...")
     _anom_fig(
         datasets,
         var_key="pv_850_anom",
         scale_factor=1e6,
         unit_label="ΔPV (PVU)",
-        suptitle="PV Anomaly at 850 hPa (departure from 1991–2020 climatology) — EP1 vs EP2",
+        suptitle="PV Anomaly at 850 hPa (departure from 1991–2020 climatology)",
         out_name="composite_pv850_anom.png",
         cmap="RdBu_r",
         wind_u="u_850_prime",
@@ -881,14 +1103,14 @@ def figure_pv850_anom(datasets):
 
 
 def figure_advT850_anom(datasets):
-    """Temperature advection anomaly at 850 hPa: EP1 vs EP2, with 850 hPa anomaly wind vectors."""
-    logging.info("  Creating temp advection anomaly @850 hPa composite figure...")
+    """Temperature advection anomaly at 850 hPa: climatology-based (legacy)."""
+    logging.info("  Creating temp advection anomaly @850 hPa (climatology-based)...")
     _anom_fig(
         datasets,
         var_key="adv_T_850_anom",
         scale_factor=3600.0,
         unit_label="Δ(−V·∇T) (K h⁻¹)",
-        suptitle="Temperature Advection Anomaly at 850 hPa (departure from climatology) — EP1 vs EP2",
+        suptitle="Temperature Advection Anomaly at 850 hPa (departure from climatology)",
         out_name="composite_advT850_anom.png",
         cmap="RdBu_r",
         wind_u="u_850_prime",
@@ -1354,7 +1576,7 @@ def main():
     
     log_file = setup_logging()
     logging.info("=" * 70)
-    logging.info("STEP 4: CREATE COMPOSITE FIGURES – EP1 vs EP2")
+    logging.info("STEP 4: CREATE COMPOSITE FIGURES – EP1, EP2, EP3, EPALL")
     logging.info("=" * 70)
     logging.info(f"   Composite mode: {COMPOSITE_MODE}")
 
@@ -1362,18 +1584,33 @@ def main():
     if datasets is None:
         return
 
+    eps = _get_available_eps(datasets)
+    logging.info(f"   Available EPs: {', '.join(eps)}")
+
     # Verify required (always-present) variables
     for ep, ds in datasets.items():
         required = ["egr", "pv_200", "pv_850", "adv_T_850"]
         missing = [v for v in required if v not in ds]
         if missing:
-            logging.error(f"❌ Missing variables in {ep}: {missing}")
-            return
+            logging.warning(f"   ⚠ Missing required variables in {ep}: {missing}")
+
+    # Check for EPALL-relative anomaly variables (new April 2026)
+    epall_anom_vars = [
+        "egr_minus_epall", "pv_200_minus_epall", "pv_850_minus_epall",
+        "adv_T_850_minus_epall", "msl_minus_epall", "ke_adv_250_minus_epall",
+    ]
+    for ep in ["EP1", "EP2", "EP3"]:
+        if ep in datasets:
+            present = [v for v in epall_anom_vars if v in datasets[ep]]
+            if present:
+                logging.info(f"   {ep}: EPALL-relative anomalies available ({len(present)} vars)")
+            else:
+                logging.info(f"   {ep}: No EPALL-relative anomalies found")
 
     # Optional diagnostics — warn but continue
     optional = [
         "rk_criterion_250", "ke_adv_250", "afc_250",
-        # anomaly fields (require step2_1 multi-group climatologies)
+        # climatology-based anomaly fields (legacy)
         "pv_200_anom", "pv_850_anom", "adv_T_850_anom",
         "div_q_975_anom", "ke_adv_250_anom", "msl_anom",
         # eddy winds for anomaly overlays (X' = X − X̅_m)
@@ -1386,9 +1623,9 @@ def main():
     for ep, ds in datasets.items():
         absent = [v for v in optional if v not in ds]
         if absent:
-            logging.warning(f"   ⚠  {ep}: optional fields absent (will be skipped): {absent}")
+            logging.warning(f"   ⚠  {ep}: optional fields absent (will be skipped): {absent[:5]}...")
 
-    logging.info("\nCreating total-field figures...")
+    logging.info("\nCreating total-field figures (EP1, EP2, EP3, EPALL)...")
 
     figure_wind250(datasets)
     figure_egr(datasets)
@@ -1401,7 +1638,17 @@ def main():
     figure_ke_advection(datasets)
     figure_afc(datasets)
 
-    logging.info("\nCreating anomaly figures...")
+    logging.info("\nCreating EPALL-relative anomaly figures (EP1-EPALL, EP2-EPALL, EP3-EPALL)...")
+    
+    figure_egr_epall_anom(datasets)
+    figure_pv200_epall_anom(datasets)
+    figure_pv850_epall_anom(datasets)
+    figure_advT850_epall_anom(datasets)
+    figure_slp_epall_anom(datasets)
+    figure_ke_advection_epall_anom(datasets)
+    figure_rk_criterion_epall_anom(datasets)
+
+    logging.info("\nCreating climatology-based anomaly figures (legacy, where available)...")
 
     figure_pv200_anom(datasets)
     figure_pv850_anom(datasets)
@@ -1411,10 +1658,10 @@ def main():
     figure_slp_anom(datasets)
     figure_wind250_anom(datasets)
 
-    logging.info("\nCreating BtCR figures...")
+    logging.info("\nCreating BtCR figures (climatology-dependent)...")
     figure_btcr(datasets)
 
-    logging.info("\nCreating EP1 − EP2 difference figures...")
+    logging.info("\nCreating EP1 − EP2 difference figures (legacy)...")
     figure_egr_diff(datasets)
     figure_pv200_diff(datasets)
     figure_pv850_diff(datasets)

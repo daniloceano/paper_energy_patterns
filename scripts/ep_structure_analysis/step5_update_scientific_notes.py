@@ -4,6 +4,9 @@ Step 5: Update Scientific Notes for EP Structure Analysis
 Populates SCIENTIFIC_NOTES.md with statistics computed from the
 precomputed composite files. Generates PDF by default.
 
+This version supports EP1, EP2, EP3, and EPALL composites.
+Includes both total-field statistics and EPALL-relative anomaly statistics.
+
 Usage:
     python step5_update_scientific_notes.py          # Update notes + generate PDF
     python step5_update_scientific_notes.py --no-pdf # Update notes only
@@ -13,7 +16,7 @@ Output:
     - docs/scientific_notes_ep_structure.pdf (default)
 
 Author: Danilo Couto de Souza
-Date: February 2026
+Date: April 2026
 """
 
 import sys
@@ -27,6 +30,8 @@ import subprocess
 import numpy as np
 import xarray as xr
 from datetime import datetime
+
+from scripts.utils.ep_mapping import ALL_EPS, EP_LABELS, EPALL_LABEL
 
 # ============================================================================
 # CONFIGURATION
@@ -132,10 +137,12 @@ def load_stats():
     - Full 30×30° domain
     - Central 15×15° LEC domain
     - Four quadrants (NW, NE, SW, SE) of LEC domain
+    
+    Now supports EP1, EP2, EP3, and EPALL.
     """
     stats = {}
 
-    for ep in ["ep1", "ep2"]:
+    for ep in ["ep1", "ep2", "ep3", "epall"]:
         mode_suffix = f"_{COMPOSITE_MODE}"
         f = DATA_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
         if not f.exists():

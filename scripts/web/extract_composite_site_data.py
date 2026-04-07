@@ -47,17 +47,20 @@ COMPOSITE_MODE = "full_intensification"
 # Mapping from web diagnostic id to step4 figure filenames.
 # Must match DIAGNOSTIC_FIGURE_SLUGS in web/src/lib/constants.ts.
 # Note: filenames will have _{mode} suffix appended for real composites
+#
+# NEW April 2026: Added EPALL-relative anomaly figures (anom_epall)
+# These show EPx - EPALL instead of climatology-based anomalies.
 DIAGNOSTIC_FIGURE_MAP = {
-    "egr":                      {"real": "composite_egr.png",                "diff": "composite_egr_diff.png"},
-    "pv-200":                   {"real": "composite_pv200.png",          "anom": "composite_pv200_anom.png",          "diff": "composite_pv200_diff.png"},
-    "pv-850":                   {"real": "composite_pv850.png",          "anom": "composite_pv850_anom.png",          "diff": "composite_pv850_diff.png"},
-    "temperature-advection":    {"real": "composite_advT850.png",                                                     "diff": "composite_advT850_diff.png"},  # absolute field only
+    "egr":                      {"real": "composite_egr.png",                "anom_epall": "composite_egr_anom_epall.png",        "diff": "composite_egr_diff.png"},
+    "pv-200":                   {"real": "composite_pv200.png",          "anom": "composite_pv200_anom.png",          "anom_epall": "composite_pv200_anom_epall.png",     "diff": "composite_pv200_diff.png"},
+    "pv-850":                   {"real": "composite_pv850.png",          "anom": "composite_pv850_anom.png",          "anom_epall": "composite_pv850_anom_epall.png",     "diff": "composite_pv850_diff.png"},
+    "temperature-advection":    {"real": "composite_advT850.png",        "anom": "composite_advT850_anom.png",        "anom_epall": "composite_advT850_anom_epall.png",   "diff": "composite_advT850_diff.png"},
     "moisture-flux-divergence": {"real": "composite_moisture_flux.png",  "anom": "composite_moisture_flux_anom.png",  "diff": "composite_moisture_flux_diff.png"},
-    "slp":                      {"real": "composite_slp.png",            "anom": "composite_slp_anom.png",            "diff": "composite_slp_diff.png"},
-    "rk-criterion":             {"real": "composite_rk_criterion.png",                                                "diff": "composite_rk_criterion_diff.png"},
-    "ke-advection":             {"real": "composite_ke_advection.png",                                                "diff": "composite_ke_advection_diff.png"},  # absolute field only
-    "afc":                      {"real": "composite_afc_250.png",                                                     "diff": "composite_afc_diff.png"},
-    "btcr":                     {"real": "composite_btcr.png",                                                        "diff": "composite_btcr_diff.png"},
+    "slp":                      {"real": "composite_slp.png",            "anom": "composite_slp_anom.png",            "anom_epall": "composite_slp_anom_epall.png",       "diff": "composite_slp_diff.png"},
+    "rk-criterion":             {"real": "composite_rk_criterion.png",   "anom_epall": "composite_rk_criterion_anom_epall.png",                                              "diff": "composite_rk_criterion_diff.png"},
+    "ke-advection":             {"real": "composite_ke_advection.png",   "anom_epall": "composite_ke_advection_anom_epall.png",                                              "diff": "composite_ke_advection_diff.png"},
+    "afc":                      {"real": "composite_afc_250.png",                                                     "diff": "composite_afc_diff.png"},  # AFC uses climatology by design
+    "btcr":                     {"real": "composite_btcr.png",                                                        "diff": "composite_btcr_diff.png"},  # BtCR uses climatology by design
 }
 
 
@@ -73,47 +76,52 @@ def build_figures_manifest():
     
     NOTE: All composite figures (real, anomaly, diff) have mode suffix.
     The mode affects both the composite method and which climatology reference is used.
+    
+    NEW April 2026: Includes anom_epall (EPALL-relative anomalies) where available.
     """
     manifest = {}
     mode_suffix = f"_{COMPOSITE_MODE}"
     
     for diag_id, filenames in DIAGNOSTIC_FIGURE_MAP.items():
+        manifest[diag_id] = {}
+        
         # Add mode suffix to REAL composites
         real_base = filenames["real"].replace(".png", f"{mode_suffix}.png")
         real_path = FIGURES_DIR / real_base
+        manifest[diag_id]["real"] = {
+            "exists": real_path.exists(),
+            "api_path": f"figures/ep_structure/{real_base}",
+        }
         
-        # Anomalies also get mode suffix
+        # Climatology-based anomalies (legacy)
         anom_name = filenames.get("anom")
         if anom_name:
             anom_base = anom_name.replace(".png", f"{mode_suffix}.png")
             anom_path = FIGURES_DIR / anom_base
-        else:
-            anom_base = None
-            anom_path = None
+            manifest[diag_id]["anom"] = {
+                "exists": anom_path.exists(),
+                "api_path": f"figures/ep_structure/{anom_base}",
+                "anomaly_type": "climatology",
+            }
+        
+        # EPALL-relative anomalies (new April 2026)
+        anom_epall_name = filenames.get("anom_epall")
+        if anom_epall_name:
+            anom_epall_base = anom_epall_name.replace(".png", f"{mode_suffix}.png")
+            anom_epall_path = FIGURES_DIR / anom_epall_base
+            manifest[diag_id]["anom_epall"] = {
+                "exists": anom_epall_path.exists(),
+                "api_path": f"figures/ep_structure/{anom_epall_base}",
+                "anomaly_type": "EPALL-relative",
+            }
 
         # Difference figures also get mode suffix
         diff_name = filenames.get("diff")
         if diff_name:
             diff_base = diff_name.replace(".png", f"{mode_suffix}.png")
             diff_path = FIGURES_DIR / diff_base
-        else:
-            diff_base = None
-            diff_path = None
-
-        manifest[diag_id] = {
-            "real": {
-                "exists": real_path.exists(),
-                "api_path": f"figures/ep_structure/{real_base}",
-            },
-        }
-        if anom_base:
-            manifest[diag_id]["anom"] = {
-                "exists": anom_path.exists() if anom_path else False,
-                "api_path": f"figures/ep_structure/{anom_base}",
-            }
-        if diff_base:
             manifest[diag_id]["diff"] = {
-                "exists": diff_path.exists() if diff_path else False,
+                "exists": diff_path.exists(),
                 "api_path": f"figures/ep_structure/{diff_base}",
             }
 

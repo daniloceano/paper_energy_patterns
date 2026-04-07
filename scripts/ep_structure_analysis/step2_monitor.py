@@ -13,14 +13,18 @@ A *slot* is defined as one (variable, pressure-level) pair:
 The monitor opens only the NetCDF header (no data loaded), so scanning
 1 000+ files takes only a few seconds.
 
-Two progress bars are displayed — one for EP1 and one for EP2 — together
-with per-variable and per-level completeness tables.
+MODES:
+  • download (default): Full slot-level monitoring for step2_download_era5_parallel.py
+  • reuse: Simple file existence check for step2b_reuse_legacy_era5.py
 
 Usage:
-    # One-shot report
+    # Monitor download progress (default, all EPs)
     python scripts/ep_structure_analysis/step2_monitor.py
 
-    # Live refresh every 60 s (run alongside step 2)
+    # Monitor legacy reuse progress (EP1/EP2 only)
+    python scripts/ep_structure_analysis/step2_monitor.py --mode reuse
+
+    # Live refresh every 60 s (run alongside step 2 or step2b)
     python scripts/ep_structure_analysis/step2_monitor.py --watch
 
     # Custom refresh interval (30 s)
@@ -30,7 +34,7 @@ Usage:
     python scripts/ep_structure_analysis/step2_monitor.py --watch --no-clear
 
 Author: Danilo Couto de Souza
-Date: February 2026
+Date: February–April 2026
 """
 
 import sys
@@ -298,6 +302,53 @@ def scan_group(cases: pd.DataFrame, desc: str = "") -> dict:
     return results
 
 
+def scan_group_simple(cases: pd.DataFrame, desc: str = "") -> dict:
+    """
+    Simple file existence scan for legacy reuse mode (step2b).
+    
+    Only checks if file exists, doesn't open NetCDF.
+    Used for monitoring step2b_reuse_legacy_era5.py progress.
+    
+    Returns dict mapping track_id → {'exists': bool, 'size_bytes': int}
+    """
+    results = {}
+    for _, row in tqdm(
+        cases.iterrows(),
+        total=len(cases),
+        desc=desc,
+        leave=False,
+        ncols=72,
+        bar_format="  {desc}: {percentage:3.0f}% |{bar}| {n}/{total}",
+    ):
+        nc_file = DATA_DIR / f"{row['track_id']}_era5.nc"
+        if nc_file.exists():
+            size = nc_file.stat().st_size
+            results[row["track_id"]] = {'exists': True, 'size_bytes': size}
+        else:
+            results[row["track_id"]] = {'exists': False, 'size_bytes': 0}
+    return results
+
+
+def aggregate_simple(cases: pd.DataFrame, scan_results: dict) -> dict:
+    """
+    Aggregate simple scan results (for reuse mode).
+    
+    Returns dict with:
+        n_cases, n_found, n_missing, total_bytes
+    """
+    n_cases = len(cases)
+    n_found = sum(1 for r in scan_results.values() if r['exists'])
+    n_missing = n_cases - n_found
+    total_bytes = sum(r['size_bytes'] for r in scan_results.values())
+    
+    return {
+        'n_cases': n_cases,
+        'n_found': n_found,
+        'n_missing': n_missing,
+        'total_bytes': total_bytes,
+    }
+
+
 # ============================================================================
 # STATISTICS
 # ============================================================================
@@ -397,6 +448,54 @@ def _fmt_bytes(n: float) -> str:
 # ============================================================================
 # REPORT RENDERING
 # ============================================================================
+
+def print_report_simple(
+    ep1_cases: pd.DataFrame,
+    ep2_cases: pd.DataFrame,
+    ep3_cases: pd.DataFrame,
+    ep1_stats: dict,
+    ep2_stats: dict,
+    ep3_stats: dict,
+    scan_elapsed: float,
+) -> None:
+    """Render simple reuse mode report to stdout."""
+    
+    W = 78
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    print()
+    print("═" * W)
+    print("  ERA5 EP STRUCTURE — LEGACY REUSE MONITOR (step2b)")
+    print(f"  Scanned : {now}  ({scan_elapsed:.1f} s)")
+    print(f"  Dir     : {DATA_DIR}")
+    print("  Mode    : Simple file existence check")
+    print("═" * W)
+    
+    total_cases = sum(s['n_cases'] for s in [ep1_stats, ep2_stats, ep3_stats])
+    total_found = sum(s['n_found'] for s in [ep1_stats, ep2_stats, ep3_stats])
+    total_bytes = sum(s['total_bytes'] for s in [ep1_stats, ep2_stats, ep3_stats])
+    
+    for ep_label, stats in [("EP1", ep1_stats), ("EP2", ep2_stats), ("EP3", ep3_stats)]:
+        n_cases = stats['n_cases']
+        n_found = stats['n_found']
+        n_missing = stats['n_missing']
+        pct = 100 * n_found / n_cases if n_cases else 0
+        
+        print()
+        print(f"  {ep_label}  files  {_bar(n_found, n_cases)}")
+        print(f"       detail  ✓ found: {n_found}  ✗ missing: {n_missing}  "
+              f"size: {_fmt_bytes(stats['total_bytes'])}")
+    
+    print()
+    print("  " + "─" * (W - 2))
+    overall_pct = 100 * total_found / total_cases if total_cases else 0
+    print(f"  OVERALL: {total_found}/{total_cases} files ({overall_pct:.1f}%)  "
+          f"Total size: {_fmt_bytes(total_bytes)}")
+    print()
+    print("  Note: EP3 has NO legacy data (legacy analysis was EP1/EP2 only).")
+    print("        Use step2_download_era5_parallel.py for EP3 and missing cases.")
+    print("═" * W)
+
 
 def print_report(
     ep1_cases: pd.DataFrame,
@@ -573,7 +672,7 @@ def print_report(
     print("  " + "─" * (W - 2))
     print("  PRECOMPUTED COMPOSITES (step 3 output):")
 
-    for ep_tag in ["ep1", "ep2"]:
+    for ep_tag in ["ep1", "ep2", "ep3", "epall"]:
         cf = DATA_DIR / f"precomputed_composites_{ep_tag}.nc"
         if cf.exists():
             sz   = _fmt_bytes(cf.stat().st_size)
@@ -601,11 +700,22 @@ def print_report(
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Monitor ERA5 download progress for the EP structure analysis.\n"
-            "Reports (variable × pressure-level) slot completeness per case,\n"
-            "with separate progress bars for EP1 and EP2."
+            "Monitor ERA5 download/reuse progress for the EP structure analysis.\n"
+            "\n"
+            "MODES:\n"
+            "  download (default): Full slot-level monitoring for step2_download_era5_parallel.py\n"
+            "  reuse: Simple file existence check for step2b_reuse_legacy_era5.py\n"
+            "\n"
+            "Reports (variable × pressure-level) slot completeness per case in download mode,\n"
+            "or simple file existence in reuse mode."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--mode", "-m",
+        choices=['download', 'reuse'],
+        default='download',
+        help="Monitoring mode: 'download' for step2 (default), 'reuse' for step2b",
     )
     parser.add_argument(
         "--watch", "-w", action="store_true",
@@ -624,30 +734,62 @@ def main() -> None:
     # ── Load case lists ───────────────────────────────────────────────────
     ep1_file = RESULTS_DIR / "ep1_cases.csv"
     ep2_file = RESULTS_DIR / "ep2_cases.csv"
+    ep3_file = RESULTS_DIR / "ep3_cases.csv"
 
-    if not ep1_file.exists() or not ep2_file.exists():
-        print(f"\n❌  Case files not found in:\n    {RESULTS_DIR}")
+    if not ep1_file.exists():
+        print(f"\n❌  EP1 case file not found: {ep1_file}")
         print("    Run step1_select_ep_tracks.py first.\n")
         sys.exit(1)
 
     ep1_cases = pd.read_csv(ep1_file)
-    ep2_cases = pd.read_csv(ep2_file)
+    
+    # EP2 and EP3 are optional for some modes
+    ep2_cases = pd.read_csv(ep2_file) if ep2_file.exists() else pd.DataFrame()
+    ep3_cases = pd.read_csv(ep3_file) if ep3_file.exists() else pd.DataFrame()
 
     def _run_once() -> None:
         t0 = time.monotonic()
-        proc_info = detect_download_process()
-        ep1_scan  = scan_group(ep1_cases, desc="Scanning EP1")
-        ep2_scan  = scan_group(ep2_cases, desc="Scanning EP2")
-        ep1_stats = aggregate(ep1_cases, ep1_scan)
-        ep2_stats = aggregate(ep2_cases, ep2_scan)
-        elapsed   = time.monotonic() - t0
+        
+        if args.mode == 'reuse':
+            # Simple file existence scan for step2b
+            ep1_scan = scan_group_simple(ep1_cases, desc="Scanning EP1")
+            ep2_scan = scan_group_simple(ep2_cases, desc="Scanning EP2") if len(ep2_cases) > 0 else {}
+            ep3_scan = scan_group_simple(ep3_cases, desc="Scanning EP3") if len(ep3_cases) > 0 else {}
+            
+            ep1_stats = aggregate_simple(ep1_cases, ep1_scan)
+            ep2_stats = aggregate_simple(ep2_cases, ep2_scan) if len(ep2_cases) > 0 else {'n_cases': 0, 'n_found': 0, 'n_missing': 0, 'total_bytes': 0}
+            ep3_stats = aggregate_simple(ep3_cases, ep3_scan) if len(ep3_cases) > 0 else {'n_cases': 0, 'n_found': 0, 'n_missing': 0, 'total_bytes': 0}
+            
+            elapsed = time.monotonic() - t0
+            
+            if args.watch and not args.no_clear:
+                os.system("clear")
+            
+            print_report_simple(ep1_cases, ep2_cases, ep3_cases, 
+                              ep1_stats, ep2_stats, ep3_stats, elapsed)
+        else:
+            # Full slot-level scan for step2
+            proc_info = detect_download_process()
+            ep1_scan  = scan_group(ep1_cases, desc="Scanning EP1")
+            ep2_scan  = scan_group(ep2_cases, desc="Scanning EP2") if len(ep2_cases) > 0 else {}
+            
+            ep1_stats = aggregate(ep1_cases, ep1_scan)
+            ep2_stats = aggregate(ep2_cases, ep2_scan) if len(ep2_cases) > 0 else {
+                'n_cases': 0, 'total_slots': 0, 'slots_done': 0,
+                'n_complete': 0, 'n_incomplete': 0, 'n_missing': 0, 'n_corrupted': 0,
+                'total_bytes': 0, 'var_complete': {}, 'level_complete': {}
+            }
+            
+            elapsed = time.monotonic() - t0
 
-        if args.watch and not args.no_clear:
-            os.system("clear")
-        print_report(ep1_cases, ep2_cases, ep1_stats, ep2_stats, elapsed, proc_info)
+            if args.watch and not args.no_clear:
+                os.system("clear")
+            
+            print_report(ep1_cases, ep2_cases, ep1_stats, ep2_stats, elapsed, proc_info)
 
     if args.watch:
-        print(f"  Monitoring every {args.interval} s  (Ctrl+C to stop)…", flush=True)
+        mode_label = "reuse" if args.mode == 'reuse' else "download"
+        print(f"  Monitoring {mode_label} every {args.interval} s  (Ctrl+C to stop)…", flush=True)
         try:
             while True:
                 _run_once()

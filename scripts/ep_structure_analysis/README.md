@@ -1,25 +1,70 @@
-# EP Structure Analysis: EP1 vs EP2 Cyclone Comparison
+# EP Structure Analysis: EP1, EP2, EP3 — Canonical Methodology (April 2026)
 
 ## Objective
 
-Investigate the spatial structure of EP1 and EP2 cyclones during intensification,
-using standard dynamical diagnostics to understand what distinguishes each energy
-pattern structurally.
+Investigate the spatial structure of South Atlantic cyclones during intensification,
+comparing Energy Patterns (EP1, EP2, EP3) and the total cyclone composite (EPALL),
+using standard dynamical diagnostics.
 
-## Important: Consistency with Cluster Analysis
+## ⚡ CANONICAL METHODOLOGY (April 2026)
 
-**CRITICAL:** All cyclones used in this analysis come directly from the cluster
-assignments in `results/cluster/kmeans_clustered_data.csv`. The clustering was
-performed on cyclones already filtered for complete lifecycle (incipient →
-intensification → mature → decay). Therefore:
+### Duration Filter
+**Only cyclones with intensification phase >= 24 hours (1 day) are eligible.**
 
-- **NO additional lifecycle filtering** is applied in this pipeline
-- **ALL 444 EP1 cyclones** from cluster 0 are used (100% consistency)
-- **ALL 979 EP2 cyclones** from cluster 2 are used (100% consistency)
+This filter removes ~28.5% of cyclones (1,087 out of 3,820), focusing the analysis
+on cyclones with sufficiently long intensification phases for meaningful composite
+averaging.
 
-This ensures that the structural analysis describes the **exact same cyclones**
-used to define the energy patterns, maintaining methodological consistency
-throughout the study.
+### Temporal Reduction
+**Composites use CENTRAL TIMESTEPS ONLY, not the full intensification phase:**
+- **ODD** number of timesteps → select central **3** timesteps
+- **EVEN** number of timesteps → select central **2** timesteps
+
+This reduces ERA5 download volume by **~94%** (from 121,406 to 6,884 timesteps)
+while maintaining scientific representativeness of the composite structure.
+
+### Final Sample Sizes
+After >= 24h filter:
+- **EP1**: 332 cyclones (was 444, removed 112 short cases = 25.2%)
+- **EP2**: 776 cyclones (was 979, removed 203 short cases = 20.7%)
+- **EP3**: 1,625 cyclones (was 2,397, removed 772 short cases = 32.2%)
+- **EPALL**: 2,733 cyclones (was 3,820, removed 1,087 short cases = 28.5%)
+
+**Rationale:** Short intensification phases (< 24h) may represent rapidly
+transitioning systems or weakly defined intensification periods. Focusing on
+>= 24h cases ensures robust phase identification and reduces noise in composites.
+
+## Cluster Consistency
+
+All cyclones come from the cluster assignments in `results/cluster/kmeans_clustered_data.csv`:
+- **EP1** = Cluster 0 (high energy conversions)
+- **EP2** = Cluster 2 (moderate conversions)
+- **EP3** = Cluster 1 (weak/background energetics)
+
+The duration filter is applied AFTER cluster assignment to maintain consistency
+with the energy pattern definitions while ensuring temporal robustness.
+
+## Anomaly Definitions (April 2026)
+
+The analysis now uses **EPALL-relative anomalies** as the primary anomaly definition:
+
+```
+EPx_anomaly = EPx_composite - EPALL_composite
+```
+
+This isolates what distinguishes each Energy Pattern from the "average" cyclone,
+rather than from a monthly climatology. The EPALL-relative anomalies are computed
+for: EGR, PV (200/850 hPa), temperature advection, moisture flux divergence, SLP,
+KE advection, and RK criterion.
+
+**Exception:** AFC and BtCR diagnostics retain climatology-based decomposition
+by construction (Orlanski & Katzfey 1991; Rivière 2006), as they require a
+low-frequency background state for physical interpretation.
+
+## Legacy Analysis
+
+The previous EP1-vs-EP2 analysis (using climatology-based anomalies) is preserved
+in `scripts/ep_structure_analysis_legacy/`. See `LEGACY_README.md` for details.
 
 ## Diagnostic Fields
 
@@ -110,58 +155,165 @@ throughout the study.
   Lorenz Energy Cycle analysis to avoid circular validation. Positive AFC
   indicates an eddy KE source; negative values indicate a sink.
 
-## Pipeline Structure
+## Pipeline Steps
 
-### Composite Modes
+### Step 1: Select Cyclone Tracks (`step1_select_ep_tracks.py`)
 
-The pipeline supports **two composite methodologies** to aggregate cyclone fields during intensification:
+Selects eligible cyclones for each Energy Pattern with >= 24h intensification.
 
-| Mode | Description | Timesteps Used | Output Suffix |
-|------|-------------|----------------|---------------|
-| **`full_intensification`** | Mean over all timesteps in intensification phase (original method) | All 6-hourly timesteps from phase start to end | `_full_intensification` |
-| **`central_time`** | Single central timestep of intensification phase | Middle timestep only (N//2 for N timesteps) | `_central_time` |
+**Canonical methodology:**
+1. Loads cluster assignments (EP1/EP2/EP3)
+2. Filters for intensification duration >= 24 hours
+3. Selects CENTRAL timesteps only (2 or 3 per cyclone)
+4. Generates track visualizations
 
-**Key differences:**
-- `full_intensification` represents the *average structure* during the entire deepening period
-- `central_time` represents a *snapshot* at the peak/center of intensification
-- Both modes use identical selection criteria, fields, domain, and grid
-- All scripts support `--mode` flag to specify which mode to use
+**Output:**
+- `results/ep_structure/ep{1,2,3,all}_cases.csv` (eligible cases with selected timesteps)
+- `results/ep_structure/ep{1,2,3}_top10_intense.csv` (10 most intense per EP)
+- `figures/ep_structure/tracks/ep{1,2,3}_tracks_overview.png`
 
-**Central timestep definition:**
-- For N timesteps in intensification phase:
-  - Odd N: uses timestep at index N//2 (exact middle)
-  - Even N: uses timestep at index N//2 (round-up convention)
-- Example: N=5 → index 2 (3rd timestep), N=6 → index 3 (4th timestep)
-
-**Output file naming:**
-```
-# Precomputed composites (step 3)
-precomputed_composites_ep1_full_intensification.nc
-precomputed_composites_ep1_central_time.nc
-
-# Figures (step 4)
-composite_egr_full_intensification.png
-composite_egr_central_time.png
-
-# Stats JSON (step 5)
-composite_stats_full_intensification.json
-composite_stats_central_time.json
-
-# Web manifests
-composite_figures_manifest_full_intensification.json
-composite_domain_stats_central_time.json
+**Execution:**
+```bash
+python scripts/ep_structure_analysis/step1_select_ep_tracks.py
 ```
 
-### Steps
+### Step 2: Download ERA5 Data
 
-| Step | Script | Run on | Description |
+**Option A (Fresh Download):** `step2_download_era5_parallel.py`
+
+Downloads ERA5 reanalysis for eligible cyclones using ONLY central timesteps.
+
+**Variables:** u, v, t, z, q (pressure levels: 175, 200, 225, 250, 500, 825, 850, 875, 975), msl (surface)
+
+**Domain:** 30° × 30° centered on cyclone
+
+**Temporal:** Only the 2-3 central timesteps per cyclone (~94% reduction vs full intensification)
+
+**Execution:**
+```bash
+python scripts/ep_structure_analysis/step2_download_era5_parallel.py --jobs 10
+```
+
+**Option B (OPTIONAL - Reuse Legacy):** `step2b_reuse_legacy_era5.py`
+
+Operational shortcut to reuse ERA5 data from legacy analysis when available.
+
+**Purpose:** Avoid re-downloading data already obtained for EP1/EP2 in previous analysis.
+
+> **EP3 coverage: NONE.** The legacy analysis only covered EP1 and EP2.
+> `step2b` cannot reuse any EP3 cases. EP3 must always be downloaded via `step2_download_era5_parallel.py`.
+
+**Strategy:**
+- Checks if legacy ERA5 file exists for each eligible cyclone
+- Verifies file contains required central timesteps
+- Extracts only those timesteps to canonical location
+- Reports reuse success rate per EP group
+
+**Execution:**
+```bash
+# Dry run (report only, no file operations)
+python scripts/ep_structure_analysis/step2b_reuse_legacy_era5.py --dry-run
+
+# Actual reuse (EP1 and EP2 only — EP3 will show 0% coverage)
+python scripts/ep_structure_analysis/step2b_reuse_legacy_era5.py
+
+# Monitor reuse progress while step2b runs
+python scripts/ep_structure_analysis/step2_monitor.py --mode reuse --watch
+
+# Then download missing/EP3 cases:
+python scripts/ep_structure_analysis/step2_download_era5_parallel.py --jobs 10
+```
+
+**Note:** This step is NOT required for the canonical pipeline. It's purely a time-saving
+convenience when legacy data exists. The canonical flow is: step1 → step2 (fresh download) → step3.
+
+
+### Step 3: Precompute Composites (`step3_precompute_composites.py`)
+
+Computes spatial composites for all diagnostic fields.
+
+**Methodology:**
+- Loads ERA5 data for each cyclone (2-3 central timesteps)
+- Computes diagnostic fields (EGR, PV, advection, etc.)
+- Averages across selected timesteps within each cyclone
+- Averages across all cyclones in each EP group
+- Computes EPALL composite (union of all EPs)
+- Computes EPALL-relative anomalies (EPx - EPALL)
+
+**Output:** `data/era5_ep_structure/precomputed_composites_ep{1,2,3,all}.nc`
+
+**Execution:**
+```bash
+python scripts/ep_structure_analysis/step3_precompute_composites.py --jobs 4
+```
+
+### Step 4: Generate Figures (`step4_create_figures.py`)
+
+Creates publication-quality composite figures for all diagnostic fields.
+
+**Output:** `figures/ep_structure/composite_*.png`
+
+**Execution:**
+```bash
+python scripts/ep_structure_analysis/step4_create_figures.py
+```
+
+### Step 5: Update Scientific Notes (`step5_update_scientific_notes.py`)
+
+Updates SCIENTIFIC_NOTES.md with composite statistics and generates PDF.
+
+**Output:** 
+- `SCIENTIFIC_NOTES.md` (updated)
+- `results/ep_structure/composite_stats.json`
+- `docs/scientific_notes_ep_structure.pdf`
+
+**Execution:**
+```bash
+python scripts/ep_structure_analysis/step5_update_scientific_notes.py
+```
+
+### Step 6: Generate Cyclone Explorer Panels (`step6_generate_cyclone_explorer_panels.py`)
+
+Creates individual panels for each timestep of each cyclone (for web visualization).
+
+**Output:** `figures/cyclone_explorer/ep{1,2,3}/{track_id}/panel_t{NNN}.png`
+
+**Execution:**
+```bash
+python scripts/ep_structure_analysis/step6_generate_cyclone_explorer_panels.py --jobs 4
+```
+
+## Output File Naming
+
+```
+# Composites (NetCDF)
+data/era5_ep_structure/precomputed_composites_ep1.nc
+data/era5_ep_structure/precomputed_composites_ep2.nc
+data/era5_ep_structure/precomputed_composites_ep3.nc
+data/era5_ep_structure/precomputed_composites_epall.nc
+
+# Figures (PNG)
+figures/ep_structure/composite_egr.png                  # Total composites (EP1/EP2/EP3)
+figures/ep_structure/composite_egr_anom_epall.png       # EPALL-relative anomalies
+figures/ep_structure/composite_pv200.png
+figures/ep_structure/composite_pv850_anom_epall.png
+...
+
+# Statistics (JSON)
+results/ep_structure/composite_stats.json
+
+# Web visualization
+figures/cyclone_explorer/ep1/{track_id}/panel_t000.png
+figures/cyclone_explorer/ep2/{track_id}/panel_t001.png
+...
+```
 |------|--------|--------|-------------|
-| 1 | `step1_select_ep_tracks.py` | Local/Remote | Select EP1 and EP2 cyclone tracks |
+| 1 | `step1_select_ep_tracks.py` | Local/Remote | Select EP1, EP2, EP3 cyclone tracks and create EPALL composite list |
 | 2 | `step2_download_era5_parallel.py` | **Remote** | Download ERA5 data (parallel, with patching) |
-| 2.1 | `step2_1_download_era5_monthly_means.py` | **Remote** | Download ERA5 monthly means → 30-year climatologies for all anomaly diagnostics (4 variable groups: 250hPa, pv200, pv850, mfd975). Smart completeness check automatically skips already-downloaded months. |
+| 2.1 | `step2_1_download_era5_monthly_means.py` | **Remote** | Download ERA5 monthly means → 30-year climatologies for AFC/BtCR diagnostics (4 variable groups: 250hPa, pv200, pv850, mfd975). Smart completeness check automatically skips already-downloaded months. |
 | 2M | `step2_monitor.py` | Local/Remote | **Monitor download progress** (see below) |
-| 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP, RK, KE_adv) |
-| 4 | `step4_create_figures.py` | Local | Create EP1 vs EP2 composite figures |
+| 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP, RK, KE_adv) for EP1, EP2, EP3, EPALL + EPALL-relative anomalies |
+| 4 | `step4_create_figures.py` | Local | Create EP1, EP2, EP3, EPALL composite figures + EPALL-relative anomaly figures |
 | 5 | `step5_update_scientific_notes.py` | Local | Populate SCIENTIFIC_NOTES.md with regional statistics + generate PDF |
 | 6 | `step6_generate_cyclone_explorer_panels.py` | Local/Remote | Generate individual cyclone multi-panel figures for temporal exploration |
 
@@ -190,6 +342,7 @@ Important note on centering and domains:
 **Output:**
 - `figures/cyclone_explorer/ep1/{track_id}/panel_t{NNN}.png` — EP1 timestep panels
 - `figures/cyclone_explorer/ep2/{track_id}/panel_t{NNN}.png` — EP2 timestep panels
+- `figures/cyclone_explorer/ep3/{track_id}/panel_t{NNN}.png` — EP3 timestep panels
 - `web/src/content/cyclone_explorer_manifest.json` — Manifest for web integration
 
 **Usage:**
@@ -259,30 +412,40 @@ python scripts/ep_structure_analysis/step2_1_download_era5_monthly_means.py --fo
 
 ### Download monitor (`step2_monitor.py`)
 
-`step2_monitor.py` scans `data/era5_ep_structure/` and reports completeness at the
-finest available granularity: one **slot** = one (variable, pressure-level) pair.
+`step2_monitor.py` scans `data/era5_ep_structure/` and reports completeness.
+It supports two modes:
 
-```
-Slots per case = 5 pressure vars × 9 levels  +  1 SLP  =  46 slots total
-```
+| Mode | Use with | Description |
+|------|----------|-------------|
+| `download` (default) | `step2_download_era5_parallel.py` | Full slot-level monitoring (variable × level per case) |
+| `reuse` | `step2b_reuse_legacy_era5.py` | Simple file existence check for legacy reuse |
 
-**Features:**
+**download mode features:**
 - **Process detection**: Automatically detects if `step2_download_era5_parallel.py` 
   is running and shows PID, runtime, CPU%, and memory usage (requires `psutil`)
 - **Per-variable table**: how many cases have that variable with all 9 levels
 - **Per-level table**: how many cases have that level with all 5 variables
-- **Composite check**: whether `precomputed_composites_ep{1,2}.nc` (step 3 output)
-  already exist
+- **Composite check**: whether `precomputed_composites_ep{1,2,3,all}.nc` (step 3 output) exist
+
+**reuse mode features:**
+- Simple file existence check (fast, no NetCDF header parsing)
+- Shows found/missing counts per EP group (EP1, EP2, EP3)
+- Clearly indicates that **EP3 has no legacy coverage** and requires fresh download
+- Useful for tracking step2b progress
 
 ```bash
 # Install psutil for process detection (optional but recommended)
 pip install psutil
 
-# One-shot report (shows current state and exits)
+# Monitor fresh download progress (default)
 python scripts/ep_structure_analysis/step2_monitor.py
 
-# Live watch while step 2 is running (refresh every 60 s)
+# Monitor legacy reuse progress (step2b)
+python scripts/ep_structure_analysis/step2_monitor.py --mode reuse
+
+# Live watch while step 2 or step2b is running (refresh every 60 s)
 python scripts/ep_structure_analysis/step2_monitor.py --watch
+python scripts/ep_structure_analysis/step2_monitor.py --mode reuse --watch
 
 # Faster refresh (every 30 s)
 python scripts/ep_structure_analysis/step2_monitor.py --watch --interval 30
@@ -290,6 +453,10 @@ python scripts/ep_structure_analysis/step2_monitor.py --watch --interval 30
 # No terminal clear — safe for nohup / log capture
 python scripts/ep_structure_analysis/step2_monitor.py --watch --no-clear
 ```
+
+> **EP3 note (reuse mode):** EP3 has zero legacy ERA5 files available. The legacy
+> analysis only covered EP1 and EP2. The reuse monitor will show EP3 with 0% coverage
+> and will always direct you to use `step2_download_era5_parallel.py` for EP3.
 
 Example output (with download process active):
 

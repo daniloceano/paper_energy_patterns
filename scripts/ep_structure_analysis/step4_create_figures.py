@@ -755,7 +755,7 @@ def figure_ke_advection(datasets):
 
 
 def figure_afc(datasets):
-    """AFC at 250 hPa: EP1 vs EP2, with total composite 250 hPa wind vectors.
+    """AFC at 250 hPa: EP1, EP2, EP3 comparison, with total composite 250 hPa wind vectors.
 
     AFC = −∇·(v_ag' φ')  where v_ag' = v' − v_g' is the ageostrophic eddy wind
     and φ' = Φ − Φm is the geopotential departure from the 30-year monthly
@@ -765,22 +765,32 @@ def figure_afc(datasets):
     Wind vectors overlaid are the **total** composite-mean 250 hPa wind
     (u_250, v_250), not the eddy perturbation.
 
+    NOTE: AFC uses climatology-based decomposition by construction (Orlanski &
+    Katzfey 1991). It is NOT converted to EPALL-relative anomalies because
+    the ageostrophic flux requires a climatological reference.
+
     Reference: Orlanski & Katzfey (1991), Orlanski & Sheldon (1993).
     """
     logging.info("  Creating AFC @250 hPa composite figure...")
 
-    if "afc_250" not in datasets["EP1"]:
+    # Get EPs that have AFC data
+    eps = [ep for ep in ["EP1", "EP2", "EP3"] if ep in datasets and "afc_250" in datasets[ep]]
+    
+    if not eps:
         logging.warning(
-            "    ⚠  afc_250 not in composites — skipping.\n"
+            "    ⚠  afc_250 not in any composites — skipping.\n"
             "      Run step2_1 (download climatology) then re-run step3."
         )
         return
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    n_panels = len(eps)
+    fig, axes = _create_multipanel_fig(n_panels, panel_width=7, panel_height=6)
+    if n_panels == 1:
+        axes = [axes]
 
-    # Symmetric colour scale: use 98th-percentile of |AFC| across both EPs
+    # Symmetric colour scale: use 98th-percentile of |AFC| across all EPs
     absmax = 0.0
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         d = datasets[ep]["afc_250"].values
         absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
     
@@ -789,7 +799,7 @@ def figure_afc(datasets):
         absmax = 1e-5  # fallback for all-zero data
     clevels = _safe_symmetric_levels(absmax, 21)
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x = ds.coords["x"].values
@@ -816,8 +826,13 @@ def figure_afc(datasets):
                      xlabel=True, ylabel=(i == 0))
         _add_cbar(fig, ax, im, "AFC (m² s⁻³)")
 
+    # Hide unused axes if any
+    for j in range(len(eps), len(axes)):
+        axes[j].set_visible(False)
+
+    ep_list = ", ".join(eps)
     fig.suptitle(
-        "Ageostrophic Flux Convergence at 250 hPa (Orlanski & Katzfey 1991) — EP1 vs EP2",
+        f"Ageostrophic Flux Convergence at 250 hPa (Orlanski & Katzfey 1991) — {ep_list}",
         fontsize=13, fontweight="bold", y=1.02,
     )
     plt.tight_layout()
@@ -1172,7 +1187,7 @@ def figure_slp_anom(datasets):
 
 def figure_btcr(datasets):
     """
-    Barotropic Critical Region (BtCR) composite: EP1 vs EP2.
+    Barotropic Critical Region (BtCR) composite: EP1, EP2, EP3 comparison.
 
     Shading: Effective deformation Δm = σ_m² − ζ_m² (×10⁻⁹ s⁻²).
       Positive  (warm) : deformation dominates → BtCR candidate region
@@ -1187,29 +1202,38 @@ def figure_btcr(datasets):
     winds (1991–2020) — the low-frequency surrogate used in place of a
     per-case 8-day running mean (Rivière 2006).
 
+    NOTE: BtCR uses climatology-based decomposition by construction. It is
+    NOT converted to EPALL-relative anomalies.
+
     References
     ----------
     Rivière, G., 2006: J. Atmos. Sci., 63, 1764–1775.
     """
     logging.info("  Creating BtCR composite figure (250 hPa)...")
 
-    if "btcr_delta_m" not in datasets["EP1"]:
+    # Get EPs that have BtCR data
+    eps = [ep for ep in ["EP1", "EP2", "EP3"] if ep in datasets and "btcr_delta_m" in datasets[ep]]
+    
+    if not eps:
         logging.warning("   ⚠  btcr_delta_m absent — skipping BtCR figure (run step2_1 first)")
         return
 
     SCALE = 1e9      # s⁻²  →  10⁻⁹ s⁻²
     SKIP  = VECTOR_SKIP
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    n_panels = len(eps)
+    fig, axes = _create_multipanel_fig(n_panels, panel_width=7, panel_height=6)
+    if n_panels == 1:
+        axes = [axes]
 
     # ── Common colour scale (symmetric about zero) ─────────────────────
     absmax = 0.0
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         arr = datasets[ep]["btcr_delta_m"].values * SCALE
         absmax = max(absmax, np.nanpercentile(np.abs(arr), 98))
     clevels = _safe_symmetric_levels(absmax, 41)
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
 
@@ -1263,9 +1287,13 @@ def figure_btcr(datasets):
         _decorate_ax(ax, f"{ep} — BtCR (250 hPa)", ylabel=(i == 0))
         _add_cbar(fig, ax, im, r"$\Delta_m \times 10^{9}$ (s$^{-2}$)")
 
+    # Hide unused axes if any
+    for j in range(len(eps), len(axes)):
+        axes[j].set_visible(False)
+
+    ep_list = ", ".join(eps)
     fig.suptitle(
-        "Barotropic Critical Region — Δm = σ_m² − ζ_m² at 250 hPa (Rivière 2006) "
-        "— EP1 vs EP2",
+        f"Barotropic Critical Region — Δm = σ_m² − ζ_m² at 250 hPa (Rivière 2006) — {ep_list}",
         fontsize=13, fontweight="bold", y=1.02,
     )
     plt.tight_layout()
@@ -1483,7 +1511,7 @@ def figure_btcr_diff(datasets):
 
 
 def figure_wind250_anom(datasets):
-    """250 hPa wind speed anomaly: EP1 vs EP2, diverging shading.
+    """250 hPa wind speed anomaly: EP1, EP2, EP3 comparison, diverging shading.
 
     Wind speed anomaly is defined as:
         wspd_anom = |V_total| − |V_climatology|
@@ -1493,22 +1521,33 @@ def figure_wind250_anom(datasets):
     v_250 − v_250_prime).  This is derived entirely from fields already stored
     in the composite dataset; no additional step3 computation needed.
 
+    NOTE: This uses climatology-based anomalies (departure from monthly mean),
+    NOT EPALL-relative anomalies. The eddy wind decomposition requires a
+    climatological reference for physical interpretation.
+
     Positive values: EP case has stronger upper-level winds than climatology.
     Negative values: EP case has weaker upper-level winds than climatology.
     """
     logging.info("  Creating 250 hPa wind speed anomaly composite figure...")
 
-    if "u_250" not in datasets["EP1"] or "u_250_prime" not in datasets["EP1"]:
+    # Get EPs that have the required wind fields
+    eps = [ep for ep in ["EP1", "EP2", "EP3"] 
+           if ep in datasets and "u_250" in datasets[ep] and "u_250_prime" in datasets[ep]]
+    
+    if not eps:
         logging.warning(
             "    ⚠  u_250 or u_250_prime not in composites — skipping wind250_anom figure"
         )
         return
 
-    fig, axes = plt.subplots(1, 2, figsize=(16, 7))
+    n_panels = len(eps)
+    fig, axes = _create_multipanel_fig(n_panels, panel_width=7, panel_height=6)
+    if n_panels == 1:
+        axes = [axes]
 
-    # Symmetric colour scale from 98th-percentile across both EPs
+    # Symmetric colour scale from 98th-percentile across all EPs
     absmax = 0.0
-    for ep in ["EP1", "EP2"]:
+    for ep in eps:
         ds = datasets[ep]
         u = ds["u_250"].values
         v = ds["v_250"].values
@@ -1522,7 +1561,7 @@ def figure_wind250_anom(datasets):
         absmax = 1e-10
     clevels = _safe_symmetric_levels(absmax, 21)
 
-    for i, ep in enumerate(["EP1", "EP2"]):
+    for i, ep in enumerate(eps):
         ax = axes[i]
         ds = datasets[ep]
         x, y = ds.coords["x"].values, ds.coords["y"].values
@@ -1544,8 +1583,13 @@ def figure_wind250_anom(datasets):
                      ylabel=(i == 0))
         _add_cbar(fig, ax, im, "Δ|V| (m s⁻¹)")
 
+    # Hide unused axes if any
+    for j in range(len(eps), len(axes)):
+        axes[j].set_visible(False)
+
+    ep_list = ", ".join(eps)
     fig.suptitle(
-        "250 hPa Wind Speed Anomaly (|V| − |V̅ₘ|) — EP1 vs EP2",
+        f"250 hPa Wind Speed Anomaly (|V| − |V̅ₘ|) — {ep_list}",
         fontsize=13, fontweight="bold", y=1.02,
     )
     plt.tight_layout()

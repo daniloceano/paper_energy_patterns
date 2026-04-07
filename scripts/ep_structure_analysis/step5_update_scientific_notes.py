@@ -377,8 +377,11 @@ def export_stats_json(stats):
     domain_stats = []
     boundary_fluxes = []
 
+    # Updated to include EP1, EP2, EP3, and EPALL
+    all_eps = ["EP1", "EP2", "EP3", "EPALL"]
+    
     for prefix, (diag_id, unit, is_flux, anom_prefix) in DIAG_MAP.items():
-        for ep in ["EP1", "EP2"]:
+        for ep in all_eps:
             lec_key  = f"{ep}_{prefix}_LEC15"
             full_key = f"{ep}_{prefix}_FULL30"
             if lec_key in stats:
@@ -395,6 +398,11 @@ def export_stats_json(stats):
                     a_full = f"{ep}_{anom_prefix}_FULL30"
                     entry["inside_15x15_anom"]  = stats.get(a_lec)
                     entry["outside_15x15_anom"] = stats.get(a_full)
+                # Add EPALL-relative anomaly fields (new April 2026)
+                epall_lec  = f"{ep}_{prefix}_EPALL_LEC15"
+                epall_full = f"{ep}_{prefix}_EPALL_FULL30"
+                entry["inside_15x15_epall_anom"]  = stats.get(epall_lec)
+                entry["outside_15x15_epall_anom"] = stats.get(epall_full)
                 domain_stats.append(entry)
             if is_flux:
                 n_key  = f"{ep}_{prefix}_NORTH"

@@ -1,34 +1,35 @@
 """
 Step 1: Select EP1, EP2, EP3, and EPALL Cyclone Tracks for Structure Analysis
 
-Selects cyclones from Energy Patterns 1, 2, and 3 for composite analysis
-using CENTRAL TIMESTEPS from their intensification phase.
+Selects ALL cyclones from Energy Patterns 1, 2, and 3 for composite analysis
+during their entire intensification phase.
 
-CANONICAL METHODOLOGY (April 2026):
-1. Duration Filter: Only cyclones with intensification >= 24 hours (1 day)
-2. Temporal Reduction: Uses only CENTRAL timesteps (not full intensification)
-   - ODD number of timesteps → select central 3
-   - EVEN number of timesteps → select central 2
-   
-This reduces ERA5 download volume by ~70-80% while maintaining scientific
-representativeness of the composite structure.
+IMPORTANT: The clustering was performed on cyclones already filtered for complete
+lifecycle (incipient → intensification → mature → decay). Therefore, ALL cyclones
+in the cluster file already satisfy this criterion and should NOT be filtered again.
 
 Selection Criteria:
-- EP1: Cluster 0 (high energy conversions)
-- EP2: Cluster 2 (moderate conversions)
-- EP3: Cluster 1 (weak/background energetics)
-- EPALL: Union of all three EPs
+- EP1: Cluster 0 (444 cyclones, 11.6%) - High energy conversions
+- EP2: Cluster 2 (979 cyclones, 25.6%) - Moderate conversions
+- EP3: Cluster 1 (2,397 cyclones, 62.7%) - Weak/background energetics
+- EPALL: Union of all three EPs (3,820 cyclones, 100%)
 
-After >= 24h filter:
-- EP1: ~332 cyclones (was 444, removed 112 short cases)
-- EP2: ~776 cyclones (was 979, removed 203 short cases)
-- EP3: ~1625 cyclones (was 2397, removed 772 short cases)
-- EPALL: ~2733 cyclones (was 3820, removed 1087 short cases)
+Intensity Subset:
+- Additionally selects the 10 most intense cyclones per EP group
+- Intensity metric: maximum |vor42| (central relative vorticity at 850 hPa)
+- Used for the 'intense_10' composite mode in step3
 
 Output:
-- results/ep_structure/ep{1,2,3,all}_cases.csv (eligible cases only)
-- results/ep_structure/ep{1,2,3}_top10_intense.csv (10 most intense)
-- figures/ep_structure/tracks/ep{1,2,3}_tracks_overview.png
+- results/ep_structure/ep1_cases.csv           (all EP1 cyclones)
+- results/ep_structure/ep2_cases.csv           (all EP2 cyclones)
+- results/ep_structure/ep3_cases.csv           (all EP3 cyclones)
+- results/ep_structure/epall_cases.csv         (all cyclones)
+- results/ep_structure/ep1_top10_intense.csv   (10 most intense EP1)
+- results/ep_structure/ep2_top10_intense.csv   (10 most intense EP2)
+- results/ep_structure/ep3_top10_intense.csv   (10 most intense EP3)
+- figures/ep_structure/tracks/ep1_tracks_overview.png
+- figures/ep_structure/tracks/ep2_tracks_overview.png
+- figures/ep_structure/tracks/ep3_tracks_overview.png
 
 Author: Danilo Couto de Souza
 Date: April 2026
@@ -50,9 +51,6 @@ from scripts.utils.ep_mapping import (
     CLUSTER_TO_EP, EP_TO_CLUSTER, ALL_EPS, EP_LABELS, EP_COLORS,
     get_ep_label, get_ep_abbrev, get_ep_color
 )
-from scripts.utils.timestep_selection import (
-    select_central_timesteps, get_selected_timesteps_info, validate_duration_filter
-)
 
 # Configuration
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -63,9 +61,6 @@ FIGURES_DIR = PROJECT_ROOT / "figures" / "ep_structure" / "tracks"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 LEC_DATA_DIR = PROJECT_ROOT / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 DPI = 300
-
-# Canonical filter threshold (April 2026 methodology)
-MIN_DURATION_HOURS = 24.0  # Only cyclones with >= 1 day of intensification
 
 
 def _resolve_csv(path: Path):
@@ -79,13 +74,7 @@ def _resolve_csv(path: Path):
 def get_intensification_info(track_id, tracks_df):
     """
     Get intensification phase information for a track.
-    
-    Returns tuple: (start_time, end_time, all_times, n_selected, center_lat, center_lon)
-    or None if intensification data unavailable.
-    
-    The function now returns:
-    - all_times: list of all timestamps during intensification
-    - n_selected: number of timesteps that will be used (2 or 3 central ones)
+    Returns (start_time, end_time, n_timesteps, center_lat, center_lon) or None.
     """
     lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
     periods_file = _resolve_csv(lec_dir / "periods.csv")
@@ -111,14 +100,9 @@ def get_intensification_info(track_id, tracks_df):
     if len(track_intens) == 0:
         return None
 
-    # Get all timestamps during intensification (ordered)
-    all_times = sorted(track_intens["time"].tolist())
-    
-    # Select central timesteps according to canonical methodology
-    selected_times = select_central_timesteps(all_times)
-    n_selected = len(selected_times)
+    n_timesteps = len(track_intens)
 
-    # Temporal centre point (for spatial centering)
+    # Temporal centre point
     t_center = start_time + (end_time - start_time) / 2
     time_diffs = np.abs((track_intens["time"] - t_center).dt.total_seconds())
     closest_idx = time_diffs.idxmin()
@@ -126,7 +110,7 @@ def get_intensification_info(track_id, tracks_df):
     center_lat = track_intens.loc[closest_idx, "lat vor"]
     center_lon = track_intens.loc[closest_idx, "lon vor"]
 
-    return start_time, end_time, all_times, n_selected, center_lat, center_lon
+    return start_time, end_time, n_timesteps, center_lat, center_lon
 
 
 def select_top10_intense(ep_df, tracks_df, ep_label):
@@ -264,11 +248,9 @@ def plot_tracks(selected_df, tracks_df, ep_label, color):
 
 def select_ep_cases(ep_num, tracks_df, clustered_df):
     """
-    Select cases from an EP cluster with >= 24h intensification duration.
+    Select all cases from an EP cluster.
     
-    CANONICAL METHODOLOGY (April 2026):
-    - Filter: Only cyclones with intensification duration >= 24 hours
-    - Temporal: Uses central timesteps only (2 or 3 depending on odd/even)
+    IMPORTANT: NO FILTERING by lifecycle - all cyclones in the cluster are used.
     """
     cluster_id = EP_TO_CLUSTER[ep_num]
     ep_label = get_ep_label(ep_num)
@@ -279,70 +261,50 @@ def select_ep_cases(ep_num, tracks_df, clustered_df):
     ep_track_ids = ep_cyclones["track_id"].unique()
     print(f"   Total {ep_label} cyclones from cluster: {len(ep_track_ids)}")
 
-    # Get intensification info for each track
+    # Get intensification info for each track (no lifecycle filtering)
     cases = []
-    filtered_out = 0
-    
     for track_id in ep_track_ids:
         info = get_intensification_info(track_id, tracks_df)
         if info is not None:
-            start_time, end_time, all_times, n_selected, center_lat, center_lon = info
-            duration_hours = (end_time - start_time).total_seconds() / 3600
-            
-            # Apply >= 24h filter (canonical methodology)
-            if not validate_duration_filter(duration_hours, MIN_DURATION_HOURS):
-                filtered_out += 1
-                continue
-            
-            # Serialize selected timesteps for storage
-            selected_times = select_central_timesteps(all_times)
-            selected_times_str = ','.join([t.strftime('%Y-%m-%d %H:%M:%S') for t in selected_times])
-            
+            start_time, end_time, n_timesteps, center_lat, center_lon = info
             cases.append(
                 {
                     "track_id": track_id,
                     "ep": ep_num,
                     "intensification_start": start_time,
                     "intensification_end": end_time,
-                    "duration_hours": duration_hours,
-                    "n_timesteps_total": len(all_times),
-                    "n_timesteps_selected": n_selected,
-                    "selected_times": selected_times_str,
+                    "n_timesteps": n_timesteps,
                     "center_lat": center_lat,
                     "center_lon": center_lon,
+                    "duration_hours": (end_time - start_time).total_seconds() / 3600,
                 }
             )
 
     df = pd.DataFrame(cases)
-    
-    print(f"   Valid cases with intensification data: {len(ep_track_ids)}")
-    print(f"   Removed (< {MIN_DURATION_HOURS}h): {filtered_out} ({100*filtered_out/len(ep_track_ids):.1f}%)")
-    print(f"   ✓ ELIGIBLE cases (>= {MIN_DURATION_HOURS}h): {len(df)} ({100*len(df)/len(ep_track_ids):.1f}%)")
+    print(f"   Valid cases with intensification data: {len(df)}")
 
     if len(df) > 0:
-        print(f"   Mean duration: {df['duration_hours'].mean():.1f}h (range: {df['duration_hours'].min():.1f}–{df['duration_hours'].max():.1f}h)")
-        print(f"   Mean timesteps (total): {df['n_timesteps_total'].mean():.1f}")
-        print(f"   Mean timesteps (selected): {df['n_timesteps_selected'].mean():.1f}")
-        reduction = 100 * (1 - df['n_timesteps_selected'].sum() / df['n_timesteps_total'].sum())
-        print(f"   Temporal reduction: {reduction:.1f}% fewer timesteps to download")
-        print(f"   Total timesteps to download: {df['n_timesteps_selected'].sum()} (was {df['n_timesteps_total'].sum()})")
+        print(f"   Mean timesteps/case: {df['n_timesteps'].mean():.1f}")
+        print(f"   Total timesteps: {df['n_timesteps'].sum()}")
+        print(f"   Mean duration: {df['duration_hours'].mean():.1f} h")
+        print(
+            f"   Lat range: [{df['center_lat'].min():.1f}, {df['center_lat'].max():.1f}]"
+        )
+        print(
+            f"   Lon range: [{df['center_lon'].min():.1f}, {df['center_lon'].max():.1f}]"
+        )
 
     return df
 
 
 def main():
-    print("=" * 80)
-    print("STEP 1: SELECT EP1/EP2/EP3 TRACKS — CANONICAL METHODOLOGY (April 2026)")
-    print("=" * 80)
+    print("=" * 70)
+    print("STEP 1: SELECT EP1 + EP2 + EP3 CYCLONE TRACKS FOR STRUCTURE ANALYSIS")
+    print("=" * 70)
     print()
-    print("CANONICAL METHODOLOGY:")
-    print(f"  1. Duration filter: Only cyclones with intensification >= {MIN_DURATION_HOURS}h (1 day)")
-    print("  2. Temporal reduction: Use CENTRAL timesteps only:")
-    print("     • ODD number of timesteps → select central 3")
-    print("     • EVEN number of timesteps → select central 2")
-    print()
-    print("This reduces ERA5 download volume by ~70-80% while maintaining")
-    print("scientific representativeness of composite structure.")
+    print("IMPORTANT: All cyclones from the clusters were already filtered for")
+    print("complete lifecycle during the clustering analysis. NO additional")
+    print("filtering is applied here to ensure consistency.")
     
     # 1. Load cluster assignments
     print("\n1. Loading cluster assignments...")
@@ -360,8 +322,8 @@ def main():
     tracks_df = load_tracks()
     print(f"   Total tracks in database: {tracks_df['track_id'].nunique()}")
 
-    # 3. Select cases for each EP (with >= 24h filter + central timesteps)
-    print("\n3. Selecting eligible cases per EP...")
+    # 3. Select cases for each EP
+    print("\n3. Selecting cases per EP...")
 
     ep_dfs = {}
     for ep_num in ALL_EPS:
@@ -371,10 +333,7 @@ def main():
     print("\n── EPALL (all EPs combined) ──")
     epall_df = pd.concat([ep_dfs[ep] for ep in ALL_EPS], ignore_index=True)
     print(f"   Total EPALL cyclones: {len(epall_df)}")
-    print(f"   Total timesteps (selected): {epall_df['n_timesteps_selected'].sum()}")
-    print(f"   Total timesteps (would be if full): {epall_df['n_timesteps_total'].sum()}")
-    reduction = 100 * (1 - epall_df['n_timesteps_selected'].sum() / epall_df['n_timesteps_total'].sum())
-    print(f"   Overall temporal reduction: {reduction:.1f}%")
+    print(f"   Total timesteps: {epall_df['n_timesteps'].sum()}")
 
     # 5. Save all cases
     print("\n4. Saving results...")

@@ -40,6 +40,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -59,6 +60,9 @@ DATA_DIR = BASE_DIR / 'data' / 'era5_ep_structure'
 # Output
 FIGURES_DIR = BASE_DIR / 'figures' / 'exploratory'
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+
+RESULTS_DIR = BASE_DIR / 'results' / 'exploratory'
+RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Composite modes to process
 COMPOSITE_MODES = ['full_intensification', 'central_time', 'intense_10']
@@ -249,6 +253,128 @@ def add_colorbar(fig, gs_cell, im, label):
 
 
 # ============================================================================
+# FIELD STATISTICS: 15×15 DOMAIN AND BOUNDARY MEANS
+# ============================================================================
+
+def compute_15x15_statistics(field_2d, x, y):
+    """
+    Compute mean statistics for the 15×15 domain centered at (0,0).
+
+    Returns dict with:
+      - domain_mean: mean over the entire 15×15 box
+      - south_mean : mean along the southern boundary (y = -7.5)
+      - north_mean : mean along the northern boundary (y = +7.5)
+      - west_mean  : mean along the western boundary  (x = -7.5)
+      - east_mean  : mean along the eastern boundary  (x = +7.5)
+    """
+    # Find indices within the 15×15 box: x in [-7.5, 7.5], y in [-7.5, 7.5]
+    x_mask = (x >= -7.5) & (x <= 7.5)
+    y_mask = (y >= -7.5) & (y <= 7.5)
+
+    # Subset field to the 15×15 domain
+    field_15x15 = field_2d[np.ix_(y_mask, x_mask)]
+    x_15 = x[x_mask]
+    y_15 = y[y_mask]
+
+    # Domain mean
+    domain_mean = float(np.nanmean(field_15x15))
+
+    # Boundary indices (closest to ±7.5)
+    i_south = np.argmin(np.abs(y_15 - (-7.5)))
+    i_north = np.argmin(np.abs(y_15 - 7.5))
+    j_west  = np.argmin(np.abs(x_15 - (-7.5)))
+    j_east  = np.argmin(np.abs(x_15 - 7.5))
+
+    # Boundary means
+    south_mean = float(np.nanmean(field_15x15[i_south, :]))
+    north_mean = float(np.nanmean(field_15x15[i_north, :]))
+    west_mean  = float(np.nanmean(field_15x15[:, j_west]))
+    east_mean  = float(np.nanmean(field_15x15[:, j_east]))
+
+    return {
+        'domain_mean': domain_mean,
+        'south_mean':  south_mean,
+        'north_mean':  north_mean,
+        'west_mean':   west_mean,
+        'east_mean':   east_mean,
+    }
+
+
+def export_field_statistics(ep_data, mode, field_type):
+    """
+    Export 15×15 domain statistics for all fields.
+
+    Parameters
+    ----------
+    ep_data : dict
+        Dictionary with EP1 and EP2 data arrays and coordinates.
+    mode : str
+        Composite mode name.
+    field_type : str
+        Either 'total' or 'anom'.
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Statistics table.
+    """
+    if field_type == 'total':
+        fields = {
+            'PV_200 (PVU)':       'pv_200',
+            'PV_850 (PVU)':       'pv_850',
+            'EGR (day⁻¹)':        'egr',
+            'T-adv_850 (K/h)':    'adv_T_850',
+            'MSL (hPa)':          'msl_hpa',
+            'AFC_250 (W/m²)':     'afc_250',
+            'KE-adv_250 (W/m²)':  'ke_adv_250',
+            'u_250 (m/s)':        'u_250',
+            'v_250 (m/s)':        'v_250',
+            'u_850 (m/s)':        'u_850',
+            'v_850 (m/s)':        'v_850',
+        }
+    else:  # anom
+        fields = {
+            'PV_200_anom (PVU)':      'pv_200_anom',
+            'PV_850_anom (PVU)':      'pv_850_anom',
+            'EGR (day⁻¹)':            'egr',
+            'T-adv_850_anom (K/h)':   'adv_T_850_anom',
+            'MSL (hPa)':              'msl_hpa',
+            'AFC_250 (W/m²)':         'afc_250',
+            'KE-adv_250_anom (W/m²)': 'ke_adv_250_anom',
+            "u'_250 (m/s)":           'u_250_prime',
+            "v'_250 (m/s)":           'v_250_prime',
+            "u'_850 (m/s)":           'u_850_prime',
+            "v'_850 (m/s)":           'v_850_prime',
+        }
+
+    rows = []
+    for field_label, field_key in fields.items():
+        for ep in ['EP1', 'EP2']:
+            d = ep_data[ep]
+            if field_key not in d:
+                continue
+            stats = compute_15x15_statistics(d[field_key], d['x'], d['y'])
+            rows.append({
+                'Field':       field_label,
+                'EP':          ep,
+                'Domain Mean': stats['domain_mean'],
+                'South':       stats['south_mean'],
+                'North':       stats['north_mean'],
+                'West':        stats['west_mean'],
+                'East':        stats['east_mean'],
+            })
+
+    df = pd.DataFrame(rows)
+
+    # Save to CSV
+    out_csv = RESULTS_DIR / f"dynamical_composites_{field_type}_{mode}_15x15_stats.csv"
+    df.to_csv(out_csv, index=False, float_format='%.6f')
+    print(f"      ✓ Exported: {out_csv.name}")
+
+    return df
+
+
+# ============================================================================
 # FIGURE 1: TOTAL FIELDS
 # ============================================================================
 
@@ -269,7 +395,7 @@ def create_figure_total(datasets, mode):
         missing = [v for v in required_total if v not in datasets[ep]]
         if missing:
             print(f"      ⚠ {ep} missing variables: {missing} — skipping total figure")
-            return
+            return None
 
     eps = ['EP1', 'EP2']
 
@@ -460,6 +586,10 @@ def create_figure_total(datasets, mode):
     plt.close()
     print(f"      ✓ {out.name}")
 
+    # Export field statistics
+    df_stats = export_field_statistics(ep_data, mode, 'total')
+    return df_stats
+
 
 # ============================================================================
 # FIGURE 2: ANOMALY FIELDS
@@ -483,7 +613,7 @@ def create_figure_anom(datasets, mode):
         missing = [v for v in required_anom if v not in datasets[ep]]
         if missing:
             print(f"      ⚠ {ep} missing variables: {missing} — skipping anomaly figure")
-            return
+            return None
 
     eps = ['EP1', 'EP2']
 
@@ -676,6 +806,10 @@ def create_figure_anom(datasets, mode):
     plt.close()
     print(f"      ✓ {out.name}")
 
+    # Export field statistics
+    df_stats = export_field_statistics(ep_data, mode, 'anom')
+    return df_stats
+
 
 # ============================================================================
 # MAIN
@@ -688,6 +822,8 @@ def main():
     print("=" * 70)
     print(f"Output directory: {FIGURES_DIR}\n")
 
+    all_stats = []
+
     for mode in COMPOSITE_MODES:
         print(f"\n{'─'*70}")
         print(f"Processing mode: {mode}")
@@ -699,9 +835,18 @@ def main():
             print(f"  ⚠ Skipping mode={mode} — data not found")
             continue
 
-        # Create figures
-        create_figure_total(datasets, mode)
-        create_figure_anom(datasets, mode)
+        # Create figures and collect statistics
+        df_total = create_figure_total(datasets, mode)
+        df_anom  = create_figure_anom(datasets, mode)
+
+        if df_total is not None:
+            df_total['mode'] = mode
+            df_total['type'] = 'total'
+            all_stats.append(df_total)
+        if df_anom is not None:
+            df_anom['mode'] = mode
+            df_anom['type'] = 'anom'
+            all_stats.append(df_anom)
 
         # Close datasets
         for ds in datasets.values():
@@ -711,6 +856,26 @@ def main():
     print("✓ COMPLETE")
     print(f"{'='*70}")
     print(f"Figures saved in: {FIGURES_DIR}")
+    print(f"Statistics saved in: {RESULTS_DIR}")
+
+    # Print all statistics tables to terminal
+    if all_stats:
+        print(f"\n{'='*70}")
+        print("15×15 DOMAIN STATISTICS SUMMARY")
+        print(f"{'='*70}\n")
+
+        for df in all_stats:
+            mode = df['mode'].iloc[0]
+            ftype = df['type'].iloc[0]
+            print(f"\n{'─'*70}")
+            print(f"Mode: {mode}  |  Type: {ftype.upper()} fields")
+            print(f"{'─'*70}")
+            df_print = df.drop(columns=['mode', 'type'])
+            pd.set_option('display.max_columns', None)
+            pd.set_option('display.width', 120)
+            pd.set_option('display.float_format', '{:.6f}'.format)
+            print(df_print.to_string(index=False))
+            print()
 
 
 if __name__ == '__main__':

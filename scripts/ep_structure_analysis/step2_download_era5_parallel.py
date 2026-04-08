@@ -1,8 +1,8 @@
 """
-Step 2: Download ERA5 Data in Parallel for EP1 + EP2 Cyclones
+Step 2: Download ERA5 Data in Parallel for EP1, EP2, EP3 Cyclones
 
-Downloads ERA5 reanalysis data for all EP1 and EP2 cyclones during their
-entire intensification phase.
+Downloads ERA5 reanalysis data for all EP cyclones using only CENTRAL TIMESTEPS
+from their intensification phase (canonical methodology April 2026).
 
 Variables Downloaded:
 - Pressure levels: u, v, t, z, q
@@ -44,6 +44,7 @@ import time
 import logging
 
 from scripts.utils.load_data import load_tracks
+from scripts.utils.ep_mapping import ALL_EPS, get_ep_abbrev, get_ep_label
 from tqdm import tqdm
 
 # ============================================================================
@@ -206,29 +207,69 @@ def check_existing_files(cases, ep_label):
 # DOMAIN
 # ============================================================================
 
-def compute_domain_bounds(track_id, start_time, end_time):
-    """Compute 30°×30° domain centred on the cyclone during intensification."""
+def parse_selected_times(times_str: str) -> list:
+    """Parse selected_times CSV column into list of datetime objects."""
+    return [pd.to_datetime(t.strip()) for t in times_str.split(',')]
+
+
+def compute_domain_bounds(track_id, selected_times_str):
+    """
+    Compute domain covering 30°×30° boxes centered on CENTRAL TIMESTEPS only.
+    
+    CANONICAL METHODOLOGY (April 2026):
+    - Uses only the central timesteps (2 or 3) from intensification
+    - Computes bounding box that covers 30°×30° area around each central position
+    - This ensures sufficient spatial coverage for composite analysis
+    
+    Parameters
+    ----------
+    track_id : str
+        Cyclone track identifier
+    selected_times_str : str
+        Comma-separated string of selected central timesteps
+    
+    Returns
+    -------
+    dict or None
+        Dictionary with 'north', 'south', 'east', 'west', 'track_center_lat', 'track_center_lon'
+    """
+    selected_times = parse_selected_times(selected_times_str)
+    
     tracks = load_tracks()
     track_data = tracks[tracks["track_id"] == track_id].copy()
     track_data["time"] = pd.to_datetime(track_data["date"])
-    track_intens = track_data[
-        (track_data["time"] >= start_time) & (track_data["time"] <= end_time)
-    ]
+    
+    # Filter to only the selected central timesteps
+    track_selected = track_data[track_data["time"].isin(selected_times)]
 
-    if len(track_intens) == 0:
+    if len(track_selected) == 0:
+        logging.warning(f"   No track data found for selected times: {track_id}")
         return None
 
-    t_center = start_time + (end_time - start_time) / 2
-    diffs = np.abs((track_intens["time"] - t_center).dt.total_seconds())
-    ci = diffs.idxmin()
-    clat = track_intens.loc[ci, "lat vor"]
-    clon = track_intens.loc[ci, "lon vor"]
+    # Compute bounding box covering all selected positions + buffer
+    # Each position needs 15° buffer in each direction (30°×30° total)
+    lats = track_selected["lat vor"].values
+    lons = track_selected["lon vor"].values
+    
+    lat_min_required = lats.min() - DOMAIN_BUFFER
+    lat_max_required = lats.max() + DOMAIN_BUFFER
+    lon_min_required = lons.min() - DOMAIN_BUFFER
+    lon_max_required = lons.max() + DOMAIN_BUFFER
+    
+    # Clamp latitude to valid range
+    lat_min_required = max(-90, lat_min_required)
+    lat_max_required = min(90, lat_max_required)
+    
+    # Track center (for metadata): use middle of selected timesteps
+    center_idx = len(track_selected) // 2
+    clat = track_selected["lat vor"].iloc[center_idx]
+    clon = track_selected["lon vor"].iloc[center_idx]
 
     return {
-        "north": min(90, track_intens["lat vor"].max() + DOMAIN_BUFFER),
-        "south": max(-90, track_intens["lat vor"].min() - DOMAIN_BUFFER),
-        "east": track_intens["lon vor"].max() + DOMAIN_BUFFER,
-        "west": track_intens["lon vor"].min() - DOMAIN_BUFFER,
+        "north": lat_max_required,
+        "south": lat_min_required,
+        "east": lon_max_required,
+        "west": lon_min_required,
         "track_center_lat": clat,
         "track_center_lon": clon,
     }
@@ -238,16 +279,25 @@ def compute_domain_bounds(track_id, start_time, end_time):
 # DOWNLOAD / PATCH
 # ============================================================================
 
-def download_era5_for_case(track_id, start_time, end_time, domain):
-    """Download ERA5 pressure-level + single-level data for one case."""
+def download_era5_for_case(track_id, selected_times_str, domain):
+    """
+    Download ERA5 pressure-level + single-level data for CENTRAL TIMESTEPS only.
+    
+    CANONICAL METHODOLOGY (April 2026):
+    - Downloads only the 2-3 selected central timesteps
+    - Significantly reduces data volume compared to full intensification
+    """
+    selected_times = parse_selected_times(selected_times_str)
+    
     logging.info(f"      Downloading {track_id}")
-    logging.info(f"         Period: {start_time} to {end_time}")
+    logging.info(f"         Selected timesteps: {len(selected_times)}")
+    logging.info(f"         Times: {', '.join([t.strftime('%Y-%m-%d %H:%M') for t in selected_times])}")
 
-    dates = pd.date_range(start_time, end_time, freq="6h")
-    years = dates.year.unique().astype(str).tolist()
-    months = dates.month.unique().astype(str).tolist()
-    days = dates.day.unique().astype(str).tolist()
-    times = dates.strftime("%H:%M").unique().tolist()
+    # Convert selected times to CDS API format
+    years = sorted(set(str(t.year) for t in selected_times))
+    months = sorted(set(f"{t.month:02d}" for t in selected_times))
+    days = sorted(set(f"{t.day:02d}" for t in selected_times))
+    times = sorted(set(t.strftime("%H:%M") for t in selected_times))
 
     c = cdsapi.Client()
 
@@ -302,10 +352,13 @@ def download_era5_for_case(track_id, start_time, end_time, domain):
         logging.info(f"      ✓ {of}")
 
         # metadata
+        selected_times = parse_selected_times(selected_times_str)
         meta = {
             "track_id": track_id,
-            "start_time": start_time.isoformat(),
-            "end_time": end_time.isoformat(),
+            "n_timesteps_selected": len(selected_times),
+            "selected_times": selected_times_str,
+            "first_time": selected_times[0].isoformat(),
+            "last_time": selected_times[-1].isoformat(),
             "north": domain["north"],
             "south": domain["south"],
             "east": domain["east"],
@@ -313,6 +366,7 @@ def download_era5_for_case(track_id, start_time, end_time, domain):
             "track_center_lat": domain["track_center_lat"],
             "track_center_lon": domain["track_center_lon"],
             "pressure_levels_hPa": PRESSURE_LEVELS,
+            "methodology": "Canonical April 2026 - central timesteps only",
         }
         mf = DATA_DIR / f"{track_id}_metadata.csv"
         pd.DataFrame([meta]).to_csv(mf, index=False)
@@ -326,18 +380,19 @@ def download_era5_for_case(track_id, start_time, end_time, domain):
         return False
 
 
-def patch_era5_file(track_id, start_time, end_time, domain, missing_vars, missing_levels):
+def patch_era5_file(track_id, selected_times_str, domain, missing_vars, missing_levels):
     """Download only missing variables/levels and merge with existing file."""
     logging.info(f"      Patching {track_id} (vars={missing_vars}, levels={missing_levels})")
 
+    selected_times = parse_selected_times(selected_times_str)
     original = DATA_DIR / f"{track_id}_era5.nc"
     backup = DATA_DIR / f"{track_id}_era5_backup.nc"
 
-    dates = pd.date_range(start_time, end_time, freq="6h")
-    years = dates.year.unique().astype(str).tolist()
-    months = dates.month.unique().astype(str).tolist()
-    days = dates.day.unique().astype(str).tolist()
-    times = dates.strftime("%H:%M").unique().tolist()
+    # Convert selected times to CDS API format
+    years = sorted(set(str(t.year) for t in selected_times))
+    months = sorted(set(f"{t.month:02d}" for t in selected_times))
+    days = sorted(set(f"{t.day:02d}" for t in selected_times))
+    times = sorted(set(t.strftime("%H:%M") for t in selected_times))
 
     c = cdsapi.Client()
 
@@ -438,12 +493,11 @@ def _download_wrapper(args):
     idx, row, total = args
     track_id = row["track_id"]
     try:
-        start = pd.to_datetime(row["intensification_start"])
-        end = pd.to_datetime(row["intensification_end"])
-        domain = compute_domain_bounds(track_id, start, end)
+        selected_times_str = row["selected_times"]
+        domain = compute_domain_bounds(track_id, selected_times_str)
         if domain is None:
             return (track_id, False)
-        return (track_id, download_era5_for_case(track_id, start, end, domain))
+        return (track_id, download_era5_for_case(track_id, selected_times_str, domain))
     except Exception as e:
         logging.error(f"      ❌ {track_id}: {e}")
         return (track_id, False)
@@ -453,17 +507,16 @@ def _patch_wrapper(args):
     idx, row, mvars, mlevels, total = args
     track_id = row["track_id"]
     try:
-        start = pd.to_datetime(row["intensification_start"])
-        end = pd.to_datetime(row["intensification_end"])
+        selected_times_str = row["selected_times"]
         mf = DATA_DIR / f"{track_id}_metadata.csv"
         if mf.exists():
             m = pd.read_csv(mf).iloc[0]
             domain = {k: m[k] for k in ["north", "south", "east", "west", "track_center_lat", "track_center_lon"]}
         else:
-            domain = compute_domain_bounds(track_id, start, end)
+            domain = compute_domain_bounds(track_id, selected_times_str)
             if domain is None:
                 return (track_id, False)
-        return (track_id, patch_era5_file(track_id, start, end, domain, mvars, mlevels))
+        return (track_id, patch_era5_file(track_id, selected_times_str, domain, mvars, mlevels))
     except Exception as e:
         logging.error(f"      ❌ {track_id}: {e}")
         return (track_id, False)
@@ -619,20 +672,29 @@ def main():
     logging.info("=" * 60)
 
     # ── Load cases ────────────────────────────────────────────────────────────
-    ep1_file = RESULTS_DIR / "ep1_cases.csv"
-    ep2_file = RESULTS_DIR / "ep2_cases.csv"
-
-    if not ep1_file.exists() or not ep2_file.exists():
-        msg = f"❌ Case files not found in {RESULTS_DIR}. Run step1 first."
+    # Load all EP groups (EP1, EP2, EP3)
+    ep_cases = {}
+    missing_files = []
+    
+    for ep_num in ALL_EPS:
+        ep_abbrev = get_ep_abbrev(ep_num)
+        ep_file = RESULTS_DIR / f"{ep_abbrev}_cases.csv"
+        
+        if not ep_file.exists():
+            missing_files.append(ep_file)
+        else:
+            ep_cases[ep_num] = pd.read_csv(ep_file)
+    
+    if missing_files:
+        msg = f"❌ Case files not found: {', '.join([str(f) for f in missing_files])}. Run step1 first."
         _print_only(msg)
         logging.error(msg)
         return
 
-    ep1_cases = pd.read_csv(ep1_file)
-    ep2_cases = pd.read_csv(ep2_file)
-    all_cases = pd.concat([ep1_cases, ep2_cases], ignore_index=True)
+    all_cases = pd.concat([ep_cases[ep] for ep in ALL_EPS], ignore_index=True)
 
-    _print_only(f"\n  EP1: {len(ep1_cases)} cases  |  EP2: {len(ep2_cases)} cases  |  Total: {len(all_cases)}")
+    _print_only(f"\n  EP1: {len(ep_cases[1])} cases  |  EP2: {len(ep_cases[2])} cases  |  EP3: {len(ep_cases[3])} cases  |  Total: {len(all_cases)}")
+    _print_only(f"  Methodology: CANONICAL (Central timesteps only, April 2026)")
     _print_only(f"  Levels: {sorted(PRESSURE_LEVELS)} hPa")
     _print_only(f"  Variables: {list(NCVAR_PRESSURE.values()) + list(NCVAR_SINGLE.values())}")
 
@@ -646,8 +708,11 @@ def main():
     t0 = time.time()
 
     # ── Process each EP ───────────────────────────────────────────────────────
-    ep1_ok, ep1_fail = process_ep_group("EP1", ep1_cases, n_jobs)
-    ep2_ok, ep2_fail = process_ep_group("EP2", ep2_cases, n_jobs)
+    ep_results = {}
+    for ep_num in ALL_EPS:
+        ep_label = get_ep_label(ep_num)
+        n_ok, n_fail = process_ep_group(ep_label, ep_cases[ep_num], n_jobs)
+        ep_results[ep_num] = (n_ok, n_fail)
 
     elapsed = time.time() - t0
 
@@ -655,21 +720,29 @@ def main():
     _print_only(f"\n{'='*60}")
     _print_only(f"  DOWNLOAD COMPLETE  ({elapsed/60:.1f} min)")
     _print_only(f"{'='*60}")
-    _print_only(f"  EP1: {ep1_ok}/{len(ep1_cases)} valid  ({ep1_fail} failed)")
-    _print_only(f"  EP2: {ep2_ok}/{len(ep2_cases)} valid  ({ep2_fail} failed)")
-    _print_only(f"  Total: {ep1_ok+ep2_ok}/{len(all_cases)} valid")
+    
+    for ep_num in ALL_EPS:
+        ep_label = get_ep_label(ep_num)
+        n_ok, n_fail = ep_results[ep_num]
+        _print_only(f"  {ep_label}: {n_ok}/{len(ep_cases[ep_num])} valid  ({n_fail} failed)")
+    
+    total_ok = sum(r[0] for r in ep_results.values())
+    total_fail = sum(r[1] for r in ep_results.values())
+    _print_only(f"  Total: {total_ok}/{len(all_cases)} valid")
 
     logging.info(f"\nDOWNLOAD COMPLETE ({elapsed/60:.1f} min)")
-    logging.info(f"  EP1: {ep1_ok}/{len(ep1_cases)}")
-    logging.info(f"  EP2: {ep2_ok}/{len(ep2_cases)}")
+    for ep_num in ALL_EPS:
+        ep_label = get_ep_label(ep_num)
+        n_ok, n_fail = ep_results[ep_num]
+        logging.info(f"  {ep_label}: {n_ok}/{len(ep_cases[ep_num])}")
 
     print_completeness_report(all_cases)
 
-    if ep1_fail + ep2_fail == 0:
+    if total_fail == 0:
         _print_only("\n  ✓ All files ready!")
         _print_only("  Next: python scripts/ep_structure_analysis/step3_precompute_composites.py")
-    elif ep1_fail + ep2_fail > 0:
-        _print_only(f"\n  ⚠️  {ep1_fail+ep2_fail} failed — re-run to retry (or use --jobs 2)")
+    elif total_fail > 0:
+        _print_only(f"\n  ⚠️  {total_fail} failed — re-run to retry (or use --jobs 2)")
 
     _print_only(f"\n  Log: {log_file}")
 

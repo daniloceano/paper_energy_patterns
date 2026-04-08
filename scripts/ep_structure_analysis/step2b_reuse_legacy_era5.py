@@ -28,14 +28,15 @@ STRATEGY:
 
 OUTPUT:
 - Reused files: data/era5_ep_structure/{track_id}_era5.nc (canonical format)
-- Report: results/ep_structure/legacy_reuse_report.txt
+- Report: results/ep_structure/legacy_reuse_report.csv
 
 USAGE:
     python scripts/ep_structure_analysis/step2b_reuse_legacy_era5.py
-    
+
     Optional flags:
     --dry-run    : Only report what would be reused (don't copy files)
     --ep {1,2,3} : Only process specific EP group
+    --jobs N     : Number of parallel workers (default: 10, max useful: ~100)
 
 Author: Danilo Couto de Souza
 Date: April 2026
@@ -44,6 +45,7 @@ Date: April 2026
 import sys
 from pathlib import Path
 import argparse
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
@@ -62,21 +64,144 @@ CANONICAL_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 def parse_selected_times(times_str: str) -> list:
     """Parse selected_times CSV column into list of datetime objects."""
-    return [pd.to_datetime(t) for t in times_str.split(',')]
+    if pd.isna(times_str) or not times_str:
+        return []
+    return [pd.to_datetime(t.strip()) for t in times_str.split(',')]
 
 
-def check_legacy_file_compatibility(legacy_file: Path, required_times: list) -> dict:
+def compute_required_domain(track_id: str, selected_times: list) -> dict:
     """
-    Check if legacy ERA5 file contains required timesteps.
+    Compute the required spatial domain for central timesteps.
     
-    Returns dict with:
-        - 'compatible': bool
-        - 'reason': str (if not compatible)
-        - 'available_times': list of available times
+    Returns bounding box that must cover 30°×30° area around each selected position.
+    
+    Parameters
+    ----------
+    track_id : str
+        Cyclone track identifier
+    selected_times : list of pd.Timestamp
+        Selected central timesteps
+    
+    Returns
+    -------
+    dict or None
+        Dictionary with 'north', 'south', 'east', 'west' requirements
+    """
+    try:
+        from scripts.utils.load_data import load_tracks
+        tracks = load_tracks()
+        track_data = tracks[tracks["track_id"] == track_id].copy()
+        track_data["time"] = pd.to_datetime(track_data["date"])
+        
+        # Filter to selected timesteps
+        track_selected = track_data[track_data["time"].isin(selected_times)]
+        
+        if len(track_selected) == 0:
+            return None
+        
+        # Each position needs 15° buffer in each direction
+        BUFFER = 15.0
+        lats = track_selected["lat vor"].values
+        lons = track_selected["lon vor"].values
+        
+        return {
+            'north': lats.max() + BUFFER,
+            'south': lats.min() - BUFFER,
+            'east': lons.max() + BUFFER,
+            'west': lons.min() - BUFFER,
+        }
+    except Exception as e:
+        return None
+
+
+def check_spatial_coverage(legacy_file: Path, required_domain: dict, tolerance: float = 0.5) -> tuple:
+    """
+    Check if legacy file has sufficient spatial coverage.
+    
+    Parameters
+    ----------
+    legacy_file : Path
+        Path to legacy ERA5 file
+    required_domain : dict
+        Required domain bounds ('north', 'south', 'east', 'west')
+    tolerance : float, default=0.5
+        Tolerance in degrees for domain matching
+    
+    Returns
+    -------
+    tuple (bool, str)
+        (sufficient_coverage, reason)
     """
     try:
         ds = xr.open_dataset(legacy_file)
         
+        # Find latitude coordinate
+        lat_coord = None
+        for name in ['latitude', 'lat']:
+            if name in ds.coords:
+                lat_coord = name
+                break
+        
+        # Find longitude coordinate
+        lon_coord = None
+        for name in ['longitude', 'lon']:
+            if name in ds.coords:
+                lon_coord = name
+                break
+        
+        if lat_coord is None or lon_coord is None:
+            ds.close()
+            return False, "Cannot find lat/lon coordinates"
+        
+        # Get actual domain bounds
+        lats = ds[lat_coord].values
+        lons = ds[lon_coord].values
+        
+        actual_north = lats.max()
+        actual_south = lats.min()
+        actual_east = lons.max()
+        actual_west = lons.min()
+        
+        ds.close()
+        
+        # Check coverage with tolerance
+        coverage_ok = (
+            actual_north >= (required_domain['north'] - tolerance) and
+            actual_south <= (required_domain['south'] + tolerance) and
+            actual_east >= (required_domain['east'] - tolerance) and
+            actual_west <= (required_domain['west'] + tolerance)
+        )
+        
+        if not coverage_ok:
+            reason = f"Insufficient spatial coverage: "
+            reason += f"required [{required_domain['south']:.1f}°S to {required_domain['north']:.1f}°N, "
+            reason += f"{required_domain['west']:.1f}°W to {required_domain['east']:.1f}°E], "
+            reason += f"actual [{actual_south:.1f}°S to {actual_north:.1f}°N, "
+            reason += f"{actual_west:.1f}°W to {actual_east:.1f}°E]"
+            return False, reason
+        
+        return True, "Spatial coverage sufficient"
+        
+    except Exception as e:
+        return False, f"Error checking spatial coverage: {str(e)}"
+
+
+def check_legacy_file_compatibility(legacy_file: Path, required_times: list, track_id: str) -> dict:
+    """
+    Check if legacy ERA5 file is compatible with canonical methodology requirements.
+    
+    Checks both TEMPORAL and SPATIAL coverage.
+
+    Returns dict with:
+        - 'compatible': bool
+        - 'reason': str (if not compatible)
+        - 'available_times': list of available times
+        - 'spatial_ok': bool
+        - 'temporal_ok': bool
+    """
+    try:
+        ds = xr.open_dataset(legacy_file)
+
         # Check for time dimension (could be 'time' or 'valid_time')
         time_dim = None
         if 'time' in ds.dims:
@@ -87,11 +212,14 @@ def check_legacy_file_compatibility(legacy_file: Path, required_times: list) -> 
             return {
                 'compatible': False,
                 'reason': 'No time dimension found',
-                'available_times': []
+                'available_times': [],
+                'temporal_ok': False,
+                'spatial_ok': False,
             }
-        
+
         available_times = pd.to_datetime(ds[time_dim].values)
-        
+
+        # ═══ TEMPORAL CHECK ═══
         # Check if all required times are present
         missing_times = []
         for req_time in required_times:
@@ -100,42 +228,67 @@ def check_legacy_file_compatibility(legacy_file: Path, required_times: list) -> 
                       for at in available_times]
             if not any(matches):
                 missing_times.append(req_time)
+
+        temporal_ok = len(missing_times) == 0
         
-        if missing_times:
+        # ═══ SPATIAL CHECK ═══
+        # Compute required domain based on selected timesteps
+        required_domain = compute_required_domain(track_id, required_times)
+        
+        if required_domain is None:
+            ds.close()
             return {
                 'compatible': False,
-                'reason': f'Missing {len(missing_times)} required timesteps',
+                'reason': 'Cannot compute required domain for track',
                 'available_times': available_times,
-                'missing_times': missing_times
+                'temporal_ok': temporal_ok,
+                'spatial_ok': False,
             }
+        
+        spatial_ok, spatial_reason = check_spatial_coverage(legacy_file, required_domain)
         
         ds.close()
         
+        # ═══ COMBINED RESULT ═══
+        if not temporal_ok and not spatial_ok:
+            reason = f'Missing {len(missing_times)} timesteps AND {spatial_reason}'
+        elif not temporal_ok:
+            reason = f'Missing {len(missing_times)} required timesteps'
+        elif not spatial_ok:
+            reason = spatial_reason
+        else:
+            reason = 'All temporal and spatial requirements met'
+
         return {
-            'compatible': True,
-            'reason': 'All required timesteps available',
+            'compatible': temporal_ok and spatial_ok,
+            'reason': reason,
             'available_times': available_times,
-            'time_dim': time_dim
+            'missing_times': missing_times if not temporal_ok else [],
+            'time_dim': time_dim,
+            'temporal_ok': temporal_ok,
+            'spatial_ok': spatial_ok,
         }
-        
+
     except Exception as e:
         return {
             'compatible': False,
             'reason': f'Error reading file: {str(e)}',
-            'available_times': []
+            'available_times': [],
+            'temporal_ok': False,
+            'spatial_ok': False,
         }
 
 
-def extract_central_timesteps(legacy_file: Path, required_times: list, 
+def extract_central_timesteps(legacy_file: Path, required_times: list,
                               output_file: Path, time_dim: str = 'time') -> bool:
     """
     Extract central timesteps from legacy file and save to canonical location.
-    
+
     Returns True if successful, False otherwise.
     """
     try:
         ds = xr.open_dataset(legacy_file)
-        
+
         # Detect time dimension if not provided
         if time_dim not in ds.dims:
             if 'valid_time' in ds.dims:
@@ -144,134 +297,185 @@ def extract_central_timesteps(legacy_file: Path, required_times: list,
                 time_dim = 'time'
             else:
                 return False
-        
+
         available_times = pd.to_datetime(ds[time_dim].values)
-        
+
         # Find indices of required times (with tolerance)
         selected_indices = []
         for req_time in required_times:
-            time_diffs = [abs((at - req_time).total_seconds()) 
+            time_diffs = [abs((at - req_time).total_seconds())
                          for at in available_times]
             closest_idx = time_diffs.index(min(time_diffs))
             if time_diffs[closest_idx] < 10800:  # Within 3 hours
                 selected_indices.append(closest_idx)
-        
+
         # Extract subset
         ds_subset = ds.isel({time_dim: selected_indices})
-        
+
         # Rename time dimension to standard 'time' if needed
         if time_dim != 'time':
             ds_subset = ds_subset.rename({time_dim: 'time'})
-        
+
         # Add metadata
         ds_subset.attrs['source'] = 'Reused from legacy analysis'
         ds_subset.attrs['legacy_file'] = str(legacy_file.name)
         ds_subset.attrs['extraction_date'] = datetime.now().isoformat()
         ds_subset.attrs['canonical_methodology'] = 'Central timesteps only (April 2026)'
-        
+
         # Save
         ds_subset.to_netcdf(output_file)
         ds.close()
         ds_subset.close()
-        
+
         return True
-        
+
     except Exception as e:
-        print(f"   ⚠️  Error extracting timesteps: {e}")
+        print(f"   ⚠️  Error extracting timesteps for {output_file.name}: {e}")
         return False
 
 
-def process_ep_cases(ep_label: str, dry_run: bool = False):
-    """Process all cases for a given EP group."""
-    
+def _process_one_case(row: pd.Series, ep_label: str, dry_run: bool) -> tuple:
+    """
+    Process a single cyclone case.
+
+    Designed to be called from a thread pool — no shared mutable state.
+
+    Returns (result_record dict, stats_delta dict).
+    """
+    track_id = row['track_id']
+    required_times = parse_selected_times(row['selected_times'])
+
+    legacy_file = LEGACY_DATA_DIR / f"{track_id}_era5.nc"
+    canonical_file = CANONICAL_DATA_DIR / f"{track_id}_era5.nc"
+
+    result = {
+        'track_id': track_id,
+        'ep': ep_label,
+        'n_required_times': len(required_times),
+        'legacy_exists': legacy_file.exists(),
+        'canonical_exists': canonical_file.exists(),
+        'status': '',
+        'reason': ''
+    }
+
+    stats_delta = {
+        'legacy_found': 0,
+        'compatible': 0,
+        'reused': 0,
+        'incompatible': 0,
+        'incompatible_temporal': 0,
+        'incompatible_spatial': 0,
+        'incompatible_both': 0,
+        'not_found': 0,
+        'extraction_failed': 0,
+    }
+
+    # Skip if already exists in canonical location
+    if canonical_file.exists():
+        result['status'] = 'skip'
+        result['reason'] = 'Already exists in canonical location'
+        return result, stats_delta
+
+    # Check if legacy file exists
+    if not legacy_file.exists():
+        stats_delta['not_found'] = 1
+        result['status'] = 'need_download'
+        result['reason'] = 'No legacy file found'
+        return result, stats_delta
+
+    stats_delta['legacy_found'] = 1
+
+    # Check compatibility
+    compat = check_legacy_file_compatibility(legacy_file, required_times, track_id)
+    result['compatible'] = compat['compatible']
+    result['temporal_ok'] = compat.get('temporal_ok', False)
+    result['spatial_ok'] = compat.get('spatial_ok', False)
+    result['reason'] = compat['reason']
+
+    if not compat['compatible']:
+        stats_delta['incompatible'] = 1
+        
+        # Detailed incompatibility tracking
+        temporal_ok = compat.get('temporal_ok', False)
+        spatial_ok = compat.get('spatial_ok', False)
+        
+        if not temporal_ok and not spatial_ok:
+            stats_delta['incompatible_both'] = 1
+        elif not temporal_ok:
+            stats_delta['incompatible_temporal'] = 1
+        elif not spatial_ok:
+            stats_delta['incompatible_spatial'] = 1
+        
+        result['status'] = 'need_download'
+        return result, stats_delta
+
+    stats_delta['compatible'] = 1
+
+    # Extract and save (unless dry run)
+    if not dry_run:
+        time_dim_to_use = compat.get('time_dim', 'time')
+        success = extract_central_timesteps(
+            legacy_file, required_times, canonical_file, time_dim_to_use
+        )
+        if success:
+            stats_delta['reused'] = 1
+            result['status'] = 'reused'
+        else:
+            stats_delta['extraction_failed'] = 1
+            result['status'] = 'extraction_failed'
+    else:
+        result['status'] = 'dry_run_compatible'
+
+    return result, stats_delta
+
+
+def process_ep_cases(ep_label: str, dry_run: bool = False, jobs: int = 10):
+    """Process all cases for a given EP group using a thread pool."""
+
     cases_file = RESULTS_DIR / f"{ep_label.lower()}_cases.csv"
-    
+
     if not cases_file.exists():
         print(f"\n⚠️  Cases file not found: {cases_file}")
         print(f"   Run step1_select_ep_tracks.py first!")
         return None
-    
+
     df = pd.read_csv(cases_file)
     print(f"\n{'='*70}")
-    print(f"{ep_label} - Processing {len(df)} eligible cyclones")
+    print(f"{ep_label} - Processing {len(df)} eligible cyclones  (workers={jobs})")
     print(f"{'='*70}")
-    
+
     stats = {
         'total': len(df),
         'legacy_found': 0,
         'compatible': 0,
         'reused': 0,
         'incompatible': 0,
+        'incompatible_temporal': 0,
+        'incompatible_spatial': 0,
+        'incompatible_both': 0,
         'not_found': 0,
-        'extraction_failed': 0
+        'extraction_failed': 0,
     }
-    
+
     reuse_details = []
-    
-    for idx, row in tqdm(df.iterrows(), total=len(df), desc=f"Processing {ep_label}"):
-        track_id = row['track_id']
-        required_times = parse_selected_times(row['selected_times'])
-        
-        # Check for legacy file
-        legacy_file = LEGACY_DATA_DIR / f"{track_id}_era5.nc"
-        canonical_file = CANONICAL_DATA_DIR / f"{track_id}_era5.nc"
-        
-        result = {
-            'track_id': track_id,
-            'ep': ep_label,
-            'n_required_times': len(required_times),
-            'legacy_exists': legacy_file.exists(),
-            'canonical_exists': canonical_file.exists(),
-            'status': '',
-            'reason': ''
+
+    rows = [row for _, row in df.iterrows()]
+
+    with ProcessPoolExecutor(max_workers=jobs) as executor:
+        futures = {
+            executor.submit(_process_one_case, row, ep_label, dry_run): row['track_id']
+            for row in rows
         }
-        
-        # Skip if already exists in canonical location
-        if canonical_file.exists():
-            result['status'] = 'skip'
-            result['reason'] = 'Already exists in canonical location'
+        for fut in tqdm(
+            as_completed(futures),
+            total=len(futures),
+            desc=f"Processing {ep_label}",
+        ):
+            result, delta = fut.result()
             reuse_details.append(result)
-            continue
-        
-        # Check if legacy file exists
-        if not legacy_file.exists():
-            stats['not_found'] += 1
-            result['status'] = 'need_download'
-            result['reason'] = 'No legacy file found'
-            reuse_details.append(result)
-            continue
-        
-        stats['legacy_found'] += 1
-        
-        # Check compatibility
-        compat = check_legacy_file_compatibility(legacy_file, required_times)
-        result['compatible'] = compat['compatible']
-        result['reason'] = compat['reason']
-        
-        if not compat['compatible']:
-            stats['incompatible'] += 1
-            result['status'] = 'need_download'
-            reuse_details.append(result)
-            continue
-        
-        stats['compatible'] += 1
-        
-        # Extract and save (unless dry run)
-        if not dry_run:
-            time_dim_to_use = compat.get('time_dim', 'time')
-            success = extract_central_timesteps(legacy_file, required_times, 
-                                               canonical_file, time_dim_to_use)
-            if success:
-                stats['reused'] += 1
-                result['status'] = 'reused'
-            else:
-                stats['extraction_failed'] += 1
-                result['status'] = 'extraction_failed'
-        else:
-            result['status'] = 'dry_run_compatible'
-        
-        reuse_details.append(result)
-    
+            for k, v in delta.items():
+                stats[k] += v
+
     return stats, pd.DataFrame(reuse_details)
 
 
@@ -280,7 +484,7 @@ def main():
         description="Reuse legacy ERA5 downloads for canonical analysis"
     )
     parser.add_argument(
-        '--dry-run', 
+        '--dry-run',
         action='store_true',
         help='Only report what would be reused (no file operations)'
     )
@@ -291,9 +495,16 @@ def main():
         default='all',
         help='Process specific EP group (default: all)'
     )
-    
+    parser.add_argument(
+        '--jobs', '-j',
+        type=int,
+        default=10,
+        metavar='N',
+        help='Number of parallel workers (default: 10; set up to 100 for fast I/O storage)'
+    )
+
     args = parser.parse_args()
-    
+
     print("=" * 70)
     print("STEP 2b (OPTIONAL): REUSE LEGACY ERA5 DOWNLOADS")
     print("=" * 70)
@@ -301,70 +512,84 @@ def main():
     print("This is an OPERATIONAL SHORTCUT to reuse ERA5 data already")
     print("downloaded for the legacy EP1-vs-EP2 analysis.")
     print()
-    print(f"Legacy data location: {LEGACY_DATA_DIR}")
+    print(f"Legacy data location : {LEGACY_DATA_DIR}")
     print(f"Canonical data location: {CANONICAL_DATA_DIR}")
+    print(f"Parallel workers     : {args.jobs}")
     print()
-    
+
     if args.dry_run:
         print("⚠️  DRY RUN MODE: No files will be copied/modified")
         print()
-    
+
     if not LEGACY_DATA_DIR.exists():
         print(f"❌ Legacy data directory not found: {LEGACY_DATA_DIR}")
         print("   Nothing to reuse. Use step2_download_era5_parallel.py instead.")
         return
-    
+
     # Determine which EPs to process
     if args.ep == 'all':
         ep_labels = ['EP1', 'EP2', 'EP3']
     else:
         ep_labels = [f'EP{args.ep}']
-    
+
     # Process each EP
     all_stats = {}
     all_details = []
-    
+
     for ep_label in ep_labels:
-        result = process_ep_cases(ep_label, dry_run=args.dry_run)
+        result = process_ep_cases(ep_label, dry_run=args.dry_run, jobs=args.jobs)
         if result is not None:
             stats, details_df = result
             all_stats[ep_label] = stats
             all_details.append(details_df)
-    
+
     # Combine all details
     if all_details:
         combined_details = pd.concat(all_details, ignore_index=True)
     else:
         print("\n❌ No cases processed")
         return
-    
+
     # Print summary
     print("\n" + "=" * 70)
     print("SUMMARY")
     print("=" * 70)
-    
+
     for ep_label, stats in all_stats.items():
         print(f"\n{ep_label}:")
         print(f"  Total eligible cyclones: {stats['total']}")
         print(f"  Legacy files found: {stats['legacy_found']} ({100*stats['legacy_found']/stats['total']:.1f}%)")
         print(f"  Compatible: {stats['compatible']} ({100*stats['compatible']/stats['total']:.1f}%)")
         
+        # Detailed incompatibility breakdown
+        if stats['incompatible'] > 0:
+            print(f"  Incompatible: {stats['incompatible']}")
+            if stats['incompatible_temporal'] > 0:
+                print(f"    • Missing timesteps only: {stats['incompatible_temporal']}")
+            if stats['incompatible_spatial'] > 0:
+                print(f"    • Insufficient spatial coverage only: {stats['incompatible_spatial']}")
+            if stats['incompatible_both'] > 0:
+                print(f"    • Both temporal and spatial issues: {stats['incompatible_both']}")
+
         if not args.dry_run:
             print(f"  ✓ Successfully reused: {stats['reused']}")
             print(f"  ✗ Extraction failed: {stats['extraction_failed']}")
         else:
             print(f"  Would reuse: {stats['compatible']}")
-        
+
         need_download = stats['not_found'] + stats['incompatible']
         if not args.dry_run:
             need_download += stats['extraction_failed']
         print(f"  Need fresh download: {need_download}")
-    
+
     # Overall summary
     total_eligible = sum(s['total'] for s in all_stats.values())
-    total_reused = sum(s['reused'] for s in all_stats.values()) if not args.dry_run else sum(s['compatible'] for s in all_stats.values())
+    total_reused = (
+        sum(s['reused'] for s in all_stats.values()) if not args.dry_run
+        else sum(s['compatible'] for s in all_stats.values())
+    )
     total_need_download = total_eligible - total_reused
-    
+
     print(f"\nOVERALL:")
     print(f"  Total eligible cyclones: {total_eligible}")
     if not args.dry_run:
@@ -372,12 +597,12 @@ def main():
     else:
         print(f"  Could reuse: {total_reused} ({100*total_reused/total_eligible:.1f}%)")
     print(f"  Need fresh download: {total_need_download} ({100*total_need_download/total_eligible:.1f}%)")
-    
+
     # Save detailed report
     report_file = RESULTS_DIR / "legacy_reuse_report.csv"
     combined_details.to_csv(report_file, index=False)
     print(f"\n✓ Detailed report saved: {report_file}")
-    
+
     # Always print EP3 coverage note (legacy analysis only covered EP1/EP2)
     print()
     print("=" * 70)

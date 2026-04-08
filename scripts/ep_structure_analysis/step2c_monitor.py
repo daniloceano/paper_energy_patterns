@@ -1,5 +1,5 @@
 """
-step2_monitor.py — Download Progress Monitor for ERA5 EP Structure Data
+step2c_monitor.py — Download Progress Monitor for ERA5 EP Structure Data
 
 Scans data/era5_ep_structure/ and reports download completeness at the
 finest available granularity: per (case, variable, pressure-level) "slot".
@@ -13,25 +13,37 @@ A *slot* is defined as one (variable, pressure-level) pair:
 The monitor opens only the NetCDF header (no data loaded), so scanning
 1 000+ files takes only a few seconds.
 
+CANONICAL METHODOLOGY (April 2026):
+  • EP1, EP2, EP3 (and EPALL composites) are fully supported
+  • Only cyclones with >= 24h intensification are included
+  • Only central timesteps (2 or 3) are downloaded per case, not full intensification
+  • Domain is 30°×30° centered on selected timestep positions
+
 MODES:
   • download (default): Full slot-level monitoring for step2_download_era5_parallel.py
+    - Scans all EPs (EP1, EP2, EP3)
+    - Shows per-variable and per-level completeness
+    - Tracks download process status
+    
   • reuse: Simple file existence check for step2b_reuse_legacy_era5.py
+    - EP3 has NO legacy data (legacy analysis was EP1/EP2 only)
+    - Use step2_download_era5_parallel.py for EP3 and missing cases
 
 Usage:
-    # Monitor download progress (default, all EPs)
-    python scripts/ep_structure_analysis/step2_monitor.py
+    # Monitor download progress (default, all EPs including EP3)
+    python scripts/ep_structure_analysis/step2c_monitor.py
 
-    # Monitor legacy reuse progress (EP1/EP2 only)
-    python scripts/ep_structure_analysis/step2_monitor.py --mode reuse
+    # Monitor legacy reuse progress (EP1/EP2 have legacy, EP3 does not)
+    python scripts/ep_structure_analysis/step2c_monitor.py --mode reuse
 
     # Live refresh every 60 s (run alongside step 2 or step2b)
-    python scripts/ep_structure_analysis/step2_monitor.py --watch
+    python scripts/ep_structure_analysis/step2c_monitor.py --watch
 
     # Custom refresh interval (30 s)
-    python scripts/ep_structure_analysis/step2_monitor.py --watch --interval 30
+    python scripts/ep_structure_analysis/step2c_monitor.py --watch --interval 30
 
     # No terminal clear — safe for nohup / log capture
-    python scripts/ep_structure_analysis/step2_monitor.py --watch --no-clear
+    python scripts/ep_structure_analysis/step2c_monitor.py --watch --no-clear
 
 Author: Danilo Couto de Souza
 Date: February–April 2026
@@ -498,26 +510,40 @@ def print_report_simple(
 
 
 def print_report(
-    ep1_cases: pd.DataFrame,
-    ep2_cases: pd.DataFrame,
-    ep1_stats: dict,
-    ep2_stats: dict,
+    ep_cases: dict,
+    ep_stats: dict,
     scan_elapsed: float,
     proc_info: dict,
 ) -> None:
-    """Render the full monitor report to stdout."""
-
+    """
+    Render the full monitor report to stdout.
+    
+    Parameters
+    ----------
+    ep_cases : dict
+        Mapping EP label -> DataFrame (e.g., {"EP1": df1, "EP2": df2, "EP3": df3})
+    ep_stats : dict
+        Mapping EP label -> aggregate stats dict
+    scan_elapsed : float
+        Time taken for scan
+    proc_info : dict
+        Download process info
+    """
     W   = 78
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Determine which EPs have data
+    active_eps = [ep for ep in ["EP1", "EP2", "EP3"] if ep in ep_stats and ep_stats[ep]["n_cases"] > 0]
 
     print()
     print("═" * W)
-    print("  ERA5 EP STRUCTURE — DOWNLOAD MONITOR")
+    print("  ERA5 EP STRUCTURE — DOWNLOAD MONITOR (Canonical Methodology)")
     print(f"  Scanned : {now}  ({scan_elapsed:.1f} s)")
     print(f"  Dir     : {DATA_DIR}")
     print(f"  Slots   : {SLOTS_PER_CASE} per case  "
           f"= {len(PRESSURE_VARS)} pressure vars × {len(PRESSURE_LEVELS)} levels "
           f"+ {len(SINGLE_VARS)} SLP")
+    print(f"  Method  : Central timesteps only (>=24h intensification)")
     
     # Download process status
     if proc_info["running"]:
@@ -536,7 +562,8 @@ def print_report(
     print("═" * W)
 
     # ── Per-EP overview: slots bar + cases bar ────────────────────────────
-    for ep_label, stats in [("EP1", ep1_stats), ("EP2", ep2_stats)]:
+    for ep_label in active_eps:
+        stats = ep_stats[ep_label]
         n_c = stats["n_cases"]
         print()
         print(f"  {ep_label}  slots  {_bar(stats['slots_done'], stats['total_slots'])}")
@@ -554,46 +581,66 @@ def print_report(
         print(f"       disk    {_fmt_bytes(stats['total_bytes'])}")
 
     # ── Combined totals ───────────────────────────────────────────────────
-    cs = ep1_stats["slots_done"] + ep2_stats["slots_done"]
-    ct = ep1_stats["total_slots"] + ep2_stats["total_slots"]
-    cc = ep1_stats["n_complete"]  + ep2_stats["n_complete"]
-    cn = ep1_stats["n_cases"]     + ep2_stats["n_cases"]
+    cs = sum(ep_stats[ep]["slots_done"] for ep in active_eps)
+    ct = sum(ep_stats[ep]["total_slots"] for ep in active_eps)
+    cc = sum(ep_stats[ep]["n_complete"] for ep in active_eps)
+    cn = sum(ep_stats[ep]["n_cases"] for ep in active_eps)
+    total_bytes = sum(ep_stats[ep]["total_bytes"] for ep in active_eps)
 
     print()
     print("  " + "─" * (W - 2))
     print(f"  ALL  slots  {_bar(cs, ct)}")
     print(f"       cases  {_bar(cc, cn)}  (fully complete)")
-    print(f"       disk   {_fmt_bytes(ep1_stats['total_bytes'] + ep2_stats['total_bytes'])}")
+    print(f"       disk   {_fmt_bytes(total_bytes)}")
 
     # ── Per-variable breakdown ────────────────────────────────────────────
-    cV = 24   # variable label column width
-    cN = 16   # numeric column width
+    cV = 22   # variable label column width
+    cN = 12   # numeric column width (smaller for 4 columns)
 
     print()
     print("  " + "─" * (W - 2))
-    print(f"  {'Variable':<{cV}}  {'EP1 (all levels)':>{cN}}  {'EP2 (all levels)':>{cN}}  {'Combined':>{cN}}")
+    header = f"  {'Variable':<{cV}}"
+    for ep in active_eps:
+        header += f"  {ep:>{cN}}"
+    header += f"  {'Combined':>{cN}}"
+    print(header)
     print("  " + "─" * (W - 2))
 
     for v in PRESSURE_VARS + SINGLE_VARS:
-        n1, t1 = ep1_stats["var_complete"][v], ep1_stats["n_cases"]
-        n2, t2 = ep2_stats["var_complete"][v], ep2_stats["n_cases"]
-        nb, tb = n1 + n2, t1 + t2
-        lbl = VAR_LABELS.get(v, v)
-        print(f"  {lbl:<{cV}}  {_pct(n1, t1):>{cN}}  {_pct(n2, t2):>{cN}}  {_pct(nb, tb):>{cN}}")
+        line = f"  {VAR_LABELS.get(v, v):<{cV}}"
+        total_n, total_t = 0, 0
+        for ep in active_eps:
+            n = ep_stats[ep]["var_complete"].get(v, 0)
+            t = ep_stats[ep]["n_cases"]
+            total_n += n
+            total_t += t
+            line += f"  {_pct(n, t):>{cN}}"
+        line += f"  {_pct(total_n, total_t):>{cN}}"
+        print(line)
 
     # ── Per-level breakdown ───────────────────────────────────────────────
     print()
     print("  " + "─" * (W - 2))
-    print(f"  {'Level (hPa)':<{cV}}  {'EP1 (all vars)':>{cN}}  {'EP2 (all vars)':>{cN}}  {'Combined':>{cN}}")
+    header = f"  {'Level (hPa)':<{cV}}"
+    for ep in active_eps:
+        header += f"  {ep:>{cN}}"
+    header += f"  {'Combined':>{cN}}"
+    print(header)
     print("  " + "─" * (W - 2))
 
     for lvl in sorted(PRESSURE_LEVELS, reverse=True):
-        n1, t1 = ep1_stats["level_complete"][lvl], ep1_stats["n_cases"]
-        n2, t2 = ep2_stats["level_complete"][lvl], ep2_stats["n_cases"]
-        nb, tb = n1 + n2, t1 + t2
         purpose = LEVEL_PURPOSE.get(lvl, "")
         lbl = f"{lvl:>4} hPa  {purpose}"
-        print(f"  {lbl:<{cV}}  {_pct(n1, t1):>{cN}}  {_pct(n2, t2):>{cN}}  {_pct(nb, tb):>{cN}}")
+        line = f"  {lbl:<{cV}}"
+        total_n, total_t = 0, 0
+        for ep in active_eps:
+            n = ep_stats[ep]["level_complete"].get(lvl, 0)
+            t = ep_stats[ep]["n_cases"]
+            total_n += n
+            total_t += t
+            line += f"  {_pct(n, t):>{cN}}"
+        line += f"  {_pct(total_n, total_t):>{cN}}"
+        print(line)
 
     # ── Step 2.1: ERA5 monthly means — all anomaly climatology groups ─────
     print()
@@ -702,12 +749,18 @@ def main() -> None:
         description=(
             "Monitor ERA5 download/reuse progress for the EP structure analysis.\n"
             "\n"
+            "CANONICAL METHODOLOGY (April 2026):\n"
+            "  • Supports EP1, EP2, EP3 (and EPALL composites)\n"
+            "  • Only cyclones with >= 24h intensification\n"
+            "  • Only central timesteps (2-3) downloaded per case\n"
+            "\n"
             "MODES:\n"
             "  download (default): Full slot-level monitoring for step2_download_era5_parallel.py\n"
-            "  reuse: Simple file existence check for step2b_reuse_legacy_era5.py\n"
+            "                      Scans all EPs (EP1, EP2, EP3) with per-variable/level breakdown.\n"
             "\n"
-            "Reports (variable × pressure-level) slot completeness per case in download mode,\n"
-            "or simple file existence in reuse mode."
+            "  reuse:              Simple file existence check for step2b_reuse_legacy_era5.py\n"
+            "                      NOTE: EP3 has NO legacy data (legacy was EP1/EP2 only).\n"
+            "                      Use step2_download_era5_parallel.py for EP3.\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -747,6 +800,15 @@ def main() -> None:
     ep2_cases = pd.read_csv(ep2_file) if ep2_file.exists() else pd.DataFrame()
     ep3_cases = pd.read_csv(ep3_file) if ep3_file.exists() else pd.DataFrame()
 
+    # Default empty stats for when EP data is not available
+    EMPTY_SIMPLE_STATS = {'n_cases': 0, 'n_found': 0, 'n_missing': 0, 'total_bytes': 0}
+    EMPTY_FULL_STATS = {
+        'n_cases': 0, 'total_slots': 0, 'slots_done': 0,
+        'n_complete': 0, 'n_incomplete': 0, 'n_missing': 0, 'n_corrupted': 0,
+        'total_bytes': 0, 'var_complete': {v: 0 for v in PRESSURE_VARS + SINGLE_VARS},
+        'level_complete': {lvl: 0 for lvl in PRESSURE_LEVELS}
+    }
+
     def _run_once() -> None:
         t0 = time.monotonic()
         
@@ -757,8 +819,8 @@ def main() -> None:
             ep3_scan = scan_group_simple(ep3_cases, desc="Scanning EP3") if len(ep3_cases) > 0 else {}
             
             ep1_stats = aggregate_simple(ep1_cases, ep1_scan)
-            ep2_stats = aggregate_simple(ep2_cases, ep2_scan) if len(ep2_cases) > 0 else {'n_cases': 0, 'n_found': 0, 'n_missing': 0, 'total_bytes': 0}
-            ep3_stats = aggregate_simple(ep3_cases, ep3_scan) if len(ep3_cases) > 0 else {'n_cases': 0, 'n_found': 0, 'n_missing': 0, 'total_bytes': 0}
+            ep2_stats = aggregate_simple(ep2_cases, ep2_scan) if len(ep2_cases) > 0 else EMPTY_SIMPLE_STATS.copy()
+            ep3_stats = aggregate_simple(ep3_cases, ep3_scan) if len(ep3_cases) > 0 else EMPTY_SIMPLE_STATS.copy()
             
             elapsed = time.monotonic() - t0
             
@@ -768,24 +830,27 @@ def main() -> None:
             print_report_simple(ep1_cases, ep2_cases, ep3_cases, 
                               ep1_stats, ep2_stats, ep3_stats, elapsed)
         else:
-            # Full slot-level scan for step2
+            # Full slot-level scan for step2 (all EPs including EP3)
             proc_info = detect_download_process()
-            ep1_scan  = scan_group(ep1_cases, desc="Scanning EP1")
-            ep2_scan  = scan_group(ep2_cases, desc="Scanning EP2") if len(ep2_cases) > 0 else {}
+            
+            ep1_scan = scan_group(ep1_cases, desc="Scanning EP1")
+            ep2_scan = scan_group(ep2_cases, desc="Scanning EP2") if len(ep2_cases) > 0 else {}
+            ep3_scan = scan_group(ep3_cases, desc="Scanning EP3") if len(ep3_cases) > 0 else {}
             
             ep1_stats = aggregate(ep1_cases, ep1_scan)
-            ep2_stats = aggregate(ep2_cases, ep2_scan) if len(ep2_cases) > 0 else {
-                'n_cases': 0, 'total_slots': 0, 'slots_done': 0,
-                'n_complete': 0, 'n_incomplete': 0, 'n_missing': 0, 'n_corrupted': 0,
-                'total_bytes': 0, 'var_complete': {}, 'level_complete': {}
-            }
+            ep2_stats = aggregate(ep2_cases, ep2_scan) if len(ep2_cases) > 0 else EMPTY_FULL_STATS.copy()
+            ep3_stats = aggregate(ep3_cases, ep3_scan) if len(ep3_cases) > 0 else EMPTY_FULL_STATS.copy()
             
             elapsed = time.monotonic() - t0
 
             if args.watch and not args.no_clear:
                 os.system("clear")
             
-            print_report(ep1_cases, ep2_cases, ep1_stats, ep2_stats, elapsed, proc_info)
+            # Build dicts for the new print_report signature
+            ep_cases = {"EP1": ep1_cases, "EP2": ep2_cases, "EP3": ep3_cases}
+            ep_stats = {"EP1": ep1_stats, "EP2": ep2_stats, "EP3": ep3_stats}
+            
+            print_report(ep_cases, ep_stats, elapsed, proc_info)
 
     if args.watch:
         mode_label = "reuse" if args.mode == 'reuse' else "download"

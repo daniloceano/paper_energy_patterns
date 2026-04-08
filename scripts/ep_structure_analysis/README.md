@@ -218,7 +218,7 @@ python scripts/ep_structure_analysis/step2b_reuse_legacy_era5.py --dry-run
 python scripts/ep_structure_analysis/step2b_reuse_legacy_era5.py
 
 # Monitor reuse progress while step2b runs
-python scripts/ep_structure_analysis/step2_monitor.py --mode reuse --watch
+python scripts/ep_structure_analysis/step2c_monitor.py --mode reuse --watch
 
 # Then download missing/EP3 cases:
 python scripts/ep_structure_analysis/step2_download_era5_parallel.py --jobs 10
@@ -311,7 +311,7 @@ figures/cyclone_explorer/ep2/{track_id}/panel_t001.png
 | 1 | `step1_select_ep_tracks.py` | Local/Remote | Select EP1, EP2, EP3 cyclone tracks and create EPALL composite list |
 | 2 | `step2_download_era5_parallel.py` | **Remote** | Download ERA5 data (parallel, with patching) |
 | 2.1 | `step2_1_download_era5_monthly_means.py` | **Remote** | Download ERA5 monthly means → 30-year climatologies for AFC/BtCR diagnostics (4 variable groups: 250hPa, pv200, pv850, mfd975). Smart completeness check automatically skips already-downloaded months. |
-| 2M | `step2_monitor.py` | Local/Remote | **Monitor download progress** (see below) |
+| 2M | `step2c_monitor.py` | Local/Remote | **Monitor download progress** (see below) |
 | 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP, RK, KE_adv) for EP1, EP2, EP3, EPALL + EPALL-relative anomalies |
 | 4 | `step4_create_figures.py` | Local | Create EP1, EP2, EP3, EPALL composite figures + EPALL-relative anomaly figures |
 | 5 | `step5_update_scientific_notes.py` | Local | Populate SCIENTIFIC_NOTES.md with regional statistics + generate PDF |
@@ -410,19 +410,25 @@ python scripts/ep_structure_analysis/step2_1_download_era5_monthly_means.py --fo
 
 > The `250hPa` group reuses existing `era5_raw_month{MM}.nc` files without re-downloading, preserving backward compatibility.
 
-### Download monitor (`step2_monitor.py`)
+### Download monitor (`step2c_monitor.py`)
 
-`step2_monitor.py` scans `data/era5_ep_structure/` and reports completeness.
+`step2c_monitor.py` scans `data/era5_ep_structure/` and reports completeness.
 It supports two modes:
 
 | Mode | Use with | Description |
 |------|----------|-------------|
-| `download` (default) | `step2_download_era5_parallel.py` | Full slot-level monitoring (variable × level per case) |
+| `download` (default) | `step2_download_era5_parallel.py` | Full slot-level monitoring (variable × level per case) for all EPs |
 | `reuse` | `step2b_reuse_legacy_era5.py` | Simple file existence check for legacy reuse |
+
+**Canonical methodology (April 2026):**
+- Supports EP1, EP2, EP3 (and EPALL composites)
+- Only cyclones with >= 24h intensification are included
+- Only central timesteps (2-3) are downloaded per case
 
 **download mode features:**
 - **Process detection**: Automatically detects if `step2_download_era5_parallel.py` 
   is running and shows PID, runtime, CPU%, and memory usage (requires `psutil`)
+- **All EPs tracked**: Shows progress for EP1, EP2, and EP3 (previously only EP1/EP2)
 - **Per-variable table**: how many cases have that variable with all 9 levels
 - **Per-level table**: how many cases have that level with all 5 variables
 - **Composite check**: whether `precomputed_composites_ep{1,2,3,all}.nc` (step 3 output) exist
@@ -437,21 +443,21 @@ It supports two modes:
 # Install psutil for process detection (optional but recommended)
 pip install psutil
 
-# Monitor fresh download progress (default)
-python scripts/ep_structure_analysis/step2_monitor.py
+# Monitor fresh download progress (default) — includes EP1, EP2, EP3
+python scripts/ep_structure_analysis/step2c_monitor.py
 
 # Monitor legacy reuse progress (step2b)
-python scripts/ep_structure_analysis/step2_monitor.py --mode reuse
+python scripts/ep_structure_analysis/step2c_monitor.py --mode reuse
 
 # Live watch while step 2 or step2b is running (refresh every 60 s)
-python scripts/ep_structure_analysis/step2_monitor.py --watch
-python scripts/ep_structure_analysis/step2_monitor.py --mode reuse --watch
+python scripts/ep_structure_analysis/step2c_monitor.py --watch
+python scripts/ep_structure_analysis/step2c_monitor.py --mode reuse --watch
 
 # Faster refresh (every 30 s)
-python scripts/ep_structure_analysis/step2_monitor.py --watch --interval 30
+python scripts/ep_structure_analysis/step2c_monitor.py --watch --interval 30
 
 # No terminal clear — safe for nohup / log capture
-python scripts/ep_structure_analysis/step2_monitor.py --watch --no-clear
+python scripts/ep_structure_analysis/step2c_monitor.py --watch --no-clear
 ```
 
 > **EP3 note (reuse mode):** EP3 has zero legacy ERA5 files available. The legacy
@@ -612,7 +618,7 @@ python scripts/ep_structure_analysis/step1_select_ep_tracks.py
 nohup python scripts/ep_structure_analysis/step2_download_era5_parallel.py --jobs 4 &
 
 # Monitor download progress in another terminal
-python scripts/ep_structure_analysis/step2_monitor.py --watch
+python scripts/ep_structure_analysis/step2c_monitor.py --watch
 
 # Step 3 – precompute composites (default: full_intensification mode)
 nohup python scripts/ep_structure_analysis/step3_precompute_composites.py &

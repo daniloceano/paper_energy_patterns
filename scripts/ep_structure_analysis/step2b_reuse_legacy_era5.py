@@ -444,6 +444,45 @@ def extract_central_timesteps(legacy_file: Path, required_times: list,
         return False
 
 
+def _write_metadata_from_row(track_id: str, row: pd.Series,
+                              required_times: list, meta_file: Path) -> None:
+    """
+    Create a companion metadata CSV for a canonical ERA5 file that already exists
+    on disk but was produced without one (e.g. by an older version of step2b).
+
+    Uses only data from the cases CSV row — no network calls required.
+
+    Parameters
+    ----------
+    track_id : str
+    row : pd.Series
+        Row from ep{N}_cases.csv.  Must contain center_lat and center_lon.
+    required_times : list of pd.Timestamp
+        Selected central timesteps parsed from row['selected_times'].
+    meta_file : Path
+        Destination path for the metadata CSV.
+    """
+    clat = float(row['center_lat'])
+    clon = float(row['center_lon'])
+    BUFFER = 15.0
+    selected_times_str = ",".join(t.isoformat() for t in required_times)
+    meta_record = {
+        "track_id": track_id,
+        "n_timesteps_selected": len(required_times),
+        "selected_times": selected_times_str,
+        "first_time": required_times[0].isoformat() if required_times else "",
+        "last_time": required_times[-1].isoformat() if required_times else "",
+        "north": clat + BUFFER,
+        "south": clat - BUFFER,
+        "east": clon + BUFFER,
+        "west": clon - BUFFER,
+        "track_center_lat": clat,
+        "track_center_lon": clon,
+        "methodology": "Repaired metadata from cases CSV (April 2026)",
+    }
+    pd.DataFrame([meta_record]).to_csv(meta_file, index=False)
+
+
 def _process_one_case(row: pd.Series, ep_label: str, dry_run: bool) -> tuple:
     """
     Process a single cyclone case.
@@ -457,6 +496,7 @@ def _process_one_case(row: pd.Series, ep_label: str, dry_run: bool) -> tuple:
 
     legacy_file = LEGACY_DATA_DIR / f"{track_id}_era5.nc"
     canonical_file = CANONICAL_DATA_DIR / f"{track_id}_era5.nc"
+    meta_file = CANONICAL_DATA_DIR / f"{track_id}_metadata.csv"
 
     result = {
         'track_id': track_id,
@@ -472,6 +512,7 @@ def _process_one_case(row: pd.Series, ep_label: str, dry_run: bool) -> tuple:
         'legacy_found': 0,
         'compatible': 0,
         'reused': 0,
+        'repaired_metadata': 0,
         'incompatible': 0,
         'incompatible_temporal': 0,
         'incompatible_spatial': 0,
@@ -480,10 +521,30 @@ def _process_one_case(row: pd.Series, ep_label: str, dry_run: bool) -> tuple:
         'extraction_failed': 0,
     }
 
-    # Skip if already exists in canonical location
+    # ── Case: canonical NetCDF exists ─────────────────────────────────────────
     if canonical_file.exists():
-        result['status'] = 'skip'
-        result['reason'] = 'Already exists in canonical location'
+        if meta_file.exists():
+            # Fully complete: nothing to do.
+            result['status'] = 'skip'
+            result['reason'] = 'Already complete (NetCDF + metadata)'
+            return result, stats_delta
+
+        # NetCDF exists but metadata CSV is missing.
+        # This happens when files were produced by an older version of step2b
+        # that did not create the companion CSV.  Repair it now using the
+        # cases CSV row data — no network call required.
+        if not dry_run:
+            try:
+                _write_metadata_from_row(track_id, row, required_times, meta_file)
+                result['status'] = 'repaired_metadata'
+                result['reason'] = 'Created missing metadata CSV from cases row'
+                stats_delta['repaired_metadata'] = 1
+            except Exception as e:
+                result['status'] = 'repair_failed'
+                result['reason'] = f'Failed to write metadata: {e}'
+        else:
+            result['status'] = 'dry_run_needs_repair'
+            result['reason'] = 'NetCDF exists but metadata CSV missing'
         return result, stats_delta
 
     # Check if legacy file exists
@@ -563,6 +624,7 @@ def process_ep_cases(ep_label: str, dry_run: bool = False, jobs: int = 10):
         'legacy_found': 0,
         'compatible': 0,
         'reused': 0,
+        'repaired_metadata': 0,
         'incompatible': 0,
         'incompatible_temporal': 0,
         'incompatible_spatial': 0,
@@ -672,9 +734,17 @@ def main():
     for ep_label, stats in all_stats.items():
         print(f"\n{ep_label}:")
         print(f"  Total eligible cyclones: {stats['total']}")
+
+        if stats['repaired_metadata'] > 0 or (args.dry_run and any(
+            r['status'] == 'dry_run_needs_repair'
+            for r in all_details[-1].to_dict('records') if r['ep'] == ep_label
+        ) if all_details else False):
+            n_rep = stats['repaired_metadata']
+            print(f"  ✓ Repaired missing metadata: {n_rep} ({100*n_rep/stats['total']:.1f}%)")
+
         print(f"  Legacy files found: {stats['legacy_found']} ({100*stats['legacy_found']/stats['total']:.1f}%)")
         print(f"  Compatible: {stats['compatible']} ({100*stats['compatible']/stats['total']:.1f}%)")
-        
+
         # Detailed incompatibility breakdown
         if stats['incompatible'] > 0:
             print(f"  Incompatible: {stats['incompatible']}")
@@ -702,10 +772,13 @@ def main():
         sum(s['reused'] for s in all_stats.values()) if not args.dry_run
         else sum(s['compatible'] for s in all_stats.values())
     )
-    total_need_download = total_eligible - total_reused
+    total_repaired = sum(s['repaired_metadata'] for s in all_stats.values())
+    total_need_download = total_eligible - total_reused - total_repaired
 
     print(f"\nOVERALL:")
     print(f"  Total eligible cyclones: {total_eligible}")
+    if total_repaired:
+        print(f"  ✓ Repaired missing metadata: {total_repaired} ({100*total_repaired/total_eligible:.1f}%)")
     if not args.dry_run:
         print(f"  ✓ Reused from legacy: {total_reused} ({100*total_reused/total_eligible:.1f}%)")
     else:

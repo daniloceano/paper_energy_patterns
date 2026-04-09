@@ -1160,12 +1160,18 @@ def check_subdomain_available(ds, center_lat, center_lon, domain_size):
     req_lon_min = center_lon_norm - half
     req_lon_max = center_lon_norm + half
 
-    if req_lat_min < ds_lat_min - 0.5 or req_lat_max > ds_lat_max + 0.5:
+    # Tolerance of 1.0° absorbs:
+    #   - ERA5 grid rounding (0.25°) in the downloaded area
+    #   - Small position discrepancies between the GitHub track CSV used by
+    #     step2 for domain computation and the local energetics CSV used by
+    #     step3 for position lookup (typically < 0.5° difference)
+    TOL = 1.0
+    if req_lat_min < ds_lat_min - TOL or req_lat_max > ds_lat_max + TOL:
         return False, (
             f"lat out of bounds: need [{req_lat_min:.1f}, {req_lat_max:.1f}], "
             f"have [{ds_lat_min:.1f}, {ds_lat_max:.1f}]"
         )
-    if req_lon_min < ds_lon_min - 0.5 or req_lon_max > ds_lon_max + 0.5:
+    if req_lon_min < ds_lon_min - TOL or req_lon_max > ds_lon_max + TOL:
         return False, (
             f"lon out of bounds: need [{req_lon_min:.1f}, {req_lon_max:.1f}], "
             f"have [{ds_lon_min:.1f}, {ds_lon_max:.1f}] "

@@ -1346,6 +1346,44 @@ def _compute_diagnostics_for_timestep(ds_timestep, case_month):
 # SINGLE-CASE PROCESSING WITH STORM-CENTERED APPROACH
 # ============================================================================
 
+def _get_case_start_time(meta):
+    """
+    Extract the start time from metadata, supporting both old and new schemas.
+    
+    SCHEMA COMPATIBILITY:
+    - New schema (April 2026): uses 'first_time' (from step2 commit 5f9f8f3 onwards)
+    - Old schema (before April 2026): uses 'start_time'
+    
+    This function ensures backwards compatibility when processing mixed metadata
+    files (e.g., server with both old and new data).
+    
+    Parameters
+    ----------
+    meta : pd.Series
+        Metadata row from {track_id}_metadata.csv
+    
+    Returns
+    -------
+    pd.Timestamp
+        The start time of the case
+        
+    Raises
+    ------
+    KeyError
+        If neither 'start_time' nor 'first_time' column exists
+    """
+    if "start_time" in meta:
+        return pd.Timestamp(meta["start_time"])
+    elif "first_time" in meta:
+        return pd.Timestamp(meta["first_time"])
+    else:
+        raise KeyError(
+            f"Metadata schema error: neither 'start_time' nor 'first_time' found. "
+            f"Available columns: {meta.index.tolist()}. "
+            f"This metadata file may be corrupted or from an incompatible version."
+        )
+
+
 def _process_single_case(track_id):
     """
     Process one cyclone case with STORM-CENTERED approach per timestep.
@@ -1408,7 +1446,8 @@ def _process_single_case(track_id):
             timesteps_to_process = list(range(n_times))
         
         # Get case month for climatology
-        case_month = pd.Timestamp(meta["start_time"]).month
+        case_start = _get_case_start_time(meta)
+        case_month = case_start.month
         
         # Process each timestep
         results = []

@@ -65,8 +65,8 @@ FIGURES_MANIFEST = {
     "main/2_20070643_lps_track_publication.png":   "main/2_20070643_lps_track_publication.png",
     "main/3_phase_density_2x2.png":                "main/3_phase_density_2x2.png",
 
-    # NOTE: EP Structure composite figures are now copied dynamically via
-    # copy_ep_structure_tree() since they have mode suffixes (e.g., _full_intensification)
+    # NOTE: EP Structure composite figures are copied via copy_ep_structure_tree()
+    # (canonical figures now have clean naming without mode suffixes)
 }
 
 
@@ -135,11 +135,10 @@ def copy_cyclone_explorer_tree(dry_run: bool = False) -> tuple[int, int]:
 
 
 def copy_ep_structure_tree(dry_run: bool = False) -> tuple[int, int]:
-    """Copy all EP structure figures (composites with mode suffixes).
+    """Copy all EP structure composite figures (canonical clean naming).
     
-    Since composite figures now have mode suffixes (e.g., _full_intensification,
-    _central_time, _intense_10), we copy them dynamically rather than listing
-    each one explicitly.
+    Since composite figures now use clean naming without mode suffixes,
+    we copy them dynamically rather than listing each one explicitly.
     """
     src_root = FIGURES_SRC / "ep_structure"
     dst_root = FIGURES_DST / "ep_structure"

@@ -1,12 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import CompositeModeSwitcher, { 
-  CompositeModeProvider, 
-  useCompositeMode, 
-  type CompositeMode,
-  MODE_INFO 
-} from '@/components/analysis/CompositeModeSwitcher'
+// Mode switcher removed - using canonical method only
 import FallbackImage from '@/components/analysis/FallbackImage'
 import { figureUrl } from '@/lib/client-utils'
 import { DATASET_STATS } from '@/lib/constants'
@@ -54,52 +49,26 @@ interface DiagnosticCompositesClientProps {
   diag: Diagnostic
   figSlug: { real: string; anom?: string; diff?: string }
   isFluxDiag: boolean
-  // Full intensification data
-  fullFigures: FiguresManifest
-  fullStats: DomainStatEntry[]
-  fullFluxes: BoundaryFluxEntry[]
-  // Central time data
-  centralFigures: FiguresManifest
-  centralStats: DomainStatEntry[]
-  centralFluxes: BoundaryFluxEntry[]
-  // Intense 10 data (optional, may not exist yet)
-  intense10Figures?: FiguresManifest
-  intense10Stats?: DomainStatEntry[]
-  intense10Fluxes?: BoundaryFluxEntry[]
+  // Canonical method data (central timesteps only)
+  figures: FiguresManifest
+  stats: DomainStatEntry[]
+  fluxes: BoundaryFluxEntry[]
 }
 
 function DiagnosticCompositesContent({
   diag,
   figSlug,
   isFluxDiag,
-  fullFigures,
-  fullStats,
-  fullFluxes,
-  centralFigures,
-  centralStats,
-  centralFluxes,
-  intense10Figures,
-  intense10Stats,
-  intense10Fluxes,
 }: DiagnosticCompositesClientProps) {
   const { mode } = useCompositeMode()
 
   // Select data based on mode
   const figuresManifest = mode === 'full_intensification' 
-    ? fullFigures 
     : mode === 'central_time' 
-      ? centralFigures 
-      : (intense10Figures ?? {})
   const domainStats = mode === 'full_intensification' 
-    ? fullStats 
     : mode === 'central_time' 
-      ? centralStats 
-      : (intense10Stats ?? [])
   const boundaryFluxes = mode === 'full_intensification' 
-    ? fullFluxes 
     : mode === 'central_time' 
-      ? centralFluxes 
-      : (intense10Fluxes ?? [])
 
   const diagStats = useMemo(() => domainStats.filter((s) => s.diagnostic_id === diag.id), [domainStats, diag.id])
   const diagFluxes = useMemo(() => boundaryFluxes.filter((f) => f.diagnostic_id === diag.id), [boundaryFluxes, diag.id])

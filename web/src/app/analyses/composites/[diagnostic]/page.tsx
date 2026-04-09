@@ -9,16 +9,10 @@ import DiagnosticCompositesClient from '@/components/analysis/DiagnosticComposit
 import { DIAGNOSTICS, FLUX_DIAGNOSTICS, DIAGNOSTIC_FIGURE_SLUGS } from '@/lib/constants'
 
 // Direct JSON imports (bundled at build time, no fs.readFileSync at runtime)
-import fullStatsData from '@/content/composite_domain_stats_full_intensification.json'
-import fullFluxesData from '@/content/composite_boundary_fluxes_full_intensification.json'
-import fullFiguresData from '@/content/composite_figures_manifest_full_intensification.json'
-import centralStatsData from '@/content/composite_domain_stats_central_time.json'
-import centralFluxesData from '@/content/composite_boundary_fluxes_central_time.json'
-import centralFiguresData from '@/content/composite_figures_manifest_central_time.json'
-// Intense 10 data (stub files created, will be populated when data is generated)
-import intense10StatsData from '@/content/composite_domain_stats_intense_10.json'
-import intense10FluxesData from '@/content/composite_boundary_fluxes_intense_10.json'
-import intense10FiguresData from '@/content/composite_figures_manifest_intense_10.json'
+// CANONICAL METHOD (April 2026): Central timesteps only
+import statsData from '@/content/composite_domain_stats.json'
+import fluxesData from '@/content/composite_boundary_fluxes.json'
+import figuresData from '@/content/composite_figures_manifest.json'
 
 // Force static generation at build time
 export const dynamic = 'force-static'
@@ -87,16 +81,10 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
   const isFluxDiag = FLUX_DIAGNOSTICS.includes(diag.id)
 
   // Use directly imported JSON data (bundled at build time)
-  const fullStats = fullStatsData as DomainStatEntry[]
-  const fullFluxes = fullFluxesData as BoundaryFluxEntry[]
-  const fullFigures = fullFiguresData as FiguresManifest
-  const centralStats = centralStatsData as DomainStatEntry[]
-  const centralFluxes = centralFluxesData as BoundaryFluxEntry[]
-  const centralFigures = centralFiguresData as FiguresManifest
-  // Intense 10 (may be empty if files don't exist yet)
-  const intense10Stats = intense10StatsData as DomainStatEntry[]
-  const intense10Fluxes = intense10FluxesData as BoundaryFluxEntry[]
-  const intense10Figures = intense10FiguresData as FiguresManifest
+  // CANONICAL METHOD: Central timesteps only (April 2026)
+  const stats = statsData as DomainStatEntry[]
+  const fluxes = fluxesData as BoundaryFluxEntry[]
+  const figures = figuresData as FiguresManifest
 
   const figSlug = DIAGNOSTIC_FIGURE_SLUGS[diag.id]
 
@@ -142,20 +130,15 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
           />
         </section>
 
-        {/* Client component with mode toggle */}
+        {/* Canonical composite display */}
         <DiagnosticCompositesClient
           diag={diag}
           figSlug={figSlug}
           isFluxDiag={isFluxDiag}
-          fullFigures={fullFigures}
-          fullStats={fullStats}
-          fullFluxes={fullFluxes}
-          centralFigures={centralFigures}
-          centralStats={centralStats}
-          centralFluxes={centralFluxes}
-          intense10Figures={intense10Figures}
-          intense10Stats={intense10Stats}
-          intense10Fluxes={intense10Fluxes}
+          figures={figures}
+          stats={stats}
+          fluxes={fluxes}
+        />
         />
 
         <FileProvenanceBadge
@@ -164,8 +147,8 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
             'data/era5_ep_structure/precomputed_composites_ep2.nc',
             'scripts/ep_structure_analysis/step4_create_figures.py',
             'scripts/ep_structure_analysis/step5_update_scientific_notes.py',
-            'results/ep_structure/composite_stats_full_intensification.json',
-            'results/ep_structure/composite_stats_central_time.json',
+            
+            'results/ep_structure/composite_stats.json',
           ]}
           label="Source files"
         />

@@ -5,33 +5,24 @@ Computes spatial composites (30°×30° domain centred on the cyclone) for
 each EP group and saves a single NetCDF file per group with composite
 means on a regular 0.25° grid.
 
-NEW IN THIS VERSION (April 2026):
+CANONICAL METHODOLOGY (April 2026):
+- Uses ONLY central timesteps (2-3 per case) for all composites
 - Supports ALL THREE Energy Patterns: EP1, EP2, EP3, and EPALL (total)
 - Computes EPALL-relative anomalies: EPx_total - EPALL_total
 - Legacy climatology-based anomalies retained for AFC/BtCR only
 
 USAGE
 -----
-  # Standard mode: all cyclones, mean over intensification phase
-  python step3_precompute_composites.py --mode full_intensification
-
-  # Central-time mode: all cyclones, only central timestep of each
-  python step3_precompute_composites.py --mode central_time
-
-  # Intense-10 mode: only the 10 most intense cyclones per EP (from CSV)
-  python step3_precompute_composites.py --mode intense_10
+  # Standard: all cyclones, central timesteps only
+  python step3_precompute_composites.py
 
   # Parallel processing (recommended on server)
-  python step3_precompute_composites.py --mode full_intensification --jobs 4
+  python step3_precompute_composites.py --jobs 4
 
-COMPOSITE MODES
----------------
-  full_intensification : Mean over ALL storm-centered timesteps during
-                         the intensification phase. Default mode.
-  central_time         : Use only the CENTRAL timestep (middle of
-                         intensification) for each cyclone.
-  intense_10           : Same as full_intensification, but uses only the
-                         10 most intense cyclones per EP group.
+COMPOSITE METHOD
+----------------
+  Central timesteps : Uses only the central 2-3 timesteps from each
+                      cyclone's intensification phase (canonical Apr 2026).
 
 Total-field diagnostics (computed from instantaneous ERA5 fields):
   - EGR   — Eady Growth Rate, 500–850 hPa layer (Besson et al. 2021)
@@ -62,10 +53,10 @@ LEGACY (kept for specific diagnostics):
   - These cannot be meaningfully defined as EPALL-relative
 
 Output:
-  data/era5_ep_structure/precomputed_composites_ep1_{mode}.nc
-  data/era5_ep_structure/precomputed_composites_ep2_{mode}.nc
-  data/era5_ep_structure/precomputed_composites_ep3_{mode}.nc
-  data/era5_ep_structure/precomputed_composites_epall_{mode}.nc
+  data/era5_ep_structure/precomputed_composites_ep1.nc
+  data/era5_ep_structure/precomputed_composites_ep2.nc
+  data/era5_ep_structure/precomputed_composites_ep3.nc
+  data/era5_ep_structure/precomputed_composites_epall.nc
 
 ⚠ IMPORTANT — UNIT CONSISTENCY:
   All diagnostic functions receive xarray DataArrays with pint units attached
@@ -156,12 +147,9 @@ TRACKS_FILE = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_proce
 DOMAIN_SIZE = 30.0    # degrees (30° × 30°)
 RESOLUTION = 0.25     # degrees
 
-# Composite mode: how to aggregate timesteps within intensification phase
-# -------------------------------------------------------------------------
-# "full_intensification" : mean over all storm-centered timesteps (all cases)
-# "central_time"         : use only the central timestep (all cases)
-# "intense_10"           : same as full_intensification, but only top-10 intense cyclones
-COMPOSITE_MODE = "full_intensification"  # set via --mode argument in main()
+# Composite method: canonical Apr 2026 uses central timesteps only
+# (This is the operational method; full_intensification/intense_10 kept as options but not canonical)
+COMPOSITE_MODE = "central_time"
 
 # Module-level cache for tracks DataFrame (loaded once per process)
 _TRACKS_CACHE = None
@@ -1932,29 +1920,23 @@ def compute_epall_relative_anomalies(ds_epx, ds_epall, ep_label):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Precompute EP structure composites for EP1, EP2, EP3, and EPALL",
+        description="Precompute EP structure composites (canonical method: central timesteps only)",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Standard composite (all EPs, mean over intensification phase)
-  python step3_precompute_composites.py --mode full_intensification
-
-  # Central-time composite (all EPs, only central timestep)
-  python step3_precompute_composites.py --mode central_time
-
-  # Top-10 most intense cyclones per EP
-  python step3_precompute_composites.py --mode intense_10
+  # Standard composite (all EPs, central timesteps)
+  python step3_precompute_composites.py
 
   # Parallel processing (recommended: 4-8 workers)
-  python step3_precompute_composites.py --mode full_intensification --jobs 4
+  python step3_precompute_composites.py --jobs 4
 
 Output files:
-  - precomputed_composites_ep1_{mode}.nc
-  - precomputed_composites_ep2_{mode}.nc
-  - precomputed_composites_ep3_{mode}.nc
-  - precomputed_composites_epall_{mode}.nc
+  - precomputed_composites_ep1.nc
+  - precomputed_composites_ep2.nc
+  - precomputed_composites_ep3.nc
+  - precomputed_composites_epall.nc
 
-EPALL-relative anomalies (new in April 2026):
+EPALL-relative anomalies (April 2026):
   - Each EPx file contains *_minus_epall variables
   - Example: egr_minus_epall = EP1_egr - EPALL_egr
         """,
@@ -1964,40 +1946,20 @@ EPALL-relative anomalies (new in April 2026):
         help="Number of parallel workers for composite computation. "
              "Default: 1 (sequential). Recommended on remote server: 4-8.",
     )
-    parser.add_argument(
-        "--mode", "-m", type=str, default="full_intensification",
-        choices=["full_intensification", "central_time", "intense_10"],
-        help="Composite mode: 'full_intensification' (mean over all timesteps), "
-             "'central_time' (use only central timestep), or "
-             "'intense_10' (top-10 most intense cyclones). Default: full_intensification",
-    )
     args = parser.parse_args()
     n_jobs = args.jobs if args.jobs >= 1 else 1
-    
-    # Set global COMPOSITE_MODE
-    # For intense_10, the timestep aggregation is same as full_intensification
-    global COMPOSITE_MODE
-    if args.mode == "intense_10":
-        COMPOSITE_MODE = "full_intensification"  # timestep aggregation method
-    else:
-        COMPOSITE_MODE = args.mode
 
     log_file = setup_logging()
-    logging.info(f"   Composite mode: {args.mode}")
-    if args.mode == "intense_10":
-        logging.info(f"   (Using full_intensification timestep aggregation for intense subset)")
+    logging.info(f"   Composite method: central timesteps (canonical Apr 2026)")
     logging.info(f"   Parallel workers: {n_jobs}")
 
     # Define EP groups to process
     ep_groups = ["ep1", "ep2", "ep3"]
     
-    # Load cases based on mode
+    # Load canonical cases (standard ep_cases.csv for all)
     ep_cases = {}
     for ep in ep_groups:
-        if args.mode == "intense_10":
-            case_file = RESULTS_DIR / f"{ep}_top10_intense.csv"
-        else:
-            case_file = RESULTS_DIR / f"{ep}_cases.csv"
+        case_file = RESULTS_DIR / f"{ep}_cases.csv"
         
         if not case_file.exists():
             logging.warning(f"   ⚠ {case_file.name} not found, skipping {ep.upper()}")
@@ -2005,8 +1967,7 @@ EPALL-relative anomalies (new in April 2026):
         
         ep_cases[ep] = pd.read_csv(case_file)
         n_cases = len(ep_cases[ep])
-        label = "most intense cases" if args.mode == "intense_10" else "cases"
-        logging.info(f"   {ep.upper()}: {n_cases} {label}")
+        logging.info(f"   {ep.upper()}: {n_cases} cases")
 
     if not ep_cases:
         logging.error("❌ No case files found. Run step1 first.")
@@ -2047,7 +2008,7 @@ EPALL-relative anomalies (new in April 2026):
         logging.info(f"      ✓ {ep_label}: Added *_minus_epall variables")
 
     # Save composites with mode suffix
-    mode_suffix = f"_{args.mode}"
+    mode_suffix = ""
     
     for ep, ds in ep_datasets.items():
         out_path = DATA_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
@@ -2067,7 +2028,7 @@ EPALL-relative anomalies (new in April 2026):
     logging.info(f"\nOutput files:")
     for ep in list(ep_datasets.keys()) + ["epall"]:
         logging.info(f"   - precomputed_composites_{ep}{mode_suffix}.nc")
-    logging.info(f"\nNext: python scripts/ep_structure_analysis/step4_create_figures.py --mode {args.mode}")
+    logging.info(f"\nNext: python scripts/ep_structure_analysis/step4_create_figures.py")
 
 
 if __name__ == "__main__":

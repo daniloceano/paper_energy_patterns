@@ -67,7 +67,7 @@ LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Composite mode (set via --mode argument in main())
-COMPOSITE_MODE = "full_intensification"
+COMPOSITE_MODE = "central_time"  # canonical Apr 2026
 
 DPI = 300
 DOMAIN_SIZE = 30.0  # degrees
@@ -138,9 +138,9 @@ def setup_logging():
 def load_composites():
     """Load precomputed EP1, EP2, EP3, and EPALL composites for the current COMPOSITE_MODE."""
     datasets = {}
-    mode_suffix = f"_{COMPOSITE_MODE}"
+    # Load canonical composites (no mode suffix)
     for ep in ["ep1", "ep2", "ep3", "epall"]:
-        f = DATA_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
+        f = DATA_DIR / f"precomputed_composites_{ep}.nc"
         if not f.exists():
             logging.warning(f"   ⚠ File not found: {f.name}")
             continue
@@ -179,7 +179,7 @@ def _figure_path(base_name):
         composite_egr.png → composite_egr_central_time.png
     """
     stem = base_name.replace(".png", "")
-    return FIGURES_DIR / f"{stem}_{COMPOSITE_MODE}.png"
+    return FIGURES_DIR / f"{stem}.png"
 
 
 def _decorate_ax(ax, title, xlabel=True, ylabel=True):
@@ -1604,25 +1604,14 @@ def figure_wind250_anom(datasets):
 # ============================================================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Create EP structure composite figures")
-    parser.add_argument(
-        "--mode", "-m", type=str, default="full_intensification",
-        choices=["full_intensification", "central_time", "intense_10"],
-        help="Composite mode: 'full_intensification' (mean over all timesteps), "
-             "'central_time' (use only central timestep), or "
-             "'intense_10' (top 10 most intense cyclones). Default: full_intensification",
-    )
+    parser = argparse.ArgumentParser(description="Create EP structure composite figures (canonical method)")
     args = parser.parse_args()
-    
-    # Set global COMPOSITE_MODE
-    global COMPOSITE_MODE
-    COMPOSITE_MODE = args.mode
     
     log_file = setup_logging()
     logging.info("=" * 70)
     logging.info("STEP 4: CREATE COMPOSITE FIGURES – EP1, EP2, EP3, EPALL")
     logging.info("=" * 70)
-    logging.info(f"   Composite mode: {COMPOSITE_MODE}")
+    logging.info(f"   Method: Central timesteps (canonical Apr 2026)")
 
     datasets = load_composites()
     if datasets is None:

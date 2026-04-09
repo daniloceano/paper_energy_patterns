@@ -620,14 +620,11 @@ nohup python scripts/ep_structure_analysis/step2_download_era5_parallel.py --job
 # Monitor download progress in another terminal
 python scripts/ep_structure_analysis/step2c_monitor.py --watch
 
-# Step 3 – precompute composites (default: full_intensification mode)
+# Step 3 – precompute composites (central timesteps canonical method)
 nohup python scripts/ep_structure_analysis/step3_precompute_composites.py &
 
-# Step 3 – precompute composites with central_time mode
-nohup python scripts/ep_structure_analysis/step3_precompute_composites.py --mode central_time &
-
 # Step 3 – use multiple workers for faster processing
-nohup python scripts/ep_structure_analysis/step3_precompute_composites.py --jobs 8 --mode central_time &
+nohup python scripts/ep_structure_analysis/step3_precompute_composites.py --jobs 8 &
 ```
 
 ### Transfer to local machine
@@ -647,21 +644,14 @@ scp -i ~/Documents/Master/id_rsa.danilocs -C \
 ### Local execution (after transfer)
 
 ```bash
-# Step 4 – create figures (default: full_intensification mode)
+# Step 4 – create figures (canonical central timestep method)
 python scripts/ep_structure_analysis/step4_create_figures.py
-
-# Step 4 – create figures for central_time mode
-python scripts/ep_structure_analysis/step4_create_figures.py --mode central_time
 
 # Step 5 – update scientific notes with regional statistics
 python scripts/ep_structure_analysis/step5_update_scientific_notes.py
 
-# Step 5 – for central_time mode with PDF generation
-python scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode central_time --no-pdf
-
-# Web export – extract data for both modes
-python scripts/web/extract_composite_site_data.py --mode full_intensification
-python scripts/web/extract_composite_site_data.py --mode central_time
+# Web export – extract data for composite figures
+python scripts/web/extract_composite_site_data.py
 ```
 
 **Step 5 computes:**

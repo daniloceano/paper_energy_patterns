@@ -7,27 +7,26 @@ It reads the structured stats JSON produced by step5_update_scientific_notes.py
 and catalogs composite figures produced by step4_create_figures.py, then writes
 manifest files consumed by the Next.js web layer.
 
-The script now supports three composite modes:
-  - full_intensification: mean over all timesteps in intensification phase
-  - central_time: single central timestep of intensification phase
-  - intense_10: composites from top 10 most intense cyclones of each EP
+CANONICAL METHOD (April 2026):
+  - Central timesteps only (2-3 per case)
+  - All composites use the canonical method
 
 Scientific computation source of truth: scripts/ep_structure_analysis/
-  - step4_create_figures.py  → figures/ep_structure/composite_*_{mode}.png
-  - step5_update_scientific_notes.py → results/ep_structure/composite_stats_{mode}.json
+  - step4_create_figures.py  → figures/ep_structure/composite_*.png
+  - step5_update_scientific_notes.py → results/ep_structure/composite_stats.json
 
 Data flow:
-  1. Run step4  → generates figures/ep_structure/composite_*_{mode}.png
-  2. Run step5  → generates results/ep_structure/composite_stats_{mode}.json
-  3. Run THIS   → generates web/src/content/composite_*_{mode}.json  (web manifests)
+  1. Run step4  → generates figures/ep_structure/composite_*.png
+  2. Run step5  → generates results/ep_structure/composite_stats.json
+  3. Run THIS   → generates web/src/content/composite_*.json  (web manifests)
 
 Usage:
-    python scripts/web/extract_composite_site_data.py [--mode MODE]
+    python scripts/web/extract_composite_site_data.py
 
 Outputs:
-    web/src/content/composite_domain_stats_{mode}.json
-    web/src/content/composite_boundary_fluxes_{mode}.json
-    web/src/content/composite_figures_manifest_{mode}.json
+    web/src/content/composite_domain_stats.json
+    web/src/content/composite_boundary_fluxes.json
+    web/src/content/composite_figures_manifest.json
 """
 
 import argparse
@@ -42,7 +41,7 @@ FIGURES_DIR = REPO_ROOT / "web" / "public" / "figures" / "ep_structure"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
 # Composite mode (set via --mode argument in main())
-COMPOSITE_MODE = "full_intensification"
+COMPOSITE_MODE = "central_time"  # canonical Apr 2026
 
 # Mapping from web diagnostic id to step4 figure filenames.
 # Must match DIAGNOSTIC_FIGURE_SLUGS in web/src/lib/constants.ts.
@@ -80,13 +79,12 @@ def build_figures_manifest():
     NEW April 2026: Includes anom_epall (EPALL-relative anomalies) where available.
     """
     manifest = {}
-    mode_suffix = f"_{COMPOSITE_MODE}"
     
     for diag_id, filenames in DIAGNOSTIC_FIGURE_MAP.items():
         manifest[diag_id] = {}
         
         # Add mode suffix to REAL composites
-        real_base = filenames["real"].replace(".png", f"{mode_suffix}.png")
+        real_base = filenames["real"].replace(".png", ".png")
         real_path = FIGURES_DIR / real_base
         manifest[diag_id]["real"] = {
             "exists": real_path.exists(),
@@ -96,7 +94,7 @@ def build_figures_manifest():
         # Climatology-based anomalies (legacy)
         anom_name = filenames.get("anom")
         if anom_name:
-            anom_base = anom_name.replace(".png", f"{mode_suffix}.png")
+            anom_base = anom_name.replace(".png", ".png")
             anom_path = FIGURES_DIR / anom_base
             manifest[diag_id]["anom"] = {
                 "exists": anom_path.exists(),
@@ -107,7 +105,7 @@ def build_figures_manifest():
         # EPALL-relative anomalies (new April 2026)
         anom_epall_name = filenames.get("anom_epall")
         if anom_epall_name:
-            anom_epall_base = anom_epall_name.replace(".png", f"{mode_suffix}.png")
+            anom_epall_base = anom_epall_name.replace(".png", ".png")
             anom_epall_path = FIGURES_DIR / anom_epall_base
             manifest[diag_id]["anom_epall"] = {
                 "exists": anom_epall_path.exists(),
@@ -118,7 +116,7 @@ def build_figures_manifest():
         # Difference figures also get mode suffix
         diff_name = filenames.get("diff")
         if diff_name:
-            diff_base = diff_name.replace(".png", f"{mode_suffix}.png")
+            diff_base = diff_name.replace(".png", ".png")
             diff_path = FIGURES_DIR / diff_base
             manifest[diag_id]["diff"] = {
                 "exists": diff_path.exists(),
@@ -138,8 +136,7 @@ def load_domain_stats():
         is a subset of full30. This distinction is documented in step5.
       - inside_15x15_anom / outside_15x15_anom: same regions for anomaly composites
     """
-    mode_suffix = f"_{COMPOSITE_MODE}"
-    stats_file = RESULTS_DIR / f"composite_stats{mode_suffix}.json"
+    stats_file = RESULTS_DIR / "composite_stats.json"
     if not stats_file.exists():
         print(f"  ⚠ {stats_file.relative_to(REPO_ROOT)} not found.")
         print(f"    Run scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode {COMPOSITE_MODE} first.")
@@ -150,23 +147,13 @@ def load_domain_stats():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Extract composite data for web")
-    parser.add_argument(
-        "--mode", "-m", type=str, default="full_intensification",
-        choices=["full_intensification", "central_time", "intense_10"],
-        help="Composite mode: 'full_intensification', 'central_time', or 'intense_10'. Default: full_intensification",
-    )
+    parser = argparse.ArgumentParser(description="Extract composite data for web (canonical method)")
     args = parser.parse_args()
-    
-    # Set global COMPOSITE_MODE
-    global COMPOSITE_MODE
-    COMPOSITE_MODE = args.mode
-    mode_suffix = f"_{COMPOSITE_MODE}"
     
     print("=" * 60)
     print("EXTRACT COMPOSITE DATA FOR WEB (serializer only)")
     print("=" * 60)
-    print(f"Composite mode: {COMPOSITE_MODE}")
+    print(f"Method: Central timesteps (canonical Apr 2026)")
     ensure_output_dir()
 
     # 1. Catalog figures
@@ -175,12 +162,12 @@ def main():
     total = sum(1 for d in figures.values() for f in d.values() if f.get("exists"))
     print(f"   Found {total} composite figures on disk")
 
-    fig_path = WEB_CONTENT / f"composite_figures_manifest{mode_suffix}.json"
+    fig_path = WEB_CONTENT / "composite_figures_manifest.json"
     fig_path.write_text(json.dumps(figures, indent=2))
     print(f"   ✓ {fig_path.relative_to(REPO_ROOT)}")
 
     # 2. Load stats from step5 JSON
-    print(f"\n2. Reading domain stats from results/ep_structure/composite_stats{mode_suffix}.json...")
+    print(f"\n2. Reading domain stats from results/ep_structure/composite_stats.json...")
     domain_stats, boundary_fluxes = load_domain_stats()
 
     if not domain_stats:
@@ -191,11 +178,11 @@ def main():
         print(f"   Found {len(boundary_fluxes)} boundary flux entries")
 
     # 3. Write web manifests
-    stats_path = WEB_CONTENT / f"composite_domain_stats{mode_suffix}.json"
+    stats_path = WEB_CONTENT / "composite_domain_stats.json"
     stats_path.write_text(json.dumps(domain_stats, indent=2))
     print(f"   ✓ {stats_path.relative_to(REPO_ROOT)}")
 
-    fluxes_path = WEB_CONTENT / f"composite_boundary_fluxes{mode_suffix}.json"
+    fluxes_path = WEB_CONTENT / "composite_boundary_fluxes.json"
     fluxes_path.write_text(json.dumps(boundary_fluxes, indent=2))
     print(f"   ✓ {fluxes_path.relative_to(REPO_ROOT)}")
 

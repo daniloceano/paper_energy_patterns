@@ -223,7 +223,13 @@ def _load_clim(path, label, skip_msg):
 def _load_tracks():
     """
     Lazy-load the tracks DataFrame (cached for the process lifetime).
-    
+
+    Priority:
+    1. Local energetics CSV (TRACKS_FILE) — preferred; pre-processed, 1-hourly.
+    2. GitHub source via load_tracks() — fallback when local file is absent.
+       NOTE: step2/step2b use the GitHub source for domain computation, so using
+       it here ensures consistent positions and avoids spurious OOB failures.
+
     Returns
     -------
     pd.DataFrame
@@ -231,7 +237,18 @@ def _load_tracks():
     """
     global _TRACKS_CACHE
     if _TRACKS_CACHE is None:
-        _TRACKS_CACHE = pd.read_csv(TRACKS_FILE, parse_dates=["date"])
+        if TRACKS_FILE.exists():
+            _TRACKS_CACHE = pd.read_csv(TRACKS_FILE, parse_dates=["date"])
+        else:
+            logging.warning(
+                f"Local tracks file not found: {TRACKS_FILE}. "
+                "Falling back to GitHub source (same source used by step2)."
+            )
+            from scripts.utils.load_data import load_tracks as _gh_load
+            df = _gh_load()
+            if "date" in df.columns:
+                df["date"] = pd.to_datetime(df["date"])
+            _TRACKS_CACHE = df
     return _TRACKS_CACHE
 
 
@@ -1030,10 +1047,15 @@ def barotropic_critical_region_250(u_clim, v_clim):
 def extract_subdomain(ds, center_lat, center_lon, domain_size):
     """
     Extract and interpolate a subdomain centered on the given coordinates.
-    
+
     The output grid is a RELATIVE (storm-centered) grid where the center
     of the cyclone is at (0, 0) in relative coordinates.
-    
+
+    Handles both -180/180 and 0/360 longitude conventions in the input
+    dataset: center_lon is normalised to match the file's convention before
+    slicing, then the output longitude axis is expressed in the track's
+    -180/180 convention (so that downstream diagnostics are consistent).
+
     Parameters
     ----------
     ds : xr.Dataset
@@ -1041,34 +1063,79 @@ def extract_subdomain(ds, center_lat, center_lon, domain_size):
     center_lat : float
         Latitude of the cyclone center (degrees).
     center_lon : float
-        Longitude of the cyclone center (degrees).
+        Longitude of the cyclone center (degrees, -180–180).
     domain_size : float
         Size of the domain in degrees (e.g., 30.0 for 30° × 30°).
-    
+
     Returns
     -------
     xr.Dataset
-        Interpolated subdomain with latitude/longitude in ABSOLUTE coordinates.
-        The center of the grid corresponds to (center_lat, center_lon).
+        Interpolated subdomain on a regular grid centred at
+        (center_lat, center_lon).  Longitude coordinate is in -180–180.
     """
     half = domain_size / 2.0
     n = int(domain_size / RESOLUTION) + 1
+
+    ds_lon_min = float(ds.longitude.min())
+    ds_lon_max = float(ds.longitude.max())
+    center_lon_norm = _normalize_center_lon_to_file_convention(
+        center_lon, ds_lon_min, ds_lon_max
+    )
+
     lat_target = np.linspace(center_lat + half, center_lat - half, n)
-    lon_target = np.linspace(center_lon - half, center_lon + half, n)
+    lon_target = np.linspace(center_lon_norm - half, center_lon_norm + half, n)
 
     # Select a slightly larger region to ensure interpolation works
     ds_sub = ds.sel(
         latitude=slice(center_lat + half + 1, center_lat - half - 1),
-        longitude=slice(center_lon - half - 1, center_lon + half + 1),
+        longitude=slice(center_lon_norm - half - 1, center_lon_norm + half + 1),
     )
 
-    return ds_sub.interp(latitude=lat_target, longitude=lon_target, method="linear")
+    ds_interp = ds_sub.interp(latitude=lat_target, longitude=lon_target, method="linear")
+
+    # Restore output longitude to -180/180 convention (normalise back)
+    if center_lon_norm != center_lon:
+        ds_interp = ds_interp.assign_coords(
+            longitude=ds_interp.longitude.values - 360.0
+        )
+
+    return ds_interp
+
+
+def _normalize_center_lon_to_file_convention(center_lon: float, ds_lon_min: float, ds_lon_max: float) -> float:
+    """
+    Return center_lon in the same longitude convention used by the dataset.
+
+    ERA5 files from the legacy pipeline may use 0–360, while cyclone tracks
+    use -180–180.  Comparing -65 (track) against 295 (file min) produces a
+    false OOB failure.  This function shifts center_lon into the file's
+    convention so the comparison is apples-to-apples.
+
+    Parameters
+    ----------
+    center_lon : float
+        Cyclone center longitude from track data (-180 to 180).
+    ds_lon_min, ds_lon_max : float
+        Actual longitude bounds of the ERA5 file.
+
+    Returns
+    -------
+    float
+        center_lon expressed in the same convention as the file.
+    """
+    file_uses_0_360 = ds_lon_min >= 0 and ds_lon_max > 180
+    if file_uses_0_360 and center_lon < 0:
+        return center_lon + 360.0
+    return center_lon
 
 
 def check_subdomain_available(ds, center_lat, center_lon, domain_size):
     """
     Check if the requested subdomain is fully within the downloaded data extent.
-    
+
+    Handles both -180/180 and 0/360 longitude conventions in the dataset
+    (legacy ERA5 files may differ from newly downloaded ones).
+
     Returns
     -------
     bool
@@ -1077,22 +1144,34 @@ def check_subdomain_available(ds, center_lat, center_lon, domain_size):
         Error message if subdomain cannot be extracted.
     """
     half = domain_size / 2.0
-    
+
     ds_lat_min = float(ds.latitude.min())
     ds_lat_max = float(ds.latitude.max())
     ds_lon_min = float(ds.longitude.min())
     ds_lon_max = float(ds.longitude.max())
-    
+
+    # Normalise center_lon to match the file's longitude convention
+    center_lon_norm = _normalize_center_lon_to_file_convention(
+        center_lon, ds_lon_min, ds_lon_max
+    )
+
     req_lat_min = center_lat - half
     req_lat_max = center_lat + half
-    req_lon_min = center_lon - half
-    req_lon_max = center_lon + half
-    
+    req_lon_min = center_lon_norm - half
+    req_lon_max = center_lon_norm + half
+
     if req_lat_min < ds_lat_min - 0.5 or req_lat_max > ds_lat_max + 0.5:
-        return False, f"lat out of bounds: need [{req_lat_min:.1f}, {req_lat_max:.1f}], have [{ds_lat_min:.1f}, {ds_lat_max:.1f}]"
+        return False, (
+            f"lat out of bounds: need [{req_lat_min:.1f}, {req_lat_max:.1f}], "
+            f"have [{ds_lat_min:.1f}, {ds_lat_max:.1f}]"
+        )
     if req_lon_min < ds_lon_min - 0.5 or req_lon_max > ds_lon_max + 0.5:
-        return False, f"lon out of bounds: need [{req_lon_min:.1f}, {req_lon_max:.1f}], have [{ds_lon_min:.1f}, {ds_lon_max:.1f}]"
-    
+        return False, (
+            f"lon out of bounds: need [{req_lon_min:.1f}, {req_lon_max:.1f}], "
+            f"have [{ds_lon_min:.1f}, {ds_lon_max:.1f}] "
+            f"(center_lon={center_lon:.1f}, normalised={center_lon_norm:.1f})"
+        )
+
     return True, None
 
 
@@ -1599,11 +1678,28 @@ def compute_composite(cases, ep_label, n_jobs=1):
     total_skipped_no_pos = 0
     total_skipped_oob = 0
 
+    # Failure counters by category (for diagnostic reporting)
+    fail_file_missing = 0
+    fail_no_timesteps = 0
+    fail_no_valid_ts  = 0
+    fail_exception    = 0
+
     for tid, results_list, error, meta in raw_results:
         if results_list is None:
-            if error and error != "file_missing":
-                logging.warning(f"      Error {tid}: {error}")
             cases_failed += 1
+            if error == "file_missing":
+                fail_file_missing += 1
+                # Log at DEBUG level only — noisy if many legacy files lack metadata
+                logging.debug(f"      file_missing: {tid}")
+            elif error == "no_timesteps":
+                fail_no_timesteps += 1
+                logging.warning(f"      no_timesteps: {tid}")
+            elif error == "no_valid_timesteps":
+                fail_no_valid_ts += 1
+                logging.warning(f"      no_valid_timesteps: {tid} meta={meta}")
+            else:
+                fail_exception += 1
+                logging.warning(f"      exception [{tid}]: {error}")
             continue
 
         # Update statistics from metadata
@@ -1675,10 +1771,20 @@ def compute_composite(cases, ep_label, n_jobs=1):
 
     if total_timesteps == 0:
         raise RuntimeError(f"No valid timesteps for {ep_label}")
-    
+
     logging.info(f"      {ep_label}: cases_ok={cases_ok}, cases_failed={cases_failed}")
-    logging.info(f"      {ep_label}: total_timesteps={total_timesteps}, "
-                 f"skipped_no_pos={total_skipped_no_pos}, skipped_oob={total_skipped_oob}")
+    logging.info(
+        f"      {ep_label}: total_timesteps={total_timesteps}, "
+        f"skipped_no_pos={total_skipped_no_pos}, skipped_oob={total_skipped_oob}"
+    )
+    if cases_failed:
+        logging.info(
+            f"      {ep_label} failure breakdown: "
+            f"file_missing={fail_file_missing}, "
+            f"no_timesteps={fail_no_timesteps}, "
+            f"no_valid_timesteps={fail_no_valid_ts}, "
+            f"exception={fail_exception}"
+        )
 
     # ── Compute means from sum accumulators ───────────────────────────────
     # Scalar / single-level derived fields specifications

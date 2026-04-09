@@ -72,43 +72,52 @@ def parse_selected_times(times_str: str) -> list:
 def compute_required_domain(track_id: str, selected_times: list) -> dict:
     """
     Compute the required spatial domain for central timesteps.
-    
+
     Returns bounding box that must cover 30°×30° area around each selected position.
-    
+    Also includes track_center_lat and track_center_lon (middle selected timestep).
+
     Parameters
     ----------
     track_id : str
         Cyclone track identifier
     selected_times : list of pd.Timestamp
         Selected central timesteps
-    
+
     Returns
     -------
     dict or None
-        Dictionary with 'north', 'south', 'east', 'west' requirements
+        Dictionary with 'north', 'south', 'east', 'west',
+        'track_center_lat', 'track_center_lon'
     """
     try:
         from scripts.utils.load_data import load_tracks
         tracks = load_tracks()
         track_data = tracks[tracks["track_id"] == track_id].copy()
         track_data["time"] = pd.to_datetime(track_data["date"])
-        
+
         # Filter to selected timesteps
         track_selected = track_data[track_data["time"].isin(selected_times)]
-        
+
         if len(track_selected) == 0:
             return None
-        
+
         # Each position needs 15° buffer in each direction
         BUFFER = 15.0
         lats = track_selected["lat vor"].values
         lons = track_selected["lon vor"].values
-        
+
+        # Track center: middle of selected timesteps
+        center_idx = len(track_selected) // 2
+        clat = float(track_selected["lat vor"].iloc[center_idx])
+        clon = float(track_selected["lon vor"].iloc[center_idx])
+
         return {
             'north': lats.max() + BUFFER,
             'south': lats.min() - BUFFER,
             'east': lons.max() + BUFFER,
             'west': lons.min() - BUFFER,
+            'track_center_lat': clat,
+            'track_center_lon': clon,
         }
     except Exception as e:
         return None
@@ -279,10 +288,65 @@ def check_legacy_file_compatibility(legacy_file: Path, required_times: list, tra
         }
 
 
+def _normalize_longitude_0360_to_180(ds: "xr.Dataset") -> "xr.Dataset":
+    """
+    Convert longitude coordinates from 0–360 convention to -180–180.
+
+    ERA5 files downloaded via the legacy pipeline may use 0–360 longitudes,
+    while step3 expects -180–180 (matching the cyclone track data).  Without
+    normalisation the OOB check in step3 (`check_subdomain_available`) will
+    always fail for South-Atlantic cyclones (center_lon ≈ -50 → req_lon_min
+    ≈ -65, but ds.longitude.min() ≈ 295 in 0–360 convention).
+
+    Parameters
+    ----------
+    ds : xr.Dataset
+        Dataset whose longitude coordinate may be in 0–360 range.
+
+    Returns
+    -------
+    xr.Dataset
+        Dataset with longitude coordinate in -180–180, sorted ascending.
+        Returned unchanged if longitude is already in -180–180.
+    """
+    lon_coord = None
+    for name in ("longitude", "lon"):
+        if name in ds.coords:
+            lon_coord = name
+            break
+    if lon_coord is None:
+        return ds
+
+    lons = ds[lon_coord].values
+    if lons.max() > 180.0:
+        # Shift: values > 180 become negative (e.g., 270 → -90)
+        new_lons = (lons + 180.0) % 360.0 - 180.0
+        ds = ds.assign_coords({lon_coord: new_lons})
+        ds = ds.sortby(lon_coord)
+    return ds
+
+
 def extract_central_timesteps(legacy_file: Path, required_times: list,
-                              output_file: Path, time_dim: str = 'time') -> bool:
+                              output_file: Path, time_dim: str = 'time',
+                              domain: dict = None) -> bool:
     """
     Extract central timesteps from legacy file and save to canonical location.
+
+    Also:
+    - Normalises longitude from 0–360 to -180–180 if needed (Bug 2 fix).
+    - Creates a companion ``{track_id}_metadata.csv`` required by step3 (Bug 1 fix).
+
+    Parameters
+    ----------
+    legacy_file : Path
+    required_times : list of pd.Timestamp
+    output_file : Path
+        Canonical NetCDF destination (e.g. ``{track_id}_era5.nc``).
+    time_dim : str
+    domain : dict or None
+        Spatial domain used for metadata CSV.  Keys: north, south, east, west,
+        track_center_lat, track_center_lon.  If None, bounds are derived from
+        the extracted subset.
 
     Returns True if successful, False otherwise.
     """
@@ -316,16 +380,62 @@ def extract_central_timesteps(legacy_file: Path, required_times: list,
         if time_dim != 'time':
             ds_subset = ds_subset.rename({time_dim: 'time'})
 
-        # Add metadata
+        # ── Longitude normalisation (Bug 2 fix) ──────────────────────────────
+        # Legacy files may use 0–360 convention; step3 expects -180–180.
+        ds_subset = _normalize_longitude_0360_to_180(ds_subset)
+
+        # Add metadata attributes
         ds_subset.attrs['source'] = 'Reused from legacy analysis'
         ds_subset.attrs['legacy_file'] = str(legacy_file.name)
         ds_subset.attrs['extraction_date'] = datetime.now().isoformat()
         ds_subset.attrs['canonical_methodology'] = 'Central timesteps only (April 2026)'
 
-        # Save
+        # Save NetCDF
         ds_subset.to_netcdf(output_file)
         ds.close()
+
+        # ── Create companion metadata CSV (Bug 1 fix) ─────────────────────────
+        # step3._process_single_case requires {track_id}_metadata.csv to exist.
+        # Without it, every legacy-reused case silently counts as "file_missing"
+        # in cases_failed — the primary cause of the large failure count.
+        lon_coord = "longitude" if "longitude" in ds_subset.coords else "lon"
+        lat_coord = "latitude" if "latitude" in ds_subset.coords else "lat"
+
+        if domain is not None:
+            meta_north = domain.get("north", "")
+            meta_south = domain.get("south", "")
+            meta_east  = domain.get("east", "")
+            meta_west  = domain.get("west", "")
+            meta_clat  = domain.get("track_center_lat", "")
+            meta_clon  = domain.get("track_center_lon", "")
+        else:
+            # Fallback: derive bounds from the extracted file
+            meta_north = float(ds_subset[lat_coord].max()) if lat_coord in ds_subset.coords else ""
+            meta_south = float(ds_subset[lat_coord].min()) if lat_coord in ds_subset.coords else ""
+            meta_east  = float(ds_subset[lon_coord].max()) if lon_coord in ds_subset.coords else ""
+            meta_west  = float(ds_subset[lon_coord].min()) if lon_coord in ds_subset.coords else ""
+            meta_clat  = ""
+            meta_clon  = ""
+
         ds_subset.close()
+
+        selected_times_str = ",".join(t.isoformat() for t in required_times)
+        meta_record = {
+            "track_id": output_file.stem.replace("_era5", ""),
+            "n_timesteps_selected": len(required_times),
+            "selected_times": selected_times_str,
+            "first_time": required_times[0].isoformat() if required_times else "",
+            "last_time": required_times[-1].isoformat() if required_times else "",
+            "north": meta_north,
+            "south": meta_south,
+            "east": meta_east,
+            "west": meta_west,
+            "track_center_lat": meta_clat,
+            "track_center_lon": meta_clon,
+            "methodology": "Reused from legacy - canonical April 2026",
+        }
+        meta_file = output_file.parent / output_file.name.replace("_era5.nc", "_metadata.csv")
+        pd.DataFrame([meta_record]).to_csv(meta_file, index=False)
 
         return True
 
@@ -413,9 +523,13 @@ def _process_one_case(row: pd.Series, ep_label: str, dry_run: bool) -> tuple:
 
     # Extract and save (unless dry run)
     if not dry_run:
+        # Compute domain for the companion metadata CSV (Bug 1 fix).
+        # compute_required_domain now also returns track_center_lat/lon.
+        domain = compute_required_domain(track_id, required_times)
         time_dim_to_use = compat.get('time_dim', 'time')
         success = extract_central_timesteps(
-            legacy_file, required_times, canonical_file, time_dim_to_use
+            legacy_file, required_times, canonical_file,
+            time_dim_to_use, domain=domain,
         )
         if success:
             stats_delta['reused'] = 1

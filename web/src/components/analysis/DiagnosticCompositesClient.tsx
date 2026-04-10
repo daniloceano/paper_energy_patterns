@@ -59,16 +59,14 @@ function DiagnosticCompositesContent({
   diag,
   figSlug,
   isFluxDiag,
+  figures,
+  stats,
+  fluxes,
 }: DiagnosticCompositesClientProps) {
-  const { mode } = useCompositeMode()
-
-  // Select data based on mode
-  const figuresManifest = mode === 'full_intensification' 
-    : mode === 'central_time' 
-  const domainStats = mode === 'full_intensification' 
-    : mode === 'central_time' 
-  const boundaryFluxes = mode === 'full_intensification' 
-    : mode === 'central_time' 
+  // CANONICAL METHOD (April 2026): Central timesteps only - no mode switching
+  const figuresManifest = figures
+  const domainStats = stats
+  const boundaryFluxes = fluxes
 
   const diagStats = useMemo(() => domainStats.filter((s) => s.diagnostic_id === diag.id), [domainStats, diag.id])
   const diagFluxes = useMemo(() => boundaryFluxes.filter((f) => f.diagnostic_id === diag.id), [boundaryFluxes, diag.id])
@@ -87,18 +85,16 @@ function DiagnosticCompositesContent({
   const hasDiffFigure = diffFig?.exists ?? false
   const hasStats = diagStats.length > 0
 
-  // Build figure filename with mode suffix (only for real composites, not anomalies)
-  const modeSuffix = `_${mode}`
-  const realFigFilename = figSlug.real.replace('.png', `${modeSuffix}.png`)
-  // Anomalies do NOT get mode suffix - they're relative to climatology (mode-independent)
+  // Clean filenames (no mode suffix in canonical method)
+  const realFigFilename = figSlug.real
+  // Anomalies do NOT get mode suffix - they're relative to climatology
   const anomFigFilename = figSlug.anom
-  // Difference figures DO get mode suffix
-  const diffFigFilename = figSlug.diff?.replace('.png', `${modeSuffix}.png`)
+  // Difference figures do NOT get mode suffix
+  const diffFigFilename = figSlug.diff
 
   return (
     <div className="space-y-8">
       {/* Mode Switcher */}
-      <CompositeModeSwitcher />
 
       {/* Composite maps */}
       <section>
@@ -110,7 +106,7 @@ function DiagnosticCompositesContent({
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
               <p className="text-xs text-slate-500">
-                <strong>{MODE_INFO[mode].label}:</strong> {MODE_INFO[mode].description}.
+                <strong>Central Timesteps Method:</strong> Composites centered on selected intensification timesteps (typically 2-3 per case).
                 Storm-centred {DATASET_STATS.domainSize} composite. Left: EP1. Right: EP2.
               </p>
               <p className="mt-1 text-xs text-slate-400">
@@ -120,11 +116,11 @@ function DiagnosticCompositesContent({
             <div className="p-4">
               <FallbackImage
                 src={figureUrl(realFig!.api_path)}
-                alt={`${diag.name} composite — EP1 vs EP2 (${MODE_INFO[mode].label})`}
+                alt={`${diag.name} composite — EP1 vs EP2 (Central Timesteps)`}
                 width={1200}
                 height={600}
                 className="w-full rounded-lg"
-                key={realFig!.api_path} // Force re-render on mode change
+                key={realFig!.api_path}
               />
             </div>
           </div>
@@ -160,7 +156,7 @@ function DiagnosticCompositesContent({
                 <div className="p-4">
                   <FallbackImage
                     src={figureUrl(anomFig!.api_path)}
-                    alt={`${diag.name} anomaly composite — EP1 vs EP2 (${MODE_INFO[mode].label})`}
+                    alt={`${diag.name} anomaly composite — EP1 vs EP2 (Central Timesteps)`}
                     width={1200}
                     height={600}
                     className="w-full rounded-lg"
@@ -202,7 +198,7 @@ function DiagnosticCompositesContent({
               <div className="p-4">
                 <FallbackImage
                   src={figureUrl(diffFig!.api_path)}
-                  alt={`${diag.name} difference — EP1 minus EP2 (${MODE_INFO[mode].label})`}
+                  alt={`${diag.name} difference — EP1 minus EP2 (Central Timesteps)`}
                   width={1000}
                   height={800}
                   className="w-full max-w-2xl mx-auto rounded-lg"

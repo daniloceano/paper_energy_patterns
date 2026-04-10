@@ -102,6 +102,8 @@ def main():
         print()
 
     # ── Step 2: Copy figures to web/public/figures/ ───────────────────────
+    # Note: extract_composite_site_data.py (step 3) checks figures/ (source),
+    # so steps 2 and 3 are independent and can run in either order.
     print("[ Step 2 ] Copy figures → web/public/figures/")
     ok2 = run(
         [PYTHON, "scripts/web/copy_figures_to_web.py"],

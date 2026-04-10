@@ -21,6 +21,10 @@ Data flow:
   1. Run step4  → generates figures/ep_structure/composite_*.png
   2. Run step5  → generates results/ep_structure/composite_stats.json
   3. Run THIS   → generates web/src/content/composite_*.json  (web manifests)
+  4. Run copy_figures_to_web.py → copies figures/ → web/public/figures/ for serving
+
+  Note: step 3 checks figures/ep_structure/ (pipeline output) for existence flags.
+  Step 4 (copy) can be run before or after step 3 — both are independent.
 
 Usage:
     python scripts/web/extract_composite_site_data.py
@@ -47,9 +51,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RESULTS_DIR = REPO_ROOT / "results" / "ep_structure"
-# Figures are served from web/public/figures/ (committed static assets).
-# copy_figures_to_web.py copies from figures/ → web/public/figures/.
-FIGURES_DIR = REPO_ROOT / "web" / "public" / "figures" / "ep_structure"
+# Check figures in the pipeline output directory (source of truth).
+# copy_figures_to_web.py copies from here → web/public/figures/ for deployment.
+# Checking the source dir means exists=True whenever step4 has generated the figure,
+# regardless of whether copy_figures_to_web.py has been run yet.
+FIGURES_DIR = REPO_ROOT / "figures" / "ep_structure"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
 # Mapping from web diagnostic id to step4 figure filenames.

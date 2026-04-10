@@ -52,9 +52,6 @@ RESULTS_DIR = REPO_ROOT / "results" / "ep_structure"
 FIGURES_DIR = REPO_ROOT / "web" / "public" / "figures" / "ep_structure"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
-# Composite mode (set via --mode argument in main())
-COMPOSITE_MODE = "central_time"  # canonical Apr 2026
-
 # Mapping from web diagnostic id to step4 figure filenames.
 # Must match DIAGNOSTIC_FIGURE_SLUGS in web/src/lib/constants.ts.
 #
@@ -144,7 +141,7 @@ def load_domain_stats():
     stats_file = RESULTS_DIR / "composite_stats.json"
     if not stats_file.exists():
         print(f"  ⚠ {stats_file.relative_to(REPO_ROOT)} not found.")
-        print(f"    Run scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode {COMPOSITE_MODE} first.")
+        print(f"    Run scripts/ep_structure_analysis/step5_update_scientific_notes.py first.")
         return [], []
 
     data = json.loads(stats_file.read_text())

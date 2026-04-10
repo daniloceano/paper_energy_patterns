@@ -66,9 +66,6 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# Composite mode (set via --mode argument in main())
-COMPOSITE_MODE = "central_time"  # canonical Apr 2026
-
 DPI = 300
 DOMAIN_SIZE = 30.0  # degrees
 LEC_BOX_HALF = 7.5  # 15°×15° centred box
@@ -136,7 +133,7 @@ def setup_logging():
 
 
 def load_composites():
-    """Load precomputed EP1, EP2, EP3, and EPALL composites for the current COMPOSITE_MODE."""
+    """Load precomputed EP1, EP2, EP3, and EPALL composites (canonical central-timestep method)."""
     datasets = {}
     # Load canonical composites (no mode suffix)
     for ep in ["ep1", "ep2", "ep3", "epall"]:
@@ -149,8 +146,8 @@ def load_composites():
         logging.info(f"   Loaded {ep.upper()}: {f.name} ({mb:.1f} MB)")
     
     if not datasets:
-        logging.error(f"❌ No composite files found for mode {COMPOSITE_MODE}")
-        logging.error(f"   Run step3_precompute_composites.py --mode {COMPOSITE_MODE} first.")
+        logging.error("❌ No composite files found. Expected precomputed_composites_{ep1,ep2,ep3,epall}.nc")
+        logging.error("   Run step3_precompute_composites.py first.")
         return None
     return datasets
 
@@ -172,12 +169,7 @@ def _add_lec_box(ax):
 
 
 def _figure_path(base_name):
-    """Generate figure filename with mode suffix.
-    
-    Examples:
-        composite_egr.png → composite_egr_full_intensification.png
-        composite_egr.png → composite_egr_central_time.png
-    """
+    """Return the figure output path for a given base filename."""
     stem = base_name.replace(".png", "")
     return FIGURES_DIR / f"{stem}.png"
 

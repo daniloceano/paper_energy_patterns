@@ -147,10 +147,6 @@ TRACKS_FILE = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_proce
 DOMAIN_SIZE = 30.0    # degrees (30° × 30°)
 RESOLUTION = 0.25     # degrees
 
-# Composite method: canonical Apr 2026 uses central timesteps only
-# (This is the operational method; full_intensification/intense_10 kept as options but not canonical)
-COMPOSITE_MODE = "central_time"
-
 # Module-level cache for tracks DataFrame (loaded once per process)
 _TRACKS_CACHE = None
 
@@ -1468,10 +1464,8 @@ def _process_single_case(track_id):
       2. Extract a storm-centered subdomain around that position
       3. Compute diagnostics on the storm-centered grid
     
-    Depending on COMPOSITE_MODE:
-      - "full_intensification": Return list of ALL storm-centered timesteps
-      - "central_time": Return only the CENTRAL timestep (storm-centered)
-    
+    Canonical method (Apr 2026): central timesteps only — 1 per case.
+
     Parameters
     ----------
     track_id : int
@@ -1512,11 +1506,8 @@ def _process_single_case(track_id):
         positions = get_cyclone_positions_for_case(track_id, era5_times)
         central_idx = positions.get("central_idx", n_times // 2)
         
-        # Determine which timesteps to process based on mode
-        if COMPOSITE_MODE == "central_time":
-            timesteps_to_process = [central_idx]
-        else:  # full_intensification
-            timesteps_to_process = list(range(n_times))
+        # Canonical method: central timestep only
+        timesteps_to_process = [central_idx]
         
         # Get case month for climatology
         case_start = _get_case_start_time(meta)
@@ -1846,11 +1837,10 @@ def compute_composite(cases, ep_label, n_jobs=1):
     ds_out.attrs["n_timesteps_skipped_out_of_bounds"] = total_skipped_oob
     ds_out.attrs["domain_size_deg"] = DOMAIN_SIZE
     ds_out.attrs["resolution_deg"] = RESOLUTION
-    ds_out.attrs["composite_mode"] = COMPOSITE_MODE
+    ds_out.attrs["composite_mode"] = "central_time"
     ds_out.attrs["composite_mode_description"] = (
-        "full_intensification: mean over ALL storm-centered timesteps from intensification phase" 
-        if COMPOSITE_MODE == "full_intensification" 
-        else "central_time: only the CENTRAL storm-centered timestep of each cyclone"
+        "central_time: only the CENTRAL storm-centered timestep(s) of each cyclone "
+        "(2 if N even, 3 if N odd — canonical Apr 2026)"
     )
     ds_out.attrs["methodology"] = (
         "STORM-CENTERED: Each timestep's domain is centered on the actual cyclone "

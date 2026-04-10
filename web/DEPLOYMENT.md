@@ -240,41 +240,30 @@ python scripts/web/prepare_site.py --skip-science
 | `copy_figures_to_web.py` | Copia figuras para `web/public/figures/` (fallback local) | Chamado automaticamente pelo `prepare_site.py` |
 | `build_site_manifest.py` | Gera `cluster_manifest.json`, `figures_manifest.json`, `documents_manifest.json` | Chamado automaticamente pelo `prepare_site.py` |
 | `extract_cluster_site_data.py` | Gera manifests de PCA e K-Means (steps 2-4) | Chamado automaticamente pelo `prepare_site.py` |
-| `extract_composite_site_data.py` | Gera manifest de análise composta | Chamado automaticamente pelo `prepare_site.py` para ambos os modos |
+| `extract_composite_site_data.py` | Gera manifest de análise composta | Chamado automaticamente pelo `prepare_site.py` |
 | `extract_ck_subterms_site_data.py` | Gera manifest da análise de subtermos Ck | Chamado automaticamente pelo `prepare_site.py` |
 | `test_composite_json_fields.py` | Valida campos do manifest de composites | Uso em desenvolvimento/debugging |
 
 > **Regra geral:** use `prepare_site.py`. Os outros scripts são auxiliares chamados por ele.
 
-### Modos de compósitos
+### Método canônico de compósitos (Apr 2026)
 
-A análise de compósitos suporta dois modos metodológicos:
+A análise de compósitos usa um único método fixo: **timesteps centrais da fase de intensificação** (2 se N par, 3 se N ímpar). Não há flag `--mode`.
 
-| Modo | Descrição | Arquivos gerados |
-|------|-----------|------------------|
-| `full_intensification` | Média temporal sobre toda a fase de intensificação | `*_full_intensification.png`, `*_full_intensification.json` |
-| `central_time` | Timestep central da fase de intensificação | `*_central_time.png`, `*_central_time.json` |
-
-Para gerar os assets de ambos os modos:
+Para gerar os assets de compósitos:
 ```bash
-# Figuras
-python scripts/ep_structure_analysis/step4_create_figures.py --mode full_intensification
-python scripts/ep_structure_analysis/step4_create_figures.py --mode central_time
+# Figuras (EP1, EP2, EP3, EPALL — painéis 2×2 e anomalias EPALL-relativas 1×3)
+python scripts/ep_structure_analysis/step4_create_figures.py
 
 # Stats JSON
-python scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode full_intensification
-python scripts/ep_structure_analysis/step5_update_scientific_notes.py --mode central_time
+python scripts/ep_structure_analysis/step5_update_scientific_notes.py
 
 # Web manifests
-python scripts/web/extract_composite_site_data.py --mode full_intensification
-python scripts/web/extract_composite_site_data.py --mode central_time
+python scripts/web/extract_composite_site_data.py
 
 # Copiar figuras para web/public/
-cp figures/ep_structure/composite_*_full_intensification.png web/public/figures/ep_structure/
-cp figures/ep_structure/composite_*_central_time.png web/public/figures/ep_structure/
+python scripts/web/copy_figures_to_web.py
 ```
-
-O site permite alternar entre os modos via toggle na interface de cada diagnóstico.
 
 ---
 

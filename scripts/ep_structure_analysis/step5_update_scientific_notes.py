@@ -44,9 +44,6 @@ DOCS_DIR = PROJECT_ROOT / "docs"
 SCRIPT_DIR = Path(__file__).resolve().parent
 NOTES_FILE = SCRIPT_DIR / "SCIENTIFIC_NOTES.md"
 
-# Composite mode (set via --mode argument in main())
-COMPOSITE_MODE = "central_time"  # canonical Apr 2026
-
 # Domain definitions for regional statistics
 DOMAIN_FULL = 30.0  # degrees
 DOMAIN_LEC = 15.0   # degrees
@@ -428,7 +425,7 @@ def export_stats_json(stats):
 
     out = {
         "generated_at": stats.get("GENERATION_DATE", ""),
-        "composite_mode": COMPOSITE_MODE,
+        "composite_mode": "central_time",
         "domain_stats": domain_stats,
         "boundary_fluxes": boundary_fluxes,
     }

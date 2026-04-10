@@ -1,3 +1,30 @@
-# Exclude large cyclone_explorer figures from Vercel deployment
-# These are served from Supabase Storage instead
-public/figures/cyclone_explorer/
+# Exclude large data directories and figures
+# These bloat serverless functions and aren't needed at runtime
+
+# Large figure directories
+public/figures/
+public/docs/
+
+# Data directories (not needed for web deployment)
+data/
+logs/
+results/
+
+# Repository scripts and notebooks
+scripts/
+
+# Legacy/exploratory files
+docs/legacy/
+figures/exploratory/
+
+# Node modules and build artifacts (handled by Vercel)
+node_modules/
+.next/
+
+# Development files
+.env.local
+.env.*.local
+
+# Version control
+.git/
+.gitignore

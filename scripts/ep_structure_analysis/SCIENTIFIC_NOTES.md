@@ -1,6 +1,6 @@
 # Scientific Notes: Spatial Structure Analysis of Energy Patterns
 
-**Objective:** Investigate the spatial structure and dynamical characteristics of Energy Pattern 1 (EP1) and Energy Pattern 2 (EP2) cyclones during intensification phase.
+**Objective:** Investigate the spatial structure and dynamical characteristics of Energy Patterns EP1, EP2, EP3, and the full cyclone population (EPALL) during the intensification phase.
 
 **Author:** Danilo Couto de Souza  
 **Date:** February 2026
@@ -18,17 +18,18 @@ Following the identification of three distinct energy patterns in South Atlantic
 - **EP2 (25.6%):** Moderate balanced conversions; **imports energy** from large-scale environment  
 - **EP3 (62.7%):** Weak energetics representing typical "day-to-day" cyclones
 
-**Rationale for EP1 and EP2 focus:**  
-EP3 cyclones exhibit weak energy budget activity and represent the climatological background. EP1 and EP2 cyclones, being energetically distinct and more intense, are the primary focus for understanding what structural characteristics differentiate high-impact systems from typical cyclones.
+**Approach (updated April 2026):**  
+All three energy patterns (EP1, EP2, EP3) are now analyzed alongside EPALL (all cyclones combined), which serves as the reference population. EPALL-relative anomalies (EPx − EPALL) isolate what distinguishes each pattern from the average South Atlantic cyclone, enabling direct comparison across the full spectrum of cyclone energetics.
 
 ### 1.2 Research Questions
 
-1. What are the spatial structures of baroclinic instability (EGR) in EP1 vs EP2?
-2. How do upper-level (200 hPa) and low-level (850 hPa) PV anomalies differ between patterns?
+1. What are the spatial structures of baroclinic instability (EGR) across EP1, EP2, EP3, and EPALL?
+2. How do upper-level (200 hPa) and low-level (850 hPa) PV patterns differ among patterns?
 3. What thermal advection patterns characterize each energy pattern?
-4. How does near-surface moisture distribution and convergence differ?
+4. How does near-surface moisture distribution and convergence differ across patterns?
+5. What distinguishes EP1/EP2/EP3 from the mean cyclone (EPALL-relative anomalies)?
 
-**Approach:** Composite analysis of ERA5 reanalysis fields during the intensification phase of all EP1 (N=444) and EP2 (N=979) cyclones.
+**Approach:** Composite analysis of ERA5 reanalysis fields during the intensification phase of all EP1 (N=444), EP2 (N=979), EP3 (N=2397), and EPALL (N=3820) cyclones.
 
 ---
 
@@ -40,8 +41,10 @@ EP3 cyclones exhibit weak energy budget activity and represent the climatologica
 |----------------|------------|----------------|------------|
 | **EP1** | 0 | 444 | 11.6% |
 | **EP2** | 2 | 979 | 25.6% |
+| **EP3** | 1 | 2397 | 62.7% |
+| **EPALL** | — | 3820 | 100% |
 
-**Source:** All EP1 and EP2 cyclones from cluster analysis with complete lifecycle phases.
+**Source:** All EP1, EP2, and EP3 cyclones from cluster analysis with complete lifecycle phases. EPALL is the combined population used as the reference composite.
 
 **Temporal Coverage:** Intensification phase only (6-hourly timesteps during deepening period)
 
@@ -74,10 +77,12 @@ The corrected methodology now implements **per-timestep storm centering**:
    - **Central time mode:** Only the central timestep (storm-centered) from each cyclone
 
 **Statistics from reprocessing (2026-04-03):**
-| Mode | EP1 Cases | EP1 Timesteps | EP2 Cases | EP2 Timesteps | Skipped (no pos) | Skipped (oob) |
-|------|-----------|---------------|-----------|---------------|------------------|---------------|
-| Full | 444 | 3,172 | 979 | 6,828 | 1,481 | 3,495 |
-| Central | 442 | 442 | 978 | 978 | 0 | 0 |
+| Mode | EP1 Cases | EP1 Timesteps | EP2 Cases | EP2 Timesteps | EP3 Cases | EP3 Timesteps | Skipped (no pos) | Skipped (oob) |
+|------|-----------|---------------|-----------|---------------|-----------|---------------|------------------|---------------|
+| Full | 444 | 3,172 | 979 | 6,828 | 2397 | — | 1,481 | 3,495 |
+| Central | 442 | 442 | 978 | 978 | — | — | 0 | 0 |
+
+> **[PRELIMINARY]** EP3 and EPALL full-intensification timestep counts to be updated once step3 completes for EP3.
 
 **Skipped timesteps:** Some timesteps are skipped when the cyclone position is not available in the track file (rare) or when the required 30°×30° subdomain extends outside the downloaded data envelope. This is expected for cyclones near the edge of the download region.
 
@@ -290,9 +295,31 @@ $$AFC = -\nabla \cdot (\vec{v}_{ag}' \, \phi')$$
 
 > **Note on climatology data source:** The 30-year monthly climatology used as base state is described in Section 3.10.
 
-### 3.11 Anomaly Fields — Temporal Decomposition
+### 3.11 Anomaly Fields
 
-To isolate the **synoptic-scale eddy signature** of EP1 and EP2 cyclones from the background climatological state, five additional diagnostics are computed as anomaly (eddy perturbation) fields using the same temporal decomposition already applied to AFC.
+Two classes of anomaly composites are produced:
+
+#### 3.11A EPALL-Relative Anomalies (primary, April 2026)
+
+EPALL-relative anomalies isolate what distinguishes each energy pattern from the **mean South Atlantic cyclone**:
+
+$$\Delta X_{EP_x} = \langle X \rangle_{EP_x} - \langle X \rangle_{EPALL}$$
+
+where $\langle X \rangle_{EP_x}$ is the composite mean of diagnostic $X$ for cyclones of pattern $EP_x$ and $\langle X \rangle_{EPALL}$ is the composite mean over all cyclones.
+
+**Sign convention:** Positive = EPx composite exceeds EPALL composite (above-average signal for this pattern).
+
+**Variables stored (in EP1, EP2, EP3 NetCDF files):** `{var}_minus_epall` (e.g. `egr_minus_epall`, `msl_minus_epall`, etc.)
+
+**Available for:** EGR, PV 200 hPa, PV 850 hPa, Temperature Advection 850 hPa, SLP, KE Advection 250 hPa, RK Criterion 250 hPa.
+
+**Not available for:** Moisture Flux Divergence (not stored in step3), AFC (climatological decomposition by design), BtCR (climatological decomposition by design).
+
+**Figures:** `composite_*_anom_epall.png` — 1×3 panel (EP1−EPALL | EP2−EPALL | EP3−EPALL).
+
+#### 3.11B Climatology-Based Anomaly Fields (legacy, kept for AFC/BtCR)
+
+To isolate the **synoptic-scale eddy signature** of EP1, EP2, and EP3 cyclones from the background climatological state, anomaly (eddy perturbation) fields using the same temporal decomposition as AFC are retained for legacy diagnostics.
 
 **Sign convention — anomaly definition:**
 $$X' = X - \bar{X}_m$$
@@ -400,141 +427,169 @@ When a cyclone traverses a BtCR, two amplification mechanisms are activated:
 
 ## 4. Results
 
-**Note:** Statistical summaries presented below are computed from spatial composites centered on cyclone genesis locations. Each subsection presents the composite figure followed by quantitative statistics. Physical interpretation of spatial patterns and EP1 vs EP2 differences is currently under analysis.
+**Note:** Statistical summaries presented below are computed from spatial composites centered on cyclone positions (central timestep method, April 2026). Each subsection presents the composite figure followed by quantitative domain statistics for EP1, EP2, EP3, and EPALL. EP3 and EPALL values are marked **[PRELIMINARY]** until step5 is re-run with the updated four-pattern composites.
 
 ### 4.1 Eady Growth Rate (Baroclinic Instability)
 
 ![EGR Composite](figures/ep_structure/composite_egr.png)
 
-*Figure: Eady growth rate composite (500–850 hPa layer, Besson et al. 2021) for EP1 (left) and EP2 (right). Contours show growth rate in day⁻¹. The 15° × 15° box marks the LEC computation domain.*
+*Figure: Eady growth rate composite (500–850 hPa layer, Besson et al. 2021) for EP1, EP2, EP3, EPALL (2×2 panel). Growth rate in day⁻¹. The 15°×15° box marks the LEC computation domain.*
+
+![EGR Anomaly](figures/ep_structure/composite_egr_anom_epall.png)
+
+*Figure: EGR EPALL-relative anomaly (EP1−EPALL | EP2−EPALL | EP3−EPALL). Diverging scale.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean ± SD (day⁻¹) | 0.56 ± 0.09 | 0.56 ± 0.10 |
-| Median (day⁻¹) | 0.57 | 0.58 |
-| Range (day⁻¹) | [0.37, 0.73] | [0.36, 0.72] |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Mean ± SD (day⁻¹) | 0.56 ± 0.09 | 0.56 ± 0.10 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Median (day⁻¹) | 0.57 | 0.58 | — | — |
+| Range (day⁻¹) | [0.37, 0.73] | [0.36, 0.72] | — | — |
 
 ### 4.2 Upper-Level Dynamics (200 hPa PV)
 
 ![PV@200 Composite](figures/ep_structure/composite_pv200.png)
 
-*Figure: Potential vorticity at 200 hPa for EP1 (left) and EP2 (right). Units: PVU (10⁻⁶ K m² kg⁻¹ s⁻¹). Shows tropopause dynamics and stratospheric intrusions.*
+*Figure: Potential vorticity at 200 hPa for EP1, EP2, EP3, EPALL (2×2 panel). Units: PVU.*
+
+![PV@200 Anomaly](figures/ep_structure/composite_pv200_anom_epall.png)
+
+*Figure: PV@200 EPALL-relative anomaly. Units: PVU.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean (PVU) | -4.54 | -4.42 |
-| Range (PVU) | [-7.08, -1.26] | [-6.86, -1.18] |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Mean (PVU) | -4.54 | -4.42 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Range (PVU) | [-7.08, -1.26] | [-6.86, -1.18] | — | — |
 
-### 4.3 Low-Level PV Anomaly (850 hPa)
+### 4.3 Low-Level PV (850 hPa)
 
 ![PV@850 Composite](figures/ep_structure/composite_pv850.png)
 
-*Figure: Potential vorticity at 850 hPa for EP1 (left) and EP2 (right). Units: PVU. Indicates diabatic PV generation and low-level cyclonic circulation.*
+*Figure: Potential vorticity at 850 hPa for EP1, EP2, EP3, EPALL (2×2 panel). Units: PVU.*
+
+![PV@850 Anomaly](figures/ep_structure/composite_pv850_anom_epall.png)
+
+*Figure: PV@850 EPALL-relative anomaly. Units: PVU.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean (PVU) | -0.50 | -0.52 |
-| Range (PVU) | [-0.74, -0.30] | [-0.75, -0.31] |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Mean (PVU) | -0.50 | -0.52 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Range (PVU) | [-0.74, -0.30] | [-0.75, -0.31] | — | — |
 
 ### 4.4 Temperature Advection (850 hPa)
 
 ![Temp Advection Composite](figures/ep_structure/composite_advT850.png)
 
-*Figure: Temperature advection at 850 hPa for EP1 (left) and EP2 (right). Units: K h⁻¹. Positive (red) = warm advection; Negative (blue) = cold advection.*
+*Figure: Temperature advection at 850 hPa for EP1, EP2, EP3, EPALL (2×2 panel). Units: K h⁻¹.*
+
+![Temp Advection Anomaly](figures/ep_structure/composite_advT850_anom_epall.png)
+
+*Figure: Temperature advection EPALL-relative anomaly.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Domain mean (K h⁻¹) | -0.031 | -0.003 |
-| Max warm advection (K h⁻¹) | 0.071 | 0.111 |
-| Max cold advection (K h⁻¹) | -0.132 | -0.119 |
-| LEC 15×15° mean (K h⁻¹) | -0.070 | -0.021 |
-| Full 30×30° mean (K h⁻¹) | -0.031 | -0.003 |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Domain mean (K h⁻¹) | -0.031 | -0.003 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Max warm advection (K h⁻¹) | 0.071 | 0.111 | — | — |
+| Max cold advection (K h⁻¹) | -0.132 | -0.119 | — | — |
+| LEC 15×15° mean (K h⁻¹) | -0.070 | -0.021 | — | — |
+| Full 30×30° mean (K h⁻¹) | -0.031 | -0.003 | — | — |
 
 **Lateral boundaries (flux assessment):**
 
-| Boundary | EP1 | EP2 |
-|----------|-----|-----|
-| North (+7.5°) | -0.025 | 0.020 |
-| South (-7.5°) | -0.081 | -0.037 |
-| East (+7.5°) | -0.008 | 0.068 |
-| West (-7.5°) | -0.095 | -0.074 |
+| Boundary | EP1 | EP2 | EP3 | EPALL |
+|----------|-----|-----|-----|-------|
+| North (+7.5°) | -0.025 | 0.020 | — | — |
+| South (-7.5°) | -0.081 | -0.037 | — | — |
+| East (+7.5°) | -0.008 | 0.068 | — | — |
+| West (-7.5°) | -0.095 | -0.074 | — | — |
 
 ### 4.5 Sea Level Pressure
 
 ![SLP Composite](figures/ep_structure/composite_slp.png)
 
-*Figure: Mean sea level pressure for EP1 (left) and EP2 (right). Units: hPa. Shows cyclone intensity and horizontal structure.*
+*Figure: Mean sea level pressure for EP1, EP2, EP3, EPALL (2×2 panel). Units: hPa.*
+
+![SLP Anomaly](figures/ep_structure/composite_slp_anom_epall.png)
+
+*Figure: SLP EPALL-relative anomaly.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Minimum (hPa) | 996.5 | 994.8 |
-| Maximum (hPa) | 1018.3 | 1019.2 |
-| LEC 15×15° mean (hPa) | 1008.1 | 1005.2 |
-| Full 30×30° mean (hPa) | 1009.3 | 1006.4 |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Minimum (hPa) | 996.5 | 994.8 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Maximum (hPa) | 1018.3 | 1019.2 | — | — |
+| LEC 15×15° mean (hPa) | 1008.1 | 1005.2 | — | — |
+| Full 30×30° mean (hPa) | 1009.3 | 1006.4 | — | — |
 
 ### 4.6 Specific Humidity (975 hPa)
 
 ![Moisture Composite](figures/ep_structure/composite_moisture_flux.png)
 
-*Figure: Specific humidity (shading, g kg⁻¹) and moisture flux vectors at 975 hPa for EP1 (left) and EP2 (right).*
+*Figure: Specific humidity (shading, g kg⁻¹) and moisture flux vectors at 975 hPa for EP1, EP2, EP3, EPALL (2×2 panel). No EPALL-relative anomaly is produced for this diagnostic.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean (g kg⁻¹) | 6.37 | 6.52 |
-| Range (g kg⁻¹) | [2.79, 11.14] | [3.13, 11.16] |
-| LEC 15×15° mean (g kg⁻¹) | 6.31 | 6.58 |
-| Full 30×30° mean (g kg⁻¹) | 6.37 | 6.52 |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Mean (g kg⁻¹) | 6.37 | 6.52 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Range (g kg⁻¹) | [2.79, 11.14] | [3.13, 11.16] | — | — |
+| LEC 15×15° mean (g kg⁻¹) | 6.31 | 6.58 | — | — |
+| Full 30×30° mean (g kg⁻¹) | 6.37 | 6.52 | — | — |
 
 ### 4.7 Rayleigh-Kuo Stability Criterion (250 hPa)
 
 ![RK Criterion Composite](figures/ep_structure/composite_rk_criterion.png)
 
-*Figure: Rayleigh-Kuo criterion at 250 hPa for EP1 (left) and EP2 (right). Units: s⁻¹. Negative values (blue) indicate regions satisfying the necessary condition for barotropic/baroclinic instability. Wind vectors show 250 hPa flow.*
+*Figure: Rayleigh-Kuo criterion at 250 hPa for EP1, EP2, EP3, EPALL (2×2 panel). Units: s⁻¹.*
+
+![RK Criterion Anomaly](figures/ep_structure/composite_rk_criterion_anom_epall.png)
+
+*Figure: RK criterion EPALL-relative anomaly.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean (s⁻¹) | 2.242e-11 | 2.271e-11 |
-| Range (s⁻¹) | [-2.427e-11, 6.908e-11] | [-7.869e-12, 6.445e-11] |
-| LEC 15×15° mean | 2.814e-11 | 2.818e-11 |
-| Full 30×30° mean | 2.242e-11 | 2.271e-11 |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Mean (s⁻¹) | 2.242e-11 | 2.271e-11 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Range (s⁻¹) | [-2.427e-11, 6.908e-11] | [-7.869e-12, 6.445e-11] | — | — |
+| LEC 15×15° mean | 2.814e-11 | 2.818e-11 | — | — |
+| Full 30×30° mean | 2.242e-11 | 2.271e-11 | — | — |
 
 ### 4.8 Kinetic Energy Advection (250 hPa)
 
 ![KE Advection Composite](figures/ep_structure/composite_ke_advection.png)
 
-*Figure: Kinetic energy advection at 250 hPa for EP1 (left) and EP2 (right). Units: m² s⁻³. Positive values (purple) indicate KE gain through advection; negative values (orange) indicate KE loss. Wind vectors show 250 hPa flow.*
+*Figure: Kinetic energy advection at 250 hPa for EP1, EP2, EP3, EPALL (2×2 panel). Units: m² s⁻³.*
+
+![KE Advection Anomaly](figures/ep_structure/composite_ke_advection_anom_epall.png)
+
+*Figure: KE advection EPALL-relative anomaly.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean (m² s⁻³) | -1.760e-03 | -4.142e-04 |
-| Range (m² s⁻³) | [-1.241e-02, 4.948e-03] | [-7.759e-03, 7.122e-03] |
-| LEC 15×15° mean | -2.622e-03 | -1.380e-03 |
-| Full 30×30° mean | -1.760e-03 | -4.142e-04 |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Mean (m² s⁻³) | -1.760e-03 | -4.142e-04 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Range (m² s⁻³) | [-1.241e-02, 4.948e-03] | [-7.759e-03, 7.122e-03] | — | — |
+| LEC 15×15° mean | -2.622e-03 | -1.380e-03 | — | — |
+| Full 30×30° mean | -1.760e-03 | -4.142e-04 | — | — |
 
 **Lateral boundaries (flux assessment):**
 
-| Boundary | EP1 | EP2 |
-|----------|-----|-----|
-| North (+7.5°) | 1.207e-03 | 3.303e-03 |
-| South (-7.5°) | -7.365e-03 | -5.867e-03 |
-| East (+7.5°) | -1.957e-03 | 1.570e-03 |
-| West (-7.5°) | -1.308e-03 | -1.924e-03 |
+| Boundary | EP1 | EP2 | EP3 | EPALL |
+|----------|-----|-----|-----|-------|
+| North (+7.5°) | 1.207e-03 | 3.303e-03 | — | — |
+| South (-7.5°) | -7.365e-03 | -5.867e-03 | — | — |
+| East (+7.5°) | -1.957e-03 | 1.570e-03 | — | — |
+| West (-7.5°) | -1.308e-03 | -1.924e-03 | — | — |
 
 ### 4.9 Ageostrophic Flux Convergence (250 hPa)
 
@@ -544,104 +599,107 @@ When a cyclone traverses a BtCR, two amplification mechanisms are activated:
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean (m² s⁻³) | 1.752e-04 | -2.870e-04 |
-| Range (m² s⁻³) | [-6.170e-03, 6.491e-03] | [-6.673e-03, 6.259e-03] |
-| LEC 15×15° mean | 1.575e-03 | 7.611e-04 |
-| Full 30×30° mean | 1.752e-04 | -2.870e-04 |
+| Statistic | EP1 | EP2 | EP3 | EPALL |
+|-----------|-----|-----|-----|-------|
+| Mean (m² s⁻³) | 1.752e-04 | -2.870e-04 | **[PRELIMINARY]** | **[PRELIMINARY]** |
+| Range (m² s⁻³) | [-6.170e-03, 6.491e-03] | [-6.673e-03, 6.259e-03] | — | — |
+| LEC 15×15° mean | 1.575e-03 | 7.611e-04 | — | — |
+| Full 30×30° mean | 1.752e-04 | -2.870e-04 | — | — |
 
 **Lateral boundaries (flux assessment):**
 
-| Boundary | EP1 | EP2 |
-|----------|-----|-----|
-| North (+7.5°) | 2.092e-03 | 5.479e-04 |
-| South (-7.5°) | -5.042e-04 | -1.389e-03 |
-| East (+7.5°) | 6.667e-04 | -3.241e-03 |
-| West (-7.5°) | -1.856e-03 | 1.532e-03 |
+| Boundary | EP1 | EP2 | EP3 | EPALL |
+|----------|-----|-----|-----|-------|
+| North (+7.5°) | 2.092e-03 | 5.479e-04 | — | — |
+| South (-7.5°) | -5.042e-04 | -1.389e-03 | — | — |
+| East (+7.5°) | 6.667e-04 | -3.241e-03 | — | — |
+| West (-7.5°) | -1.856e-03 | 1.532e-03 | — | — |
+
+> **Note:** AFC uses the climatological base state by design (Orlanski & Katzfey 1991) and is not converted to EPALL-relative anomalies. AFC figures show EP1, EP2, EP3 panels only.
 
 ---
 
-### 4.10 PV Anomaly at 200 hPa
+### 4.10 Legacy Anomaly Diagnostics (climatology-based)
+
+> **Note:** Sections 4.10–4.13 retain legacy climatology-based anomaly figures for reference. The primary anomaly framework as of April 2026 is the EPALL-relative definition described in §3.11A and shown in §4.1–4.8. These sections will be updated or removed in a future revision.
+
+### 4.10 PV Anomaly at 200 hPa (legacy)
 
 ![PV′@200 Composite](figures/ep_structure/composite_pv200_anom.png)
 
-*Figure: PV anomaly at 200 hPa (departure from 1991–2020 climatology) for EP1 (left) and EP2 (right). Units: PVU.*
+*Figure: PV anomaly at 200 hPa (departure from 1991–2020 climatology) for EP1, EP2, EP3. Units: PVU. Note: superseded by EPALL-relative anomaly in §4.2.*
 
 **Computation method (exact subtraction):**
 $$PV'_{200} = PV(u, v, T) - PV(\bar{u}_m, \bar{v}_m, \bar{T}_m)$$
 where all PV values are computed using MetPy `potential_vorticity_baroclinic` on three levels (175/200/225 hPa) and the central level is extracted. The climatological PV uses monthly-mean (1991–2020) winds and temperature interpolated to case coordinates via `_clim_da`.
 
-> **Why exact subtraction?** PV is inherently nonlinear: $PV(u', v', T') \neq PV(u,v,T) - PV(\bar{u}_m, \bar{v}_m, \bar{T}_m)$ because cross-terms of the form $(\zeta_m \frac{\partial\theta'}{\partial p} + \zeta' \frac{\partial\theta_m}{\partial p})$ are omitted in the pure-eddy approximation. In the Southern Hemisphere, these cross-terms can dominate and produce wrong-sign anomalies for cyclones. Computing $PV(u', v', T')$ was the former approach; exact subtraction was adopted in February 2026.
+> **Why exact subtraction?** PV is inherently nonlinear: $PV(u', v', T') \neq PV(u,v,T) - PV(\bar{u}_m, \bar{v}_m, \bar{T}_m)$ because cross-terms of the form $(\zeta_m \frac{\partial\theta'}{\partial p} + \zeta' \frac{\partial\theta_m}{\partial p})$ are omitted in the pure-eddy approximation. In the Southern Hemisphere, these cross-terms can dominate and produce wrong-sign anomalies for cyclones. Exact subtraction was adopted in February 2026.
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean ± SD (PVU) | TBD | TBD |
-| Range (PVU) | TBD | TBD |
-| LEC 15×15° mean | TBD | TBD |
+| Statistic | EP1 | EP2 | EP3 |
+|-----------|-----|-----|-----|
+| Mean ± SD (PVU) | TBD | TBD | TBD |
+| Range (PVU) | TBD | TBD | TBD |
+| LEC 15×15° mean | TBD | TBD | TBD |
 
-### 4.11 PV Anomaly at 850 hPa
+### 4.11 PV Anomaly at 850 hPa (legacy)
 
 ![PV′@850 Composite](figures/ep_structure/composite_pv850_anom.png)
 
-*Figure: PV anomaly at 850 hPa (departure from 1991–2020 climatology) for EP1 (left) and EP2 (right). Units: PVU.*
+*Figure: PV anomaly at 850 hPa (departure from 1991–2020 climatology) for EP1, EP2, EP3. Units: PVU.*
 
-**Computation method:** Identical to §4.10 but using levels 825/850/875 hPa. Expected sign in Southern Hemisphere cyclones: **negative** at low levels (cyclonic circulation in SH corresponds to negative PV anomaly since $f < 0$).
+**Computation method:** Identical to §4.10 but using levels 825/850/875 hPa.
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Mean ± SD (PVU) | TBD | TBD |
-| Range (PVU) | TBD | TBD |
-| LEC 15×15° mean | TBD | TBD |
+| Statistic | EP1 | EP2 | EP3 |
+|-----------|-----|-----|-----|
+| Mean ± SD (PVU) | TBD | TBD | TBD |
+| Range (PVU) | TBD | TBD | TBD |
+| LEC 15×15° mean | TBD | TBD | TBD |
 
-### 4.12 Temperature Advection Anomaly (850 hPa)
+### 4.12 Temperature Advection Anomaly (850 hPa) (legacy)
 
 ![AdvT′@850 Composite](figures/ep_structure/composite_advT850_anom.png)
 
-*Figure: Temperature advection eddy perturbation at 850 hPa (−V′·∇T′) for EP1 (left) and EP2 (right). Units: K h⁻¹. Positive = anomalous warm advection; Negative = anomalous cold advection.*
+*Figure: Temperature advection eddy perturbation at 850 hPa (−V′·∇T′) for EP1, EP2, EP3. Units: K h⁻¹.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Domain mean (K h⁻¹) | TBD | TBD |
-| Max warm advection (K h⁻¹) | TBD | TBD |
-| Max cold advection (K h⁻¹) | TBD | TBD |
-| LEC 15×15° mean (K h⁻¹) | TBD | TBD |
+| Statistic | EP1 | EP2 | EP3 |
+|-----------|-----|-----|-----|
+| Domain mean (K h⁻¹) | TBD | TBD | TBD |
+| LEC 15×15° mean (K h⁻¹) | TBD | TBD | TBD |
 
 **Lateral boundaries — anomaly (flux assessment):**
 
-| Boundary | EP1′ (K h⁻¹) | EP2′ (K h⁻¹) |
-|----------|-------------:|-------------:|
-| North (+7.5°) | -0.057 | -0.048 |
-| South (-7.5°) | 0.021 | 0.022 |
-| East (+7.5°) | -0.023 | -0.029 |
-| West (-7.5°) | -0.007 | -0.016 |
+| Boundary | EP1′ (K h⁻¹) | EP2′ (K h⁻¹) | EP3′ (K h⁻¹) |
+|----------|-------------:|-------------:|-------------:|
+| North (+7.5°) | -0.057 | -0.048 | — |
+| South (-7.5°) | 0.021 | 0.022 | — |
+| East (+7.5°) | -0.023 | -0.029 | — |
+| West (-7.5°) | -0.007 | -0.016 | — |
 
-### 4.13 Moisture Flux Divergence Anomaly (975 hPa)
+### 4.13 Moisture Flux Divergence Anomaly (975 hPa) (legacy)
 
 ![MFD′@975 Composite](figures/ep_structure/composite_moisture_flux_anom.png)
 
-*Figure: Moisture flux divergence eddy perturbation at 975 hPa ($\nabla\cdot(q'\vec{V}')$) for EP1 (left) and EP2 (right). Units: g kg⁻¹ s⁻¹. Negative = anomalous convergence.*
+*Figure: Moisture flux divergence eddy perturbation at 975 hPa ($\nabla\cdot(q'\vec{V}')$) for EP1, EP2, EP3. Units: g kg⁻¹ s⁻¹.*
 
 **Summary Statistics:**
 
-| Statistic | EP1 | EP2 |
-|-----------|-----|-----|
-| Domain mean (g kg⁻¹ s⁻¹) | TBD | TBD |
-| Max convergence anomaly (g kg⁻¹ s⁻¹) | TBD | TBD |
-| LEC 15×15° mean (g kg⁻¹ s⁻¹) | TBD | TBD |
+| Statistic | EP1 | EP2 | EP3 |
+|-----------|-----|-----|-----|
+| Domain mean (g kg⁻¹ s⁻¹) | TBD | TBD | TBD |
+| LEC 15×15° mean (g kg⁻¹ s⁻¹) | TBD | TBD | TBD |
 
 **Lateral boundaries — anomaly (flux assessment):**
 
-| Boundary | EP1′ (g kg⁻¹ s⁻¹) | EP2′ (g kg⁻¹ s⁻¹) |
-|----------|-------------------:|-------------------:|
-| North (+7.5°) | 1.073e+01 | 8.352e+00 |
-| South (-7.5°) | -5.168e+00 | -8.519e+00 |
+| Boundary | EP1′ (g kg⁻¹ s⁻¹) | EP2′ (g kg⁻¹ s⁻¹) | EP3′ (g kg⁻¹ s⁻¹) |
+|----------|-------------------:|-------------------:|-------------------:|
+| North (+7.5°) | 1.073e+01 | 8.352e+00 | — |
+| South (-7.5°) | -5.168e+00 | -8.519e+00 | — |
 | East (+7.5°) | -3.601e-01 | -1.422e+00 |
 | West (-7.5°) | -2.091e+00 | 4.778e+00 |
 

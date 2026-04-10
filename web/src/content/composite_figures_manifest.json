@@ -1,118 +1,137 @@
 {
   "egr": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_egr_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_egr.png"
+    },
+    "anom_epall": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_egr_anom_epall.png",
+      "anomaly_type": "EPALL-relative"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_egr_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_egr_diff.png"
     }
   },
   "pv-200": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_pv200_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv200.png"
     },
-    "anom": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_pv200_anom_central_time.png"
+    "anom_epall": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv200_anom_epall.png",
+      "anomaly_type": "EPALL-relative"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_pv200_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv200_diff.png"
     }
   },
   "pv-850": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_pv850_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv850.png"
     },
-    "anom": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_pv850_anom_central_time.png"
+    "anom_epall": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv850_anom_epall.png",
+      "anomaly_type": "EPALL-relative"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_pv850_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_pv850_diff.png"
     }
   },
   "temperature-advection": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_advT850_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_advT850.png"
+    },
+    "anom_epall": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_advT850_anom_epall.png",
+      "anomaly_type": "EPALL-relative"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_advT850_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_advT850_diff.png"
     }
   },
   "moisture-flux-divergence": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_moisture_flux_central_time.png"
-    },
-    "anom": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_moisture_flux_anom_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_moisture_flux.png"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_moisture_flux_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_moisture_flux_diff.png"
     }
   },
   "slp": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_slp_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_slp.png"
     },
-    "anom": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_slp_anom_central_time.png"
+    "anom_epall": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_slp_anom_epall.png",
+      "anomaly_type": "EPALL-relative"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_slp_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_slp_diff.png"
     }
   },
   "rk-criterion": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_rk_criterion_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_rk_criterion.png"
+    },
+    "anom_epall": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_rk_criterion_anom_epall.png",
+      "anomaly_type": "EPALL-relative"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_rk_criterion_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_rk_criterion_diff.png"
     }
   },
   "ke-advection": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_ke_advection_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_ke_advection.png"
+    },
+    "anom_epall": {
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_ke_advection_anom_epall.png",
+      "anomaly_type": "EPALL-relative"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_ke_advection_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_ke_advection_diff.png"
     }
   },
   "afc": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_afc_250_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_afc_250.png"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_afc_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_afc_diff.png"
     }
   },
   "btcr": {
     "real": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_btcr_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_btcr.png"
     },
     "diff": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_btcr_diff_central_time.png"
+      "exists": false,
+      "api_path": "figures/ep_structure/composite_btcr_diff.png"
     }
   }
 }

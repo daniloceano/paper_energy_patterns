@@ -1,1 +1,350 @@
-[]
+[
+  {
+    "diagnostic_id": "egr",
+    "ep": "EP1",
+    "unit": "day\u207b\u00b9",
+    "inside_15x15": "0.77",
+    "outside_15x15": "0.65",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "egr",
+    "ep": "EP2",
+    "unit": "day\u207b\u00b9",
+    "inside_15x15": "0.79",
+    "outside_15x15": "0.66",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "egr",
+    "ep": "EP3",
+    "unit": "day\u207b\u00b9",
+    "inside_15x15": "0.67",
+    "outside_15x15": "0.60",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "egr",
+    "ep": "EPALL",
+    "unit": "day\u207b\u00b9",
+    "inside_15x15": "0.72",
+    "outside_15x15": "0.62",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "pv-200",
+    "ep": "EP1",
+    "unit": "PVU",
+    "inside_15x15": "-4.95",
+    "outside_15x15": "-4.41",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "pv-200",
+    "ep": "EP2",
+    "unit": "PVU",
+    "inside_15x15": "-4.81",
+    "outside_15x15": "-4.30",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "pv-200",
+    "ep": "EP3",
+    "unit": "PVU",
+    "inside_15x15": "-4.89",
+    "outside_15x15": "-4.51",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "pv-200",
+    "ep": "EPALL",
+    "unit": "PVU",
+    "inside_15x15": "-4.87",
+    "outside_15x15": "-4.43",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "pv-850",
+    "ep": "EP1",
+    "unit": "PVU",
+    "inside_15x15": "-0.53",
+    "outside_15x15": "-0.48",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "pv-850",
+    "ep": "EP2",
+    "unit": "PVU",
+    "inside_15x15": "-0.58",
+    "outside_15x15": "-0.51",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "pv-850",
+    "ep": "EP3",
+    "unit": "PVU",
+    "inside_15x15": "-0.59",
+    "outside_15x15": "-0.53",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "pv-850",
+    "ep": "EPALL",
+    "unit": "PVU",
+    "inside_15x15": "-0.58",
+    "outside_15x15": "-0.52",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "temperature-advection",
+    "ep": "EP1",
+    "unit": "K h\u207b\u00b9",
+    "inside_15x15": "-0.146",
+    "outside_15x15": "-0.051",
+    "inside_15x15_anom": "-0.027",
+    "outside_15x15_anom": "-0.031",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "temperature-advection",
+    "ep": "EP2",
+    "unit": "K h\u207b\u00b9",
+    "inside_15x15": "-0.165",
+    "outside_15x15": "-0.047",
+    "inside_15x15_anom": "-0.037",
+    "outside_15x15_anom": "-0.039",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "temperature-advection",
+    "ep": "EP3",
+    "unit": "K h\u207b\u00b9",
+    "inside_15x15": "-0.048",
+    "outside_15x15": "0.008",
+    "inside_15x15_anom": "-0.025",
+    "outside_15x15_anom": "-0.027",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "temperature-advection",
+    "ep": "EPALL",
+    "unit": "K h\u207b\u00b9",
+    "inside_15x15": "-0.093",
+    "outside_15x15": "-0.015",
+    "inside_15x15_anom": "-0.029",
+    "outside_15x15_anom": "-0.031",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "moisture-flux-divergence",
+    "ep": "EP1",
+    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "inside_15x15": "-1.386e+02",
+    "outside_15x15": "-1.531e+01",
+    "inside_15x15_anom": "-1.103e+01",
+    "outside_15x15_anom": "-2.212e+00",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "moisture-flux-divergence",
+    "ep": "EP2",
+    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "inside_15x15": "-2.079e+02",
+    "outside_15x15": "-3.884e+01",
+    "inside_15x15_anom": "-3.053e+01",
+    "outside_15x15_anom": "-3.123e-01",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "moisture-flux-divergence",
+    "ep": "EP3",
+    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "inside_15x15": "-1.544e+02",
+    "outside_15x15": "-3.126e+01",
+    "inside_15x15_anom": "-1.675e+01",
+    "outside_15x15_anom": "5.484e-01",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "moisture-flux-divergence",
+    "ep": "EPALL",
+    "unit": "g kg\u207b\u00b9 s\u207b\u00b9",
+    "inside_15x15": "-1.677e+02",
+    "outside_15x15": "-3.147e+01",
+    "inside_15x15_anom": "-1.997e+01",
+    "outside_15x15_anom": "-1.298e-03",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "slp",
+    "ep": "EP1",
+    "unit": "hPa",
+    "inside_15x15": "1005.4",
+    "outside_15x15": "1009.6",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "slp",
+    "ep": "EP2",
+    "unit": "hPa",
+    "inside_15x15": "1001.1",
+    "outside_15x15": "1005.9",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "slp",
+    "ep": "EP3",
+    "unit": "hPa",
+    "inside_15x15": "1001.7",
+    "outside_15x15": "1005.1",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "slp",
+    "ep": "EPALL",
+    "unit": "hPa",
+    "inside_15x15": "1002.0",
+    "outside_15x15": "1005.9",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "ke-advection",
+    "ep": "EP1",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "-4.881e-03",
+    "outside_15x15": "-4.335e-03",
+    "inside_15x15_anom": "-2.371e-04",
+    "outside_15x15_anom": "-1.237e-03",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "ke-advection",
+    "ep": "EP2",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "-5.979e-03",
+    "outside_15x15": "-3.243e-03",
+    "inside_15x15_anom": "1.275e-03",
+    "outside_15x15_anom": "5.256e-04",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "ke-advection",
+    "ep": "EP3",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "-3.517e-04",
+    "outside_15x15": "-2.155e-04",
+    "inside_15x15_anom": "1.354e-03",
+    "outside_15x15_anom": "4.885e-04",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "ke-advection",
+    "ep": "EPALL",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "-2.500e-03",
+    "outside_15x15": "-1.594e-03",
+    "inside_15x15_anom": "1.138e-03",
+    "outside_15x15_anom": "2.874e-04",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "afc",
+    "ep": "EP1",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "4.668e-03",
+    "outside_15x15": "2.137e-04",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "afc",
+    "ep": "EP2",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "1.130e-03",
+    "outside_15x15": "-1.391e-03",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "afc",
+    "ep": "EP3",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "-7.534e-04",
+    "outside_15x15": "-3.614e-04",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "afc",
+    "ep": "EPALL",
+    "unit": "m\u00b2 s\u207b\u00b3",
+    "inside_15x15": "4.409e-04",
+    "outside_15x15": "-5.894e-04",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "rk-criterion",
+    "ep": "EP1",
+    "unit": "s\u207b\u00b9",
+    "inside_15x15": "3.267e-11",
+    "outside_15x15": "2.322e-11",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "rk-criterion",
+    "ep": "EP2",
+    "unit": "s\u207b\u00b9",
+    "inside_15x15": "2.472e-11",
+    "outside_15x15": "2.402e-11",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "rk-criterion",
+    "ep": "EP3",
+    "unit": "s\u207b\u00b9",
+    "inside_15x15": "2.984e-11",
+    "outside_15x15": "2.025e-11",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  },
+  {
+    "diagnostic_id": "rk-criterion",
+    "ep": "EPALL",
+    "unit": "s\u207b\u00b9",
+    "inside_15x15": "2.873e-11",
+    "outside_15x15": "2.164e-11",
+    "inside_15x15_epall_anom": null,
+    "outside_15x15_epall_anom": null
+  }
+]

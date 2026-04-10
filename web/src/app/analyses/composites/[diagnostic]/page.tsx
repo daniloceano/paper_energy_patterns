@@ -52,7 +52,7 @@ interface FigureEntry {
 interface FiguresManifest {
   [diagId: string]: {
     real: FigureEntry
-    anom?: FigureEntry
+    anom_epall?: FigureEntry
     diff?: FigureEntry
   }
 }
@@ -144,9 +144,10 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
           files={[
             'data/era5_ep_structure/precomputed_composites_ep1.nc',
             'data/era5_ep_structure/precomputed_composites_ep2.nc',
+            'data/era5_ep_structure/precomputed_composites_ep3.nc',
+            'data/era5_ep_structure/precomputed_composites_epall.nc',
             'scripts/ep_structure_analysis/step4_create_figures.py',
             'scripts/ep_structure_analysis/step5_update_scientific_notes.py',
-            
             'results/ep_structure/composite_stats.json',
           ]}
           label="Source files"

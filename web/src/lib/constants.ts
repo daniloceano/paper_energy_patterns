@@ -119,7 +119,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'The Eady Growth Rate quantifies baroclinic instability by relating vertical wind shear to static stability. Higher EGR values indicate environments more favourable for cyclone intensification through baroclinic processes.',
     physicalObjective:
-      'Assess the baroclinic instability environment surrounding EP1 and EP2 cyclones during intensification.',
+      'Assess the baroclinic instability environment surrounding EP1, EP2, EP3, and EPALL cyclones during intensification, and identify how the instability signal differs across patterns.',
     formula:
       '\\sigma_{EGR} = 0.31 \\frac{|f|}{N} \\left|\\frac{\\partial \\vec{V}}{\\partial z}\\right|',
     formulaTerms: {
@@ -128,7 +128,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
       '∂V/∂z': 'Vertical wind shear between 500 and 850 hPa',
     },
     references: ['Eady (1949)', 'Lindzen and Farrell (1980)'],
-    hasAnomaly: false,
+    hasAnomaly: true,
   },
   'pv-200': {
     id: 'pv-200',
@@ -140,7 +140,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'Upper-level PV identifies tropopause dynamics and stratospheric intrusions. The 2 PVU surface defines the dynamical tropopause, and PV anomalies at this level reveal upper-level forcing mechanisms for surface cyclogenesis.',
     physicalObjective:
-      'Characterise upper-level tropopause dynamics and stratospheric intrusion signatures for EP1 vs EP2.',
+      'Characterise upper-level tropopause dynamics and stratospheric intrusion signatures for EP1, EP2, EP3, and EPALL.',
     formula:
       'PV = -g \\left(\\zeta_\\theta + f\\right) \\frac{\\partial \\theta}{\\partial p}',
     formulaTerms: {
@@ -162,7 +162,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'Low-level PV identifies diabatic PV generation, surface friction, and frontal structures. Concentrated PV anomalies at low levels are signatures of latent heat release and boundary layer processes.',
     physicalObjective:
-      'Identify low-level diabatic PV generation and frontal signatures for EP1 vs EP2.',
+      'Identify low-level diabatic PV generation and frontal signatures for EP1, EP2, EP3, and EPALL.',
     formula:
       'PV = -g \\left(\\zeta_\\theta + f\\right) \\frac{\\partial \\theta}{\\partial p}',
     formulaTerms: {
@@ -184,7 +184,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'Temperature advection at 850 hPa identifies warm and cold sectors around cyclones. Warm advection ahead of the warm front drives baroclinic conversion, while cold advection behind the cold front shapes the cyclone lifecycle.',
     physicalObjective:
-      'Map the warm/cold advection structure and its role in baroclinic energy conversion for EP1 vs EP2.',
+      'Map the warm/cold advection structure and its role in baroclinic energy conversion for EP1, EP2, EP3, and EPALL.',
     formula:
       '\\text{advT} = -\\vec{V} \\cdot \\nabla T = -\\left(u\\frac{\\partial T}{\\partial x} + v\\frac{\\partial T}{\\partial y}\\right)',
     formulaTerms: {
@@ -194,7 +194,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
       v: 'Meridional wind component (m s⁻¹)',
     },
     references: ['Holton and Hakim (2013)'],
-    hasAnomaly: false,  // Use absolute field, not anomaly
+    hasAnomaly: true,
   },
   'moisture-flux-divergence': {
     id: 'moisture-flux-divergence',
@@ -206,7 +206,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'Moisture flux divergence at the surface identifies regions of moisture convergence (negative values) where latent heat release fuels cyclone intensification, and divergence where drying occurs.',
     physicalObjective:
-      'Evaluate the moisture convergence patterns and their connection to diabatic generation (Ge) for EP1 vs EP2.',
+      'Evaluate the moisture convergence patterns and their connection to diabatic generation (Ge) for EP1, EP2, EP3, and EPALL.',
     formula:
       '\\nabla \\cdot (q\\vec{V}) = \\frac{\\partial (qu)}{\\partial x} + \\frac{\\partial (qv)}{\\partial y}',
     formulaTerms: {
@@ -216,7 +216,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
       v: 'Meridional wind component (m s⁻¹)',
     },
     references: ['Trenberth and Guillemot (1995)'],
-    hasAnomaly: true,
+    hasAnomaly: false,  // No EPALL-relative anomaly for moisture flux divergence
   },
   slp: {
     id: 'slp',
@@ -228,7 +228,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'Sea level pressure composites show the cyclone structure, intensity, and spatial extent. The minimum SLP indicates the cyclone centre, and the pressure gradient reveals the intensity of the circulation.',
     physicalObjective:
-      'Compare cyclone intensity and spatial structure between EP1 and EP2.',
+      'Compare cyclone intensity and spatial structure across EP1, EP2, EP3, and EPALL.',
     formula: 'SLP = p_s \\exp\\left(\\frac{g z_s}{R T_v}\\right)',
     formulaTerms: {
       p_s: 'Surface pressure (Pa)',
@@ -250,7 +250,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'The Rayleigh-Kuo criterion identifies regions where the meridional gradient of absolute vorticity changes sign — a necessary condition for barotropic instability. Negative values indicate instability regions.',
     physicalObjective:
-      'Locate barotropic instability regions in the upper troposphere for EP1 vs EP2 and relate to barotropic conversion (Ck).',
+      'Locate barotropic instability regions in the upper troposphere across EP1, EP2, EP3, and EPALL and relate to barotropic conversion (Ck).',
     formula:
       'RK = \\beta - \\frac{\\partial^2 u}{\\partial y^2}',
     formulaTerms: {
@@ -259,7 +259,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
       '∂²u/∂y²': 'Second derivative of zonal wind in meridional direction',
     },
     references: ['Rayleigh (1880)', 'Kuo (1949)'],
-    hasAnomaly: false,
+    hasAnomaly: true,
   },
   'ke-advection': {
     id: 'ke-advection',
@@ -271,7 +271,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'Kinetic energy advection at the upper troposphere indicates local acceleration (positive) or deceleration (negative) of the flow. This diagnostic reveals the kinetic energy redistribution by the jet stream.',
     physicalObjective:
-      'Evaluate upper-level kinetic energy redistribution and jet-stream interaction for EP1 vs EP2.',
+      'Evaluate upper-level kinetic energy redistribution and jet-stream interaction for EP1, EP2, EP3, and EPALL.',
     formula:
       '\\text{KE}_{\\text{adv}} = -\\vec{V} \\cdot \\nabla\\left(\\frac{1}{2}(u^2 + v^2)\\right)',
     formulaTerms: {
@@ -281,7 +281,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
       KE: 'Kinetic energy per unit mass (m² s⁻²)',
     },
     references: ['Orlanski and Katzfey (1991)'],
-    hasAnomaly: false,  // Use absolute field, not anomaly
+    hasAnomaly: true,
   },
   afc: {
     id: 'afc',
@@ -293,7 +293,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'The ageostrophic flux convergence represents the work done by ageostrophic eddy winds on the eddy geopotential field. Positive values indicate eddy kinetic energy sources; negative values indicate sinks.',
     physicalObjective:
-      'Quantify upper-level ageostrophic forcing and its role as eddy KE source/sink for EP1 vs EP2.',
+      'Quantify upper-level ageostrophic forcing and its role as eddy KE source/sink for EP1, EP2, EP3, and EPALL.',
     formula:
       'AFC = -\\nabla \\cdot (\\vec{v}_{ag}\' \\, \\phi\')',
     formulaTerms: {
@@ -313,7 +313,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     description:
       'Effective deformation Δₘ = σₘ² − ζₘ² of the climatological background flow at 250 hPa. Positive values identify jet-exit zones where deformation dominates rotation — the Barotropic Critical Region (BtCR) — where synoptic disturbances are forced into orientations that enable efficient energy extraction or loss.',
     physicalObjective:
-      'Identify whether EP1 and EP2 cyclones develop preferentially in BtCR environments (Δₘ > 0) that can amplify or suppress their growth via barotropic processes.',
+      'Identify whether EP1, EP2, and EP3 cyclones develop preferentially in BtCR environments (Δₘ > 0) that can amplify or suppress their growth via barotropic processes.',
     formula:
       '\\Delta_m = \\sigma_m^2 - \\zeta_m^2, \\quad \\sigma_m = \\sqrt{St^2 + Sh^2}',
     formulaTerms: {
@@ -459,7 +459,7 @@ export const DOCUMENTS: DocumentInfo[] = [
     id: 'scientific-notes-ep-structure',
     title: 'Scientific Notes — EP Structure Analysis',
     description:
-      'Scientific interpretation of ERA5 composite analysis comparing the atmospheric structure of EP1 and EP2 cyclones.',
+      'Scientific interpretation of ERA5 composite analysis of EP1, EP2, EP3, and EPALL cyclone atmospheric structure and EPALL-relative anomalies.',
     type: 'pdf',
     path: 'docs/scientific_notes_ep_structure.pdf',
     generatedFrom: 'scripts/ep_structure_analysis/SCIENTIFIC_NOTES.md',
@@ -581,17 +581,17 @@ export const DATASET_STATS = {
 }
 
 // Mapping from diagnostic id to step4_create_figures.py output filename (in figures/ep_structure/)
-export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom?: string; diff?: string }> = {
-  egr:                     { real: 'composite_egr.png',                                                      diff: 'composite_egr_diff.png' },
-  'pv-200':                { real: 'composite_pv200.png',         anom: 'composite_pv200_anom.png',          diff: 'composite_pv200_diff.png' },
-  'pv-850':                { real: 'composite_pv850.png',         anom: 'composite_pv850_anom.png',          diff: 'composite_pv850_diff.png' },
-  'temperature-advection': { real: 'composite_advT850.png',                                                  diff: 'composite_advT850_diff.png' },  // absolute field only
-  'moisture-flux-divergence': { real: 'composite_moisture_flux.png', anom: 'composite_moisture_flux_anom.png', diff: 'composite_moisture_flux_diff.png' },
-  slp:                     { real: 'composite_slp.png',           anom: 'composite_slp_anom.png',            diff: 'composite_slp_diff.png' },
-  'rk-criterion':          { real: 'composite_rk_criterion.png',                                             diff: 'composite_rk_criterion_diff.png' },
-  'ke-advection':          { real: 'composite_ke_advection.png',                                             diff: 'composite_ke_advection_diff.png' },  // absolute field only
-  afc:                     { real: 'composite_afc_250.png',                                                  diff: 'composite_afc_diff.png' },
-  btcr:                    { real: 'composite_btcr.png',                                                     diff: 'composite_btcr_diff.png' },
+export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom_epall?: string; diff?: string }> = {
+  egr:                     { real: 'composite_egr.png',           anom_epall: 'composite_egr_anom_epall.png',           diff: 'composite_egr_diff.png' },
+  'pv-200':                { real: 'composite_pv200.png',         anom_epall: 'composite_pv200_anom_epall.png',         diff: 'composite_pv200_diff.png' },
+  'pv-850':                { real: 'composite_pv850.png',         anom_epall: 'composite_pv850_anom_epall.png',         diff: 'composite_pv850_diff.png' },
+  'temperature-advection': { real: 'composite_advT850.png',       anom_epall: 'composite_advT850_anom_epall.png',       diff: 'composite_advT850_diff.png' },
+  'moisture-flux-divergence': { real: 'composite_moisture_flux.png',                                                    diff: 'composite_moisture_flux_diff.png' },  // no EPALL-relative anom
+  slp:                     { real: 'composite_slp.png',           anom_epall: 'composite_slp_anom_epall.png',           diff: 'composite_slp_diff.png' },
+  'rk-criterion':          { real: 'composite_rk_criterion.png',  anom_epall: 'composite_rk_criterion_anom_epall.png',  diff: 'composite_rk_criterion_diff.png' },
+  'ke-advection':          { real: 'composite_ke_advection.png',  anom_epall: 'composite_ke_advection_anom_epall.png',  diff: 'composite_ke_advection_diff.png' },
+  afc:                     { real: 'composite_afc_250.png',                                                              diff: 'composite_afc_diff.png' },  // AFC uses climatology by design
+  btcr:                    { real: 'composite_btcr.png',                                                                 diff: 'composite_btcr_diff.png' },  // BtCR uses climatology by design
 }
 
 // --- Flux/Advection diagnostics that need boundary tables ---

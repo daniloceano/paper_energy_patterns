@@ -127,12 +127,12 @@ function DiagnosticCompositesContent({
         ) : (
           <ResultSummaryCallout type="info" title="Composite figures not yet generated">
             <p>
-              Run <code>scripts/ep_structure_analysis/step4_create_figures.py --mode {mode}</code> to generate
+              Run <code>scripts/ep_structure_analysis/step4_create_figures.py</code> to generate
               composite figures for {diag.name}. The expected output is{' '}
               <code>figures/ep_structure/{realFigFilename}</code>.
             </p>
             <p className="mt-1 text-xs text-slate-400">
-              Then run <code>scripts/web/extract_composite_site_data.py --mode {mode}</code> to update the web manifests.
+              Then run <code>scripts/web/extract_composite_site_data.py</code> to update the web manifests.
             </p>
           </ResultSummaryCallout>
         )}
@@ -230,7 +230,7 @@ function DiagnosticCompositesContent({
               Mean values inside/outside {DATASET_STATS.innerDomainSize} domain [{diag.unit}]
             </h4>
             <p className="mt-0.5 text-xs text-slate-400">
-              Composite method: {MODE_INFO[mode].label}
+              Composite method: Central Timesteps
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -290,7 +290,7 @@ function DiagnosticCompositesContent({
                 Mean flux along each boundary [{diag.unit}]
               </h4>
               <p className="mt-0.5 text-xs text-slate-400">
-                Composite method: {MODE_INFO[mode].label}
+                Composite method: Central Timesteps
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -332,7 +332,7 @@ function DiagnosticCompositesContent({
                 Mean {diag.shortName} along each edge of the {DATASET_STATS.innerDomainSize} inner domain (±7.5°).
                 <span className="ml-1 text-amber-500 font-medium">anom′</span>
                 {' '}= anomaly relative to ERA5 1991–2020 climatology.
-                Source: <code>step5_update_scientific_notes.py</code> → <code>results/ep_structure/composite_stats_{mode}.json</code>.
+                Source: <code>step5_update_scientific_notes.py</code> → <code>results/ep_structure/composite_stats.json</code>.
               </p>
             </div>
           </div>
@@ -342,11 +342,7 @@ function DiagnosticCompositesContent({
   )
 }
 
-// Wrapper with provider
+// Export directly without mode provider (canonical method only)
 export default function DiagnosticCompositesClient(props: DiagnosticCompositesClientProps) {
-  return (
-    <CompositeModeProvider>
-      <DiagnosticCompositesContent {...props} />
-    </CompositeModeProvider>
-  )
+  return <DiagnosticCompositesContent {...props} />
 }

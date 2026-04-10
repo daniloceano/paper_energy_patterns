@@ -139,7 +139,6 @@ export default async function DiagnosticPage({ params }: DiagnosticPageProps) {
           stats={stats}
           fluxes={fluxes}
         />
-        />
 
         <FileProvenanceBadge
           files={[

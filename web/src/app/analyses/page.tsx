@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { BarChart3, Layers, TrendingDown, Navigation } from 'lucide-react'
+import { BarChart3, Layers, TrendingDown } from 'lucide-react'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import AnalysisCardGrid from '@/components/analysis/AnalysisCardGrid'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
@@ -42,14 +42,6 @@ export default function AnalysesPage() {
               'Decomposition of barotropic energy conversion (Ck) into five subterms (A–E) for EP1 cyclones. Genesis density maps and dominance classification by intensification-phase subterm.',
             href: '/analyses/ck-subterms',
             icon: TrendingDown,
-          },
-          {
-            title: 'Cyclone Explorer — Temporal Evolution',
-            description:
-              'Explore individual EP1 and EP2 cyclones through time. Visualise track progression, atmospheric fields, and multi-panel diagnostics at 6-hourly timesteps during intensification.',
-            href: '/analyses/cyclone-explorer',
-            icon: Navigation,
-            badge: 'Interactive',
           },
         ]}
       />

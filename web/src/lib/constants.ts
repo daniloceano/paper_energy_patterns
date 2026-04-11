@@ -581,17 +581,19 @@ export const DATASET_STATS = {
 }
 
 // Mapping from diagnostic id to step4_create_figures.py output filename (in figures/ep_structure/)
-export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom_epall?: string; diff?: string }> = {
-  egr:                     { real: 'composite_egr.png',          anom_epall: 'composite_egr_anom_epall.png',          diff: 'composite_egr_diff.png' },
-  'pv-200':                { real: 'composite_pv200.png',        anom_epall: 'composite_pv200_anom_epall.png',        diff: 'composite_pv200_diff.png' },
-  'pv-850':                { real: 'composite_pv850.png',        anom_epall: 'composite_pv850_anom_epall.png',        diff: 'composite_pv850_diff.png' },
-  'temperature-advection': { real: 'composite_advT850.png',      anom_epall: 'composite_advT850_anom_epall.png',      diff: 'composite_advT850_diff.png' },
-  'moisture-flux-divergence': { real: 'composite_moisture_flux.png',                                                   diff: 'composite_moisture_flux_diff.png' },
-  slp:                     { real: 'composite_slp.png',          anom_epall: 'composite_slp_anom_epall.png',          diff: 'composite_slp_diff.png' },
-  'rk-criterion':          { real: 'composite_rk_criterion.png',                                                          diff: 'composite_rk_criterion_diff.png' },
-  'ke-advection':          { real: 'composite_ke_advection.png', anom_epall: 'composite_ke_advection_anom_epall.png', diff: 'composite_ke_advection_diff.png' },
-  afc:                     { real: 'composite_afc_250.png',                                                            diff: 'composite_afc_diff.png' },
-  btcr:                    { real: 'composite_btcr.png',                                                               diff: 'composite_btcr_diff.png' },
+// anom_clim  = climatology-relative anomaly  (X' = X − X̄_clim, 1991–2020 ERA5)
+// anom_epall = EPALL-relative anomaly         (EPx − EPALL composite)
+export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom_clim?: string; anom_epall?: string; diff?: string }> = {
+  egr:                        { real: 'composite_egr.png',                                                               anom_epall: 'composite_egr_anom_epall.png',          diff: 'composite_egr_diff.png' },
+  'pv-200':                   { real: 'composite_pv200.png',        anom_clim: 'composite_pv200_anom.png',               anom_epall: 'composite_pv200_anom_epall.png',        diff: 'composite_pv200_diff.png' },
+  'pv-850':                   { real: 'composite_pv850.png',        anom_clim: 'composite_pv850_anom.png',               anom_epall: 'composite_pv850_anom_epall.png',        diff: 'composite_pv850_diff.png' },
+  'temperature-advection':    { real: 'composite_advT850.png',      anom_clim: 'composite_advT850_anom.png',             anom_epall: 'composite_advT850_anom_epall.png',      diff: 'composite_advT850_diff.png' },
+  'moisture-flux-divergence': { real: 'composite_moisture_flux.png',anom_clim: 'composite_moisture_flux_anom.png',                                                            diff: 'composite_moisture_flux_diff.png' },
+  slp:                        { real: 'composite_slp.png',          anom_clim: 'composite_slp_anom.png',                 anom_epall: 'composite_slp_anom_epall.png',          diff: 'composite_slp_diff.png' },
+  'rk-criterion':             { real: 'composite_rk_criterion.png',                                                                                                            diff: 'composite_rk_criterion_diff.png' },
+  'ke-advection':             { real: 'composite_ke_advection.png', anom_clim: 'composite_ke_advection_anom.png',        anom_epall: 'composite_ke_advection_anom_epall.png', diff: 'composite_ke_advection_diff.png' },
+  afc:                        { real: 'composite_afc_250.png',                                                                                                                 diff: 'composite_afc_diff.png' },
+  btcr:                       { real: 'composite_btcr.png',                                                                                                                    diff: 'composite_btcr_diff.png' },
 }
 
 // --- Flux/Advection diagnostics that need boundary tables ---

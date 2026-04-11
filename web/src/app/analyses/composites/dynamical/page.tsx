@@ -194,9 +194,10 @@ export default function DynamicalCompositesPage() {
               <p className="mt-1 text-xs text-slate-600">
                 <strong>Row 3</strong> — AFC total (no EPALL-relative version; uses
                 climatological decomposition — Orlanski &amp; Katzfey 1991) +
-                (u, v)_250 − EPALL wind + (RK criterion) − EPALL sign-reversal hatching +
-                (KE-adv) − EPALL contours. Shows how barotropic energy exchange and jet
-                interaction differ from the mean cyclone.
+                (u, v)_250 − EPALL wind + <strong>RK total sign-reversal hatching</strong>{' '}
+                (total composite, not EPALL-relative — RK = β − ∂²ū/∂y² is a background-flow
+                diagnostic; shown as total field only) + (KE-adv) − EPALL contours.
+                Shows how barotropic energy exchange and jet interaction differ from the mean cyclone.
               </p>
             </div>
             <div className="p-4">

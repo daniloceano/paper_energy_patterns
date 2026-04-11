@@ -38,6 +38,8 @@ Manifest schema (composite_figures_manifest.json):
   {
     "<diag_id>": {
       "real":       { "exists": bool, "api_path": str },  # 2×2 panel: EP1/EP2/EP3/EPALL
+      "anom_clim":  { "exists": bool, "api_path": str },  # climatology-relative anomaly (X' = X − X̄_clim)
+                                                           # omitted if no climatology anomaly figure exists
       "anom_epall": { "exists": bool, "api_path": str },  # 1×3 panel: EP1−EPALL | EP2−EPALL | EP3−EPALL
                                                            # omitted if no EPALL-relative figure exists
       "diff":       { "exists": bool, "api_path": str }   # legacy EP1−EP2 single-panel diff
@@ -63,8 +65,16 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 #
 # Schema: each entry has:
 #   "real"       → 2×2 panel figure (EP1/EP2/EP3/EPALL), always present
+#   "anom_clim"  → climatology-relative anomaly figure (EP1/EP2/EP3/EPALL or EP1/EP2/EP3)
+#                  X' = X − X̄_clim (departure from 1991–2020 ERA5 monthly climatology)
 #   "anom_epall" → 1×3 panel figure (EP1−EPALL | EP2−EPALL | EP3−EPALL), only where available
 #   "diff"       → legacy EP1−EP2 single-panel difference figure
+#
+# No climatology anomaly for:
+#   - egr (non-linear diagnostic; climatology decomposition produces dominant cross-terms)
+#   - rk-criterion (background-flow diagnostic; shown as total field only)
+#   - afc (already is a climatology anomaly by construction — Orlanski & Katzfey 1991)
+#   - btcr (uses climatological decomposition by construction — Rivière 2006)
 #
 # No EPALL-relative anomaly for:
 #   - moisture-flux-divergence (div_q_975_minus_epall not stored in step3)
@@ -72,19 +82,19 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 #   - btcr (uses climatological decomposition by construction — Rivière 2006)
 #   - rk-criterion (β − ∂²ū/∂y² is a background-flow diagnostic; shown as total field only)
 DIAGNOSTIC_FIGURE_MAP = {
-    "egr":                      {"real": "composite_egr.png",          "anom_epall": "composite_egr_anom_epall.png",          "diff": "composite_egr_diff.png"},
-    "pv-200":                   {"real": "composite_pv200.png",        "anom_epall": "composite_pv200_anom_epall.png",        "diff": "composite_pv200_diff.png"},
-    "pv-850":                   {"real": "composite_pv850.png",        "anom_epall": "composite_pv850_anom_epall.png",        "diff": "composite_pv850_diff.png"},
-    "temperature-advection":    {"real": "composite_advT850.png",      "anom_epall": "composite_advT850_anom_epall.png",      "diff": "composite_advT850_diff.png"},
-    "moisture-flux-divergence": {"real": "composite_moisture_flux.png",                                                        "diff": "composite_moisture_flux_diff.png"},
-    "slp":                      {"real": "composite_slp.png",          "anom_epall": "composite_slp_anom_epall.png",          "diff": "composite_slp_diff.png"},
-    "rk-criterion":             {"real": "composite_rk_criterion.png",                                                           "diff": "composite_rk_criterion_diff.png"},
-    # NOTE: rk-criterion has no anom_epall figure — RK is shown as total composite only.
-    # RK = β − ∂²ū/∂y² is a background-flow diagnostic, not a field expected to be
-    # differenced across energy patterns.
-    "ke-advection":             {"real": "composite_ke_advection.png", "anom_epall": "composite_ke_advection_anom_epall.png", "diff": "composite_ke_advection_diff.png"},
-    "afc":                      {"real": "composite_afc_250.png",                                                              "diff": "composite_afc_diff.png"},
-    "btcr":                     {"real": "composite_btcr.png",                                                                 "diff": "composite_btcr_diff.png"},
+    "egr":                      {"real": "composite_egr.png",                                                                  "anom_epall": "composite_egr_anom_epall.png",          "diff": "composite_egr_diff.png"},
+    "pv-200":                   {"real": "composite_pv200.png",        "anom_clim": "composite_pv200_anom.png",               "anom_epall": "composite_pv200_anom_epall.png",        "diff": "composite_pv200_diff.png"},
+    "pv-850":                   {"real": "composite_pv850.png",        "anom_clim": "composite_pv850_anom.png",               "anom_epall": "composite_pv850_anom_epall.png",        "diff": "composite_pv850_diff.png"},
+    "temperature-advection":    {"real": "composite_advT850.png",      "anom_clim": "composite_advT850_anom.png",             "anom_epall": "composite_advT850_anom_epall.png",      "diff": "composite_advT850_diff.png"},
+    "moisture-flux-divergence": {"real": "composite_moisture_flux.png","anom_clim": "composite_moisture_flux_anom.png",                                                               "diff": "composite_moisture_flux_diff.png"},
+    "slp":                      {"real": "composite_slp.png",          "anom_clim": "composite_slp_anom.png",                 "anom_epall": "composite_slp_anom_epall.png",          "diff": "composite_slp_diff.png"},
+    "rk-criterion":             {"real": "composite_rk_criterion.png",                                                                                                                 "diff": "composite_rk_criterion_diff.png"},
+    # NOTE: rk-criterion has no anom_clim or anom_epall — RK is shown as total composite only.
+    "ke-advection":             {"real": "composite_ke_advection.png", "anom_clim": "composite_ke_advection_anom.png",        "anom_epall": "composite_ke_advection_anom_epall.png", "diff": "composite_ke_advection_diff.png"},
+    "afc":                      {"real": "composite_afc_250.png",                                                                                                                      "diff": "composite_afc_diff.png"},
+    # NOTE: afc has no anom_clim (it is already a clim anomaly) and no anom_epall.
+    "btcr":                     {"real": "composite_btcr.png",                                                                                                                         "diff": "composite_btcr_diff.png"},
+    # NOTE: btcr has no anom_clim (same reason as afc) and no anom_epall.
 }
 
 
@@ -100,6 +110,7 @@ def build_figures_manifest():
 
     Schema per diagnostic:
       "real"       → 2×2 panel (EP1/EP2/EP3/EPALL total field composite)
+      "anom_clim"  → climatology-relative anomaly (X' = X − X̄_clim), only where it exists
       "anom_epall" → 1×3 panel (EP1−EPALL | EP2−EPALL | EP3−EPALL), only where it exists
       "diff"       → legacy EP1−EP2 single-panel difference (kept for backward compat)
     """
@@ -115,6 +126,15 @@ def build_figures_manifest():
             "exists": real_path.exists(),
             "api_path": f"figures/ep_structure/{real_base}",
         }
+
+        # Climatology-relative anomaly figure (X' = X − X̄_clim, 1991–2020)
+        anom_clim_name = filenames.get("anom_clim")
+        if anom_clim_name:
+            anom_clim_path = FIGURES_DIR / anom_clim_name
+            manifest[diag_id]["anom_clim"] = {
+                "exists": anom_clim_path.exists(),
+                "api_path": f"figures/ep_structure/{anom_clim_name}",
+            }
 
         # EPALL-relative anomaly figure (1×3 panel: EP1−EPALL | EP2−EPALL | EP3−EPALL)
         anom_epall_name = filenames.get("anom_epall")

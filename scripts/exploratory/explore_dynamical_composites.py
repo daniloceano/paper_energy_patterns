@@ -634,12 +634,18 @@ def create_figure_epall_anom(datasets):
     Row 1: (PV@200) − EPALL + EGR contours + (u,v)_250 − EPALL wind vectors
     Row 2: (PV@850) − EPALL + (T-adv) − EPALL contours + (u,v)_850 − EPALL wind
     Row 3: AFC total (shading) + (u,v)_250 − EPALL wind
-           + (RK criterion) − EPALL sign-reversal hatching
+           + RK sign-reversal hatching (total RK, not EPALL-relative)
            + (KE-adv) − EPALL contours
 
-    Note: AFC does not have an EPALL-relative version (uses climatological decomp
-    by construction; Orlanski & Katzfey 1991). Total AFC is shown for context.
-    EPALL column is omitted because it is identically zero by construction.
+    Notes:
+    - AFC: no EPALL-relative version (uses climatological decomp by construction;
+      Orlanski & Katzfey 1991). Total AFC shown for context.
+    - RK criterion: shown as total composite only. RK = β − ∂²ū/∂y² is a
+      background-flow diagnostic; differencing against EPALL yields near-zero
+      values dominated by sampling noise in the time-mean estimate. Total RK
+      hatching shows where the large-scale meridional PV gradient supports
+      barotropic instability for each EP composite.
+    - EPALL column is omitted because it is identically zero by construction.
     """
     print("  Creating EPALL-relative anomaly figure (3 columns)...")
 
@@ -649,7 +655,8 @@ def create_figure_epall_anom(datasets):
         'adv_T_850_minus_epall', 'msl', 'afc_250',
         'u_250_minus_epall', 'v_250_minus_epall',
         'u_850_minus_epall', 'v_850_minus_epall',
-        'rk_criterion_250_minus_epall', 'ke_adv_250_minus_epall',
+        'rk_criterion_250',  # total RK — intentionally NOT minus_epall (background-flow diagnostic)
+        'ke_adv_250_minus_epall',
     ]
     eps = ['EP1', 'EP2', 'EP3']
 
@@ -677,7 +684,7 @@ def create_figure_epall_anom(datasets):
             v_250_mep     = ds['v_250_minus_epall'].values,
             u_850_mep     = ds['u_850_minus_epall'].values,
             v_850_mep     = ds['v_850_minus_epall'].values,
-            rk_mep        = ds['rk_criterion_250_minus_epall'].values,
+            rk_criterion  = ds['rk_criterion_250'].values,  # total RK — not EPALL-relative
             x=x, y=y, x_2d=x_2d, y_2d=y_2d,
             n_cases=int(ds.attrs.get('n_cases', 0)),
         )
@@ -763,8 +770,8 @@ def create_figure_epall_anom(datasets):
                          levels=levels_afc, cmap=CMAP_AFC, extend='both')
         if col == 0:
             im_r2 = im
-        # RK hatching on the EPALL-relative RK field
-        rk_mask = meridional_sign_reversal_mask(d['rk_mep'], RK_HATCH_HALF_WINDOW)
+        # RK hatching on the total RK field (not EPALL-relative — background-flow diagnostic)
+        rk_mask = meridional_sign_reversal_mask(d['rk_criterion'], RK_HATCH_HALF_WINDOW)
         with mpl.rc_context({'hatch.color': HATCH_COLOR, 'hatch.linewidth': HATCH_LW}):
             ax.contourf(d['x_2d'], d['y_2d'], rk_mask.astype(float),
                         levels=[0.5, 1.5], colors=['none'], hatches=[HATCH_PATTERN], zorder=6)

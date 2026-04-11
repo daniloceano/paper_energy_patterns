@@ -52,6 +52,7 @@ interface FigureEntry {
 interface FiguresManifest {
   [diagId: string]: {
     real: FigureEntry
+    anom_clim?: FigureEntry
     anom_epall?: FigureEntry
     diff?: FigureEntry
   }

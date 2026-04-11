@@ -18,6 +18,10 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_pv200.png"
     },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_pv200_anom.png"
+    },
     "anom_epall": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_pv200_anom_epall.png"
@@ -31,6 +35,10 @@
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_pv850.png"
+    },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_pv850_anom.png"
     },
     "anom_epall": {
       "exists": true,
@@ -46,6 +54,10 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_advT850.png"
     },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_advT850_anom.png"
+    },
     "anom_epall": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_advT850_anom_epall.png"
@@ -60,6 +72,10 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_moisture_flux.png"
     },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_moisture_flux_anom.png"
+    },
     "diff": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_moisture_flux_diff.png"
@@ -69,6 +85,10 @@
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_slp.png"
+    },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_slp_anom.png"
     },
     "anom_epall": {
       "exists": true,
@@ -93,6 +113,10 @@
     "real": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_ke_advection.png"
+    },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_ke_advection_anom.png"
     },
     "anom_epall": {
       "exists": true,

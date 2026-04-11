@@ -866,7 +866,11 @@ def _epall_anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_n
         logging.warning(f"    ⚠  {anom_key} not in composites — skipping EPALL-relative anomaly figure")
         return
 
-    fig, axes = _create_multipanel_fig(len(eps), panel_width=6, panel_height=6)
+    n_eps = len(eps)
+    panel_width = 6
+    panel_height = 6
+    fig, axes_arr = plt.subplots(1, n_eps, figsize=(panel_width * n_eps, panel_height))
+    axes = list(axes_arr) if n_eps > 1 else [axes_arr]
 
     # Symmetric colour limits from 98th-percentile of |anomaly| across all EPs
     absmax = 0.0
@@ -896,7 +900,7 @@ def _epall_anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_n
             )
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} − EPALL  [n={n}]", ylabel=(i % 2 == 0))
+        _decorate_ax(ax, f"{ep} − EPALL  [n={n}]", ylabel=(i == 0))
         _add_cbar(fig, ax, im, unit_label)
 
     fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)

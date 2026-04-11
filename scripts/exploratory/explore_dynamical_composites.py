@@ -1,30 +1,43 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Exploratory Dynamical Composites: Total and Anomaly Configurations
+Exploratory Dynamical Composites: Total, Climatology-Relative Anomaly,
+and EPALL-Relative Anomaly configurations.
 
-This script generates exploratory 3×2 EP1 vs EP2 dynamical composite figures
-for all three composite modes. Two figure variants are produced per mode:
+Three figures are generated from the canonical central-timestep composites
+(precomputed_composites_ep*.nc):
 
-FIGURE 1 — TOTAL FIELDS:
-  Row 1: PV @ 200 hPa (shading) + EGR (contours) + 250 hPa total wind (vectors)
-  Row 2: PV @ 850 hPa (shading) + T-adv (contours) + 850 hPa total wind (vectors)
-  Row 3: AFC (shading) + 250 hPa wind (vectors) + RK sign-reversal hatching
-         + KE advection contours (green positive, yellow negative)
+FIGURE 1 — TOTAL FIELDS  (4 columns: EP1 | EP2 | EP3 | EPALL)
+  Row 1: PV @ 200 hPa (shading) + EGR (contours ≥ 0.5 day⁻¹) + 250 hPa total wind
+  Row 2: PV @ 850 hPa (shading) + T-adv (contours) + 850 hPa total wind + SLP
+  Row 3: AFC @ 250 hPa (shading) + 250 hPa wind (≥ 30 m/s) + RK sign-reversal
+         hatching + KE-adv contours
 
-FIGURE 2 — ANOMALY FIELDS:
-  Row 1: PV anomaly @ 200 hPa + EGR + 250 hPa anomaly wind
-  Row 2: PV anomaly @ 850 hPa + T-adv anomaly + 850 hPa anomaly wind
-  Row 3: AFC + 250 hPa anomaly wind + RK hatching + KE-adv anomaly contours
+FIGURE 2 — CLIMATOLOGY-RELATIVE ANOMALY FIELDS  (4 columns: EP1 | EP2 | EP3 | EPALL)
+  Anomaly = departure from the 1991–2020 ERA5 monthly climatology.
+  Row 1: PV' @ 200 hPa (shading) + EGR (contours) + 250 hPa anomaly wind (u', v')
+  Row 2: PV' @ 850 hPa (shading) + T-adv anomaly (contours) + 850 hPa anomaly wind
+  Row 3: AFC (total, shading) + 250 hPa anomaly wind + RK hatching + KE-adv anomaly
 
-Composite modes processed:
-  - full_intensification : mean over all intensification timesteps
-  - central_time         : central timestep only
-  - intense_10           : top 10 most intense cyclones
+FIGURE 3 — EPALL-RELATIVE ANOMALY FIELDS  (3 columns: EP1−EPALL | EP2−EPALL | EP3−EPALL)
+  Anomaly = departure from the EPALL composite (all 2730 cyclones combined).
+  This is different from the climatological anomaly: here the reference is the
+  mean of ALL intensifying cyclones, not the multi-year monthly mean.
+  Row 1: PV − EPALL @ 200 hPa + EGR contours + 250 hPa EPALL-relative wind
+  Row 2: PV − EPALL @ 850 hPa + T-adv − EPALL contours + 850 hPa EPALL-relative wind
+  Row 3: AFC (total) + EPALL-relative 250 hPa wind + RK − EPALL hatching
+         + KE-adv − EPALL contours
+
+Input:
+  data/era5_ep_structure/precomputed_composites_ep1.nc   (n=332)
+  data/era5_ep_structure/precomputed_composites_ep2.nc   (n=979)
+  data/era5_ep_structure/precomputed_composites_ep3.nc   (n=2397 - check)
+  data/era5_ep_structure/precomputed_composites_epall.nc (n=2730)
 
 Output:
-  figures/exploratory/dynamical_composites_total_{mode}.png
-  figures/exploratory/dynamical_composites_anom_{mode}.png
+  figures/exploratory/dynamical_composites_total.png
+  figures/exploratory/dynamical_composites_anom.png
+  figures/exploratory/dynamical_composites_epall_anom.png
 
 Author: Danilo Couto de Souza
 Date: April 2026
@@ -40,8 +53,6 @@ import warnings
 warnings.filterwarnings('ignore')
 
 import numpy as np
-import pandas as pd
-import xarray as xr
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -52,7 +63,6 @@ from matplotlib.patches import Rectangle
 # ============================================================================
 
 DPI = 300
-FIGSIZE = (9, 12)
 
 # Input data
 DATA_DIR = BASE_DIR / 'data' / 'era5_ep_structure'
@@ -61,25 +71,19 @@ DATA_DIR = BASE_DIR / 'data' / 'era5_ep_structure'
 FIGURES_DIR = BASE_DIR / 'figures' / 'exploratory'
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-RESULTS_DIR = BASE_DIR / 'results' / 'exploratory'
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-
-# Composite modes to process
-COMPOSITE_MODES = ['full_intensification', 'central_time', 'intense_10']
-
 # ── Unit conversions ─────────────────────────────────────────────────────────
 PV_SCALE    = 1e6      # K m² kg⁻¹ s⁻¹ (SI)  →  PVU
 ADV_T_SCALE = 3600.0   # K s⁻¹               →  K h⁻¹
 SLP_SCALE   = 1e-2     # Pa                  →  hPa
 
-# ── EGR contour levels [day⁻¹] — only ≥ 0.5 day⁻¹ ────────────────────────────
+# ── EGR contour levels [day⁻¹] — only ≥ 0.5 day⁻¹ ──────────────────────────
 EGR_CONTOUR_LEVELS = np.array([0.50, 0.55, 0.60, 0.65])
 
-# ── Temperature advection contour levels [K h⁻¹] ─────────────────────────────
+# ── Temperature advection contour levels [K h⁻¹] ────────────────────────────
 TADV_NEG_LEVELS = np.array([-0.120, -0.080, -0.040])  # cold advection
 TADV_POS_LEVELS = np.array([0.040,  0.080,  0.120])   # warm advection
 
-# ── SLP contour interval [hPa] ───────────────────────────────────────────────
+# ── SLP contour interval [hPa] ──────────────────────────────────────────────
 SLP_INTERVAL = 2.0
 
 # ── Wind vectors ─────────────────────────────────────────────────────────────
@@ -100,15 +104,15 @@ CMAP_PV  = 'RdBu_r'
 CMAP_AFC = 'RdBu_r'
 
 # ── Font sizes ───────────────────────────────────────────────────────────────
-PANEL_TITLESIZE     = 12
-TICK_LABELSIZE      = 9
-CBAR_LABELSIZE      = 9
-ANNOTATION_FONTSIZE = 12
+PANEL_TITLESIZE     = 11
+TICK_LABELSIZE      = 8
+CBAR_LABELSIZE      = 8
+ANNOTATION_FONTSIZE = 11
 
 # Apply globally
 plt.rcParams.update({
-    'font.size':         11,
-    'axes.labelsize':    11,
+    'font.size':         10,
+    'axes.labelsize':    10,
     'axes.titlesize':    PANEL_TITLESIZE,
     'xtick.labelsize':   TICK_LABELSIZE,
     'ytick.labelsize':   TICK_LABELSIZE,
@@ -125,15 +129,16 @@ plt.rcParams.update({
 # DATA LOADING
 # ============================================================================
 
-def load_composites(mode):
-    """Load precomputed EP1 and EP2 composites for a given mode."""
+def load_composites():
+    """Load canonical central-timestep composites for EP1, EP2, EP3, EPALL."""
     datasets = {}
-    for ep in ['ep1', 'ep2']:
-        f = DATA_DIR / f'precomputed_composites_{ep}_{mode}.nc'
+    for ep in ['ep1', 'ep2', 'ep3', 'epall']:
+        f = DATA_DIR / f'precomputed_composites_{ep}.nc'
         if not f.exists():
             print(f"  ❌ File not found: {f}")
-            print(f"     Run step3_precompute_composites.py --mode {mode} first.")
+            print(f"     Run step3_precompute_composites.py first.")
             return None
+        import xarray as xr
         datasets[ep.upper()] = xr.open_dataset(f)
         mb = f.stat().st_size / 1024 ** 2
         print(f"    Loaded {ep.upper()}: {f.name} ({mb:.1f} MB)")
@@ -145,10 +150,7 @@ def load_composites(mode):
 # ============================================================================
 
 def meridional_sign_reversal_mask(field, half_window=1):
-    """
-    Boolean mask: True where the field has a meridional sign reversal within
-    a ±half_window-point neighbourhood along the y (latitude) axis.
-    """
+    """Boolean mask: True where the field has a meridional sign reversal."""
     ny, nx = field.shape
     mask = np.zeros((ny, nx), dtype=bool)
     for i in range(ny):
@@ -194,7 +196,8 @@ def add_slp_contours(ax, x_2d, y_2d, msl_hpa):
                    colors='k', linewidths=0.45, alpha=0.40, zorder=4)
 
 
-def add_wind_vectors(ax, x_2d, y_2d, u, v, scale, key_u, add_key=False, speed_threshold=None):
+def add_wind_vectors(ax, x_2d, y_2d, u, v, scale, key_u,
+                     add_key=False, speed_threshold=None):
     """Subsampled wind vector overlay."""
     sk = VECTOR_SKIP
     u_plot = u[::sk, ::sk].copy()
@@ -216,7 +219,7 @@ def add_wind_vectors(ax, x_2d, y_2d, u, v, scale, key_u, add_key=False, speed_th
     if add_key:
         ax.quiverkey(Q, X=0.97, Y=0.95, U=key_u,
                      label=f'{key_u:.0f} m s$^{{-1}}$',
-                     labelpos='W', fontproperties={'size': 10}, zorder=12)
+                     labelpos='W', fontproperties={'size': 9}, zorder=12)
     return Q
 
 
@@ -230,7 +233,7 @@ def add_lec_box(ax):
 
 def mark_center(ax):
     """Cyclone-centre marker at (0, 0)."""
-    ax.plot(0, 0, 'k*', markersize=12,
+    ax.plot(0, 0, 'k*', markersize=10,
             markeredgecolor='white', markeredgewidth=1.2, zorder=10)
 
 
@@ -252,563 +255,544 @@ def add_colorbar(fig, gs_cell, im, label):
     return cb
 
 
-# ============================================================================
-# FIELD STATISTICS: 15×15 DOMAIN AND BOUNDARY MEANS
-# ============================================================================
-
-def compute_15x15_statistics(field_2d, x, y):
-    """
-    Compute mean statistics for the 15×15 domain centered at (0,0).
-
-    Returns dict with:
-      - domain_mean: mean over the entire 15×15 box
-      - south_mean : mean along the southern boundary (y = -7.5)
-      - north_mean : mean along the northern boundary (y = +7.5)
-      - west_mean  : mean along the western boundary  (x = -7.5)
-      - east_mean  : mean along the eastern boundary  (x = +7.5)
-    """
-    # Find indices within the 15×15 box: x in [-7.5, 7.5], y in [-7.5, 7.5]
-    x_mask = (x >= -7.5) & (x <= 7.5)
-    y_mask = (y >= -7.5) & (y <= 7.5)
-
-    # Subset field to the 15×15 domain
-    field_15x15 = field_2d[np.ix_(y_mask, x_mask)]
-    x_15 = x[x_mask]
-    y_15 = y[y_mask]
-
-    # Domain mean
-    domain_mean = float(np.nanmean(field_15x15))
-
-    # Boundary indices (closest to ±7.5)
-    i_south = np.argmin(np.abs(y_15 - (-7.5)))
-    i_north = np.argmin(np.abs(y_15 - 7.5))
-    j_west  = np.argmin(np.abs(x_15 - (-7.5)))
-    j_east  = np.argmin(np.abs(x_15 - 7.5))
-
-    # Boundary means
-    south_mean = float(np.nanmean(field_15x15[i_south, :]))
-    north_mean = float(np.nanmean(field_15x15[i_north, :]))
-    west_mean  = float(np.nanmean(field_15x15[:, j_west]))
-    east_mean  = float(np.nanmean(field_15x15[:, j_east]))
-
-    return {
-        'domain_mean': domain_mean,
-        'south_mean':  south_mean,
-        'north_mean':  north_mean,
-        'west_mean':   west_mean,
-        'east_mean':   east_mean,
-    }
+def _make_4col_gridspec(fig):
+    """3 rows × 5 columns GridSpec for 4-panel figures (4 data + 1 colorbar)."""
+    return gridspec.GridSpec(
+        3, 5,
+        width_ratios=[1, 1, 1, 1, 0.065],
+        hspace=0.06, wspace=0.06,
+        left=0.04, right=0.95, top=0.92, bottom=0.04,
+    )
 
 
-def export_field_statistics(ep_data, mode, field_type):
-    """
-    Export 15×15 domain statistics for all fields.
+def _make_3col_gridspec(fig):
+    """3 rows × 4 columns GridSpec for 3-panel figures (3 data + 1 colorbar)."""
+    return gridspec.GridSpec(
+        3, 4,
+        width_ratios=[1, 1, 1, 0.065],
+        hspace=0.06, wspace=0.07,
+        left=0.05, right=0.95, top=0.92, bottom=0.04,
+    )
 
-    Parameters
-    ----------
-    ep_data : dict
-        Dictionary with EP1 and EP2 data arrays and coordinates.
-    mode : str
-        Composite mode name.
-    field_type : str
-        Either 'total' or 'anom'.
 
-    Returns
-    -------
-    df : pd.DataFrame
-        Statistics table.
-    """
-    if field_type == 'total':
-        fields = {
-            'PV_200 (PVU)':       'pv_200',
-            'PV_850 (PVU)':       'pv_850',
-            'EGR (day⁻¹)':        'egr',
-            'T-adv_850 (K/h)':    'adv_T_850',
-            'MSL (hPa)':          'msl_hpa',
-            'AFC_250 (W/m²)':     'afc_250',
-            'KE-adv_250 (W/m²)':  'ke_adv_250',
-            'u_250 (m/s)':        'u_250',
-            'v_250 (m/s)':        'v_250',
-            'u_850 (m/s)':        'u_850',
-            'v_850 (m/s)':        'v_850',
-        }
-    else:  # anom
-        fields = {
-            'PV_200_anom (PVU)':      'pv_200_anom',
-            'PV_850_anom (PVU)':      'pv_850_anom',
-            'EGR (day⁻¹)':            'egr',
-            'T-adv_850_anom (K/h)':   'adv_T_850_anom',
-            'MSL (hPa)':              'msl_hpa',
-            'AFC_250 (W/m²)':         'afc_250',
-            'KE-adv_250_anom (W/m²)': 'ke_adv_250_anom',
-            "u'_250 (m/s)":           'u_250_prime',
-            "v'_250 (m/s)":           'v_250_prime',
-            "u'_850 (m/s)":           'u_850_prime',
-            "v'_850 (m/s)":           'v_850_prime',
-        }
-
-    rows = []
-    for field_label, field_key in fields.items():
-        for ep in ['EP1', 'EP2']:
-            d = ep_data[ep]
-            if field_key not in d:
-                continue
-            stats = compute_15x15_statistics(d[field_key], d['x'], d['y'])
-            rows.append({
-                'Field':       field_label,
-                'EP':          ep,
-                'Domain Mean': stats['domain_mean'],
-                'South':       stats['south_mean'],
-                'North':       stats['north_mean'],
-                'West':        stats['west_mean'],
-                'East':        stats['east_mean'],
-            })
-
-    df = pd.DataFrame(rows)
-
-    # Save to CSV
-    out_csv = RESULTS_DIR / f"dynamical_composites_{field_type}_{mode}_15x15_stats.csv"
-    df.to_csv(out_csv, index=False, float_format='%.6f')
-    print(f"      ✓ Exported: {out_csv.name}")
-
-    return df
+PANEL_LABELS_4 = [
+    ['(a)', '(b)', '(c)', '(d)'],
+    ['(e)', '(f)', '(g)', '(h)'],
+    ['(i)', '(j)', '(k)', '(l)'],
+]
+PANEL_LABELS_3 = [
+    ['(a)', '(b)', '(c)'],
+    ['(d)', '(e)', '(f)'],
+    ['(g)', '(h)', '(i)'],
+]
 
 
 # ============================================================================
-# FIGURE 1: TOTAL FIELDS
+# FIGURE 1: TOTAL FIELDS — 4 columns (EP1, EP2, EP3, EPALL)
 # ============================================================================
 
-def create_figure_total(datasets, mode):
+def create_figure_total(datasets):
     """
-    3×2 EP1 vs EP2 Dynamical Composites — Total Fields
+    3×4 Dynamical Composites — Total Fields (EP1 | EP2 | EP3 | EPALL)
 
-    Row 1: PV @ 200 hPa (shading) + EGR (contours) + 250 hPa total wind (vectors)
-    Row 2: PV @ 850 hPa (shading) + T-adv (contours) + 850 hPa total wind (vectors)
-    Row 3: AFC (shading) + 250 hPa wind (vectors) + RK hatching + KE-adv contours
+    Row 1: PV @ 200 hPa (shading) + EGR contours (≥ 0.5 day⁻¹) + 250 hPa total wind
+    Row 2: PV @ 850 hPa (shading) + T-adv contours + 850 hPa total wind + SLP
+    Row 3: AFC (shading) + 250 hPa wind (≥ 30 m/s) + RK sign-reversal hatching
+           + KE-adv contours (forestgreen/gold)
+
+    EPALL column shows the all-cyclone composite (reference population).
     """
-    print(f"    Creating total-fields figure for mode={mode}...")
+    print("  Creating total-fields figure (4 columns)...")
 
-    # Check required variables
-    required_total = ['pv_200', 'pv_850', 'egr', 'adv_T_850', 'msl', 'afc_250',
-                      'u_250', 'v_250', 'u_850', 'v_850', 'rk_criterion_250', 'ke_adv_250']
-    for ep in ['EP1', 'EP2']:
-        missing = [v for v in required_total if v not in datasets[ep]]
+    required = ['pv_200', 'pv_850', 'egr', 'adv_T_850', 'msl', 'afc_250',
+                'u_250', 'v_250', 'u_850', 'v_850', 'rk_criterion_250', 'ke_adv_250']
+    eps = ['EP1', 'EP2', 'EP3', 'EPALL']
+
+    for ep in eps:
+        missing = [v for v in required if v not in datasets[ep]]
         if missing:
-            print(f"      ⚠ {ep} missing variables: {missing} — skipping total figure")
-            return None
+            print(f"    ⚠ {ep} missing: {missing} — skipping total figure")
+            return
 
-    eps = ['EP1', 'EP2']
-
-    # Prepare data dict
+    # Prepare data
     ep_data = {}
     for ep in eps:
         ds = datasets[ep]
         x = ds.x.values
         y = ds.y.values
         x_2d, y_2d = np.meshgrid(x, y)
+        ep_data[ep] = dict(
+            pv_200      = ds['pv_200'].values * PV_SCALE,
+            pv_850      = ds['pv_850'].values * PV_SCALE,
+            egr         = ds['egr'].values,
+            adv_T_850   = ds['adv_T_850'].values * ADV_T_SCALE,
+            msl_hpa     = ds['msl'].values * SLP_SCALE,
+            afc_250     = ds['afc_250'].values,
+            ke_adv_250  = ds['ke_adv_250'].values,
+            u_250       = ds['u_250'].values,
+            v_250       = ds['v_250'].values,
+            u_850       = ds['u_850'].values,
+            v_850       = ds['v_850'].values,
+            rk_criterion= ds['rk_criterion_250'].values,
+            x=x, y=y, x_2d=x_2d, y_2d=y_2d,
+            n_cases=int(ds.attrs.get('n_cases', 0)),
+        )
 
-        ep_data[ep] = {
-            'pv_200'      : ds['pv_200'].values * PV_SCALE,
-            'pv_850'      : ds['pv_850'].values * PV_SCALE,
-            'egr'         : ds['egr'].values,
-            'adv_T_850'   : ds['adv_T_850'].values * ADV_T_SCALE,
-            'msl_hpa'     : ds['msl'].values * SLP_SCALE,
-            'afc_250'     : ds['afc_250'].values,
-            'ke_adv_250'  : ds['ke_adv_250'].values,
-            'u_250'       : ds['u_250'].values,
-            'v_250'       : ds['v_250'].values,
-            'u_850'       : ds['u_850'].values,
-            'v_850'       : ds['v_850'].values,
-            'rk_criterion': ds['rk_criterion_250'].values,
-            'x': x, 'y': y, 'x_2d': x_2d, 'y_2d': y_2d,
-            'n_cases': int(ds.attrs.get('n_cases', 0)),
-        }
+    # Shared colormap limits (across all 4 EPs)
+    def _lim(key, pct=98):
+        return np.nanpercentile(np.abs(
+            np.concatenate([ep_data[ep][key].ravel() for ep in eps])), pct)
 
-    # Global colormap limits
-    def _lim(key, percentile=98):
-        vals = np.concatenate([ep_data[ep][key].ravel() for ep in eps])
-        return np.nanpercentile(np.abs(vals), percentile)
-
-    lim_pv200 = _lim('pv_200')
-    lim_pv850 = _lim('pv_850')
-    lim_afc   = _lim('afc_250')
-    lim_keadv = _lim('ke_adv_250')
-
-    # For PV total, use actual range (not symmetric)
     all_pv200 = np.concatenate([ep_data[ep]['pv_200'].ravel() for ep in eps])
     all_pv850 = np.concatenate([ep_data[ep]['pv_850'].ravel() for ep in eps])
-    levels_pv200 = np.linspace(np.nanpercentile(all_pv200, 2), np.nanpercentile(all_pv200, 98), 21)
-    levels_pv850 = np.linspace(np.nanpercentile(all_pv850, 2), np.nanpercentile(all_pv850, 98), 21)
-    levels_afc   = np.linspace(-lim_afc, lim_afc, 21)
+    levels_pv200 = np.linspace(np.nanpercentile(all_pv200, 2),
+                               np.nanpercentile(all_pv200, 98), 21)
+    levels_pv850 = np.linspace(np.nanpercentile(all_pv850, 2),
+                               np.nanpercentile(all_pv850, 98), 21)
+    lim_afc  = _lim('afc_250')
+    lim_keadv= _lim('ke_adv_250')
+    levels_afc = np.linspace(-lim_afc, lim_afc, 21)
+    keadv_neg = np.array([-lim_keadv*0.6, -lim_keadv*0.4, -lim_keadv*0.2])
+    keadv_pos = np.array([ lim_keadv*0.2,  lim_keadv*0.4,  lim_keadv*0.6])
 
-    # KE advection contour levels
-    keadv_neg_levels = np.array([-lim_keadv * 0.6, -lim_keadv * 0.4, -lim_keadv * 0.2])
-    keadv_pos_levels = np.array([lim_keadv * 0.2, lim_keadv * 0.4, lim_keadv * 0.6])
+    fig = plt.figure(figsize=(20, 13))
+    gs = _make_4col_gridspec(fig)
 
-    # Create figure
-    fig = plt.figure(figsize=FIGSIZE)
-    gs = gridspec.GridSpec(
-        3, 3,
-        width_ratios=[1, 1, 0.055],
-        hspace=0.07, wspace=0.07,
-        left=0.05, right=0.94, top=0.92, bottom=0.04,
-    )
-
-    panel_labels_grid = [['(a)', '(b)'], ['(c)', '(d)'], ['(e)', '(f)']]
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # ROW 0 — PV @ 200 hPa + EGR + 250 hPa wind
-    # ─────────────────────────────────────────────────────────────────────────
+    # ── ROW 0: PV@200 + EGR + 250 wind ───────────────────────────────────────
     im_r0 = None
     for col, ep in enumerate(eps):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[0, col])
-
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_200'],
                          levels=levels_pv200, cmap='RdYlBu_r', extend='both')
         if col == 0:
             im_r0 = im
-
-        # EGR contours ≥ 0.5 day⁻¹
         egr_valid = EGR_CONTOUR_LEVELS[
             (EGR_CONTOUR_LEVELS >= np.nanmin(d['egr'])) &
-            (EGR_CONTOUR_LEVELS <= np.nanmax(d['egr']))
-        ]
+            (EGR_CONTOUR_LEVELS <= np.nanmax(d['egr']))]
         if len(egr_valid):
-            cs_egr = ax.contour(d['x_2d'], d['y_2d'], d['egr'],
-                       levels=egr_valid, colors='k', linewidths=1.1, alpha=0.85, zorder=5)
-            ax.clabel(cs_egr, inline=True, fontsize=8, fmt='%.2f')
-
-        # 250 hPa wind vectors (total)
+            cs = ax.contour(d['x_2d'], d['y_2d'], d['egr'],
+                            levels=egr_valid, colors='k', linewidths=1.0, alpha=0.85, zorder=5)
+            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250'], d['v_250'],
                          scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250,
-                         add_key=(col == 1), speed_threshold=25.0)
-
-        add_lec_box(ax)
-        mark_center(ax)
+                         add_key=(col == 3), speed_threshold=25.0)
+        add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
-        panel_label(ax, panel_labels_grid[0][col])
-        ax.set_title(f"{ep} (n={d['n_cases']})", fontsize=PANEL_TITLESIZE, fontweight='bold', pad=4)
+        panel_label(ax, PANEL_LABELS_4[0][col])
+        col_title = f"{ep} (n={d['n_cases']})"
+        if ep == 'EPALL':
+            col_title += '\n[all cyclones]'
+        ax.set_title(col_title, fontsize=PANEL_TITLESIZE, fontweight='bold', pad=3)
+    add_colorbar(fig, gs[0, 4], im_r0, r"PV$_{200}$ (PVU)")
 
-    add_colorbar(fig, gs[0, 2], im_r0, r"PV$_{200}$ (PVU)")
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # ROW 1 — PV @ 850 hPa + T-adv + 850 hPa wind
-    # ─────────────────────────────────────────────────────────────────────────
+    # ── ROW 1: PV@850 + T-adv + 850 wind + SLP ───────────────────────────────
     im_r1 = None
     for col, ep in enumerate(eps):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[1, col])
-
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_850'],
                          levels=levels_pv850, cmap='RdYlBu_r', extend='both')
         if col == 0:
             im_r1 = im
-
         tadv = d['adv_T_850']
-
-        # Cold-advection contours (negative): dashed blue
-        neg_valid = TADV_NEG_LEVELS[TADV_NEG_LEVELS >= np.nanmin(tadv)]
-        if len(neg_valid):
-            ax.contour(d['x_2d'], d['y_2d'], tadv, levels=neg_valid,
-                       colors='steelblue', linewidths=1.8, linestyles='dashed', alpha=0.9, zorder=5)
-
-        # Warm-advection contours (positive): solid red
-        pos_valid = TADV_POS_LEVELS[TADV_POS_LEVELS <= np.nanmax(tadv)]
-        if len(pos_valid):
-            ax.contour(d['x_2d'], d['y_2d'], tadv, levels=pos_valid,
-                       colors='firebrick', linewidths=1.8, linestyles='solid', alpha=0.9, zorder=5)
-
-        # 850 hPa wind vectors (total)
+        neg_v = TADV_NEG_LEVELS[TADV_NEG_LEVELS >= np.nanmin(tadv)]
+        pos_v = TADV_POS_LEVELS[TADV_POS_LEVELS <= np.nanmax(tadv)]
+        if len(neg_v):
+            ax.contour(d['x_2d'], d['y_2d'], tadv, levels=neg_v,
+                       colors='steelblue', linewidths=1.6, linestyles='dashed', alpha=0.9, zorder=5)
+        if len(pos_v):
+            ax.contour(d['x_2d'], d['y_2d'], tadv, levels=pos_v,
+                       colors='firebrick', linewidths=1.6, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_850'], d['v_850'],
-                         scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850,
-                         add_key=(col == 1))
-
+                         scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850, add_key=(col == 3))
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
-        add_lec_box(ax)
-        mark_center(ax)
+        add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
-        panel_label(ax, panel_labels_grid[1][col])
+        panel_label(ax, PANEL_LABELS_4[1][col])
+    add_colorbar(fig, gs[1, 4], im_r1, r"PV$_{850}$ (PVU)")
 
-    add_colorbar(fig, gs[1, 2], im_r1, r"PV$_{850}$ (PVU)")
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # ROW 2 — AFC + 250 hPa wind + RK hatching + KE-adv contours
-    # ─────────────────────────────────────────────────────────────────────────
+    # ── ROW 2: AFC + 250 wind + RK hatching + KE-adv ─────────────────────────
     im_r2 = None
     for col, ep in enumerate(eps):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[2, col])
-
         im = ax.contourf(d['x_2d'], d['y_2d'], d['afc_250'],
                          levels=levels_afc, cmap=CMAP_AFC, extend='both')
         if col == 0:
             im_r2 = im
-
-        # RK meridional sign-reversal hatching
-        rk_mask = meridional_sign_reversal_mask(d['rk_criterion'], half_window=RK_HATCH_HALF_WINDOW)
-        hatch_field = rk_mask.astype(float)
+        rk_mask = meridional_sign_reversal_mask(d['rk_criterion'], RK_HATCH_HALF_WINDOW)
         with mpl.rc_context({'hatch.color': HATCH_COLOR, 'hatch.linewidth': HATCH_LW}):
-            ax.contourf(d['x_2d'], d['y_2d'], hatch_field,
+            ax.contourf(d['x_2d'], d['y_2d'], rk_mask.astype(float),
                         levels=[0.5, 1.5], colors=['none'], hatches=[HATCH_PATTERN], zorder=6)
-
-        # KE advection contours: green positive, yellow negative
-        ke_adv = d['ke_adv_250']
-        neg_keadv_valid = keadv_neg_levels[keadv_neg_levels >= np.nanmin(ke_adv)]
-        if len(neg_keadv_valid):
-            ax.contour(d['x_2d'], d['y_2d'], ke_adv, levels=neg_keadv_valid,
-                       colors='gold', linewidths=1.6, linestyles='dashed', alpha=0.9, zorder=5)
-
-        pos_keadv_valid = keadv_pos_levels[keadv_pos_levels <= np.nanmax(ke_adv)]
-        if len(pos_keadv_valid):
-            ax.contour(d['x_2d'], d['y_2d'], ke_adv, levels=pos_keadv_valid,
-                       colors='forestgreen', linewidths=1.6, linestyles='solid', alpha=0.9, zorder=5)
-
-        # 250 hPa wind vectors — only where speed ≥ 30 m/s
+        ke = d['ke_adv_250']
+        neg_ke = keadv_neg[keadv_neg >= np.nanmin(ke)]
+        pos_ke = keadv_pos[keadv_pos <= np.nanmax(ke)]
+        if len(neg_ke):
+            ax.contour(d['x_2d'], d['y_2d'], ke, levels=neg_ke,
+                       colors='gold', linewidths=1.4, linestyles='dashed', alpha=0.9, zorder=5)
+        if len(pos_ke):
+            ax.contour(d['x_2d'], d['y_2d'], ke, levels=pos_ke,
+                       colors='forestgreen', linewidths=1.4, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250'], d['v_250'],
                          scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250,
-                         add_key=(col == 1), speed_threshold=30.0)
-
+                         add_key=(col == 3), speed_threshold=30.0)
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
-        add_lec_box(ax)
-        mark_center(ax)
+        add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_xlabels=True, show_ylabels=(col == 0))
-        panel_label(ax, panel_labels_grid[2][col])
+        panel_label(ax, PANEL_LABELS_4[2][col])
+    add_colorbar(fig, gs[2, 4], im_r2, r"AFC$_{250}$ (W m$^{-2}$)")
 
-    add_colorbar(fig, gs[2, 2], im_r2, r"AFC$_{250}$ (W m$^{-2}$)")
-
-    # Suptitle
-    fig.suptitle(f"Dynamical Composites — Total Fields ({mode})", fontsize=13, fontweight='bold')
-
-    # Save
-    out = FIGURES_DIR / f"dynamical_composites_total_{mode}.png"
+    fig.suptitle(
+        "Dynamical Composites — Total Fields  "
+        "(EP1 | EP2 | EP3 | EPALL)",
+        fontsize=13, fontweight='bold',
+    )
+    out = FIGURES_DIR / "dynamical_composites_total.png"
     fig.savefig(out, dpi=DPI, bbox_inches='tight')
     plt.close()
-    print(f"      ✓ {out.name}")
-
-    # Export field statistics
-    df_stats = export_field_statistics(ep_data, mode, 'total')
-    return df_stats
+    print(f"    ✓ {out.name}")
 
 
 # ============================================================================
-# FIGURE 2: ANOMALY FIELDS
+# FIGURE 2: CLIMATOLOGY-RELATIVE ANOMALY FIELDS — 4 columns
 # ============================================================================
 
-def create_figure_anom(datasets, mode):
+def create_figure_anom(datasets):
     """
-    3×2 EP1 vs EP2 Dynamical Composites — Anomaly Fields
+    3×4 Dynamical Composites — Climatology-Relative Anomaly Fields
+    (EP1 | EP2 | EP3 | EPALL)
 
-    Row 1: PV anom @ 200 hPa (shading) + EGR (contours) + 250 hPa anom wind (vectors)
-    Row 2: PV anom @ 850 hPa (shading) + T-adv anom (contours) + 850 hPa anom wind (vectors)
-    Row 3: AFC (shading) + 250 hPa anom wind (vectors) + RK hatching + KE-adv anom contours
+    Anomaly = departure from the 1991–2020 ERA5 monthly climatology.
+    Row 1: PV' @ 200 hPa + EGR + 250 hPa anomaly wind (u', v')
+    Row 2: PV' @ 850 hPa + T-adv anomaly + 850 hPa anomaly wind + SLP
+    Row 3: AFC (total, shading) + 250 hPa anomaly wind + RK hatching + KE-adv'
     """
-    print(f"    Creating anomaly-fields figure for mode={mode}...")
+    print("  Creating climatology-relative anomaly figure (4 columns)...")
 
-    # Check required variables
-    required_anom = ['pv_200_anom', 'pv_850_anom', 'egr', 'adv_T_850_anom', 'msl', 'afc_250',
-                     'u_250_prime', 'v_250_prime', 'u_850_prime', 'v_850_prime',
-                     'rk_criterion_250', 'ke_adv_250_anom']
-    for ep in ['EP1', 'EP2']:
-        missing = [v for v in required_anom if v not in datasets[ep]]
+    required = ['pv_200_anom', 'pv_850_anom', 'egr', 'adv_T_850_anom', 'msl', 'afc_250',
+                'u_250_prime', 'v_250_prime', 'u_850_prime', 'v_850_prime',
+                'rk_criterion_250', 'ke_adv_250_anom']
+    eps = ['EP1', 'EP2', 'EP3', 'EPALL']
+
+    for ep in eps:
+        missing = [v for v in required if v not in datasets[ep]]
         if missing:
-            print(f"      ⚠ {ep} missing variables: {missing} — skipping anomaly figure")
-            return None
+            print(f"    ⚠ {ep} missing: {missing} — skipping anomaly figure")
+            return
 
-    eps = ['EP1', 'EP2']
-
-    # Prepare data dict
     ep_data = {}
     for ep in eps:
         ds = datasets[ep]
         x = ds.x.values
         y = ds.y.values
         x_2d, y_2d = np.meshgrid(x, y)
+        ep_data[ep] = dict(
+            pv_200_anom     = ds['pv_200_anom'].values * PV_SCALE,
+            pv_850_anom     = ds['pv_850_anom'].values * PV_SCALE,
+            egr             = ds['egr'].values,
+            adv_T_850_anom  = ds['adv_T_850_anom'].values * ADV_T_SCALE,
+            msl_hpa         = ds['msl'].values * SLP_SCALE,
+            afc_250         = ds['afc_250'].values,
+            ke_adv_250_anom = ds['ke_adv_250_anom'].values,
+            u_250_prime     = ds['u_250_prime'].values,
+            v_250_prime     = ds['v_250_prime'].values,
+            u_850_prime     = ds['u_850_prime'].values,
+            v_850_prime     = ds['v_850_prime'].values,
+            rk_criterion    = ds['rk_criterion_250'].values,
+            x=x, y=y, x_2d=x_2d, y_2d=y_2d,
+            n_cases=int(ds.attrs.get('n_cases', 0)),
+        )
 
-        ep_data[ep] = {
-            'pv_200_anom'     : ds['pv_200_anom'].values * PV_SCALE,
-            'pv_850_anom'     : ds['pv_850_anom'].values * PV_SCALE,
-            'egr'             : ds['egr'].values,
-            'adv_T_850_anom'  : ds['adv_T_850_anom'].values * ADV_T_SCALE,
-            'msl_hpa'         : ds['msl'].values * SLP_SCALE,
-            'afc_250'         : ds['afc_250'].values,
-            'ke_adv_250_anom' : ds['ke_adv_250_anom'].values,
-            'u_250_prime'     : ds['u_250_prime'].values,
-            'v_250_prime'     : ds['v_250_prime'].values,
-            'u_850_prime'     : ds['u_850_prime'].values,
-            'v_850_prime'     : ds['v_850_prime'].values,
-            'rk_criterion'    : ds['rk_criterion_250'].values,
-            'x': x, 'y': y, 'x_2d': x_2d, 'y_2d': y_2d,
-            'n_cases': int(ds.attrs.get('n_cases', 0)),
-        }
+    def _sym_lim(key, pct=98):
+        return np.nanpercentile(np.abs(
+            np.concatenate([ep_data[ep][key].ravel() for ep in eps])), pct)
 
-    # Global symmetric colormap limits
-    def _sym_lim(key, percentile=98):
-        vals = np.concatenate([ep_data[ep][key].ravel() for ep in eps])
-        return np.nanpercentile(np.abs(vals), percentile)
+    lim_pv200 = _sym_lim('pv_200_anom')
+    lim_pv850 = _sym_lim('pv_850_anom')
+    lim_afc   = _sym_lim('afc_250')
+    lim_tadv  = _sym_lim('adv_T_850_anom')
+    lim_keadv = _sym_lim('ke_adv_250_anom')
 
-    lim_pv200_anom = _sym_lim('pv_200_anom')
-    lim_pv850_anom = _sym_lim('pv_850_anom')
-    lim_afc        = _sym_lim('afc_250')
-    lim_tadv_anom  = _sym_lim('adv_T_850_anom')
-    lim_keadv_anom = _sym_lim('ke_adv_250_anom')
+    levels_pv200 = np.linspace(-lim_pv200, lim_pv200, 21)
+    levels_pv850 = np.linspace(-lim_pv850, lim_pv850, 21)
+    levels_afc   = np.linspace(-lim_afc,   lim_afc,   21)
 
-    levels_pv200_anom = np.linspace(-lim_pv200_anom, lim_pv200_anom, 21)
-    levels_pv850_anom = np.linspace(-lim_pv850_anom, lim_pv850_anom, 21)
-    levels_afc        = np.linspace(-lim_afc, lim_afc, 21)
+    tadv_neg = np.array([-lim_tadv*0.6, -lim_tadv*0.4, -lim_tadv*0.2])
+    tadv_pos = np.array([ lim_tadv*0.2,  lim_tadv*0.4,  lim_tadv*0.6])
+    keadv_neg = np.array([-lim_keadv*0.6, -lim_keadv*0.4, -lim_keadv*0.2])
+    keadv_pos = np.array([ lim_keadv*0.2,  lim_keadv*0.4,  lim_keadv*0.6])
 
-    # T-adv anomaly contour levels
-    tadv_anom_neg_levels = np.array([-lim_tadv_anom * 0.6, -lim_tadv_anom * 0.4, -lim_tadv_anom * 0.2])
-    tadv_anom_pos_levels = np.array([lim_tadv_anom * 0.2, lim_tadv_anom * 0.4, lim_tadv_anom * 0.6])
+    fig = plt.figure(figsize=(20, 13))
+    gs = _make_4col_gridspec(fig)
 
-    # KE advection anomaly contour levels
-    keadv_anom_neg_levels = np.array([-lim_keadv_anom * 0.6, -lim_keadv_anom * 0.4, -lim_keadv_anom * 0.2])
-    keadv_anom_pos_levels = np.array([lim_keadv_anom * 0.2, lim_keadv_anom * 0.4, lim_keadv_anom * 0.6])
-
-    # Create figure
-    fig = plt.figure(figsize=FIGSIZE)
-    gs = gridspec.GridSpec(
-        3, 3,
-        width_ratios=[1, 1, 0.055],
-        hspace=0.07, wspace=0.07,
-        left=0.05, right=0.94, top=0.92, bottom=0.04,
-    )
-
-    panel_labels_grid = [['(a)', '(b)'], ['(c)', '(d)'], ['(e)', '(f)']]
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # ROW 0 — PV anom @ 200 hPa + EGR + 250 hPa anom wind
-    # ─────────────────────────────────────────────────────────────────────────
+    # ── ROW 0: PV'@200 + EGR + 250 anom wind ─────────────────────────────────
     im_r0 = None
     for col, ep in enumerate(eps):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[0, col])
-
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_200_anom'],
-                         levels=levels_pv200_anom, cmap=CMAP_PV, extend='both')
+                         levels=levels_pv200, cmap=CMAP_PV, extend='both')
         if col == 0:
             im_r0 = im
-
-        # EGR contours ≥ 0.5 day⁻¹
         egr_valid = EGR_CONTOUR_LEVELS[
             (EGR_CONTOUR_LEVELS >= np.nanmin(d['egr'])) &
-            (EGR_CONTOUR_LEVELS <= np.nanmax(d['egr']))
-        ]
+            (EGR_CONTOUR_LEVELS <= np.nanmax(d['egr']))]
         if len(egr_valid):
-            cs_egr = ax.contour(d['x_2d'], d['y_2d'], d['egr'],
-                       levels=egr_valid, colors='k', linewidths=1.1, alpha=0.85, zorder=5)
-            ax.clabel(cs_egr, inline=True, fontsize=8, fmt='%.2f')
-
-        # 250 hPa anomaly wind vectors
+            cs = ax.contour(d['x_2d'], d['y_2d'], d['egr'],
+                            levels=egr_valid, colors='k', linewidths=1.0, alpha=0.85, zorder=5)
+            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_prime'], d['v_250_prime'],
-                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250,
-                         add_key=(col == 1))
-
-        add_lec_box(ax)
-        mark_center(ax)
+                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 3))
+        add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
-        panel_label(ax, panel_labels_grid[0][col])
-        ax.set_title(f"{ep} (n={d['n_cases']})", fontsize=PANEL_TITLESIZE, fontweight='bold', pad=4)
+        panel_label(ax, PANEL_LABELS_4[0][col])
+        col_title = f"{ep} (n={d['n_cases']})"
+        if ep == 'EPALL':
+            col_title += '\n[all cyclones]'
+        ax.set_title(col_title, fontsize=PANEL_TITLESIZE, fontweight='bold', pad=3)
+    add_colorbar(fig, gs[0, 4], im_r0, r"PV$'_{200}$ (PVU)")
 
-    add_colorbar(fig, gs[0, 2], im_r0, r"PV$_{200}$ anom (PVU)")
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # ROW 1 — PV anom @ 850 hPa + T-adv anom + 850 hPa anom wind
-    # ─────────────────────────────────────────────────────────────────────────
+    # ── ROW 1: PV'@850 + T-adv' + 850 anom wind + SLP ────────────────────────
     im_r1 = None
     for col, ep in enumerate(eps):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[1, col])
-
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_850_anom'],
-                         levels=levels_pv850_anom, cmap=CMAP_PV, extend='both')
+                         levels=levels_pv850, cmap=CMAP_PV, extend='both')
         if col == 0:
             im_r1 = im
-
-        tadv_anom = d['adv_T_850_anom']
-
-        # Cold-advection anomaly contours (negative): dashed blue
-        neg_valid = tadv_anom_neg_levels[tadv_anom_neg_levels >= np.nanmin(tadv_anom)]
-        if len(neg_valid):
-            ax.contour(d['x_2d'], d['y_2d'], tadv_anom, levels=neg_valid,
-                       colors='steelblue', linewidths=1.8, linestyles='dashed', alpha=0.9, zorder=5)
-
-        # Warm-advection anomaly contours (positive): solid red
-        pos_valid = tadv_anom_pos_levels[tadv_anom_pos_levels <= np.nanmax(tadv_anom)]
-        if len(pos_valid):
-            ax.contour(d['x_2d'], d['y_2d'], tadv_anom, levels=pos_valid,
-                       colors='firebrick', linewidths=1.8, linestyles='solid', alpha=0.9, zorder=5)
-
-        # 850 hPa anomaly wind vectors
+        neg_v = tadv_neg[tadv_neg >= np.nanmin(d['adv_T_850_anom'])]
+        pos_v = tadv_pos[tadv_pos <= np.nanmax(d['adv_T_850_anom'])]
+        if len(neg_v):
+            ax.contour(d['x_2d'], d['y_2d'], d['adv_T_850_anom'], levels=neg_v,
+                       colors='steelblue', linewidths=1.6, linestyles='dashed', alpha=0.9, zorder=5)
+        if len(pos_v):
+            ax.contour(d['x_2d'], d['y_2d'], d['adv_T_850_anom'], levels=pos_v,
+                       colors='firebrick', linewidths=1.6, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_850_prime'], d['v_850_prime'],
-                         scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850,
-                         add_key=(col == 1))
-
+                         scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850, add_key=(col == 3))
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
-        add_lec_box(ax)
-        mark_center(ax)
+        add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
-        panel_label(ax, panel_labels_grid[1][col])
+        panel_label(ax, PANEL_LABELS_4[1][col])
+    add_colorbar(fig, gs[1, 4], im_r1, r"PV$'_{850}$ (PVU)")
 
-    add_colorbar(fig, gs[1, 2], im_r1, r"PV$_{850}$ anom (PVU)")
-
-    # ─────────────────────────────────────────────────────────────────────────
-    # ROW 2 — AFC + 250 hPa anom wind + RK hatching + KE-adv anom contours
-    # ─────────────────────────────────────────────────────────────────────────
+    # ── ROW 2: AFC + 250 anom wind + RK hatching + KE-adv' ───────────────────
     im_r2 = None
     for col, ep in enumerate(eps):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[2, col])
-
         im = ax.contourf(d['x_2d'], d['y_2d'], d['afc_250'],
                          levels=levels_afc, cmap=CMAP_AFC, extend='both')
         if col == 0:
             im_r2 = im
-
-        # RK meridional sign-reversal hatching
-        rk_mask = meridional_sign_reversal_mask(d['rk_criterion'], half_window=RK_HATCH_HALF_WINDOW)
-        hatch_field = rk_mask.astype(float)
+        rk_mask = meridional_sign_reversal_mask(d['rk_criterion'], RK_HATCH_HALF_WINDOW)
         with mpl.rc_context({'hatch.color': HATCH_COLOR, 'hatch.linewidth': HATCH_LW}):
-            ax.contourf(d['x_2d'], d['y_2d'], hatch_field,
+            ax.contourf(d['x_2d'], d['y_2d'], rk_mask.astype(float),
                         levels=[0.5, 1.5], colors=['none'], hatches=[HATCH_PATTERN], zorder=6)
-
-        # KE advection anomaly contours: green positive, yellow negative
-        ke_adv_anom = d['ke_adv_250_anom']
-        neg_keadv_valid = keadv_anom_neg_levels[keadv_anom_neg_levels >= np.nanmin(ke_adv_anom)]
-        if len(neg_keadv_valid):
-            ax.contour(d['x_2d'], d['y_2d'], ke_adv_anom, levels=neg_keadv_valid,
-                       colors='gold', linewidths=1.6, linestyles='dashed', alpha=0.9, zorder=5)
-
-        pos_keadv_valid = keadv_anom_pos_levels[keadv_anom_pos_levels <= np.nanmax(ke_adv_anom)]
-        if len(pos_keadv_valid):
-            ax.contour(d['x_2d'], d['y_2d'], ke_adv_anom, levels=pos_keadv_valid,
-                       colors='forestgreen', linewidths=1.6, linestyles='solid', alpha=0.9, zorder=5)
-
-        # 250 hPa anomaly wind vectors
+        neg_ke = keadv_neg[keadv_neg >= np.nanmin(d['ke_adv_250_anom'])]
+        pos_ke = keadv_pos[keadv_pos <= np.nanmax(d['ke_adv_250_anom'])]
+        if len(neg_ke):
+            ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_anom'], levels=neg_ke,
+                       colors='gold', linewidths=1.4, linestyles='dashed', alpha=0.9, zorder=5)
+        if len(pos_ke):
+            ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_anom'], levels=pos_ke,
+                       colors='forestgreen', linewidths=1.4, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_prime'], d['v_250_prime'],
-                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250,
-                         add_key=(col == 1))
-
+                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 3))
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
-        add_lec_box(ax)
-        mark_center(ax)
+        add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_xlabels=True, show_ylabels=(col == 0))
-        panel_label(ax, panel_labels_grid[2][col])
+        panel_label(ax, PANEL_LABELS_4[2][col])
+    add_colorbar(fig, gs[2, 4], im_r2, r"AFC$_{250}$ (W m$^{-2}$)")
 
-    add_colorbar(fig, gs[2, 2], im_r2, r"AFC$_{250}$ (W m$^{-2}$)")
-
-    # Suptitle
-    fig.suptitle(f"Dynamical Composites — Anomaly Fields ({mode})", fontsize=13, fontweight='bold')
-
-    # Save
-    out = FIGURES_DIR / f"dynamical_composites_anom_{mode}.png"
+    fig.suptitle(
+        "Dynamical Composites — Climatology-Relative Anomaly Fields  "
+        "(EP1 | EP2 | EP3 | EPALL)   [X' = X − X̄$_{clim}$, 1991–2020]",
+        fontsize=13, fontweight='bold',
+    )
+    out = FIGURES_DIR / "dynamical_composites_anom.png"
     fig.savefig(out, dpi=DPI, bbox_inches='tight')
     plt.close()
-    print(f"      ✓ {out.name}")
+    print(f"    ✓ {out.name}")
 
-    # Export field statistics
-    df_stats = export_field_statistics(ep_data, mode, 'anom')
-    return df_stats
+
+# ============================================================================
+# FIGURE 3: EPALL-RELATIVE ANOMALY — 3 columns (EP1−EPALL, EP2−EPALL, EP3−EPALL)
+# ============================================================================
+
+def create_figure_epall_anom(datasets):
+    """
+    3×3 Dynamical Composites — EPALL-Relative Anomaly
+    (EP1 − EPALL | EP2 − EPALL | EP3 − EPALL)
+
+    Anomaly = departure from the EPALL composite (all 2730 cyclones combined).
+    This reference is the typical intensifying extratropical cyclone; it differs
+    from the climatological anomaly which is referenced to the monthly mean state.
+
+    Row 1: (PV@200) − EPALL + EGR contours + (u,v)_250 − EPALL wind vectors
+    Row 2: (PV@850) − EPALL + (T-adv) − EPALL contours + (u,v)_850 − EPALL wind
+    Row 3: AFC total (shading) + (u,v)_250 − EPALL wind
+           + (RK criterion) − EPALL sign-reversal hatching
+           + (KE-adv) − EPALL contours
+
+    Note: AFC does not have an EPALL-relative version (uses climatological decomp
+    by construction; Orlanski & Katzfey 1991). Total AFC is shown for context.
+    EPALL column is omitted because it is identically zero by construction.
+    """
+    print("  Creating EPALL-relative anomaly figure (3 columns)...")
+
+    # Variables from EP1/EP2/EP3 datasets (pre-computed in step3)
+    required_minus = [
+        'pv_200_minus_epall', 'pv_850_minus_epall', 'egr',
+        'adv_T_850_minus_epall', 'msl', 'afc_250',
+        'u_250_minus_epall', 'v_250_minus_epall',
+        'u_850_minus_epall', 'v_850_minus_epall',
+        'rk_criterion_250_minus_epall', 'ke_adv_250_minus_epall',
+    ]
+    eps = ['EP1', 'EP2', 'EP3']
+
+    for ep in eps:
+        missing = [v for v in required_minus if v not in datasets[ep]]
+        if missing:
+            print(f"    ⚠ {ep} missing: {missing} — skipping EPALL-relative figure")
+            return
+
+    ep_data = {}
+    for ep in eps:
+        ds = datasets[ep]
+        x = ds.x.values
+        y = ds.y.values
+        x_2d, y_2d = np.meshgrid(x, y)
+        ep_data[ep] = dict(
+            pv_200_mep    = ds['pv_200_minus_epall'].values * PV_SCALE,
+            pv_850_mep    = ds['pv_850_minus_epall'].values * PV_SCALE,
+            egr           = ds['egr'].values,
+            adv_T_850_mep = ds['adv_T_850_minus_epall'].values * ADV_T_SCALE,
+            msl_hpa       = ds['msl'].values * SLP_SCALE,
+            afc_250       = ds['afc_250'].values,
+            ke_adv_250_mep= ds['ke_adv_250_minus_epall'].values,
+            u_250_mep     = ds['u_250_minus_epall'].values,
+            v_250_mep     = ds['v_250_minus_epall'].values,
+            u_850_mep     = ds['u_850_minus_epall'].values,
+            v_850_mep     = ds['v_850_minus_epall'].values,
+            rk_mep        = ds['rk_criterion_250_minus_epall'].values,
+            x=x, y=y, x_2d=x_2d, y_2d=y_2d,
+            n_cases=int(ds.attrs.get('n_cases', 0)),
+        )
+
+    def _sym_lim(key, pct=98):
+        return np.nanpercentile(np.abs(
+            np.concatenate([ep_data[ep][key].ravel() for ep in eps])), pct)
+
+    lim_pv200 = _sym_lim('pv_200_mep')
+    lim_pv850 = _sym_lim('pv_850_mep')
+    lim_afc   = _sym_lim('afc_250')
+    lim_tadv  = _sym_lim('adv_T_850_mep')
+    lim_keadv = _sym_lim('ke_adv_250_mep')
+
+    levels_pv200 = np.linspace(-lim_pv200, lim_pv200, 21)
+    levels_pv850 = np.linspace(-lim_pv850, lim_pv850, 21)
+    levels_afc   = np.linspace(-lim_afc,   lim_afc,   21)
+
+    tadv_neg  = np.array([-lim_tadv*0.6,  -lim_tadv*0.4,  -lim_tadv*0.2])
+    tadv_pos  = np.array([ lim_tadv*0.2,   lim_tadv*0.4,   lim_tadv*0.6])
+    keadv_neg = np.array([-lim_keadv*0.6, -lim_keadv*0.4, -lim_keadv*0.2])
+    keadv_pos = np.array([ lim_keadv*0.2,  lim_keadv*0.4,  lim_keadv*0.6])
+
+    fig = plt.figure(figsize=(15, 13))
+    gs = _make_3col_gridspec(fig)
+
+    # ── ROW 0: (PV@200)−EPALL + EGR + (u,v)_250−EPALL ───────────────────────
+    im_r0 = None
+    for col, ep in enumerate(eps):
+        d  = ep_data[ep]
+        ax = fig.add_subplot(gs[0, col])
+        im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_200_mep'],
+                         levels=levels_pv200, cmap=CMAP_PV, extend='both')
+        if col == 0:
+            im_r0 = im
+        egr_valid = EGR_CONTOUR_LEVELS[
+            (EGR_CONTOUR_LEVELS >= np.nanmin(d['egr'])) &
+            (EGR_CONTOUR_LEVELS <= np.nanmax(d['egr']))]
+        if len(egr_valid):
+            cs = ax.contour(d['x_2d'], d['y_2d'], d['egr'],
+                            levels=egr_valid, colors='k', linewidths=1.0, alpha=0.85, zorder=5)
+            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
+        add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
+                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 2))
+        add_lec_box(ax); mark_center(ax)
+        ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
+        panel_label(ax, PANEL_LABELS_3[0][col])
+        ax.set_title(f"{ep} − EPALL  (n={d['n_cases']})",
+                     fontsize=PANEL_TITLESIZE, fontweight='bold', pad=3)
+    add_colorbar(fig, gs[0, 3], im_r0, r"PV$_{200}$ − EPALL (PVU)")
+
+    # ── ROW 1: (PV@850)−EPALL + T-adv−EPALL + (u,v)_850−EPALL + SLP ────────
+    im_r1 = None
+    for col, ep in enumerate(eps):
+        d  = ep_data[ep]
+        ax = fig.add_subplot(gs[1, col])
+        im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_850_mep'],
+                         levels=levels_pv850, cmap=CMAP_PV, extend='both')
+        if col == 0:
+            im_r1 = im
+        neg_v = tadv_neg[tadv_neg >= np.nanmin(d['adv_T_850_mep'])]
+        pos_v = tadv_pos[tadv_pos <= np.nanmax(d['adv_T_850_mep'])]
+        if len(neg_v):
+            ax.contour(d['x_2d'], d['y_2d'], d['adv_T_850_mep'], levels=neg_v,
+                       colors='steelblue', linewidths=1.6, linestyles='dashed', alpha=0.9, zorder=5)
+        if len(pos_v):
+            ax.contour(d['x_2d'], d['y_2d'], d['adv_T_850_mep'], levels=pos_v,
+                       colors='firebrick', linewidths=1.6, linestyles='solid', alpha=0.9, zorder=5)
+        add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_850_mep'], d['v_850_mep'],
+                         scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850, add_key=(col == 2))
+        add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
+        add_lec_box(ax); mark_center(ax)
+        ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
+        panel_label(ax, PANEL_LABELS_3[1][col])
+    add_colorbar(fig, gs[1, 3], im_r1, r"PV$_{850}$ − EPALL (PVU)")
+
+    # ── ROW 2: AFC + (u,v)_250−EPALL + RK−EPALL hatching + KE-adv−EPALL ─────
+    im_r2 = None
+    for col, ep in enumerate(eps):
+        d  = ep_data[ep]
+        ax = fig.add_subplot(gs[2, col])
+        im = ax.contourf(d['x_2d'], d['y_2d'], d['afc_250'],
+                         levels=levels_afc, cmap=CMAP_AFC, extend='both')
+        if col == 0:
+            im_r2 = im
+        # RK hatching on the EPALL-relative RK field
+        rk_mask = meridional_sign_reversal_mask(d['rk_mep'], RK_HATCH_HALF_WINDOW)
+        with mpl.rc_context({'hatch.color': HATCH_COLOR, 'hatch.linewidth': HATCH_LW}):
+            ax.contourf(d['x_2d'], d['y_2d'], rk_mask.astype(float),
+                        levels=[0.5, 1.5], colors=['none'], hatches=[HATCH_PATTERN], zorder=6)
+        neg_ke = keadv_neg[keadv_neg >= np.nanmin(d['ke_adv_250_mep'])]
+        pos_ke = keadv_pos[keadv_pos <= np.nanmax(d['ke_adv_250_mep'])]
+        if len(neg_ke):
+            ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_mep'], levels=neg_ke,
+                       colors='gold', linewidths=1.4, linestyles='dashed', alpha=0.9, zorder=5)
+        if len(pos_ke):
+            ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_mep'], levels=pos_ke,
+                       colors='forestgreen', linewidths=1.4, linestyles='solid', alpha=0.9, zorder=5)
+        add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
+                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 2))
+        add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
+        add_lec_box(ax); mark_center(ax)
+        ax_setup(ax, d['x'], d['y'], show_xlabels=True, show_ylabels=(col == 0))
+        panel_label(ax, PANEL_LABELS_3[2][col])
+    add_colorbar(fig, gs[2, 3], im_r2, r"AFC$_{250}$ total (W m$^{-2}$)")
+
+    fig.suptitle(
+        "Dynamical Composites — EPALL-Relative Anomaly  "
+        "(EP1−EPALL | EP2−EPALL | EP3−EPALL)",
+        fontsize=13, fontweight='bold',
+    )
+    out = FIGURES_DIR / "dynamical_composites_epall_anom.png"
+    fig.savefig(out, dpi=DPI, bbox_inches='tight')
+    plt.close()
+    print(f"    ✓ {out.name}")
 
 
 # ============================================================================
@@ -816,66 +800,35 @@ def create_figure_anom(datasets, mode):
 # ============================================================================
 
 def main():
-    """Generate exploratory dynamical composite figures for all modes."""
+    """Generate exploratory dynamical composite figures (canonical method)."""
     print("=" * 70)
     print("EXPLORATORY DYNAMICAL COMPOSITES")
+    print("Canonical method: central-timestep composites (EP1, EP2, EP3, EPALL)")
     print("=" * 70)
     print(f"Output directory: {FIGURES_DIR}\n")
 
-    all_stats = []
+    datasets = load_composites()
+    if datasets is None:
+        print("❌ Could not load composites — aborting.")
+        return
 
-    for mode in COMPOSITE_MODES:
-        print(f"\n{'─'*70}")
-        print(f"Processing mode: {mode}")
-        print(f"{'─'*70}")
+    n_ep1   = int(datasets['EP1'].attrs.get('n_cases', '?'))
+    n_ep2   = int(datasets['EP2'].attrs.get('n_cases', '?'))
+    n_ep3   = int(datasets['EP3'].attrs.get('n_cases', '?'))
+    n_epall = int(datasets['EPALL'].attrs.get('n_cases', '?'))
+    print(f"  EP1={n_ep1}  EP2={n_ep2}  EP3={n_ep3}  EPALL={n_epall}\n")
 
-        # Load composites
-        datasets = load_composites(mode)
-        if datasets is None:
-            print(f"  ⚠ Skipping mode={mode} — data not found")
-            continue
+    create_figure_total(datasets)
+    create_figure_anom(datasets)
+    create_figure_epall_anom(datasets)
 
-        # Create figures and collect statistics
-        df_total = create_figure_total(datasets, mode)
-        df_anom  = create_figure_anom(datasets, mode)
-
-        if df_total is not None:
-            df_total['mode'] = mode
-            df_total['type'] = 'total'
-            all_stats.append(df_total)
-        if df_anom is not None:
-            df_anom['mode'] = mode
-            df_anom['type'] = 'anom'
-            all_stats.append(df_anom)
-
-        # Close datasets
-        for ds in datasets.values():
-            ds.close()
+    for ds in datasets.values():
+        ds.close()
 
     print(f"\n{'='*70}")
     print("✓ COMPLETE")
     print(f"{'='*70}")
     print(f"Figures saved in: {FIGURES_DIR}")
-    print(f"Statistics saved in: {RESULTS_DIR}")
-
-    # Print all statistics tables to terminal
-    if all_stats:
-        print(f"\n{'='*70}")
-        print("15×15 DOMAIN STATISTICS SUMMARY")
-        print(f"{'='*70}\n")
-
-        for df in all_stats:
-            mode = df['mode'].iloc[0]
-            ftype = df['type'].iloc[0]
-            print(f"\n{'─'*70}")
-            print(f"Mode: {mode}  |  Type: {ftype.upper()} fields")
-            print(f"{'─'*70}")
-            df_print = df.drop(columns=['mode', 'type'])
-            pd.set_option('display.max_columns', None)
-            pd.set_option('display.width', 120)
-            pd.set_option('display.float_format', '{:.6f}'.format)
-            print(df_print.to_string(index=False))
-            print()
 
 
 if __name__ == '__main__':

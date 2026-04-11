@@ -1,0 +1,45 @@
+{
+  "figures": {
+    "total": {
+      "exists": true,
+      "api_path": "exploratory/dynamical_composites_total.png",
+      "title": "Total Fields",
+      "columns": "EP1 | EP2 | EP3 | EPALL",
+      "rows": [
+        "Row 1: PV @ 200 hPa (shading) + EGR contours (≥ 0.5 day⁻¹) + 250 hPa total wind vectors",
+        "Row 2: PV @ 850 hPa (shading) + T-adv contours (blue dashed = cold, red solid = warm) + 850 hPa total wind + SLP",
+        "Row 3: AFC @ 250 hPa (shading) + 250 hPa wind (≥ 30 m/s) + RK sign-reversal hatching + KE-adv contours"
+      ]
+    },
+    "anom": {
+      "exists": true,
+      "api_path": "exploratory/dynamical_composites_anom.png",
+      "title": "Climatology-Relative Anomaly Fields",
+      "columns": "EP1 | EP2 | EP3 | EPALL",
+      "rows": [
+        "Row 1: PV' @ 200 hPa (shading) + EGR contours + 250 hPa anomaly wind (u', v' = departure from 1991–2020 climatology)",
+        "Row 2: PV' @ 850 hPa (shading) + T-adv anomaly contours + 850 hPa anomaly wind + SLP",
+        "Row 3: AFC (total, shading) + 250 hPa anomaly wind + RK hatching + KE-adv anomaly contours"
+      ]
+    },
+    "epall_anom": {
+      "exists": true,
+      "api_path": "exploratory/dynamical_composites_epall_anom.png",
+      "title": "EPALL-Relative Anomaly",
+      "columns": "EP1 − EPALL | EP2 − EPALL | EP3 − EPALL",
+      "rows": [
+        "Row 1: (PV @ 200 hPa) − EPALL + EGR contours + (u, v)_250 − EPALL wind vectors",
+        "Row 2: (PV @ 850 hPa) − EPALL + (T-adv) − EPALL contours + (u, v)_850 − EPALL wind + SLP",
+        "Row 3: AFC total (shading, no EPALL-relative version) + (u, v)_250 − EPALL wind + RK − EPALL sign-reversal hatching + (KE-adv) − EPALL contours"
+      ]
+    }
+  },
+  "metadata": {
+    "n_ep1": 332,
+    "n_ep2": 775,
+    "n_ep3": 1623,
+    "n_epall": 2730,
+    "composite_method": "central_time",
+    "generated_at": "2026-04-11"
+  }
+}

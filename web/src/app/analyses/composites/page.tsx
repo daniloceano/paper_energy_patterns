@@ -117,6 +117,39 @@ export default function CompositesPage() {
           </div>
         </section>
 
+        {/* Dynamical Composites card */}
+        <section>
+          <h2 className="mb-4 text-lg font-bold text-slate-900">
+            Multi-Field Overview
+          </h2>
+          <Link
+            href="/analyses/composites/dynamical"
+            className="group flex flex-col rounded-xl border border-teal-200 bg-white p-5 shadow-sm transition-all hover:border-teal-400 hover:shadow-md"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-100 text-teal-600 transition-colors group-hover:bg-teal-600 group-hover:text-white">
+                <Layers className="h-4 w-4" />
+              </div>
+              <div className="flex gap-1.5">
+                <span className="rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-600">
+                  exploratory
+                </span>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-600">
+                  3 figures
+                </span>
+              </div>
+            </div>
+            <h3 className="mt-3 text-sm font-semibold text-slate-900 group-hover:text-teal-700">
+              Dynamical Composites
+            </h3>
+            <p className="mt-1 text-xs text-slate-500 leading-relaxed">
+              Multi-field overview: PV (200 / 850 hPa), EGR, T-advection, AFC, KE-advection,
+              and barotropic RK diagnostics for EP1, EP2, EP3, and EPALL in a single figure.
+              Three variants: total fields, climatology-relative anomaly, and EPALL-relative anomaly.
+            </p>
+          </Link>
+        </section>
+
         <ResultSummaryCallout type="info" title="Data Source">
           <p>
             All composites are pre-computed and stored in{' '}

@@ -84,10 +84,6 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_rk_criterion.png"
     },
-    "anom_epall": {
-      "exists": true,
-      "api_path": "figures/ep_structure/composite_rk_criterion_anom_epall.png"
-    },
     "diff": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_rk_criterion_diff.png"

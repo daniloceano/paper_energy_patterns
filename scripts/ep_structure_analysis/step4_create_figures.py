@@ -1649,6 +1649,9 @@ def main():
     figure_afc(datasets)
 
     logging.info("\nCreating EPALL-relative anomaly figures (EP1−EPALL | EP2−EPALL | EP3−EPALL)...")
+    # NOTE: RK criterion is intentionally excluded from EPALL-relative anomaly figures.
+    # RK = β − ∂²ū/∂y² is a property of the large-scale background flow used to diagnose
+    # barotropic critical regions; it is shown only as total composite field (not differenced).
 
     figure_egr_epall_anom(datasets)
     figure_pv200_epall_anom(datasets)
@@ -1656,7 +1659,6 @@ def main():
     figure_advT850_epall_anom(datasets)
     figure_slp_epall_anom(datasets)
     figure_ke_advection_epall_anom(datasets)
-    figure_rk_criterion_epall_anom(datasets)
 
     logging.info("\nCreating climatology-based anomaly figures (legacy, where available)...")
 
@@ -1672,13 +1674,13 @@ def main():
     figure_btcr(datasets)
 
     logging.info("\nCreating EP1 − EP2 difference figures (legacy)...")
+    # NOTE: RK criterion diff is intentionally excluded — RK is shown as total field only.
     figure_egr_diff(datasets)
     figure_pv200_diff(datasets)
     figure_pv850_diff(datasets)
     figure_advT850_diff(datasets)
     figure_moisture_diff(datasets)
     figure_slp_diff(datasets)
-    figure_rk_criterion_diff(datasets)
     figure_ke_advection_diff(datasets)
     figure_afc_diff(datasets)
     figure_btcr_diff(datasets)

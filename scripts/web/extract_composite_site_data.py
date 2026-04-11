@@ -70,6 +70,7 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 #   - moisture-flux-divergence (div_q_975_minus_epall not stored in step3)
 #   - afc (uses climatological decomposition by construction — Orlanski & Katzfey 1991)
 #   - btcr (uses climatological decomposition by construction — Rivière 2006)
+#   - rk-criterion (β − ∂²ū/∂y² is a background-flow diagnostic; shown as total field only)
 DIAGNOSTIC_FIGURE_MAP = {
     "egr":                      {"real": "composite_egr.png",          "anom_epall": "composite_egr_anom_epall.png",          "diff": "composite_egr_diff.png"},
     "pv-200":                   {"real": "composite_pv200.png",        "anom_epall": "composite_pv200_anom_epall.png",        "diff": "composite_pv200_diff.png"},
@@ -77,7 +78,10 @@ DIAGNOSTIC_FIGURE_MAP = {
     "temperature-advection":    {"real": "composite_advT850.png",      "anom_epall": "composite_advT850_anom_epall.png",      "diff": "composite_advT850_diff.png"},
     "moisture-flux-divergence": {"real": "composite_moisture_flux.png",                                                        "diff": "composite_moisture_flux_diff.png"},
     "slp":                      {"real": "composite_slp.png",          "anom_epall": "composite_slp_anom_epall.png",          "diff": "composite_slp_diff.png"},
-    "rk-criterion":             {"real": "composite_rk_criterion.png", "anom_epall": "composite_rk_criterion_anom_epall.png", "diff": "composite_rk_criterion_diff.png"},
+    "rk-criterion":             {"real": "composite_rk_criterion.png",                                                           "diff": "composite_rk_criterion_diff.png"},
+    # NOTE: rk-criterion has no anom_epall figure — RK is shown as total composite only.
+    # RK = β − ∂²ū/∂y² is a background-flow diagnostic, not a field expected to be
+    # differenced across energy patterns.
     "ke-advection":             {"real": "composite_ke_advection.png", "anom_epall": "composite_ke_advection_anom_epall.png", "diff": "composite_ke_advection_diff.png"},
     "afc":                      {"real": "composite_afc_250.png",                                                              "diff": "composite_afc_diff.png"},
     "btcr":                     {"real": "composite_btcr.png",                                                                 "diff": "composite_btcr_diff.png"},

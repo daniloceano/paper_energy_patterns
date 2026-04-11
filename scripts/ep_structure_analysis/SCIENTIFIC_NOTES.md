@@ -311,9 +311,13 @@ where $\langle X \rangle_{EP_x}$ is the composite mean of diagnostic $X$ for cyc
 
 **Variables stored (in EP1, EP2, EP3 NetCDF files):** `{var}_minus_epall` (e.g. `egr_minus_epall`, `msl_minus_epall`, etc.)
 
-**Available for:** EGR, PV 200 hPa, PV 850 hPa, Temperature Advection 850 hPa, SLP, KE Advection 250 hPa, RK Criterion 250 hPa.
+**Available for:** EGR, PV 200 hPa, PV 850 hPa, Temperature Advection 850 hPa, SLP, KE Advection 250 hPa.
 
-**Not available for:** Moisture Flux Divergence (not stored in step3), AFC (climatological decomposition by design), BtCR (climatological decomposition by design).
+**Not available for:**
+- **Moisture Flux Divergence** — anomaly variable not stored in step3.
+- **AFC** — climatological decomposition by design (Orlanski & Katzfey 1991); differencing against EPALL would conflate the anomaly definition.
+- **BtCR** — climatological decomposition by design (Rivière 2006); same reasoning as AFC.
+- **RK Criterion 250 hPa** — RK = β − ∂²ū/∂y² is a **background-flow diagnostic**, not a synoptic field. It reflects the large-scale meridional PV gradient of the time-mean state; differencing EP composites against EPALL would yield near-zero values dominated by noise in the time-mean estimate rather than a meaningful inter-pattern contrast. RK is therefore shown only as a total composite field.
 
 **Figures:** `composite_*_anom_epall.png` — 1×3 panel (EP1−EPALL | EP2−EPALL | EP3−EPALL).
 
@@ -470,9 +474,13 @@ When a cyclone traverses a BtCR, two amplification mechanisms are activated:
 
 *Figure: Potential vorticity at 850 hPa for EP1, EP2, EP3, EPALL (2×2 panel). Units: PVU.*
 
+> **Sign convention — Southern Hemisphere PV:** In the Southern Hemisphere, the Coriolis parameter $f < 0$, so Ertel PV is **negative throughout the troposphere**. All 850 hPa PV values are expected to be negative (typical range: −1.5 to −0.2 PVU for South Atlantic cyclones). Negative-valued composites and large-magnitude negative values for EP1 (high-energy) are physically correct and do **not** indicate a numerical error. EP1 cyclones exhibit more negative (i.e. stronger cyclonic) PV at 850 hPa than EP2/EP3, consistent with their greater intensity.
+
 ![PV@850 Anomaly](figures/ep_structure/composite_pv850_anom_epall.png)
 
-*Figure: PV@850 EPALL-relative anomaly. Units: PVU.*
+*Figure: PV@850 EPALL-relative anomaly (EP1−EPALL | EP2−EPALL | EP3−EPALL). Units: PVU. Negative values indicate that the EPx composite has more negative PV (stronger cyclonic PV) than the average cyclone; positive values indicate weaker cyclonic PV than average.*
+
+> **EPALL-relative anomaly sign note:** Because total PV is negative in SH, EPx − EPALL < 0 means EPx has a *larger-magnitude* (stronger cyclonic) PV perturbation relative to the mean cyclone, and EPx − EPALL > 0 means weaker-than-average cyclonic PV. This counterintuitive sign is a direct consequence of the SH PV convention and is handled correctly in the `{var}_minus_epall` computation (numerically exact subtraction, max_err = 0.0).
 
 **Summary Statistics:**
 

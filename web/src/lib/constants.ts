@@ -248,9 +248,9 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     level: '250 hPa',
     unit: 's⁻¹',
     description:
-      'The Rayleigh-Kuo criterion identifies regions where the meridional gradient of absolute vorticity changes sign — a necessary condition for barotropic instability. Negative values indicate instability regions.',
+      'The Rayleigh-Kuo criterion identifies regions where the meridional gradient of absolute vorticity changes sign — a necessary condition for barotropic instability. Negative values indicate instability regions. Shown as total composite only (no EPALL-relative anomaly): RK = β − ∂²ū/∂y² depends on the large-scale flow and is used as a diagnostic of the background environment, not a field expected to be differenced across energy patterns.',
     physicalObjective:
-      'Locate barotropic instability regions in the upper troposphere across EP1, EP2, EP3, and EPALL and relate to barotropic conversion (Ck).',
+      'Locate barotropic instability regions in the upper troposphere across EP1, EP2, EP3, and EPALL and relate to barotropic conversion (Ck). Only the total composite is shown — no anomaly or EPALL-relative difference is presented for RK.',
     formula:
       'RK = \\beta - \\frac{\\partial^2 u}{\\partial y^2}',
     formulaTerms: {
@@ -259,7 +259,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
       '∂²u/∂y²': 'Second derivative of zonal wind in meridional direction',
     },
     references: ['Rayleigh (1880)', 'Kuo (1949)'],
-    hasAnomaly: true,
+    hasAnomaly: false,
   },
   'ke-advection': {
     id: 'ke-advection',
@@ -588,7 +588,7 @@ export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom_
   'temperature-advection': { real: 'composite_advT850.png',      anom_epall: 'composite_advT850_anom_epall.png',      diff: 'composite_advT850_diff.png' },
   'moisture-flux-divergence': { real: 'composite_moisture_flux.png',                                                   diff: 'composite_moisture_flux_diff.png' },
   slp:                     { real: 'composite_slp.png',          anom_epall: 'composite_slp_anom_epall.png',          diff: 'composite_slp_diff.png' },
-  'rk-criterion':          { real: 'composite_rk_criterion.png', anom_epall: 'composite_rk_criterion_anom_epall.png', diff: 'composite_rk_criterion_diff.png' },
+  'rk-criterion':          { real: 'composite_rk_criterion.png',                                                          diff: 'composite_rk_criterion_diff.png' },
   'ke-advection':          { real: 'composite_ke_advection.png', anom_epall: 'composite_ke_advection_anom_epall.png', diff: 'composite_ke_advection_diff.png' },
   afc:                     { real: 'composite_afc_250.png',                                                            diff: 'composite_afc_diff.png' },
   btcr:                    { real: 'composite_btcr.png',                                                               diff: 'composite_btcr_diff.png' },

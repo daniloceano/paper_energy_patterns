@@ -52,7 +52,7 @@ interface FigureEntry {
 interface FiguresManifest {
   [diagId: string]: {
     real: FigureEntry
-    pairwise?: FigureEntry
+    anom_epall?: FigureEntry
     diff?: FigureEntry
   }
 }

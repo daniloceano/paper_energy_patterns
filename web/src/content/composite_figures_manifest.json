@@ -4,9 +4,9 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_egr.png"
     },
-    "pairwise": {
+    "anom_epall": {
       "exists": true,
-      "api_path": "figures/ep_structure/composite_egr_pairwise.png"
+      "api_path": "figures/ep_structure/composite_egr_anom_epall.png"
     },
     "diff": {
       "exists": true,
@@ -18,9 +18,9 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_pv200.png"
     },
-    "pairwise": {
+    "anom_epall": {
       "exists": true,
-      "api_path": "figures/ep_structure/composite_pv200_pairwise.png"
+      "api_path": "figures/ep_structure/composite_pv200_anom_epall.png"
     },
     "diff": {
       "exists": true,
@@ -32,9 +32,9 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_pv850.png"
     },
-    "pairwise": {
+    "anom_epall": {
       "exists": true,
-      "api_path": "figures/ep_structure/composite_pv850_pairwise.png"
+      "api_path": "figures/ep_structure/composite_pv850_anom_epall.png"
     },
     "diff": {
       "exists": true,
@@ -46,9 +46,9 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_advT850.png"
     },
-    "pairwise": {
+    "anom_epall": {
       "exists": true,
-      "api_path": "figures/ep_structure/composite_advT850_pairwise.png"
+      "api_path": "figures/ep_structure/composite_advT850_anom_epall.png"
     },
     "diff": {
       "exists": true,
@@ -70,9 +70,9 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_slp.png"
     },
-    "pairwise": {
+    "anom_epall": {
       "exists": true,
-      "api_path": "figures/ep_structure/composite_slp_pairwise.png"
+      "api_path": "figures/ep_structure/composite_slp_anom_epall.png"
     },
     "diff": {
       "exists": true,
@@ -84,9 +84,9 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_rk_criterion.png"
     },
-    "pairwise": {
+    "anom_epall": {
       "exists": true,
-      "api_path": "figures/ep_structure/composite_rk_criterion_pairwise.png"
+      "api_path": "figures/ep_structure/composite_rk_criterion_anom_epall.png"
     },
     "diff": {
       "exists": true,
@@ -98,9 +98,9 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_ke_advection.png"
     },
-    "pairwise": {
+    "anom_epall": {
       "exists": true,
-      "api_path": "figures/ep_structure/composite_ke_advection_pairwise.png"
+      "api_path": "figures/ep_structure/composite_ke_advection_anom_epall.png"
     },
     "diff": {
       "exists": true,

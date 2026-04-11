@@ -17,7 +17,7 @@ interface FigureEntry {
 interface FiguresManifest {
   [diagId: string]: {
     real: FigureEntry
-    pairwise?: FigureEntry
+    anom_epall?: FigureEntry
     diff?: FigureEntry
   }
 }
@@ -47,7 +47,7 @@ interface BoundaryFluxEntry {
 // --- Props ---
 interface DiagnosticCompositesClientProps {
   diag: Diagnostic
-  figSlug: { real: string; pairwise?: string; diff?: string }
+  figSlug: { real: string; anom_epall?: string; diff?: string }
   isFluxDiag: boolean
   figures: FiguresManifest
   stats: DomainStatEntry[]
@@ -81,15 +81,15 @@ function DiagnosticCompositesContent({
   const epallFluxes = diagFluxes.find((f) => f.ep === 'EPALL')
 
   const realFig = figInfo?.real
-  const pairwiseFig = figInfo?.pairwise
+  const anomEpallFig = figInfo?.anom_epall
   const diffFig = figInfo?.diff
   const hasRealFigure = realFig?.exists ?? false
-  const hasPairwiseFigure = (pairwiseFig?.exists ?? false) && diag.hasAnomaly
+  const hasAnomFigure = (anomEpallFig?.exists ?? false) && diag.hasAnomaly
   const hasDiffFigure = diffFig?.exists ?? false
   const hasStats = diagStats.length > 0
 
   const realFigFilename = figSlug.real
-  const pairwiseFigFilename = figSlug.pairwise
+  const anomEpallFigFilename = figSlug.anom_epall
   const diffFigFilename = figSlug.diff
 
   return (
@@ -138,44 +138,44 @@ function DiagnosticCompositesContent({
           </ResultSummaryCallout>
         )}
 
-        {/* Pairwise comparison figure */}
+        {/* EPALL-relative anomaly figure */}
         {diag.hasAnomaly && (
           <div className="mt-4">
             <h3 className="mb-2 text-sm font-semibold text-slate-700">
-              Pairwise Comparison
+              EPALL-Relative Anomaly
               <span className="ml-2 text-xs font-normal text-slate-400">
-                EP1 − EP2 | EP1 − EP3 | EP2 − EP3
+                EP1 − EPALL | EP2 − EPALL | EP3 − EPALL
               </span>
             </h3>
-            {hasPairwiseFigure ? (
+            {hasAnomFigure ? (
               <div className="overflow-hidden rounded-xl border border-amber-200 bg-white">
                 <div className="border-b border-amber-100 bg-amber-50 px-4 py-3">
                   <p className="text-xs text-amber-700">
-                    <strong>1×3 panel:</strong> EP1 − EP2 | EP1 − EP3 | EP2 − EP3.
+                    <strong>1×3 panel:</strong> EP1 − EPALL | EP2 − EPALL | EP3 − EPALL.
                     Diverging colormap centred at zero; shared scale across all three panels.
                   </p>
                   <p className="mt-1 text-xs text-amber-500">
-                    Source: <code>figures/ep_structure/{pairwiseFigFilename}</code>
+                    Source: <code>figures/ep_structure/{anomEpallFigFilename}</code>
                   </p>
                 </div>
                 <div className="p-4">
                   <FallbackImage
-                    src={figureUrl(pairwiseFig!.api_path)}
-                    alt={`${diag.name} pairwise comparison — EP1−EP2 / EP1−EP3 / EP2−EP3`}
+                    src={figureUrl(anomEpallFig!.api_path)}
+                    alt={`${diag.name} EPALL-relative anomaly — EP1−EPALL / EP2−EPALL / EP3−EPALL`}
                     width={1200}
                     height={500}
                     className="w-full rounded-lg"
-                    key={pairwiseFig!.api_path}
+                    key={anomEpallFig!.api_path}
                   />
                 </div>
               </div>
             ) : (
               <div className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 text-center">
                 <p className="text-sm font-medium text-amber-600">
-                  {diag.shortName} pairwise comparison
+                  {diag.shortName} EPALL-relative anomaly
                 </p>
                 <p className="mt-1 text-xs text-amber-400">
-                  Expected: <code>figures/ep_structure/{pairwiseFigFilename ?? 'composite_*_pairwise.png'}</code>
+                  Expected: <code>figures/ep_structure/{anomEpallFigFilename ?? 'composite_*_anom_epall.png'}</code>
                 </p>
               </div>
             )}

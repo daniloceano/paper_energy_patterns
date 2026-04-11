@@ -10,8 +10,8 @@ manifest files consumed by the Next.js web layer.
 CANONICAL METHOD (April 2026):
   - Central timesteps only (2-3 per case)
   - EP1, EP2, EP3, EPALL composites
-  - Pairwise comparisons: EP1−EP2 | EP1−EP3 | EP2−EP3 (1×3 panel)
-  - AFC and BtCR use climatology decomposition by design (no pairwise comparison figure)
+  - EPALL-relative anomalies: EP1−EPALL | EP2−EPALL | EP3−EPALL (1×3 panel)
+  - AFC and BtCR use climatology decomposition by design (no EPALL-relative anomaly figure)
 
 Scientific computation source of truth: scripts/ep_structure_analysis/
   - step4_create_figures.py  → figures/ep_structure/composite_*.png
@@ -37,10 +37,10 @@ Outputs:
 Manifest schema (composite_figures_manifest.json):
   {
     "<diag_id>": {
-      "real":     { "exists": bool, "api_path": str },  # 2×2 panel: EP1/EP2/EP3/EPALL
-      "pairwise": { "exists": bool, "api_path": str },  # 1×3 panel: EP1−EP2 | EP1−EP3 | EP2−EP3
-                                                         # omitted if no pairwise figure exists
-      "diff":     { "exists": bool, "api_path": str }   # legacy EP1−EP2 single-panel diff
+      "real":       { "exists": bool, "api_path": str },  # 2×2 panel: EP1/EP2/EP3/EPALL
+      "anom_epall": { "exists": bool, "api_path": str },  # 1×3 panel: EP1−EPALL | EP2−EPALL | EP3−EPALL
+                                                           # omitted if no EPALL-relative figure exists
+      "diff":       { "exists": bool, "api_path": str }   # legacy EP1−EP2 single-panel diff
     }
   }
 """
@@ -62,25 +62,25 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 # Must match DIAGNOSTIC_FIGURE_SLUGS in web/src/lib/constants.ts.
 #
 # Schema: each entry has:
-#   "real"     → 2×2 panel figure (EP1/EP2/EP3/EPALL), always present
-#   "pairwise" → 1×3 panel figure (EP1−EP2 | EP1−EP3 | EP2−EP3), only where available
-#   "diff"     → legacy EP1−EP2 single-panel difference figure
+#   "real"       → 2×2 panel figure (EP1/EP2/EP3/EPALL), always present
+#   "anom_epall" → 1×3 panel figure (EP1−EPALL | EP2−EPALL | EP3−EPALL), only where available
+#   "diff"       → legacy EP1−EP2 single-panel difference figure
 #
-# No pairwise comparison for:
-#   - moisture-flux-divergence (div_q_975 not available for direct differencing)
+# No EPALL-relative anomaly for:
+#   - moisture-flux-divergence (div_q_975_minus_epall not stored in step3)
 #   - afc (uses climatological decomposition by construction — Orlanski & Katzfey 1991)
 #   - btcr (uses climatological decomposition by construction — Rivière 2006)
 DIAGNOSTIC_FIGURE_MAP = {
-    "egr":                      {"real": "composite_egr.png",          "pairwise": "composite_egr_pairwise.png",          "diff": "composite_egr_diff.png"},
-    "pv-200":                   {"real": "composite_pv200.png",        "pairwise": "composite_pv200_pairwise.png",        "diff": "composite_pv200_diff.png"},
-    "pv-850":                   {"real": "composite_pv850.png",        "pairwise": "composite_pv850_pairwise.png",        "diff": "composite_pv850_diff.png"},
-    "temperature-advection":    {"real": "composite_advT850.png",      "pairwise": "composite_advT850_pairwise.png",      "diff": "composite_advT850_diff.png"},
-    "moisture-flux-divergence": {"real": "composite_moisture_flux.png",                                                    "diff": "composite_moisture_flux_diff.png"},
-    "slp":                      {"real": "composite_slp.png",          "pairwise": "composite_slp_pairwise.png",          "diff": "composite_slp_diff.png"},
-    "rk-criterion":             {"real": "composite_rk_criterion.png", "pairwise": "composite_rk_criterion_pairwise.png", "diff": "composite_rk_criterion_diff.png"},
-    "ke-advection":             {"real": "composite_ke_advection.png", "pairwise": "composite_ke_advection_pairwise.png", "diff": "composite_ke_advection_diff.png"},
-    "afc":                      {"real": "composite_afc_250.png",                                                          "diff": "composite_afc_diff.png"},
-    "btcr":                     {"real": "composite_btcr.png",                                                             "diff": "composite_btcr_diff.png"},
+    "egr":                      {"real": "composite_egr.png",          "anom_epall": "composite_egr_anom_epall.png",          "diff": "composite_egr_diff.png"},
+    "pv-200":                   {"real": "composite_pv200.png",        "anom_epall": "composite_pv200_anom_epall.png",        "diff": "composite_pv200_diff.png"},
+    "pv-850":                   {"real": "composite_pv850.png",        "anom_epall": "composite_pv850_anom_epall.png",        "diff": "composite_pv850_diff.png"},
+    "temperature-advection":    {"real": "composite_advT850.png",      "anom_epall": "composite_advT850_anom_epall.png",      "diff": "composite_advT850_diff.png"},
+    "moisture-flux-divergence": {"real": "composite_moisture_flux.png",                                                        "diff": "composite_moisture_flux_diff.png"},
+    "slp":                      {"real": "composite_slp.png",          "anom_epall": "composite_slp_anom_epall.png",          "diff": "composite_slp_diff.png"},
+    "rk-criterion":             {"real": "composite_rk_criterion.png", "anom_epall": "composite_rk_criterion_anom_epall.png", "diff": "composite_rk_criterion_diff.png"},
+    "ke-advection":             {"real": "composite_ke_advection.png", "anom_epall": "composite_ke_advection_anom_epall.png", "diff": "composite_ke_advection_diff.png"},
+    "afc":                      {"real": "composite_afc_250.png",                                                              "diff": "composite_afc_diff.png"},
+    "btcr":                     {"real": "composite_btcr.png",                                                                 "diff": "composite_btcr_diff.png"},
 }
 
 
@@ -95,9 +95,9 @@ def build_figures_manifest():
     Uses the API path format: 'figures/ep_structure/<filename>'
 
     Schema per diagnostic:
-      "real"     → 2×2 panel (EP1/EP2/EP3/EPALL total field composite)
-      "pairwise" → 1×3 panel (EP1−EP2 | EP1−EP3 | EP2−EP3), only where it exists
-      "diff"     → legacy EP1−EP2 single-panel difference (kept for backward compat)
+      "real"       → 2×2 panel (EP1/EP2/EP3/EPALL total field composite)
+      "anom_epall" → 1×3 panel (EP1−EPALL | EP2−EPALL | EP3−EPALL), only where it exists
+      "diff"       → legacy EP1−EP2 single-panel difference (kept for backward compat)
     """
     manifest = {}
 
@@ -112,13 +112,13 @@ def build_figures_manifest():
             "api_path": f"figures/ep_structure/{real_base}",
         }
 
-        # Pairwise comparison figure (1×3 panel: EP1−EP2 | EP1−EP3 | EP2−EP3)
-        pairwise_name = filenames.get("pairwise")
-        if pairwise_name:
-            pairwise_path = FIGURES_DIR / pairwise_name
-            manifest[diag_id]["pairwise"] = {
-                "exists": pairwise_path.exists(),
-                "api_path": f"figures/ep_structure/{pairwise_name}",
+        # EPALL-relative anomaly figure (1×3 panel: EP1−EPALL | EP2−EPALL | EP3−EPALL)
+        anom_epall_name = filenames.get("anom_epall")
+        if anom_epall_name:
+            anom_epall_path = FIGURES_DIR / anom_epall_name
+            manifest[diag_id]["anom_epall"] = {
+                "exists": anom_epall_path.exists(),
+                "api_path": f"figures/ep_structure/{anom_epall_name}",
             }
 
         # Legacy EP1−EP2 difference figure (kept for backward compatibility)

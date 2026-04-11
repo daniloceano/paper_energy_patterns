@@ -46,8 +46,8 @@ export default function CompositesPage() {
               <strong>Total field (2×2 panel):</strong> EP1 / EP2 / EP3 / EPALL composites side-by-side
             </li>
             <li>
-              <strong>Pairwise comparison (1×3 panel):</strong> EP1 − EP2 | EP1 − EP3 | EP2 − EP3,
-              isolating the structural differences between each pair of energy patterns
+              <strong>EPALL-relative anomaly (1×3 panel):</strong> EP1 − EPALL | EP2 − EPALL | EP3 − EPALL,
+              isolating what distinguishes each pattern from the full cyclone population
               (available for most diagnostics)
             </li>
           </ul>

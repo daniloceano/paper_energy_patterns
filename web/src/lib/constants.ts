@@ -584,7 +584,7 @@ export const DATASET_STATS = {
 // anom_clim  = climatology-relative anomaly  (X' = X − X̄_clim, 1991–2020 ERA5)
 // anom_epall = EPALL-relative anomaly         (EPx − EPALL composite)
 export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom_clim?: string; anom_epall?: string; diff?: string }> = {
-  egr:                        { real: 'composite_egr.png',                                                               anom_epall: 'composite_egr_anom_epall.png',          diff: 'composite_egr_diff.png' },
+  egr:                        { real: 'composite_egr.png',            anom_clim: 'composite_egr_anom.png',                 anom_epall: 'composite_egr_anom_epall.png',          diff: 'composite_egr_diff.png' },
   'pv-200':                   { real: 'composite_pv200.png',        anom_clim: 'composite_pv200_anom.png',               anom_epall: 'composite_pv200_anom_epall.png',        diff: 'composite_pv200_diff.png' },
   'pv-850':                   { real: 'composite_pv850.png',        anom_clim: 'composite_pv850_anom.png',               anom_epall: 'composite_pv850_anom_epall.png',        diff: 'composite_pv850_diff.png' },
   'temperature-advection':    { real: 'composite_advT850.png',      anom_clim: 'composite_advT850_anom.png',             anom_epall: 'composite_advT850_anom_epall.png',      diff: 'composite_advT850_diff.png' },

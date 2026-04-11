@@ -71,10 +71,11 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 #   "diff"       → legacy EP1−EP2 single-panel difference figure
 #
 # No climatology anomaly for:
-#   - egr (non-linear diagnostic; climatology decomposition produces dominant cross-terms)
 #   - rk-criterion (background-flow diagnostic; shown as total field only)
 #   - afc (already is a climatology anomaly by construction — Orlanski & Katzfey 1991)
 #   - btcr (uses climatological decomposition by construction — Rivière 2006)
+# Note: egr clim-anom (composite_egr_anom.png) requires era5_climatology_egr.nc (500/850 hPa u,v,T,z);
+#   will show exists=False until that file is downloaded and step3/step4 re-run.
 #
 # No EPALL-relative anomaly for:
 #   - moisture-flux-divergence (div_q_975_minus_epall not stored in step3)
@@ -82,7 +83,7 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 #   - btcr (uses climatological decomposition by construction — Rivière 2006)
 #   - rk-criterion (β − ∂²ū/∂y² is a background-flow diagnostic; shown as total field only)
 DIAGNOSTIC_FIGURE_MAP = {
-    "egr":                      {"real": "composite_egr.png",                                                                  "anom_epall": "composite_egr_anom_epall.png",          "diff": "composite_egr_diff.png"},
+    "egr":                      {"real": "composite_egr.png",         "anom_clim": "composite_egr_anom.png",                 "anom_epall": "composite_egr_anom_epall.png",          "diff": "composite_egr_diff.png"},
     "pv-200":                   {"real": "composite_pv200.png",        "anom_clim": "composite_pv200_anom.png",               "anom_epall": "composite_pv200_anom_epall.png",        "diff": "composite_pv200_diff.png"},
     "pv-850":                   {"real": "composite_pv850.png",        "anom_clim": "composite_pv850_anom.png",               "anom_epall": "composite_pv850_anom_epall.png",        "diff": "composite_pv850_diff.png"},
     "temperature-advection":    {"real": "composite_advT850.png",      "anom_clim": "composite_advT850_anom.png",             "anom_epall": "composite_advT850_anom_epall.png",      "diff": "composite_advT850_diff.png"},

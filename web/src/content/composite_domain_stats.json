@@ -5,8 +5,8 @@
     "unit": "day\u207b\u00b9",
     "inside_15x15": "0.77",
     "outside_15x15": "0.65",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "0.05",
+    "outside_15x15_epall_anom": "0.03"
   },
   {
     "diagnostic_id": "egr",
@@ -14,8 +14,8 @@
     "unit": "day\u207b\u00b9",
     "inside_15x15": "0.79",
     "outside_15x15": "0.66",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "0.07",
+    "outside_15x15_epall_anom": "0.03"
   },
   {
     "diagnostic_id": "egr",
@@ -23,8 +23,8 @@
     "unit": "day\u207b\u00b9",
     "inside_15x15": "0.67",
     "outside_15x15": "0.60",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-0.04",
+    "outside_15x15_epall_anom": "-0.02"
   },
   {
     "diagnostic_id": "egr",
@@ -41,8 +41,8 @@
     "unit": "PVU",
     "inside_15x15": "-4.95",
     "outside_15x15": "-4.41",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-0.07",
+    "outside_15x15_epall_anom": "0.03"
   },
   {
     "diagnostic_id": "pv-200",
@@ -50,8 +50,8 @@
     "unit": "PVU",
     "inside_15x15": "-4.81",
     "outside_15x15": "-4.30",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "0.06",
+    "outside_15x15_epall_anom": "0.13"
   },
   {
     "diagnostic_id": "pv-200",
@@ -59,8 +59,8 @@
     "unit": "PVU",
     "inside_15x15": "-4.89",
     "outside_15x15": "-4.51",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-0.01",
+    "outside_15x15_epall_anom": "-0.07"
   },
   {
     "diagnostic_id": "pv-200",
@@ -77,8 +77,8 @@
     "unit": "PVU",
     "inside_15x15": "-0.53",
     "outside_15x15": "-0.48",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "0.05",
+    "outside_15x15_epall_anom": "0.04"
   },
   {
     "diagnostic_id": "pv-850",
@@ -86,8 +86,8 @@
     "unit": "PVU",
     "inside_15x15": "-0.58",
     "outside_15x15": "-0.51",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "0.00",
+    "outside_15x15_epall_anom": "0.01"
   },
   {
     "diagnostic_id": "pv-850",
@@ -95,8 +95,8 @@
     "unit": "PVU",
     "inside_15x15": "-0.59",
     "outside_15x15": "-0.53",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-0.01",
+    "outside_15x15_epall_anom": "-0.01"
   },
   {
     "diagnostic_id": "pv-850",
@@ -115,8 +115,8 @@
     "outside_15x15": "-0.051",
     "inside_15x15_anom": "-0.027",
     "outside_15x15_anom": "-0.031",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-0.053",
+    "outside_15x15_epall_anom": "-0.036"
   },
   {
     "diagnostic_id": "temperature-advection",
@@ -126,8 +126,8 @@
     "outside_15x15": "-0.047",
     "inside_15x15_anom": "-0.037",
     "outside_15x15_anom": "-0.039",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-0.072",
+    "outside_15x15_epall_anom": "-0.032"
   },
   {
     "diagnostic_id": "temperature-advection",
@@ -137,8 +137,8 @@
     "outside_15x15": "0.008",
     "inside_15x15_anom": "-0.025",
     "outside_15x15_anom": "-0.027",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "0.045",
+    "outside_15x15_epall_anom": "0.023"
   },
   {
     "diagnostic_id": "temperature-advection",
@@ -159,8 +159,8 @@
     "outside_15x15": "-1.531e+01",
     "inside_15x15_anom": "-1.103e+01",
     "outside_15x15_anom": "-2.212e+00",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "2.903e+01",
+    "outside_15x15_epall_anom": "1.616e+01"
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
@@ -170,8 +170,8 @@
     "outside_15x15": "-3.884e+01",
     "inside_15x15_anom": "-3.053e+01",
     "outside_15x15_anom": "-3.123e-01",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-4.027e+01",
+    "outside_15x15_epall_anom": "-7.371e+00"
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
@@ -181,8 +181,8 @@
     "outside_15x15": "-3.126e+01",
     "inside_15x15_anom": "-1.675e+01",
     "outside_15x15_anom": "5.484e-01",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "1.329e+01",
+    "outside_15x15_epall_anom": "2.162e-01"
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
@@ -201,8 +201,8 @@
     "unit": "hPa",
     "inside_15x15": "1005.4",
     "outside_15x15": "1009.6",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "3.4",
+    "outside_15x15_epall_anom": "3.8"
   },
   {
     "diagnostic_id": "slp",
@@ -210,8 +210,8 @@
     "unit": "hPa",
     "inside_15x15": "1001.1",
     "outside_15x15": "1005.9",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-0.9",
+    "outside_15x15_epall_anom": "0.0"
   },
   {
     "diagnostic_id": "slp",
@@ -219,8 +219,8 @@
     "unit": "hPa",
     "inside_15x15": "1001.7",
     "outside_15x15": "1005.1",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-0.3",
+    "outside_15x15_epall_anom": "-0.8"
   },
   {
     "diagnostic_id": "slp",
@@ -239,8 +239,8 @@
     "outside_15x15": "-4.335e-03",
     "inside_15x15_anom": "-2.371e-04",
     "outside_15x15_anom": "-1.237e-03",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-2.381e-03",
+    "outside_15x15_epall_anom": "-2.741e-03"
   },
   {
     "diagnostic_id": "ke-advection",
@@ -250,8 +250,8 @@
     "outside_15x15": "-3.243e-03",
     "inside_15x15_anom": "1.275e-03",
     "outside_15x15_anom": "5.256e-04",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-3.479e-03",
+    "outside_15x15_epall_anom": "-1.649e-03"
   },
   {
     "diagnostic_id": "ke-advection",
@@ -261,8 +261,8 @@
     "outside_15x15": "-2.155e-04",
     "inside_15x15_anom": "1.354e-03",
     "outside_15x15_anom": "4.885e-04",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "2.148e-03",
+    "outside_15x15_epall_anom": "1.379e-03"
   },
   {
     "diagnostic_id": "ke-advection",

@@ -335,6 +335,28 @@ def load_stats():
             stats[f"{label}_AFC_EAST"] = f"{afc_boundary['east']:.3e}"
             stats[f"{label}_AFC_WEST"] = f"{afc_boundary['west']:.3e}"
 
+        # === EPALL-relative anomaly stats (EP1, EP2, EP3 only) ===
+        # Variables named {var}_minus_epall store EPx − EPALL, precomputed in step3.
+        # AFC and RK have no _minus_epall: AFC uses climatological decomposition;
+        # RK is a background-flow diagnostic shown as total composite only.
+        if label != "EPALL":
+            _epall_anom_map = [
+                # (stat_prefix, nc_variable, scale_factor, fmt_spec)
+                ("EGR",   "egr_minus_epall",        1.0,         ".2f"),
+                ("PV200", "pv_200_minus_epall",      1e6,         ".2f"),
+                ("PV850", "pv_850_minus_epall",      1e6,         ".2f"),
+                ("ADVT",  "adv_T_850_minus_epall",   3600.0,      ".3f"),
+                ("DIVQ",  "div_q_975_minus_epall",   1000.0*3600, ".3e"),
+                ("SLP",   "msl_minus_epall",         1/100.0,     ".1f"),
+                ("KEADV", "ke_adv_250_minus_epall",  1.0,         ".3e"),
+            ]
+            for stat_prefix, nc_var, scale, fmt in _epall_anom_map:
+                if nc_var in ds:
+                    arr = ds[nc_var].values * scale
+                    regional = compute_regional_stats(arr, x_2d, y_2d)
+                    stats[f"{label}_{stat_prefix}_EPALL_LEC15"]  = f"{regional['lec15']:{fmt}}"
+                    stats[f"{label}_{stat_prefix}_EPALL_FULL30"] = f"{regional['full30']:{fmt}}"
+
         ds.close()
 
     stats["GENERATION_DATE"] = datetime.now().strftime("%Y-%m-%d %H:%M")

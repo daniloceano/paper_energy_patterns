@@ -29,6 +29,8 @@ interface DomainStatEntry {
   unit: string
   inside_15x15: string | null
   outside_15x15: string | null
+  inside_15x15_epall_anom?: string | null
+  outside_15x15_epall_anom?: string | null
 }
 
 interface BoundaryFluxEntry {
@@ -258,59 +260,53 @@ function DiagnosticCompositesContent({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50/50">
-                  <th className="px-4 py-3 text-left font-semibold text-slate-600">Pattern</th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                  <th className="px-4 py-3 text-left font-semibold text-slate-600" rowSpan={2}>Pattern</th>
+                  <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>
                     Inside {DATASET_STATS.innerDomainSize}
                   </th>
-                  <th className="px-4 py-3 text-right font-semibold text-slate-600">
+                  <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>
                     Outside {DATASET_STATS.innerDomainSize}
                   </th>
                 </tr>
+                <tr className="border-b border-slate-200 bg-slate-50/50">
+                  <th className="px-3 py-1 text-right text-xs font-medium text-slate-500">total</th>
+                  <th className="px-3 py-1 text-right text-xs font-medium text-amber-500">vs EPALL</th>
+                  <th className="px-3 py-1 text-right text-xs font-medium text-slate-500">total</th>
+                  <th className="px-3 py-1 text-right text-xs font-medium text-amber-500">vs EPALL</th>
+                </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                <tr className="hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-medium text-slate-900">EP1</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
-                    {ep1Stats?.inside_15x15 ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
-                    {ep1Stats?.outside_15x15 ?? '—'}
-                  </td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-medium text-slate-900">EP2</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
-                    {ep2Stats?.inside_15x15 ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
-                    {ep2Stats?.outside_15x15 ?? '—'}
-                  </td>
-                </tr>
-                <tr className="hover:bg-slate-50/50">
-                  <td className="px-4 py-3 font-medium text-slate-900">EP3</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
-                    {ep3Stats?.inside_15x15 ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-700">
-                    {ep3Stats?.outside_15x15 ?? '—'}
-                  </td>
-                </tr>
-                <tr className="hover:bg-slate-50/50 bg-slate-50/30">
-                  <td className="px-4 py-3 font-medium text-slate-500 italic">EPALL</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-500">
-                    {epallStats?.inside_15x15 ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-slate-500">
-                    {epallStats?.outside_15x15 ?? '—'}
-                  </td>
-                </tr>
+                {([
+                  ['EP1', ep1Stats, false],
+                  ['EP2', ep2Stats, false],
+                  ['EP3', ep3Stats, false],
+                  ['EPALL', epallStats, true],
+                ] as [string, typeof ep1Stats, boolean][]).map(([label, s, isAll]) => (
+                  <tr key={label} className={`hover:bg-slate-50/50${isAll ? ' bg-slate-50/30' : ''}`}>
+                    <td className={`px-4 py-3 font-medium ${isAll ? 'text-slate-500 italic' : 'text-slate-900'}`}>{label}</td>
+                    <td className={`px-3 py-3 text-right tabular-nums ${isAll ? 'text-slate-500' : 'text-slate-700'}`}>
+                      {s?.inside_15x15 ?? '—'}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums text-amber-600">
+                      {isAll ? <span className="text-slate-400 italic text-xs">ref</span> : (s?.inside_15x15_epall_anom ?? '—')}
+                    </td>
+                    <td className={`px-3 py-3 text-right tabular-nums ${isAll ? 'text-slate-500' : 'text-slate-700'}`}>
+                      {s?.outside_15x15 ?? '—'}
+                    </td>
+                    <td className="px-3 py-3 text-right tabular-nums text-amber-600">
+                      {isAll ? <span className="text-slate-400 italic text-xs">ref</span> : (s?.outside_15x15_epall_anom ?? '—')}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
           <div className="border-t border-slate-100 px-4 py-2">
             <p className="text-xs text-slate-400">
               &ldquo;Inside&rdquo; = mean within the central {DATASET_STATS.innerDomainSize} LEC subdomain (±7.5° from cyclone centre).
-              &ldquo;Outside&rdquo; = mean over the full {DATASET_STATS.domainSize} domain.
+              &ldquo;Outside&rdquo; = mean over the full {DATASET_STATS.domainSize} domain.{' '}
+              <span className="font-medium text-amber-500">vs EPALL</span> = EPx − EPALL (EPALL-relative anomaly;
+              EPALL row is the reference — identically zero by construction).
               {!hasStats && ' Run step5 + extract_composite_site_data.py to populate.'}
             </p>
           </div>

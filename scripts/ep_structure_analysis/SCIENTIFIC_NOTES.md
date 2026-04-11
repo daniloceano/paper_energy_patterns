@@ -321,6 +321,8 @@ where $\langle X \rangle_{EP_x}$ is the composite mean of diagnostic $X$ for cyc
 
 **Figures:** `composite_*_anom_epall.png` — 1×3 panel (EP1−EPALL | EP2−EPALL | EP3−EPALL).
 
+**Domain stats tables:** The web layer domain stats tables (step5 → `results/ep_structure/composite_stats.json`) now include EPALL-relative columns `inside_15x15_epall_anom` / `outside_15x15_epall_anom` for each diagnostic with a `_minus_epall` variable. These are computed as the spatial mean of `{var}_minus_epall` within the LEC15 and FULL30 domains, respectively. EPALL itself shows "ref" (identically zero by construction).
+
 #### 3.11B Climatology-Based Anomaly Fields (legacy, kept for AFC/BtCR)
 
 To isolate the **synoptic-scale eddy signature** of EP1, EP2, and EP3 cyclones from the background climatological state, anomaly (eddy perturbation) fields using the same temporal decomposition as AFC are retained for legacy diagnostics.
@@ -345,6 +347,9 @@ ERA5 monthly-averaged reanalysis on pressure levels (`reanalysis-era5-pressure-l
 | `pv850` | 825, 850, 875 | u, v, t | `era5_climatology_pv850.nc` |
 | `mfd975` | 975 | u, v, q | `era5_climatology_mfd975.nc` |
 | `slp` | surface | msl | `era5_climatology_slp.nc` |
+| `egr` | 500, 850 | u, v, t, z | `era5_climatology_egr.nc` (**pending download**) |
+
+> **EGR climatology status:** The `era5_climatology_egr.nc` file (500 and 850 hPa u, v, T, z; 1991–2020 monthly climatology) has not yet been downloaded. The step3 and step4 infrastructure for `egr_anom` is in place; step3 will compute `egr_anom = egr(total) − egr(climatology)` automatically once the file is present, and step4 will generate `composite_egr_anom.png` (2×2: EP1 | EP2 | EP3 | EPALL). Download via `step2_1_download_era5_monthly_means.py --groups egr`.
 
 **Application to diagnostics:**  
 For each diagnostic $D = D(u, v, T, \ldots)$ the anomaly (eddy) field is computed by substituting all input fields with their climatological perturbations:
@@ -365,11 +370,13 @@ The cross-terms (e.g. $-V_m \cdot \nabla T' - V' \cdot \nabla T_m$ for temperatu
 - **Moisture flux div′:** Captures synoptic-scale convergence anomalies, filtering out the seasonal moisture cycle.
 - **KE advection′:** Highlights energy transport by the eddy jet/streak relative to the mean flow.
 
-**Note on EGR:** EGR is a layer-averaged diagnostic derived from the total wind shear and static stability. A temporal decomposition of EGR would require priming N² and the shear simultaneously, leading to non-trivial cross terms. For this reason EGR is retained as a total-field diagnostic only.
+**Note on EGR (clim-anom):** EGR is a non-linear diagnostic of the total wind shear and static stability. The "EGR anomaly" here is defined as $\mathrm{EGR}' = \mathrm{EGR(total)} - \mathrm{EGR(climatology)}$, i.e. the EGR recomputed from the full fields minus the EGR recomputed from 1991–2020 monthly-mean fields. This is a **field-level subtraction**, not an input-field decomposition, so no cross-terms are introduced. It requires `era5_climatology_egr.nc` (500 and 850 hPa u, v, T, z; see table above). Step3 computes `egr_anom` automatically when the file is present; step4 produces `composite_egr_anom.png` (2×2 layout with EPALL).
 
 **Note on AFC:** AFC is by construction an anomaly field (it is already computed from eddy $\vec{v}'$ and $\phi'$ relative to the monthly climatology). No additional anomaly version is needed.
 
 **Note on wind vectors in anomaly figures:** All anomaly composite figures overlay **eddy wind vectors** $\vec{V}' = \vec{V} - \bar{\vec{V}}_m$ (not total winds), consistent with the sign convention above.  This ensures that the overlaid circulation patterns reflect the cyclone-induced perturbation rather than the climatological background.
+
+**Figures (clim-anom, April 2026):** `composite_*_anom.png` — **2×2 panel** (EP1 | EP2 | EP3 | EPALL). EPALL is included as the 4th panel to provide the full-population reference alongside the three energy patterns. Available for: PV 200 hPa, PV 850 hPa, Temperature Advection 850 hPa, Moisture Flux Divergence 975 hPa, SLP, KE Advection 250 hPa. EGR clim-anom is pending download of `era5_climatology_egr.nc` (see §3.11B EGR note above).
 
 ---
 

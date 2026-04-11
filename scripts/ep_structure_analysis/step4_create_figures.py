@@ -997,24 +997,24 @@ def figure_rk_criterion_epall_anom(datasets):
 def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
               cmap="RdBu_r", wind_u=None, wind_v=None, wind_scale=None):
     """Generic multi-panel climatology-based anomaly figure builder.
-    
-    NOTE: This is the legacy climatology-based anomaly definition.
-    Kept for diagnostics that inherently require climatological decomposition
-    (AFC, BtCR).
+
+    Plots EP1, EP2, EP3, EPALL in a 2×2 layout.
+    X' = X − X̄_clim  (departure from 1991–2020 ERA5 monthly climatology).
 
     Parameters
     ----------
     datasets     : dict with EP keys → xr.Dataset
-    var_key      : variable name inside each dataset
+    var_key      : variable name inside each dataset (e.g. 'pv_200_anom')
     scale_factor : multiply raw values before plotting (e.g. 3600 for K/s→K/h)
     unit_label   : colorbar label string
     suptitle     : figure super-title
     out_name     : output filename (no directory)
     cmap         : diverging colormap name
-    wind_u/v     : variable keys for optional quiver overlay
+    wind_u/v     : variable keys for optional quiver overlay (anomaly winds)
     wind_scale   : quiver scale (default: VECTOR_SCALE)
     """
-    eps = [ep for ep in ["EP1", "EP2", "EP3"] if ep in datasets and var_key in datasets[ep]]
+    # Include EPALL so the layout is 2×2 (EP1 | EP2 / EP3 | EPALL)
+    eps = [ep for ep in ["EP1", "EP2", "EP3", "EPALL"] if ep in datasets and var_key in datasets[ep]]
     if not eps:
         logging.warning(f"    ⚠  {var_key} not in composites — skipping anomaly figure")
         return
@@ -1049,26 +1049,55 @@ def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
             )
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep}  [n={n}]", ylabel=(i % 2 == 0))
+        ep_lbl = f"{ep}  [n={n}]" if ep != "EPALL" else f"EPALL (all cyclones)  [n={n}]"
+        _decorate_ax(ax, ep_lbl, ylabel=(i % 2 == 0))
         _add_cbar(fig, ax, im, unit_label)
 
     fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)
     plt.tight_layout()
-    out = _figure_path(out_name)  # Use _figure_path to add mode suffix
+    out = _figure_path(out_name)
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
 
 
+def figure_egr_anom(datasets):
+    """EGR climatology-relative anomaly: EP1, EP2, EP3, EPALL (2×2).
+
+    EGR_anom = EGR(total) - EGR(climatology).
+    EGR_clim is computed from climatological 500/850 hPa wind+temp+geopotential
+    and stored as 'egr_anom' in composites by step3 (requires era5_climatology_egr.nc).
+    If the variable is not available, this function logs a warning and returns.
+    """
+    logging.info("  Creating EGR climatology-relative anomaly (2×2)...")
+    if not any("egr_anom" in datasets.get(ep, {}) for ep in ["EP1", "EP2", "EP3", "EPALL"]):
+        logging.warning(
+            "    ⚠  egr_anom not in composites — skipping. "
+            "Re-run step3 after downloading era5_climatology_egr.nc (500/850 hPa u,v,T,z)."
+        )
+        return
+    _anom_fig(
+        datasets,
+        var_key="egr_anom",
+        scale_factor=1.0,
+        unit_label="ΔEGR (day⁻¹)",
+        suptitle="Eady Growth Rate Anomaly — departure from 1991–2020 climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
+        out_name="composite_egr_anom.png",
+        cmap="RdBu_r",
+    )
+
+
 def figure_pv200_anom(datasets):
-    """PV anomaly at 200 hPa: climatology-based (legacy)."""
-    logging.info("  Creating PV anomaly @200 hPa (climatology-based)...")
+    """PV anomaly at 200 hPa: EP1, EP2, EP3, EPALL (2×2), climatology-based."""
+    logging.info("  Creating PV anomaly @200 hPa (climatology-based, 2×2)...")
     _anom_fig(
         datasets,
         var_key="pv_200_anom",
         scale_factor=1e6,
         unit_label="ΔPV (PVU)",
-        suptitle="PV Anomaly at 200 hPa (departure from 1991–2020 climatology)",
+        suptitle="PV Anomaly at 200 hPa — departure from 1991–2020 climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_pv200_anom.png",
         cmap="RdBu_r",
         wind_u="u_250_prime",
@@ -1078,14 +1107,15 @@ def figure_pv200_anom(datasets):
 
 
 def figure_pv850_anom(datasets):
-    """PV anomaly at 850 hPa: climatology-based (legacy)."""
-    logging.info("  Creating PV anomaly @850 hPa (climatology-based)...")
+    """PV anomaly at 850 hPa: EP1, EP2, EP3, EPALL (2×2), climatology-based."""
+    logging.info("  Creating PV anomaly @850 hPa (climatology-based, 2×2)...")
     _anom_fig(
         datasets,
         var_key="pv_850_anom",
         scale_factor=1e6,
         unit_label="ΔPV (PVU)",
-        suptitle="PV Anomaly at 850 hPa (departure from 1991–2020 climatology)",
+        suptitle="PV Anomaly at 850 hPa — departure from 1991–2020 climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_pv850_anom.png",
         cmap="RdBu_r",
         wind_u="u_850_prime",
@@ -1095,14 +1125,15 @@ def figure_pv850_anom(datasets):
 
 
 def figure_advT850_anom(datasets):
-    """Temperature advection anomaly at 850 hPa: climatology-based (legacy)."""
-    logging.info("  Creating temp advection anomaly @850 hPa (climatology-based)...")
+    """Temperature advection anomaly at 850 hPa: EP1, EP2, EP3, EPALL (2×2), climatology-based."""
+    logging.info("  Creating temp advection anomaly @850 hPa (climatology-based, 2×2)...")
     _anom_fig(
         datasets,
         var_key="adv_T_850_anom",
         scale_factor=3600.0,
         unit_label="Δ(−V·∇T) (K h⁻¹)",
-        suptitle="Temperature Advection Anomaly at 850 hPa (departure from climatology)",
+        suptitle="Temperature Advection Anomaly at 850 hPa — departure from climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_advT850_anom.png",
         cmap="RdBu_r",
         wind_u="u_850_prime",
@@ -1112,14 +1143,15 @@ def figure_advT850_anom(datasets):
 
 
 def figure_moisture_anom(datasets):
-    """Moisture flux divergence anomaly at 975 hPa: EP1 vs EP2, with 975 hPa anomaly wind vectors."""
-    logging.info("  Creating moisture flux divergence anomaly @975 hPa composite figure...")
+    """Moisture flux divergence anomaly at 975 hPa: EP1, EP2, EP3, EPALL (2×2)."""
+    logging.info("  Creating moisture flux divergence anomaly @975 hPa (2×2)...")
     _anom_fig(
         datasets,
         var_key="div_q_975_anom",
         scale_factor=1.0,
         unit_label="Δ∇·(q′V′) (g kg⁻¹ s⁻¹)",
-        suptitle="Moisture Flux Divergence Anomaly at 975 hPa (departure from climatology) — EP1 vs EP2",
+        suptitle="Moisture Flux Divergence Anomaly at 975 hPa — departure from climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_moisture_flux_anom.png",
         cmap="BrBG_r",
         wind_u="u_975_prime",
@@ -1129,14 +1161,15 @@ def figure_moisture_anom(datasets):
 
 
 def figure_ke_advection_anom(datasets):
-    """Kinetic energy advection anomaly at 250 hPa: EP1 vs EP2, with 250 hPa anomaly wind vectors."""
-    logging.info("  Creating KE advection anomaly @250 hPa composite figure...")
+    """Kinetic energy advection anomaly at 250 hPa: EP1, EP2, EP3, EPALL (2×2)."""
+    logging.info("  Creating KE advection anomaly @250 hPa (2×2)...")
     _anom_fig(
         datasets,
         var_key="ke_adv_250_anom",
         scale_factor=1.0,
         unit_label="ΔKE adv (m² s⁻³)",
-        suptitle="KE Advection Anomaly at 250 hPa (departure from climatology) — EP1 vs EP2",
+        suptitle="KE Advection Anomaly at 250 hPa — departure from climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_ke_advection_anom.png",
         cmap="PuOr_r",
         wind_u="u_250_prime",
@@ -1146,14 +1179,15 @@ def figure_ke_advection_anom(datasets):
 
 
 def figure_slp_anom(datasets):
-    """SLP anomaly: EP1 vs EP2, with 850 hPa wind vectors."""
-    logging.info("  Creating SLP anomaly composite figure...")
+    """SLP anomaly: EP1, EP2, EP3, EPALL (2×2)."""
+    logging.info("  Creating SLP anomaly (2×2)...")
     _anom_fig(
         datasets,
         var_key="msl_anom",
         scale_factor=1.0 / 100.0,    # Pa → hPa
         unit_label="ΔSLP (hPa)",
-        suptitle="Sea Level Pressure Anomaly (departure from 1991–2020 climatology) — EP1 vs EP2",
+        suptitle="Sea Level Pressure Anomaly — departure from 1991–2020 climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_slp_anom.png",
         cmap="RdBu_r",
         wind_u="u_850_prime",
@@ -1660,8 +1694,9 @@ def main():
     figure_slp_epall_anom(datasets)
     figure_ke_advection_epall_anom(datasets)
 
-    logging.info("\nCreating climatology-based anomaly figures (legacy, where available)...")
-
+    logging.info("\nCreating climatology-relative anomaly figures (2×2: EP1|EP2|EP3|EPALL)...")
+    # EGR clim-anom requires era5_climatology_egr.nc (500/850 hPa); will skip if absent.
+    figure_egr_anom(datasets)
     figure_pv200_anom(datasets)
     figure_pv850_anom(datasets)
     figure_advT850_anom(datasets)

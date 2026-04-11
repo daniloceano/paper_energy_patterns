@@ -157,15 +157,20 @@ MIN_N_SQUARED = 1e-6
 
 # Climatology files produced by step2_1  (one per download group)
 # ------------------------------------------------------------------
-# 250hPa  : u, v, z at 250 hPa   → AFC  +  KE_adv anomaly
+# 250hPa  : u, v, z at 250 hPa          → AFC  +  KE_adv anomaly
 # pv200   : u, v, t at 175/200/225 hPa  → PV@200 anomaly
 # pv850   : u, v, t at 825/850/875 hPa  → PV@850 + T_adv@850 anomaly
 # mfd975  : u, v, q at 975 hPa          → moisture flux div anomaly
+# egr     : u, v, t, z at 500+850 hPa   → EGR climatological anomaly
+#           Download with step2_1 --groups egr   (pressure_level=[500, 850],
+#           variables=[u_component_of_wind, v_component_of_wind,
+#                      temperature, geopotential], 1991–2020 monthly means)
 CLIMATOLOGY_FILE        = DATA_DIR / "era5_climatology_250hPa.nc"
 CLIMATOLOGY_PV200_FILE  = DATA_DIR / "era5_climatology_pv200.nc"
 CLIMATOLOGY_PV850_FILE  = DATA_DIR / "era5_climatology_pv850.nc"
 CLIMATOLOGY_MFD975_FILE = DATA_DIR / "era5_climatology_mfd975.nc"
 CLIMATOLOGY_SLP_FILE    = DATA_DIR / "era5_climatology_slp.nc"
+CLIMATOLOGY_EGR_FILE    = DATA_DIR / "era5_climatology_egr.nc"   # 500+850 hPa; optional
 
 # Module-level cache: path → xr.Dataset (or None if file absent).
 # Populated lazily on first access; shared across all cases in the same process.
@@ -1407,6 +1412,46 @@ def _compute_diagnostics_for_timestep(ds_timestep, case_month):
     if "msl" in result and ds_clim_slp is not None:
         c_slp = _interp_clim(ds_clim_slp)
         result["msl_anom"] = result["msl"] - c_slp["msl_clim"].values
+
+    # EGR climatological anomaly: EGR(total) − EGR(climatology)
+    # Requires era5_climatology_egr.nc with u, v, T, z at levels [500, 850] hPa.
+    # If the file is absent (not yet downloaded), this block is silently skipped.
+    # Download instruction: step2_1 --groups egr
+    #   pressure_levels = [500, 850], variables = u, v, T, z, period = 1991–2020
+    ds_clim_egr = _load_clim(
+        CLIMATOLOGY_EGR_FILE, "EGR (500+850 hPa)",
+        "Download with step2_1 --groups egr (500/850 hPa u, v, T, z). "
+        "EGR climatological anomaly will be skipped until available."
+    )
+    if ds_clim_egr is not None:
+        c_egr = _interp_clim(ds_clim_egr)
+        try:
+            # Extract climatological fields at 500 and 850 hPa
+            def _egr_clim_field(lev, var, unit_str, ref_da):
+                raw = c_egr[var].sel(pressure_level=float(lev))
+                return (
+                    xr.DataArray(raw.values, coords=ref_da.coords, dims=ref_da.dims)
+                    * units(unit_str)
+                )
+
+            u500_c = _egr_clim_field(500, "u_clim", "m/s", _sel(u_da, 500))
+            v500_c = _egr_clim_field(500, "v_clim", "m/s", _sel(v_da, 500))
+            u850_c = _egr_clim_field(850, "u_clim", "m/s", _sel(u_da, 850))
+            v850_c = _egr_clim_field(850, "v_clim", "m/s", _sel(v_da, 850))
+            T500_c = _egr_clim_field(500, "t_clim", "K",   _sel(T_da, 500))
+            T850_c = _egr_clim_field(850, "t_clim", "K",   _sel(T_da, 850))
+            z500_c = _egr_clim_field(500, "z_clim", "m**2/s**2", _sel(z_da, 500))
+            z850_c = _egr_clim_field(850, "z_clim", "m**2/s**2", _sel(z_da, 850))
+
+            egr_clim = eady_growth_rate(
+                u500_c, v500_c, u850_c, v850_c,
+                T500_c, T850_c, z500_c, z850_c,
+            )
+            # True anomaly: EGR_total − EGR_clim
+            # Positive = more baroclinic instability than climatological background
+            result["egr_anom"] = result["egr"] - egr_clim
+        except Exception as _e:
+            logging.warning(f"    ⚠  EGR clim anomaly computation failed: {_e}")
 
     return result
 

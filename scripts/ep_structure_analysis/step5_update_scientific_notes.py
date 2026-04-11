@@ -357,6 +357,23 @@ def load_stats():
                     stats[f"{label}_{stat_prefix}_EPALL_LEC15"]  = f"{regional['lec15']:{fmt}}"
                     stats[f"{label}_{stat_prefix}_EPALL_FULL30"] = f"{regional['full30']:{fmt}}"
 
+            # EPALL-relative boundary flux stats (flux diagnostics only)
+            # AFC has no _minus_epall (climatological decomposition by design).
+            _epall_flux_map = [
+                # (stat_prefix, nc_variable, scale_factor, fmt_spec)
+                ("ADVT",  "adv_T_850_minus_epall",  3600.0,      ".3f"),
+                ("DIVQ",  "div_q_975_minus_epall",  1000.0*3600, ".3e"),
+                ("KEADV", "ke_adv_250_minus_epall", 1.0,         ".3e"),
+            ]
+            for stat_prefix, nc_var, scale, fmt in _epall_flux_map:
+                if nc_var in ds:
+                    arr = ds[nc_var].values * scale
+                    boundary = compute_boundary_stats(arr, x_2d, y_2d)
+                    stats[f"{label}_{stat_prefix}_EPALL_NORTH"] = f"{boundary['north']:{fmt}}"
+                    stats[f"{label}_{stat_prefix}_EPALL_SOUTH"] = f"{boundary['south']:{fmt}}"
+                    stats[f"{label}_{stat_prefix}_EPALL_EAST"]  = f"{boundary['east']:{fmt}}"
+                    stats[f"{label}_{stat_prefix}_EPALL_WEST"]  = f"{boundary['west']:{fmt}}"
+
         ds.close()
 
     stats["GENERATION_DATE"] = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -378,18 +395,21 @@ def export_stats_json(stats):
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # Mapping from internal stat keys to structured JSON entries
-    # Format: prefix → (diag_id, unit, is_flux, anom_prefix_or_None)
+    # Format: prefix → (diag_id, unit, is_flux, anom_prefix, epall_flux_prefix)
+    # epall_flux_prefix: prefix used for EPALL-relative boundary flux keys (None if not available)
+    #   - AFC: no EPALL-relative (climatological decomposition by design)
+    #   - RK, EGR, PV*, SLP: not flux diagnostics
     DIAG_MAP = {
-        # (stat_prefix, diag_id, unit, is_flux, anom_prefix)
-        "EGR":   ("egr",                      "day⁻¹",        False, None),
-        "PV200": ("pv-200",                   "PVU",          False, None),
-        "PV850": ("pv-850",                   "PVU",          False, None),
-        "ADVT":  ("temperature-advection",    "K h⁻¹",        True,  "ADVT_ANOM"),
-        "DIVQ":  ("moisture-flux-divergence", "g kg⁻¹ s⁻¹",  True,  "DIVQ_ANOM"),
-        "SLP":   ("slp",                      "hPa",          False, None),
-        "KEADV": ("ke-advection",             "m² s⁻³",       True,  "KEADV_ANOM"),
-        "AFC":   ("afc",                      "m² s⁻³",       True,  None),
-        "RK":    ("rk-criterion",             "s⁻¹",          False, None),
+        # (stat_prefix, diag_id, unit, is_flux, anom_prefix, epall_flux_prefix)
+        "EGR":   ("egr",                      "day⁻¹",        False, None,          None),
+        "PV200": ("pv-200",                   "PVU",          False, None,          None),
+        "PV850": ("pv-850",                   "PVU",          False, None,          None),
+        "ADVT":  ("temperature-advection",    "K h⁻¹",        True,  "ADVT_ANOM",  "ADVT_EPALL"),
+        "DIVQ":  ("moisture-flux-divergence", "g kg⁻¹ s⁻¹",  True,  "DIVQ_ANOM",  "DIVQ_EPALL"),
+        "SLP":   ("slp",                      "hPa",          False, None,          None),
+        "KEADV": ("ke-advection",             "m² s⁻³",       True,  "KEADV_ANOM", "KEADV_EPALL"),
+        "AFC":   ("afc",                      "m² s⁻³",       True,  None,          None),
+        "RK":    ("rk-criterion",             "s⁻¹",          False, None,          None),
     }
 
     domain_stats = []
@@ -398,7 +418,7 @@ def export_stats_json(stats):
     # Updated to include EP1, EP2, EP3, and EPALL
     all_eps = ["EP1", "EP2", "EP3", "EPALL"]
     
-    for prefix, (diag_id, unit, is_flux, anom_prefix) in DIAG_MAP.items():
+    for prefix, (diag_id, unit, is_flux, anom_prefix, epall_flux_prefix) in DIAG_MAP.items():
         for ep in all_eps:
             lec_key  = f"{ep}_{prefix}_LEC15"
             full_key = f"{ep}_{prefix}_FULL30"
@@ -416,7 +436,7 @@ def export_stats_json(stats):
                     a_full = f"{ep}_{anom_prefix}_FULL30"
                     entry["inside_15x15_anom"]  = stats.get(a_lec)
                     entry["outside_15x15_anom"] = stats.get(a_full)
-                # Add EPALL-relative anomaly fields (new April 2026)
+                # Add EPALL-relative anomaly fields (April 2026)
                 epall_lec  = f"{ep}_{prefix}_EPALL_LEC15"
                 epall_full = f"{ep}_{prefix}_EPALL_FULL30"
                 entry["inside_15x15_epall_anom"]  = stats.get(epall_lec)
@@ -437,12 +457,18 @@ def export_stats_json(stats):
                         "east":  stats.get(e_key),
                         "west":  stats.get(w_key),
                     }
-                    # Add anomaly boundary fields if available
+                    # Add clim-anomaly boundary fields
                     if anom_prefix:
                         entry["north_anom"] = stats.get(f"{ep}_{anom_prefix}_NORTH")
                         entry["south_anom"] = stats.get(f"{ep}_{anom_prefix}_SOUTH")
                         entry["east_anom"]  = stats.get(f"{ep}_{anom_prefix}_EAST")
                         entry["west_anom"]  = stats.get(f"{ep}_{anom_prefix}_WEST")
+                    # Add EPALL-relative boundary fields (April 2026; EP1/EP2/EP3 only)
+                    if epall_flux_prefix:
+                        entry["north_epall_anom"] = stats.get(f"{ep}_{epall_flux_prefix}_NORTH")
+                        entry["south_epall_anom"] = stats.get(f"{ep}_{epall_flux_prefix}_SOUTH")
+                        entry["east_epall_anom"]  = stats.get(f"{ep}_{epall_flux_prefix}_EAST")
+                        entry["west_epall_anom"]  = stats.get(f"{ep}_{epall_flux_prefix}_WEST")
                     boundary_fluxes.append(entry)
 
     out = {

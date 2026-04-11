@@ -42,6 +42,10 @@ interface BoundaryFluxEntry {
   south_anom?: string | null
   east_anom?: string | null
   west_anom?: string | null
+  north_epall_anom?: string | null
+  south_epall_anom?: string | null
+  east_epall_anom?: string | null
+  west_epall_anom?: string | null
 }
 
 interface FigureEntry {

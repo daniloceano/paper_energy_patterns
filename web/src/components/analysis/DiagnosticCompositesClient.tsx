@@ -45,6 +45,10 @@ interface BoundaryFluxEntry {
   south_anom?: string | null
   east_anom?: string | null
   west_anom?: string | null
+  north_epall_anom?: string | null
+  south_epall_anom?: string | null
+  east_epall_anom?: string | null
+  west_epall_anom?: string | null
 }
 
 // --- Props ---
@@ -333,15 +337,16 @@ function DiagnosticCompositesContent({
                 <thead>
                   <tr className="border-b border-slate-200 bg-slate-50/50">
                     <th className="px-4 py-3 text-left font-semibold text-slate-600" rowSpan={2}>Pattern</th>
-                    <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>North</th>
-                    <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>South</th>
-                    <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>East</th>
-                    <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={2}>West</th>
+                    <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={3}>North</th>
+                    <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={3}>South</th>
+                    <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={3}>East</th>
+                    <th className="px-3 py-2 text-center font-semibold text-slate-600" colSpan={3}>West</th>
                   </tr>
                   <tr className="border-b border-slate-200 bg-slate-50/50">
-                    {(['North','South','East','West'] as const).flatMap((_, i) => [
-                      <th key={`t${i}`} className="px-3 py-1 text-right text-xs font-medium text-slate-500">total</th>,
-                      <th key={`a${i}`} className="px-3 py-1 text-right text-xs font-medium text-sky-500">clim. anom&prime;</th>,
+                    {[0, 1, 2, 3].flatMap((i) => [
+                      <th key={`t${i}`} className="px-2 py-1 text-right text-xs font-medium text-slate-500">total</th>,
+                      <th key={`a${i}`} className="px-2 py-1 text-right text-xs font-medium text-sky-500">clim&prime;</th>,
+                      <th key={`e${i}`} className="px-2 py-1 text-right text-xs font-medium text-amber-500">EPALL&prime;</th>,
                     ])}
                   </tr>
                 </thead>
@@ -354,14 +359,26 @@ function DiagnosticCompositesContent({
                   ] as [string, typeof ep1Fluxes, boolean][]).map(([label, f, isAll]) => (
                     <tr key={label} className={`hover:bg-slate-50/50${isAll ? ' bg-slate-50/30' : ''}`}>
                       <td className={`px-4 py-3 font-medium ${isAll ? 'text-slate-500 italic' : 'text-slate-900'}`}>{label}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-slate-700">{f?.north ?? '—'}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-sky-600">{f?.north_anom ?? '—'}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-slate-700">{f?.south ?? '—'}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-sky-600">{f?.south_anom ?? '—'}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-slate-700">{f?.east ?? '—'}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-sky-600">{f?.east_anom ?? '—'}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-slate-700">{f?.west ?? '—'}</td>
-                      <td className="px-3 py-3 text-right tabular-nums text-sky-600">{f?.west_anom ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-slate-700">{f?.north ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-sky-600">{f?.north_anom ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-amber-600">
+                        {isAll ? <span className="text-slate-400 italic text-xs">ref</span> : (f?.north_epall_anom ?? '—')}
+                      </td>
+                      <td className="px-2 py-2 text-right tabular-nums text-slate-700">{f?.south ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-sky-600">{f?.south_anom ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-amber-600">
+                        {isAll ? <span className="text-slate-400 italic text-xs">ref</span> : (f?.south_epall_anom ?? '—')}
+                      </td>
+                      <td className="px-2 py-2 text-right tabular-nums text-slate-700">{f?.east ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-sky-600">{f?.east_anom ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-amber-600">
+                        {isAll ? <span className="text-slate-400 italic text-xs">ref</span> : (f?.east_epall_anom ?? '—')}
+                      </td>
+                      <td className="px-2 py-2 text-right tabular-nums text-slate-700">{f?.west ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-sky-600">{f?.west_anom ?? '—'}</td>
+                      <td className="px-2 py-2 text-right tabular-nums text-amber-600">
+                        {isAll ? <span className="text-slate-400 italic text-xs">ref</span> : (f?.west_epall_anom ?? '—')}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -371,9 +388,11 @@ function DiagnosticCompositesContent({
               <p className="text-xs text-slate-400">
                 Mean {diag.shortName} along each edge of the {DATASET_STATS.innerDomainSize} inner domain (±7.5°).
                 EPALL = all-cyclone composite (reference population).{' '}
-                <span className="font-medium text-sky-500">clim. anom&prime;</span>
-                {' '}= X&prime; = X − X̄<sub>clim</sub>, departure from the ERA5 {DATASET_STATS.climatologyPeriod} monthly climatology (where available).
-                Source: <code>step5_update_scientific_notes.py</code> → <code>results/ep_structure/composite_stats.json</code>.
+                <span className="font-medium text-sky-500">clim&prime;</span>
+                {' '}= X − X̄<sub>clim</sub>, departure from the ERA5 {DATASET_STATS.climatologyPeriod} monthly climatology.{' '}
+                <span className="font-medium text-amber-500">EPALL&prime;</span>
+                {' '}= EPx − EPALL (EPALL-relative; EPALL row is the reference — identically zero by construction).
+                AFC has no EPALL-relative (climatological decomposition by design).
               </p>
             </div>
           </div>

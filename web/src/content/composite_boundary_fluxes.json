@@ -10,7 +10,11 @@
     "north_anom": "-0.146",
     "south_anom": "0.033",
     "east_anom": "0.057",
-    "west_anom": "-0.082"
+    "west_anom": "-0.082",
+    "north_epall_anom": "-0.034",
+    "south_epall_anom": "-0.087",
+    "east_epall_anom": "-0.027",
+    "west_epall_anom": "-0.061"
   },
   {
     "diagnostic_id": "temperature-advection",
@@ -23,7 +27,11 @@
     "north_anom": "-0.224",
     "south_anom": "0.076",
     "east_anom": "0.030",
-    "west_anom": "-0.051"
+    "west_anom": "-0.051",
+    "north_epall_anom": "-0.136",
+    "south_epall_anom": "-0.025",
+    "east_epall_anom": "0.013",
+    "west_epall_anom": "-0.036"
   },
   {
     "diagnostic_id": "temperature-advection",
@@ -36,7 +44,11 @@
     "north_anom": "-0.070",
     "south_anom": "-0.005",
     "east_anom": "0.028",
-    "west_anom": "-0.063"
+    "west_anom": "-0.063",
+    "north_epall_anom": "0.072",
+    "south_epall_anom": "0.030",
+    "east_epall_anom": "-0.001",
+    "west_epall_anom": "0.029"
   },
   {
     "diagnostic_id": "temperature-advection",
@@ -49,7 +61,11 @@
     "north_anom": "-0.123",
     "south_anom": "0.023",
     "east_anom": "0.032",
-    "west_anom": "-0.061"
+    "west_anom": "-0.061",
+    "north_epall_anom": null,
+    "south_epall_anom": null,
+    "east_epall_anom": null,
+    "west_epall_anom": null
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
@@ -62,7 +78,11 @@
     "north_anom": "4.041e+01",
     "south_anom": "-1.169e+01",
     "east_anom": "-3.027e+01",
-    "west_anom": "4.416e+00"
+    "west_anom": "4.416e+00",
+    "north_epall_anom": "1.029e+01",
+    "south_epall_anom": "5.200e+01",
+    "east_epall_anom": "-7.521e+01",
+    "west_epall_anom": "5.283e+01"
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
@@ -75,7 +95,11 @@
     "north_anom": "5.528e+01",
     "south_anom": "-1.646e+01",
     "east_anom": "5.597e-01",
-    "west_anom": "1.121e+01"
+    "west_anom": "1.121e+01",
+    "north_epall_anom": "-1.373e+01",
+    "south_epall_anom": "-1.620e+01",
+    "east_epall_anom": "-4.309e+01",
+    "west_epall_anom": "4.246e+01"
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
@@ -88,7 +112,11 @@
     "north_anom": "1.347e+01",
     "south_anom": "2.023e+00",
     "east_anom": "1.002e+01",
-    "west_anom": "1.848e+01"
+    "west_anom": "1.848e+01",
+    "north_epall_anom": "4.454e+00",
+    "south_epall_anom": "-2.902e+00",
+    "east_epall_anom": "3.596e+01",
+    "west_epall_anom": "-3.108e+01"
   },
   {
     "diagnostic_id": "moisture-flux-divergence",
@@ -101,7 +129,11 @@
     "north_anom": "2.862e+01",
     "south_anom": "-4.893e+00",
     "east_anom": "2.434e+00",
-    "west_anom": "1.470e+01"
+    "west_anom": "1.470e+01",
+    "north_epall_anom": null,
+    "south_epall_anom": null,
+    "east_epall_anom": null,
+    "west_epall_anom": null
   },
   {
     "diagnostic_id": "ke-advection",
@@ -114,7 +146,11 @@
     "north_anom": "-2.021e-03",
     "south_anom": "-1.255e-03",
     "east_anom": "-3.990e-04",
-    "west_anom": "-5.962e-04"
+    "west_anom": "-5.962e-04",
+    "north_epall_anom": "-3.718e-03",
+    "south_epall_anom": "-6.570e-03",
+    "east_epall_anom": "-6.869e-03",
+    "west_epall_anom": "1.314e-03"
   },
   {
     "diagnostic_id": "ke-advection",
@@ -127,7 +163,11 @@
     "north_anom": "-4.525e-03",
     "south_anom": "6.011e-03",
     "east_anom": "2.092e-03",
-    "west_anom": "2.140e-03"
+    "west_anom": "2.140e-03",
+    "north_epall_anom": "-8.238e-04",
+    "south_epall_anom": "-1.098e-02",
+    "east_epall_anom": "5.521e-03",
+    "west_epall_anom": "-2.225e-03"
   },
   {
     "diagnostic_id": "ke-advection",
@@ -140,7 +180,11 @@
     "north_anom": "4.554e-04",
     "south_anom": "3.936e-04",
     "east_anom": "1.317e-03",
-    "west_anom": "1.969e-03"
+    "west_anom": "1.969e-03",
+    "north_epall_anom": "1.154e-03",
+    "south_epall_anom": "6.585e-03",
+    "east_epall_anom": "-1.231e-03",
+    "west_epall_anom": "7.937e-04"
   },
   {
     "diagnostic_id": "ke-advection",
@@ -153,7 +197,11 @@
     "north_anom": "-1.260e-03",
     "south_anom": "1.788e-03",
     "east_anom": "1.328e-03",
-    "west_anom": "1.705e-03"
+    "west_anom": "1.705e-03",
+    "north_epall_anom": null,
+    "south_epall_anom": null,
+    "east_epall_anom": null,
+    "west_epall_anom": null
   },
   {
     "diagnostic_id": "afc",

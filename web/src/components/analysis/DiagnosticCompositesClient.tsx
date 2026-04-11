@@ -17,7 +17,7 @@ interface FigureEntry {
 interface FiguresManifest {
   [diagId: string]: {
     real: FigureEntry
-    anom_epall?: FigureEntry
+    pairwise?: FigureEntry
     diff?: FigureEntry
   }
 }
@@ -47,9 +47,8 @@ interface BoundaryFluxEntry {
 // --- Props ---
 interface DiagnosticCompositesClientProps {
   diag: Diagnostic
-  figSlug: { real: string; anom_epall?: string; diff?: string }
+  figSlug: { real: string; pairwise?: string; diff?: string }
   isFluxDiag: boolean
-  // Canonical method data (central timesteps only)
   figures: FiguresManifest
   stats: DomainStatEntry[]
   fluxes: BoundaryFluxEntry[]
@@ -82,15 +81,15 @@ function DiagnosticCompositesContent({
   const epallFluxes = diagFluxes.find((f) => f.ep === 'EPALL')
 
   const realFig = figInfo?.real
-  const anomEpallFig = figInfo?.anom_epall
+  const pairwiseFig = figInfo?.pairwise
   const diffFig = figInfo?.diff
   const hasRealFigure = realFig?.exists ?? false
-  const hasAnomFigure = (anomEpallFig?.exists ?? false) && diag.hasAnomaly
+  const hasPairwiseFigure = (pairwiseFig?.exists ?? false) && diag.hasAnomaly
   const hasDiffFigure = diffFig?.exists ?? false
   const hasStats = diagStats.length > 0
 
   const realFigFilename = figSlug.real
-  const anomEpallFigFilename = figSlug.anom_epall
+  const pairwiseFigFilename = figSlug.pairwise
   const diffFigFilename = figSlug.diff
 
   return (
@@ -107,9 +106,8 @@ function DiagnosticCompositesContent({
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
             <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
               <p className="text-xs text-slate-500">
-                <strong>Central Timesteps Method:</strong> Composites centered on selected
-                intensification timesteps (typically 2–3 per case). Storm-centred{' '}
-                {DATASET_STATS.domainSize} composite. 2×2 panel: EP1 (top-left), EP2 (top-right),
+                Storm-centred {DATASET_STATS.domainSize} composites at the intensification
+                midpoint (2–3 timesteps per case). 2×2 panel: EP1 (top-left), EP2 (top-right),
                 EP3 (bottom-left), EPALL (bottom-right).
               </p>
               <p className="mt-1 text-xs text-slate-400">
@@ -119,7 +117,7 @@ function DiagnosticCompositesContent({
             <div className="p-4">
               <FallbackImage
                 src={figureUrl(realFig!.api_path)}
-                alt={`${diag.name} composite — EP1 / EP2 / EP3 / EPALL (Central Timesteps)`}
+                alt={`${diag.name} composite — EP1 / EP2 / EP3 / EPALL`}
                 width={1200}
                 height={1200}
                 className="w-full rounded-lg"
@@ -140,44 +138,44 @@ function DiagnosticCompositesContent({
           </ResultSummaryCallout>
         )}
 
-        {/* EPALL-relative anomaly composite */}
+        {/* Pairwise comparison figure */}
         {diag.hasAnomaly && (
           <div className="mt-4">
             <h3 className="mb-2 text-sm font-semibold text-slate-700">
-              EPALL-Relative Anomaly
+              Pairwise Comparison
               <span className="ml-2 text-xs font-normal text-slate-400">
-                EPx − EPALL: what distinguishes each pattern from the mean cyclone
+                EP1 − EP2 | EP1 − EP3 | EP2 − EP3
               </span>
             </h3>
-            {hasAnomFigure ? (
+            {hasPairwiseFigure ? (
               <div className="overflow-hidden rounded-xl border border-amber-200 bg-white">
                 <div className="border-b border-amber-100 bg-amber-50 px-4 py-3">
                   <p className="text-xs text-amber-700">
-                    <strong>1×3 panel:</strong> EP1 − EPALL | EP2 − EPALL | EP3 − EPALL.
-                    Diverging colormap centred at zero; warm = above EPALL mean, cool = below.
+                    <strong>1×3 panel:</strong> EP1 − EP2 | EP1 − EP3 | EP2 − EP3.
+                    Diverging colormap centred at zero; shared scale across all three panels.
                   </p>
                   <p className="mt-1 text-xs text-amber-500">
-                    Source: <code>figures/ep_structure/{anomEpallFigFilename}</code>
+                    Source: <code>figures/ep_structure/{pairwiseFigFilename}</code>
                   </p>
                 </div>
                 <div className="p-4">
                   <FallbackImage
-                    src={figureUrl(anomEpallFig!.api_path)}
-                    alt={`${diag.name} EPALL-relative anomaly — EP1/EP2/EP3 minus EPALL`}
+                    src={figureUrl(pairwiseFig!.api_path)}
+                    alt={`${diag.name} pairwise comparison — EP1−EP2 / EP1−EP3 / EP2−EP3`}
                     width={1200}
                     height={500}
                     className="w-full rounded-lg"
-                    key={anomEpallFig!.api_path}
+                    key={pairwiseFig!.api_path}
                   />
                 </div>
               </div>
             ) : (
               <div className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 p-6 text-center">
                 <p className="text-sm font-medium text-amber-600">
-                  {diag.shortName} EPALL-relative anomaly
+                  {diag.shortName} pairwise comparison
                 </p>
                 <p className="mt-1 text-xs text-amber-400">
-                  Expected: <code>figures/ep_structure/{anomEpallFigFilename ?? 'composite_*_anom_epall.png'}</code>
+                  Expected: <code>figures/ep_structure/{pairwiseFigFilename ?? 'composite_*_pairwise.png'}</code>
                 </p>
               </div>
             )}
@@ -196,7 +194,7 @@ function DiagnosticCompositesContent({
               Mean values inside/outside {DATASET_STATS.innerDomainSize} domain [{diag.unit}]
             </h4>
             <p className="mt-0.5 text-xs text-slate-400">
-              Composite method: Central Timesteps
+              Intensification midpoint composites
             </p>
           </div>
           <div className="overflow-x-auto">

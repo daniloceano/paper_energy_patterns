@@ -838,69 +838,56 @@ def figure_afc(datasets):
 # ANOMALY FIGURE FUNCTIONS (EPALL-relative)
 # ============================================================================
 
-def _epall_anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
-                    cmap="RdBu_r", wind_u=None, wind_v=None, wind_scale=None):
-    """Generic multi-panel EPALL-relative anomaly figure builder.
-    
-    Creates a figure showing EP1-EPALL, EP2-EPALL, EP3-EPALL.
-    Uses the *_minus_epall variables computed in step3.
+def _pairwise_diff_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
+                       cmap="RdBu_r"):
+    """1×3 pairwise comparison figure: EP1−EP2 | EP1−EP3 | EP2−EP3.
 
     Parameters
     ----------
-    datasets     : dict with keys "EP1", "EP2", "EP3", "EPALL" → xr.Dataset
-    var_key      : base variable name (e.g., "egr"), will look for var_key + "_minus_epall"
+    datasets     : dict with keys "EP1", "EP2", "EP3" → xr.Dataset
+    var_key      : variable name inside each dataset
     scale_factor : multiply raw values before plotting (e.g. 3600 for K/s→K/h)
     unit_label   : colorbar label string
     suptitle     : figure super-title
     out_name     : output filename (no directory)
     cmap         : diverging colormap name
-    wind_u/v     : variable keys for optional quiver overlay
-    wind_scale   : quiver scale (default: VECTOR_SCALE)
     """
-    anom_key = f"{var_key}_minus_epall"
-    
-    # Get EPs that have the anomaly variable (exclude EPALL)
-    eps = [ep for ep in ["EP1", "EP2", "EP3"] if ep in datasets and anom_key in datasets[ep]]
-    
-    if not eps:
-        logging.warning(f"    ⚠  {anom_key} not in composites — skipping EPALL-relative anomaly figure")
-        return
+    pairs = [("EP1", "EP2"), ("EP1", "EP3"), ("EP2", "EP3")]
 
-    n_eps = len(eps)
+    for ep_a, ep_b in pairs:
+        if ep_a not in datasets or ep_b not in datasets:
+            logging.warning(f"    ⚠  {ep_a} or {ep_b} not in datasets — skipping pairwise figure")
+            return
+        if var_key not in datasets[ep_a] or var_key not in datasets[ep_b]:
+            logging.warning(f"    ⚠  {var_key} not in {ep_a} or {ep_b} — skipping pairwise figure")
+            return
+
     panel_width = 6
     panel_height = 6
-    fig, axes_arr = plt.subplots(1, n_eps, figsize=(panel_width * n_eps, panel_height))
-    axes = list(axes_arr) if n_eps > 1 else [axes_arr]
+    fig, axes = plt.subplots(1, 3, figsize=(panel_width * 3, panel_height))
 
-    # Symmetric colour limits from 98th-percentile of |anomaly| across all EPs
+    # Symmetric colour limits from 98th-percentile of |difference| across all pairs
     absmax = 0.0
-    for ep in eps:
-        d = datasets[ep][anom_key].values * scale_factor
+    for ep_a, ep_b in pairs:
+        d = (datasets[ep_a][var_key].values - datasets[ep_b][var_key].values) * scale_factor
         absmax = max(absmax, np.nanpercentile(np.abs(d), 98))
     if absmax == 0.0:
-        absmax = 1e-10  # guard against all-zero fields
+        absmax = 1e-10
     clevels = _safe_symmetric_levels(absmax, 21)
-    wscale = wind_scale if wind_scale is not None else VECTOR_SCALE
 
-    for i, ep in enumerate(eps):
+    for i, (ep_a, ep_b) in enumerate(pairs):
         ax = axes[i]
-        ds = datasets[ep]
-        x, y = ds.coords["x"].values, ds.coords["y"].values
-        data = ds[anom_key].values * scale_factor
+        ds_a = datasets[ep_a]
+        ds_b = datasets[ep_b]
+        x, y = ds_a.coords["x"].values, ds_a.coords["y"].values
+        diff = (ds_a[var_key].values - ds_b[var_key].values) * scale_factor
 
-        im = ax.contourf(x, y, data, levels=clevels, cmap=cmap, extend="both")
-        ax.contour(x, y, data, levels=[0], colors="black", linewidths=1.2)
+        im = ax.contourf(x, y, diff, levels=clevels, cmap=cmap, extend="both")
+        ax.contour(x, y, diff, levels=[0], colors="black", linewidths=1.2)
 
-        if wind_u and wind_v and wind_u in ds and wind_v in ds:
-            skip = slice(None, None, VECTOR_SKIP)
-            ax.quiver(
-                x[skip], y[skip],
-                ds[wind_u].values[skip, skip], ds[wind_v].values[skip, skip],
-                scale=wscale, width=VECTOR_WIDTH, color="gray", alpha=0.6, zorder=5,
-            )
-
-        n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} − EPALL  [n={n}]", ylabel=(i == 0))
+        n_a = int(ds_a.attrs.get("n_cases", "?"))
+        n_b = int(ds_b.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{ep_a} (n={n_a}) − {ep_b} (n={n_b})", ylabel=(i == 0))
         _add_cbar(fig, ax, im, unit_label)
 
     fig.suptitle(suptitle, fontsize=13, fontweight="bold", y=1.02)
@@ -911,100 +898,100 @@ def _epall_anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_n
     logging.info(f"    ✓ {out.name}")
 
 
-def figure_egr_epall_anom(datasets):
-    """EGR EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
-    logging.info("  Creating EGR EPALL-relative anomaly figure...")
-    _epall_anom_fig(
+def figure_egr_pairwise(datasets):
+    """EGR pairwise comparison: EP1−EP2 | EP1−EP3 | EP2−EP3."""
+    logging.info("  Creating EGR pairwise comparison figure...")
+    _pairwise_diff_fig(
         datasets,
         var_key="egr",
         scale_factor=1.0,
         unit_label="ΔEGR (day⁻¹)",
-        suptitle="Eady Growth Rate Anomaly (EPx − EPALL)",
-        out_name="composite_egr_anom_epall.png",
+        suptitle="Eady Growth Rate — Pairwise Comparison",
+        out_name="composite_egr_pairwise.png",
         cmap="RdBu_r",
     )
 
 
-def figure_pv200_epall_anom(datasets):
-    """PV@200 EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
-    logging.info("  Creating PV@200 EPALL-relative anomaly figure...")
-    _epall_anom_fig(
+def figure_pv200_pairwise(datasets):
+    """PV@200 pairwise comparison: EP1−EP2 | EP1−EP3 | EP2−EP3."""
+    logging.info("  Creating PV@200 pairwise comparison figure...")
+    _pairwise_diff_fig(
         datasets,
         var_key="pv_200",
         scale_factor=1e6,
         unit_label="ΔPV (PVU)",
-        suptitle="PV Anomaly at 200 hPa (EPx − EPALL)",
-        out_name="composite_pv200_anom_epall.png",
+        suptitle="Potential Vorticity at 200 hPa — Pairwise Comparison",
+        out_name="composite_pv200_pairwise.png",
         cmap="RdBu_r",
     )
 
 
-def figure_pv850_epall_anom(datasets):
-    """PV@850 EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
-    logging.info("  Creating PV@850 EPALL-relative anomaly figure...")
-    _epall_anom_fig(
+def figure_pv850_pairwise(datasets):
+    """PV@850 pairwise comparison: EP1−EP2 | EP1−EP3 | EP2−EP3."""
+    logging.info("  Creating PV@850 pairwise comparison figure...")
+    _pairwise_diff_fig(
         datasets,
         var_key="pv_850",
         scale_factor=1e6,
         unit_label="ΔPV (PVU)",
-        suptitle="PV Anomaly at 850 hPa (EPx − EPALL)",
-        out_name="composite_pv850_anom_epall.png",
+        suptitle="Potential Vorticity at 850 hPa — Pairwise Comparison",
+        out_name="composite_pv850_pairwise.png",
         cmap="RdBu_r",
     )
 
 
-def figure_advT850_epall_anom(datasets):
-    """Temperature advection EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
-    logging.info("  Creating temp advection EPALL-relative anomaly figure...")
-    _epall_anom_fig(
+def figure_advT850_pairwise(datasets):
+    """Temperature advection pairwise comparison: EP1−EP2 | EP1−EP3 | EP2−EP3."""
+    logging.info("  Creating temperature advection pairwise comparison figure...")
+    _pairwise_diff_fig(
         datasets,
         var_key="adv_T_850",
         scale_factor=3600.0,
         unit_label="Δ(−V·∇T) (K h⁻¹)",
-        suptitle="Temperature Advection Anomaly at 850 hPa (EPx − EPALL)",
-        out_name="composite_advT850_anom_epall.png",
+        suptitle="Temperature Advection at 850 hPa — Pairwise Comparison",
+        out_name="composite_advT850_pairwise.png",
         cmap="RdBu_r",
     )
 
 
-def figure_slp_epall_anom(datasets):
-    """SLP EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
-    logging.info("  Creating SLP EPALL-relative anomaly figure...")
-    _epall_anom_fig(
+def figure_slp_pairwise(datasets):
+    """SLP pairwise comparison: EP1−EP2 | EP1−EP3 | EP2−EP3."""
+    logging.info("  Creating SLP pairwise comparison figure...")
+    _pairwise_diff_fig(
         datasets,
         var_key="msl",
         scale_factor=0.01,  # Pa to hPa
         unit_label="ΔSLP (hPa)",
-        suptitle="Sea Level Pressure Anomaly (EPx − EPALL)",
-        out_name="composite_slp_anom_epall.png",
+        suptitle="Sea Level Pressure — Pairwise Comparison",
+        out_name="composite_slp_pairwise.png",
         cmap="RdBu_r",
     )
 
 
-def figure_ke_advection_epall_anom(datasets):
-    """KE advection EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
-    logging.info("  Creating KE advection EPALL-relative anomaly figure...")
-    _epall_anom_fig(
+def figure_ke_advection_pairwise(datasets):
+    """KE advection pairwise comparison: EP1−EP2 | EP1−EP3 | EP2−EP3."""
+    logging.info("  Creating KE advection pairwise comparison figure...")
+    _pairwise_diff_fig(
         datasets,
         var_key="ke_adv_250",
         scale_factor=1.0,
         unit_label="ΔKE adv (m² s⁻³)",
-        suptitle="Kinetic Energy Advection Anomaly at 250 hPa (EPx − EPALL)",
-        out_name="composite_ke_advection_anom_epall.png",
+        suptitle="Kinetic Energy Advection at 250 hPa — Pairwise Comparison",
+        out_name="composite_ke_advection_pairwise.png",
         cmap="PuOr_r",
     )
 
 
-def figure_rk_criterion_epall_anom(datasets):
-    """RK criterion EPALL-relative anomaly: EP1-EPALL, EP2-EPALL, EP3-EPALL."""
-    logging.info("  Creating RK criterion EPALL-relative anomaly figure...")
-    _epall_anom_fig(
+def figure_rk_criterion_pairwise(datasets):
+    """RK criterion pairwise comparison: EP1−EP2 | EP1−EP3 | EP2−EP3."""
+    logging.info("  Creating RK criterion pairwise comparison figure...")
+    _pairwise_diff_fig(
         datasets,
         var_key="rk_criterion_250",
         scale_factor=1.0,
         unit_label="ΔRK (s⁻¹ m⁻¹)",
-        suptitle="Rayleigh-Kuo Criterion Anomaly at 250 hPa (EPx − EPALL)",
-        out_name="composite_rk_criterion_anom_epall.png",
+        suptitle="Rayleigh-Kuo Criterion at 250 hPa — Pairwise Comparison",
+        out_name="composite_rk_criterion_pairwise.png",
         cmap="RdBu_r",
     )
 
@@ -1667,15 +1654,15 @@ def main():
     figure_ke_advection(datasets)
     figure_afc(datasets)
 
-    logging.info("\nCreating EPALL-relative anomaly figures (EP1-EPALL, EP2-EPALL, EP3-EPALL)...")
-    
-    figure_egr_epall_anom(datasets)
-    figure_pv200_epall_anom(datasets)
-    figure_pv850_epall_anom(datasets)
-    figure_advT850_epall_anom(datasets)
-    figure_slp_epall_anom(datasets)
-    figure_ke_advection_epall_anom(datasets)
-    figure_rk_criterion_epall_anom(datasets)
+    logging.info("\nCreating pairwise comparison figures (EP1−EP2 | EP1−EP3 | EP2−EP3)...")
+
+    figure_egr_pairwise(datasets)
+    figure_pv200_pairwise(datasets)
+    figure_pv850_pairwise(datasets)
+    figure_advT850_pairwise(datasets)
+    figure_slp_pairwise(datasets)
+    figure_ke_advection_pairwise(datasets)
+    figure_rk_criterion_pairwise(datasets)
 
     logging.info("\nCreating climatology-based anomaly figures (legacy, where available)...")
 

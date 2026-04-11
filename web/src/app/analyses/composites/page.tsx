@@ -35,9 +35,8 @@ export default function CompositesPage() {
 
         <ResultSummaryCallout type="info" title="Composite Methods">
           <p>
-            Composites use the canonical <strong>Central Timesteps</strong> method: a single
-            timestep at the temporal midpoint of each cyclone&apos;s intensification phase
-            (typically 2–3 timesteps per case). This isolates the most active moment of deepening.
+            Composites are centred on the intensification midpoint of each cyclone
+            (typically 2–3 timesteps per case), isolating the most active moment of deepening.
           </p>
           <p className="mt-2">
             Each diagnostic page shows two figure panels:
@@ -47,8 +46,9 @@ export default function CompositesPage() {
               <strong>Total field (2×2 panel):</strong> EP1 / EP2 / EP3 / EPALL composites side-by-side
             </li>
             <li>
-              <strong>EPALL-relative anomaly (1×3 panel):</strong> EP1 − EPALL, EP2 − EPALL, EP3 − EPALL,
-              showing what distinguishes each pattern from the mean cyclone (available for most diagnostics)
+              <strong>Pairwise comparison (1×3 panel):</strong> EP1 − EP2 | EP1 − EP3 | EP2 − EP3,
+              isolating the structural differences between each pair of energy patterns
+              (available for most diagnostics)
             </li>
           </ul>
         </ResultSummaryCallout>

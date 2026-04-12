@@ -990,6 +990,33 @@ def figure_rk_criterion_epall_anom(datasets):
     )
 
 
+def figure_afc_epall_anom(datasets):
+    """AFC EPALL-relative anomaly: EP1−EPALL | EP2−EPALL | EP3−EPALL.
+
+    afc_250_minus_epall = AFC_EPx composite − AFC_EPALL composite.
+    AFC is already a climatology-relative field by construction, so this
+    difference isolates how each energy pattern's AFC diverges from the
+    typical intensifying cyclone's AFC, independently of the climatological
+    base state.
+
+    Reference: Orlanski & Katzfey (1991).
+    """
+    logging.info("  Creating AFC EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="afc_250",
+        scale_factor=1.0,
+        unit_label="AFC − EPALL (m² s⁻³)",
+        suptitle=(
+            "Ageostrophic Flux Convergence at 250 hPa — EPx − EPALL Anomaly\n"
+            "Positive = stronger eddy KE import than typical cyclone; "
+            "Negative = weaker than typical"
+        ),
+        out_name="composite_afc_anom_epall.png",
+        cmap="RdBu_r",
+    )
+
+
 # ============================================================================
 # LEGACY CLIMATOLOGY-BASED ANOMALY FIGURES (kept for AFC, BtCR)
 # ============================================================================
@@ -1693,6 +1720,7 @@ def main():
     figure_advT850_epall_anom(datasets)
     figure_slp_epall_anom(datasets)
     figure_ke_advection_epall_anom(datasets)
+    figure_afc_epall_anom(datasets)
 
     logging.info("\nCreating climatology-relative anomaly figures (2×2: EP1|EP2|EP3|EPALL)...")
     # EGR clim-anom requires era5_climatology_egr.nc (500/850 hPa); will skip if absent.

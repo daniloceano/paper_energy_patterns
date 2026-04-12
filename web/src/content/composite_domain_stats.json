@@ -281,8 +281,8 @@
     "unit": "m\u00b2 s\u207b\u00b3",
     "inside_15x15": "4.668e-03",
     "outside_15x15": "2.137e-04",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "4.227e-03",
+    "outside_15x15_epall_anom": "8.030e-04"
   },
   {
     "diagnostic_id": "afc",
@@ -290,8 +290,8 @@
     "unit": "m\u00b2 s\u207b\u00b3",
     "inside_15x15": "1.130e-03",
     "outside_15x15": "-1.391e-03",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "6.890e-04",
+    "outside_15x15_epall_anom": "-8.014e-04"
   },
   {
     "diagnostic_id": "afc",
@@ -299,8 +299,8 @@
     "unit": "m\u00b2 s\u207b\u00b3",
     "inside_15x15": "-7.534e-04",
     "outside_15x15": "-3.614e-04",
-    "inside_15x15_epall_anom": null,
-    "outside_15x15_epall_anom": null
+    "inside_15x15_epall_anom": "-1.194e-03",
+    "outside_15x15_epall_anom": "2.280e-04"
   },
   {
     "diagnostic_id": "afc",

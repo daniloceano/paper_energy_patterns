@@ -349,6 +349,7 @@ def load_stats():
                 ("DIVQ",  "div_q_975_minus_epall",   1000.0*3600, ".3e"),
                 ("SLP",   "msl_minus_epall",         1/100.0,     ".1f"),
                 ("KEADV", "ke_adv_250_minus_epall",  1.0,         ".3e"),
+                ("AFC",   "afc_250_minus_epall",     1.0,         ".3e"),
             ]
             for stat_prefix, nc_var, scale, fmt in _epall_anom_map:
                 if nc_var in ds:
@@ -357,13 +358,13 @@ def load_stats():
                     stats[f"{label}_{stat_prefix}_EPALL_LEC15"]  = f"{regional['lec15']:{fmt}}"
                     stats[f"{label}_{stat_prefix}_EPALL_FULL30"] = f"{regional['full30']:{fmt}}"
 
-            # EPALL-relative boundary flux stats (flux diagnostics only)
-            # AFC has no _minus_epall (climatological decomposition by design).
+            # EPALL-relative boundary flux stats (flux diagnostics with _minus_epall)
             _epall_flux_map = [
                 # (stat_prefix, nc_variable, scale_factor, fmt_spec)
                 ("ADVT",  "adv_T_850_minus_epall",  3600.0,      ".3f"),
                 ("DIVQ",  "div_q_975_minus_epall",  1000.0*3600, ".3e"),
                 ("KEADV", "ke_adv_250_minus_epall", 1.0,         ".3e"),
+                ("AFC",   "afc_250_minus_epall",    1.0,         ".3e"),
             ]
             for stat_prefix, nc_var, scale, fmt in _epall_flux_map:
                 if nc_var in ds:
@@ -408,7 +409,7 @@ def export_stats_json(stats):
         "DIVQ":  ("moisture-flux-divergence", "g kg⁻¹ s⁻¹",  True,  "DIVQ_ANOM",  "DIVQ_EPALL"),
         "SLP":   ("slp",                      "hPa",          False, None,          None),
         "KEADV": ("ke-advection",             "m² s⁻³",       True,  "KEADV_ANOM", "KEADV_EPALL"),
-        "AFC":   ("afc",                      "m² s⁻³",       True,  None,          None),
+        "AFC":   ("afc",                      "m² s⁻³",       True,  None,          "AFC_EPALL"),
         "RK":    ("rk-criterion",             "s⁻¹",          False, None,          None),
     }
 

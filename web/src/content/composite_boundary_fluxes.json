@@ -210,7 +210,11 @@
     "north": "2.958e-03",
     "south": "5.652e-04",
     "east": "-3.729e-03",
-    "west": "-6.680e-03"
+    "west": "-6.680e-03",
+    "north_epall_anom": "3.041e-03",
+    "south_epall_anom": "7.130e-04",
+    "east_epall_anom": "5.201e-03",
+    "west_epall_anom": "-4.639e-03"
   },
   {
     "diagnostic_id": "afc",
@@ -219,7 +223,11 @@
     "north": "9.489e-04",
     "south": "-2.790e-03",
     "east": "-1.568e-02",
-    "west": "-4.207e-03"
+    "west": "-4.207e-03",
+    "north_epall_anom": "1.032e-03",
+    "south_epall_anom": "-2.643e-03",
+    "east_epall_anom": "-6.749e-03",
+    "west_epall_anom": "-2.167e-03"
   },
   {
     "diagnostic_id": "afc",
@@ -228,7 +236,11 @@
     "north": "-1.198e-03",
     "south": "9.689e-04",
     "east": "-6.771e-03",
-    "west": "-5.591e-05"
+    "west": "-5.591e-05",
+    "north_epall_anom": "-1.115e-03",
+    "south_epall_anom": "1.117e-03",
+    "east_epall_anom": "2.160e-03",
+    "west_epall_anom": "1.985e-03"
   },
   {
     "diagnostic_id": "afc",
@@ -237,6 +249,10 @@
     "north": "-8.301e-05",
     "south": "-1.478e-04",
     "east": "-8.931e-03",
-    "west": "-2.041e-03"
+    "west": "-2.041e-03",
+    "north_epall_anom": null,
+    "south_epall_anom": null,
+    "east_epall_anom": null,
+    "west_epall_anom": null
   }
 ]

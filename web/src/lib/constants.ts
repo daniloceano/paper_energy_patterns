@@ -301,7 +301,7 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
       "φ'": 'Eddy geopotential (m² s⁻²)',
     },
     references: ['Orlanski and Katzfey (1991)', 'Chang (1993)'],
-    hasAnomaly: false,
+    hasAnomaly: true,
   },
   btcr: {
     id: 'btcr',
@@ -592,7 +592,7 @@ export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom_
   slp:                        { real: 'composite_slp.png',          anom_clim: 'composite_slp_anom.png',                 anom_epall: 'composite_slp_anom_epall.png',          diff: 'composite_slp_diff.png' },
   'rk-criterion':             { real: 'composite_rk_criterion.png',                                                                                                            diff: 'composite_rk_criterion_diff.png' },
   'ke-advection':             { real: 'composite_ke_advection.png', anom_clim: 'composite_ke_advection_anom.png',        anom_epall: 'composite_ke_advection_anom_epall.png', diff: 'composite_ke_advection_diff.png' },
-  afc:                        { real: 'composite_afc_250.png',                                                                                                                 diff: 'composite_afc_diff.png' },
+  afc:                        { real: 'composite_afc_250.png',                                                               anom_epall: 'composite_afc_anom_epall.png',          diff: 'composite_afc_diff.png' },
   btcr:                       { real: 'composite_btcr.png',                                                                                                                    diff: 'composite_btcr_diff.png' },
 }
 

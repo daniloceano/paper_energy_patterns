@@ -314,10 +314,11 @@ where $\langle X \rangle_{EP_x}$ is the composite mean of diagnostic $X$ for cyc
 **Available for:** EGR, PV 200 hPa, PV 850 hPa, Temperature Advection 850 hPa, SLP, KE Advection 250 hPa.
 
 **Not available for:**
-- **Moisture Flux Divergence** — anomaly variable not stored in step3.
-- **AFC** — climatological decomposition by design (Orlanski & Katzfey 1991); differencing against EPALL would conflate the anomaly definition.
-- **BtCR** — climatological decomposition by design (Rivière 2006); same reasoning as AFC.
+- **Moisture Flux Divergence** — no separate EPALL-relative figure (div_q_975_minus_epall is in the composite files and EPALL-relative domain/boundary stats are in the tables, but no standalone figure is generated for this diagnostic).
+- **BtCR** — climatological decomposition by design (Rivière 2006); EPALL-relative differencing would conflate the anomaly definition.
 - **RK Criterion 250 hPa** — RK = β − ∂²ū/∂y² is a **background-flow diagnostic**, not a synoptic field. It reflects the large-scale meridional PV gradient of the time-mean state; differencing EP composites against EPALL would yield near-zero values dominated by noise in the time-mean estimate rather than a meaningful inter-pattern contrast. RK is therefore shown only as a total composite field.
+
+> **Update (April 2026):** AFC EPALL-relative anomaly **is now available** — see below. The restriction was revised because AFC_EPx − AFC_EPALL is a valid inter-pattern comparison: both sides use the same climatological base state, so the difference isolates the pattern-specific forcing signal relative to the mean intensifying cyclone. The resulting field (`afc_250_minus_epall`) is computed post-hoc from composite means and stored in the EP1/EP2/EP3 NetCDF files.
 
 **Figures:** `composite_*_anom_epall.png` — 1×3 panel (EP1−EPALL | EP2−EPALL | EP3−EPALL).
 
@@ -372,7 +373,7 @@ The cross-terms (e.g. $-V_m \cdot \nabla T' - V' \cdot \nabla T_m$ for temperatu
 
 **Note on EGR (clim-anom):** EGR is a non-linear diagnostic of the total wind shear and static stability. The "EGR anomaly" here is defined as $\mathrm{EGR}' = \mathrm{EGR(total)} - \mathrm{EGR(climatology)}$, i.e. the EGR recomputed from the full fields minus the EGR recomputed from 1991–2020 monthly-mean fields. This is a **field-level subtraction**, not an input-field decomposition, so no cross-terms are introduced. It requires `era5_climatology_egr.nc` (500 and 850 hPa u, v, T, z; see table above). Step3 computes `egr_anom` automatically when the file is present; step4 produces `composite_egr_anom.png` (2×2 layout with EPALL).
 
-**Note on AFC:** AFC is by construction an anomaly field (it is already computed from eddy $\vec{v}'$ and $\phi'$ relative to the monthly climatology). No additional anomaly version is needed.
+**Note on AFC:** AFC is by construction a climatology-relative anomaly field (computed from eddy $\vec{v}'$ and $\phi'$ relative to the 30-year monthly climatology). A **clim-anom figure is therefore not applicable**. However, the **EPALL-relative figure is available** (`composite_afc_anom_epall.png`): $\Delta\mathrm{AFC}_{EP_x} = \langle\mathrm{AFC}\rangle_{EP_x} - \langle\mathrm{AFC}\rangle_{EPALL}$, where both composites use the same climatological base state. This isolates how each energy pattern's upper-level eddy KE import/export differs from the typical intensifying cyclone.
 
 **Note on wind vectors in anomaly figures:** All anomaly composite figures overlay **eddy wind vectors** $\vec{V}' = \vec{V} - \bar{\vec{V}}_m$ (not total winds), consistent with the sign convention above.  This ensures that the overlaid circulation patterns reflect the cyclone-induced perturbation rather than the climatological background.
 
@@ -630,7 +631,7 @@ When a cyclone traverses a BtCR, two amplification mechanisms are activated:
 | East (+7.5°) | 6.667e-04 | -3.241e-03 | — | — |
 | West (-7.5°) | -1.856e-03 | 1.532e-03 | — | — |
 
-> **Note:** AFC uses the climatological base state by design (Orlanski & Katzfey 1991) and is not converted to EPALL-relative anomalies. AFC figures show EP1, EP2, EP3 panels only.
+> **Note:** AFC uses the climatological base state by design (Orlanski & Katzfey 1991) and has no clim-anom figure. An **EPALL-relative figure** (`composite_afc_anom_epall.png`, 1×3 panel) is available — it shows $\mathrm{AFC}_{EP_x} - \mathrm{AFC}_{EPALL}$, isolating how each pattern's ageostrophic forcing diverges from the mean intensifying cyclone.
 
 ---
 

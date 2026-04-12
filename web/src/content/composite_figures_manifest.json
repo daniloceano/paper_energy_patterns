@@ -136,6 +136,10 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_afc_250.png"
     },
+    "anom_epall": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_afc_anom_epall.png"
+    },
     "diff": {
       "exists": true,
       "api_path": "figures/ep_structure/composite_afc_diff.png"

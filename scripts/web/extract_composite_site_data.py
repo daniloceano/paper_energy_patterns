@@ -78,10 +78,11 @@ WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 #   will show exists=False until that file is downloaded and step3/step4 re-run.
 #
 # No EPALL-relative anomaly for:
-#   - moisture-flux-divergence (div_q_975_minus_epall not stored in step3)
-#   - afc (uses climatological decomposition by construction — Orlanski & Katzfey 1991)
+#   - moisture-flux-divergence (no anom_epall figure; div_q_975_minus_epall is in composites
+#     but no separate EPALL-relative figure is generated for this diagnostic)
 #   - btcr (uses climatological decomposition by construction — Rivière 2006)
 #   - rk-criterion (β − ∂²ū/∂y² is a background-flow diagnostic; shown as total field only)
+# Note: afc NOW has anom_epall = AFC_EPx − AFC_EPALL (added April 2026)
 DIAGNOSTIC_FIGURE_MAP = {
     "egr":                      {"real": "composite_egr.png",         "anom_clim": "composite_egr_anom.png",                 "anom_epall": "composite_egr_anom_epall.png",          "diff": "composite_egr_diff.png"},
     "pv-200":                   {"real": "composite_pv200.png",        "anom_clim": "composite_pv200_anom.png",               "anom_epall": "composite_pv200_anom_epall.png",        "diff": "composite_pv200_diff.png"},
@@ -92,8 +93,9 @@ DIAGNOSTIC_FIGURE_MAP = {
     "rk-criterion":             {"real": "composite_rk_criterion.png",                                                                                                                 "diff": "composite_rk_criterion_diff.png"},
     # NOTE: rk-criterion has no anom_clim or anom_epall — RK is shown as total composite only.
     "ke-advection":             {"real": "composite_ke_advection.png", "anom_clim": "composite_ke_advection_anom.png",        "anom_epall": "composite_ke_advection_anom_epall.png", "diff": "composite_ke_advection_diff.png"},
-    "afc":                      {"real": "composite_afc_250.png",                                                                                                                      "diff": "composite_afc_diff.png"},
-    # NOTE: afc has no anom_clim (it is already a clim anomaly) and no anom_epall.
+    "afc":                      {"real": "composite_afc_250.png",                                                      "anom_epall": "composite_afc_anom_epall.png",          "diff": "composite_afc_diff.png"},
+    # NOTE: afc has no anom_clim (it is already a clim anomaly by construction — Orlanski & Katzfey 1991).
+    # anom_epall = AFC_EPx − AFC_EPALL: isolates per-pattern divergence from the typical cyclone's AFC.
     "btcr":                     {"real": "composite_btcr.png",                                                                                                                         "diff": "composite_btcr_diff.png"},
     # NOTE: btcr has no anom_clim (same reason as afc) and no anom_epall.
 }

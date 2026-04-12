@@ -197,6 +197,19 @@ DOWNLOAD_GROUPS: dict = {
         "cds_dataset": "reanalysis-era5-single-levels-monthly-means",
         "description": "msl at surface  →  SLP anomaly",
     },
+    "egr": {
+        "levels":      [500, 850],
+        "cds_vars":    ["u_component_of_wind",
+                        "v_component_of_wind",
+                        "temperature",
+                        "geopotential"],
+        "nc_vars":     ["u", "v", "t", "z"],
+        "raw_prefix":  "era5_raw_egr_month",
+        "clim_vars":   {"u": "u_clim", "v": "v_clim", "t": "t_clim", "z": "z_clim"},
+        "output":      DATA_DIR / "era5_climatology_egr.nc",
+        "squeeze_lev": False,
+        "description": "u, v, t, z at 500 and 850 hPa  →  EGR climatological anomaly",
+    },
 }
 
 

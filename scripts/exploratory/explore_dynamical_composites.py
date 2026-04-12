@@ -60,6 +60,8 @@ import matplotlib.pyplot as plt
 from matplotlib import gridspec
 from matplotlib.patches import Rectangle
 
+from utils.colormaps import CMAP_PV_ANOM, CMAP_PV_TOTAL, CMAP_AFC
+
 # ============================================================================
 # CONFIGURABLE PARAMETERS
 # ============================================================================
@@ -109,31 +111,40 @@ QUIVER_KEY_U_250 = 20.0
 VECTOR_SCALE_850 = 200
 QUIVER_KEY_U_850 = 5.0
 
+# ── Contour styling for colored fields ──────────────────────────────────────────
+TADV_KE_COLOR_NEG = 'steelblue'
+TADV_KE_COLOR_POS = 'firebrick'
+CONTOUR_LINEWIDTH_COLORED = 2.0
+
+# ── Figure 3 (EPALL-Relative) KE-adv contour colors ────────────────────────────
+FIG3_KEADV_COLOR_NEG = TADV_KE_COLOR_NEG
+FIG3_KEADV_COLOR_POS = TADV_KE_COLOR_POS
+
+# ── Figure-specific wind parameters ────────────────────────────────────────────
+# Structure: {row_name: {scale, key_u, color, alpha, threshold (if applicable)}}
+FIG1_WIND_PARAMS = {
+    'row0_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7},
+    'row1_850': {'scale': 200, 'key_u': 5.0, 'color': 'k', 'alpha': 0.7},
+    'row2_250': {'scale': 500, 'key_u': 20.0, 'color': 'k', 'alpha': 0.7, 'threshold': 30.0},
+}
+
+FIG2_WIND_PARAMS = {
+    'row0_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7},
+    'row1_850': {'scale': 200, 'key_u': 5.0, 'color': 'gray', 'alpha': 0.7},
+    'row2_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7, 'threshold': 25.0},
+}
+
+FIG3_WIND_PARAMS = {
+    'row0_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7, 'threshold': 25.0},
+    'row1_850': {'scale': 200, 'key_u': 5.0, 'color': 'gray', 'alpha': 0.7},
+    'row2_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7, 'threshold': 30.0},
+}
+
 # ── RK meridional sign-reversal hatching ─────────────────────────────────────
 RK_HATCH_HALF_WINDOW = 1
 HATCH_PATTERN = '///'
 HATCH_COLOR   = 'dimgray'
 HATCH_LW      = 0.7
-
-# ── KE-adv EPALL-relative contour colors (Figure 3 only) ─────────────────────
-FIG3_KEADV_COLOR_NEG = '#DBD7FE'   # light purple  — KE divergence (negative)
-FIG3_KEADV_COLOR_POS = '#D9E49A'   # light yellow-green — KE convergence (positive)
-
-# ── PV colormap: anomaly (Figs 2 & 3, diverging) ─────────────────────────────
-CMAP_PV_ANOM_COLORS = [
-    '#011462', '#106294', '#A7C9DA',   # blue side  (negative anomaly)
-    '#E8E1DD',                          # neutral
-    '#CDB7B6', '#935B5E', '#5B020A',   # red side   (positive anomaly)
-]
-
-# ── PV colormap: total field (Fig 1, sequential) ─────────────────────────────
-CMAP_PV_TOTAL_COLORS = [
-    '#f8f9ff', '#dce4f5', '#b9caeb', '#8aaad7',
-    '#5b84bc', '#3060a0', '#1a3e7a', '#0b2557', '#040f33',
-]
-
-# ── AFC colormap ──────────────────────────────────────────────────────────────
-CMAP_AFC = 'RdBu_r'
 
 # ── Font sizes ───────────────────────────────────────────────────────────────
 PANEL_TITLESIZE     = 11
@@ -155,10 +166,6 @@ plt.rcParams.update({
     'axes.grid':         False,
     'font.family':       'sans-serif',
 })
-
-# Build custom colormaps from the color lists defined above
-CMAP_PV_ANOM  = mpl.colors.LinearSegmentedColormap.from_list('pv_anom',  CMAP_PV_ANOM_COLORS)
-CMAP_PV_TOTAL = mpl.colors.LinearSegmentedColormap.from_list('pv_total', CMAP_PV_TOTAL_COLORS)
 
 
 # ============================================================================
@@ -233,7 +240,7 @@ def add_slp_contours(ax, x_2d, y_2d, msl_hpa):
 
 
 def add_wind_vectors(ax, x_2d, y_2d, u, v, scale, key_u,
-                     add_key=False, speed_threshold=None):
+                     add_key=False, speed_threshold=None, color='gray', alpha=0.7):
     """Subsampled wind vector overlay."""
     sk = VECTOR_SKIP
     u_plot = u[::sk, ::sk].copy()
@@ -248,7 +255,7 @@ def add_wind_vectors(ax, x_2d, y_2d, u, v, scale, key_u,
     Q = ax.quiver(
         x_2d[::sk, ::sk], y_2d[::sk, ::sk],
         u_plot, v_plot,
-        scale=scale, width=0.004, color='gray',
+        scale=scale, width=0.004, color=color, alpha=alpha,
         headwidth=3, headlength=4, headaxislength=3.5,
         zorder=8,
     )
@@ -411,8 +418,11 @@ def create_figure_total(datasets):
                             levels=egr_valid, colors='k', linewidths=1.0, alpha=0.85, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250'], d['v_250'],
-                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250,
-                         add_key=(col == 3), speed_threshold=25.0)
+                         scale=FIG1_WIND_PARAMS['row0_250']['scale'],
+                         key_u=FIG1_WIND_PARAMS['row0_250']['key_u'],
+                         add_key=(col == 3),
+                         color=FIG1_WIND_PARAMS['row0_250']['color'],
+                         alpha=FIG1_WIND_PARAMS['row0_250']['alpha'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
         panel_label(ax, PANEL_LABELS_4[0][col])
@@ -441,7 +451,11 @@ def create_figure_total(datasets):
             ax.contour(d['x_2d'], d['y_2d'], tadv, levels=pos_v,
                        colors='firebrick', linewidths=1.6, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_850'], d['v_850'],
-                         scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850, add_key=(col == 3))
+                         scale=FIG1_WIND_PARAMS['row1_850']['scale'],
+                         key_u=FIG1_WIND_PARAMS['row1_850']['key_u'],
+                         add_key=(col == 3),
+                         color=FIG1_WIND_PARAMS['row1_850']['color'],
+                         alpha=FIG1_WIND_PARAMS['row1_850']['alpha'])
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
@@ -466,13 +480,17 @@ def create_figure_total(datasets):
         pos_ke = keadv_pos[keadv_pos <= np.nanmax(ke)]
         if len(neg_ke):
             ax.contour(d['x_2d'], d['y_2d'], ke, levels=neg_ke,
-                       colors='gold', linewidths=1.4, linestyles='dashed', alpha=0.9, zorder=5)
+                       colors=TADV_KE_COLOR_NEG, linewidths=CONTOUR_LINEWIDTH_COLORED, linestyles='dashed', alpha=0.9, zorder=5)
         if len(pos_ke):
             ax.contour(d['x_2d'], d['y_2d'], ke, levels=pos_ke,
-                       colors='forestgreen', linewidths=1.4, linestyles='solid', alpha=0.9, zorder=5)
+                       colors=TADV_KE_COLOR_POS, linewidths=CONTOUR_LINEWIDTH_COLORED, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250'], d['v_250'],
-                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250,
-                         add_key=(col == 3), speed_threshold=30.0)
+                         scale=FIG1_WIND_PARAMS['row2_250']['scale'],
+                         key_u=FIG1_WIND_PARAMS['row2_250']['key_u'],
+                         add_key=(col == 3),
+                         speed_threshold=FIG1_WIND_PARAMS['row2_250'].get('threshold'),
+                         color=FIG1_WIND_PARAMS['row2_250']['color'],
+                         alpha=FIG1_WIND_PARAMS['row2_250']['alpha'])
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_xlabels=True, show_ylabels=(col == 0))
@@ -579,7 +597,11 @@ def create_figure_anom(datasets):
                             levels=egr_valid, colors='k', linewidths=1.0, alpha=0.85, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_prime'], d['v_250_prime'],
-                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 3))
+                         scale=FIG2_WIND_PARAMS['row0_250']['scale'],
+                         key_u=FIG2_WIND_PARAMS['row0_250']['key_u'],
+                         add_key=(col == 3),
+                         color=FIG2_WIND_PARAMS['row0_250']['color'],
+                         alpha=FIG2_WIND_PARAMS['row0_250']['alpha'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
         panel_label(ax, PANEL_LABELS_4[0][col])
@@ -607,7 +629,11 @@ def create_figure_anom(datasets):
             ax.contour(d['x_2d'], d['y_2d'], d['adv_T_850_anom'], levels=pos_v,
                        colors='firebrick', linewidths=1.6, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_850_prime'], d['v_850_prime'],
-                         scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850, add_key=(col == 3))
+                         scale=FIG2_WIND_PARAMS['row1_850']['scale'],
+                         key_u=FIG2_WIND_PARAMS['row1_850']['key_u'],
+                         add_key=(col == 3),
+                         color=FIG2_WIND_PARAMS['row1_850']['color'],
+                         alpha=FIG2_WIND_PARAMS['row1_850']['alpha'])
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
@@ -631,12 +657,17 @@ def create_figure_anom(datasets):
         pos_ke = keadv_pos[keadv_pos <= np.nanmax(d['ke_adv_250_anom'])]
         if len(neg_ke):
             ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_anom'], levels=neg_ke,
-                       colors='gold', linewidths=1.4, linestyles='dashed', alpha=0.9, zorder=5)
+                       colors=TADV_KE_COLOR_NEG, linewidths=CONTOUR_LINEWIDTH_COLORED, linestyles='dashed', alpha=0.9, zorder=5)
         if len(pos_ke):
             ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_anom'], levels=pos_ke,
-                       colors='forestgreen', linewidths=1.4, linestyles='solid', alpha=0.9, zorder=5)
+                       colors=TADV_KE_COLOR_POS, linewidths=CONTOUR_LINEWIDTH_COLORED, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_prime'], d['v_250_prime'],
-                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 3))
+                         scale=FIG2_WIND_PARAMS['row2_250']['scale'],
+                         key_u=FIG2_WIND_PARAMS['row2_250']['key_u'],
+                         add_key=(col == 3),
+                         speed_threshold=FIG2_WIND_PARAMS['row2_250'].get('threshold'),
+                         color=FIG2_WIND_PARAMS['row2_250']['color'],
+                         alpha=FIG2_WIND_PARAMS['row2_250']['alpha'])
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_xlabels=True, show_ylabels=(col == 0))
@@ -769,7 +800,12 @@ def create_figure_epall_anom(datasets):
                             linestyles='dashed', alpha=0.90, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
-                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 2))
+                         scale=FIG3_WIND_PARAMS['row0_250']['scale'],
+                         key_u=FIG3_WIND_PARAMS['row0_250']['key_u'],
+                         add_key=(col == 2),
+                         speed_threshold=FIG3_WIND_PARAMS['row0_250'].get('threshold'),
+                         color=FIG3_WIND_PARAMS['row0_250']['color'],
+                         alpha=FIG3_WIND_PARAMS['row0_250']['alpha'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
         panel_label(ax, PANEL_LABELS_3[0][col])
@@ -795,7 +831,11 @@ def create_figure_epall_anom(datasets):
             ax.contour(d['x_2d'], d['y_2d'], d['adv_T_850_mep'], levels=pos_v,
                        colors='firebrick', linewidths=1.6, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_850_mep'], d['v_850_mep'],
-                         scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850, add_key=(col == 2))
+                         scale=FIG3_WIND_PARAMS['row1_850']['scale'],
+                         key_u=FIG3_WIND_PARAMS['row1_850']['key_u'],
+                         add_key=(col == 2),
+                         color=FIG3_WIND_PARAMS['row1_850']['color'],
+                         alpha=FIG3_WIND_PARAMS['row1_850']['alpha'])
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
@@ -820,12 +860,17 @@ def create_figure_epall_anom(datasets):
         pos_ke = keadv_pos[keadv_pos <= np.nanmax(d['ke_adv_250_mep'])]
         if len(neg_ke):
             ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_mep'], levels=neg_ke,
-                       colors=FIG3_KEADV_COLOR_NEG, linewidths=1.4, linestyles='dashed', alpha=0.9, zorder=5)
+                       colors=FIG3_KEADV_COLOR_NEG, linewidths=CONTOUR_LINEWIDTH_COLORED, linestyles='dashed', alpha=0.9, zorder=5)
         if len(pos_ke):
             ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_mep'], levels=pos_ke,
-                       colors=FIG3_KEADV_COLOR_POS, linewidths=1.4, linestyles='solid', alpha=0.9, zorder=5)
+                       colors=FIG3_KEADV_COLOR_POS, linewidths=CONTOUR_LINEWIDTH_COLORED, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
-                         scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 2))
+                         scale=FIG3_WIND_PARAMS['row2_250']['scale'],
+                         key_u=FIG3_WIND_PARAMS['row2_250']['key_u'],
+                         add_key=(col == 2),
+                         speed_threshold=FIG3_WIND_PARAMS['row2_250'].get('threshold'),
+                         color=FIG3_WIND_PARAMS['row2_250']['color'],
+                         alpha=FIG3_WIND_PARAMS['row2_250']['alpha'])
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_xlabels=True, show_ylabels=(col == 0))

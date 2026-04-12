@@ -59,6 +59,7 @@ import warnings
 from metpy.units import units
 
 from scripts.utils.ep_mapping import ALL_EPS, EP_LABELS
+from scripts.utils.colormaps import CMAP_AFC
 
 from scripts.ep_structure_analysis.step3_precompute_composites import (
     compute_pv_at_level,
@@ -466,7 +467,7 @@ def create_dynamic_panel_figure(ds_timestep, center_lat, center_lon, time_ts, tr
             ).values
             vmax = np.nanpercentile(np.abs(afc), 98)
             vmax = max(vmax, 1e-6)
-            im = ax.contourf(X, Y, afc, levels=np.linspace(-vmax, vmax, 21), cmap="RdBu_r", extend="both")
+            im = ax.contourf(X, Y, afc, levels=np.linspace(-vmax, vmax, 21), cmap=CMAP_AFC, extend="both")
             ka = np.nanpercentile(np.abs(ke_adv_anom), 90)
             ka = max(ka, 1e-8)
             ax.contour(X, Y, ke_adv_anom, levels=[-ka, -0.5 * ka], colors="steelblue", linewidths=1.1, linestyles="dashed")

@@ -52,6 +52,7 @@ import argparse
 from datetime import datetime
 
 from scripts.utils.ep_mapping import ALL_EPS, EP_LABELS, EP_COLORS, EPALL_LABEL
+from scripts.utils.colormaps import CMAP_AFC, CMAP_KE_ADV
 
 warnings.filterwarnings("ignore")
 
@@ -717,7 +718,7 @@ def figure_ke_advection(datasets):
         y = ds.coords["y"].values
         
         # Shaded: KE advection
-        im = ax.contourf(x, y, ke_adv, levels=clevels, cmap="PuOr_r", extend="both")
+        im = ax.contourf(x, y, ke_adv, levels=clevels, cmap=CMAP_KE_ADV, extend="both")
         
         # Zero contour
         ax.contour(x, y, ke_adv, levels=[0], colors="black", linewidths=1.5, linestyles="-")
@@ -747,7 +748,7 @@ def figure_ke_advection(datasets):
 
 
 def figure_afc(datasets):
-    """AFC at 250 hPa: EP1, EP2, EP3 comparison, with total composite 250 hPa wind vectors.
+    """AFC at 250 hPa: EP1, EP2, EP3, EPALL comparison, with total composite 250 hPa wind vectors.
 
     AFC = −∇·(v_ag' φ')  where v_ag' = v' − v_g' is the ageostrophic eddy wind
     and φ' = Φ − Φm is the geopotential departure from the 30-year monthly
@@ -757,6 +758,8 @@ def figure_afc(datasets):
     Wind vectors overlaid are the **total** composite-mean 250 hPa wind
     (u_250, v_250), not the eddy perturbation.
 
+    EPALL column: Shows the total AFC composite (reference population for all EPs).
+
     NOTE: AFC uses climatology-based decomposition by construction (Orlanski &
     Katzfey 1991). It is NOT converted to EPALL-relative anomalies because
     the ageostrophic flux requires a climatological reference.
@@ -765,8 +768,8 @@ def figure_afc(datasets):
     """
     logging.info("  Creating AFC @250 hPa composite figure...")
 
-    # Get EPs that have AFC data
-    eps = [ep for ep in ["EP1", "EP2", "EP3"] if ep in datasets and "afc_250" in datasets[ep]]
+    # Get EPs that have AFC data - include EPALL if available
+    eps = [ep for ep in ["EP1", "EP2", "EP3", "EPALL"] if ep in datasets and "afc_250" in datasets[ep]]
     
     if not eps:
         logging.warning(
@@ -799,7 +802,7 @@ def figure_afc(datasets):
         afc = ds["afc_250"].values
 
         # Shaded AFC
-        im = ax.contourf(x, y, afc, levels=clevels, cmap="RdBu_r", extend="both")
+        im = ax.contourf(x, y, afc, levels=clevels, cmap=CMAP_AFC, extend="both")
 
         # Zero contour
         ax.contour(x, y, afc, levels=[0], colors="black", linewidths=1.5, linestyles="-")
@@ -814,8 +817,11 @@ def figure_afc(datasets):
             )
 
         n = int(ds.attrs.get("n_cases", "?"))
-        _decorate_ax(ax, f"{ep} — AFC at 250 hPa + 250 hPa total wind  [n={n}]",
-                     xlabel=True, ylabel=(i == 0))
+        if ep == "EPALL":
+            label = f"EPALL (all cyclones)  [n={n}]"
+        else:
+            label = f"{ep} — AFC at 250 hPa + 250 hPa total wind  [n={n}]"
+        _decorate_ax(ax, label, xlabel=True, ylabel=(i == 0))
         _add_cbar(fig, ax, im, "AFC (m² s⁻³)")
 
     # Hide unused axes if any
@@ -972,7 +978,7 @@ def figure_ke_advection_epall_anom(datasets):
         unit_label="KE adv − EPALL (m² s⁻³)",
         suptitle="Kinetic Energy Advection at 250 hPa — EPx − EPALL Anomaly",
         out_name="composite_ke_advection_anom_epall.png",
-        cmap="PuOr_r",
+        cmap=CMAP_KE_ADV,
     )
 
 
@@ -1013,7 +1019,7 @@ def figure_afc_epall_anom(datasets):
             "Negative = weaker than typical"
         ),
         out_name="composite_afc_anom_epall.png",
-        cmap="RdBu_r",
+        cmap=CMAP_AFC,
     )
 
 
@@ -1198,7 +1204,7 @@ def figure_ke_advection_anom(datasets):
         suptitle="KE Advection Anomaly at 250 hPa — departure from climatology\n"
                  "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_ke_advection_anom.png",
-        cmap="PuOr_r",
+        cmap=CMAP_KE_ADV,
         wind_u="u_250_prime",
         wind_v="v_250_prime",
         wind_scale=VECTOR_SCALE,
@@ -1510,7 +1516,7 @@ def figure_ke_advection_diff(datasets):
         unit_label="ΔKE adv (m² s⁻³)",
         suptitle="Kinetic Energy Advection at 250 hPa Difference (EP1 − EP2)",
         out_name="composite_ke_advection_diff.png",
-        cmap="PuOr_r",
+        cmap=CMAP_KE_ADV,
     )
 
 
@@ -1527,7 +1533,7 @@ def figure_afc_diff(datasets):
         unit_label="ΔAFC (m² s⁻³)",
         suptitle="Ageostrophic Flux Convergence at 250 hPa Difference (EP1 − EP2)",
         out_name="composite_afc_diff.png",
-        cmap="RdBu_r",
+        cmap=CMAP_AFC,
     )
 
 

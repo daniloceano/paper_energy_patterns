@@ -129,15 +129,15 @@ FIG1_WIND_PARAMS = {
 }
 
 FIG2_WIND_PARAMS = {
-    'row0_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7},
-    'row1_850': {'scale': 200, 'key_u': 5.0, 'color': 'gray', 'alpha': 0.7},
-    'row2_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7, 'threshold': 25.0},
+    'row0_250': {'scale': 200, 'key_u': 20.0, 'color': 'k', 'alpha': 0.7},
+    'row1_850': {'scale': 100, 'key_u': 5.0, 'color': 'k', 'alpha': 0.7},
+    'row2_250': {'scale': 200, 'key_u': 20.0, 'color': 'k', 'alpha': 0.7},
 }
 
 FIG3_WIND_PARAMS = {
-    'row0_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7, 'threshold': 25.0},
-    'row1_850': {'scale': 200, 'key_u': 5.0, 'color': 'gray', 'alpha': 0.7},
-    'row2_250': {'scale': 500, 'key_u': 20.0, 'color': 'gray', 'alpha': 0.7, 'threshold': 30.0},
+    'row0_250': {'scale': 100, 'key_u': 5.0, 'color': 'k', 'alpha': 0.7},
+    'row1_850': {'scale': 50, 'key_u': 1.0, 'color': 'k', 'alpha': 0.7},
+    'row2_250': {'scale': 100, 'key_u': 5.0, 'color': 'k', 'alpha': 0.7},
 }
 
 # ── RK meridional sign-reversal hatching ─────────────────────────────────────

@@ -52,7 +52,10 @@ import argparse
 from datetime import datetime
 
 from scripts.utils.ep_mapping import ALL_EPS, EP_LABELS, EP_COLORS, EPALL_LABEL
-from scripts.utils.colormaps import CMAP_AFC, CMAP_KE_ADV
+from scripts.utils.colormaps import (
+    CMAP_AFC, CMAP_KE_ADV, CMAP_PV_ANOM, CMAP_PV_TOTAL,
+    CMAP_EGR_TOTAL, CMAP_MOISTURE_FLUX, CMAP_RK
+)
 
 warnings.filterwarnings("ignore")
 
@@ -334,7 +337,7 @@ def figure_egr(datasets):
         ds = datasets[ep]
         x, y = ds.x.values, ds.y.values
 
-        im = ax.contourf(x, y, ds["egr"].values, levels=clevels, cmap="YlOrRd", extend="both")
+        im = ax.contourf(x, y, ds["egr"].values, levels=clevels, cmap=CMAP_EGR_TOTAL, extend="both")
 
         # 850 hPa winds (lower boundary of the EGR layer)
         if "u_850" in ds and "v_850" in ds:
@@ -462,7 +465,7 @@ def figure_advT850(datasets):
         x, y = ds.x.values, ds.y.values
         advT = ds["adv_T_850"].values * 3600  # K/h
 
-        im = ax.contourf(x, y, advT, levels=clevels, cmap="RdBu_r", extend="both")
+        im = ax.contourf(x, y, advT, levels=clevels, cmap=CMAP_PV_ANOM, extend="both")
         ax.contour(x, y, advT, levels=[0], colors="black", linewidths=1.2)
 
         # 850 hPa winds
@@ -552,7 +555,7 @@ def figure_moisture(datasets):
 
         div_q = ds["div_q_975"].values
         
-        im = ax.contourf(x, y, div_q, levels=div_levels, cmap="RdBu_r", extend="both")
+        im = ax.contourf(x, y, div_q, levels=div_levels, cmap=CMAP_MOISTURE_FLUX, extend="both")
         
         if absmax_div > 0:
             # Contour convergence zones (negative divergence)
@@ -661,7 +664,7 @@ def figure_rk_criterion(datasets):
         y = ds.coords["y"].values
         
         # Shaded: RK criterion (negative = unstable)
-        im = ax.contourf(x, y, rk, levels=clevels, cmap="RdBu_r", extend="both")
+        im = ax.contourf(x, y, rk, levels=clevels, cmap=CMAP_RK, extend="both")
         
         # Zero contour
         ax.contour(x, y, rk, levels=[0], colors="black", linewidths=1.5, linestyles="-")
@@ -845,7 +848,7 @@ def figure_afc(datasets):
 # ============================================================================
 
 def _epall_anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
-                    cmap="RdBu_r"):
+                    cmap=CMAP_PV_ANOM):
     """1×3 EPALL-relative anomaly figure: EP1−EPALL | EP2−EPALL | EP3−EPALL.
 
     Parameters
@@ -908,7 +911,7 @@ def figure_egr_epall_anom(datasets):
         unit_label="EGR − EPALL (day⁻¹)",
         suptitle="Eady Growth Rate — EPx − EPALL Anomaly",
         out_name="composite_egr_anom_epall.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -922,7 +925,7 @@ def figure_pv200_epall_anom(datasets):
         unit_label="PV − EPALL (PVU)",
         suptitle="Potential Vorticity at 200 hPa — EPx − EPALL Anomaly",
         out_name="composite_pv200_anom_epall.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -936,7 +939,7 @@ def figure_pv850_epall_anom(datasets):
         unit_label="PV − EPALL (PVU)",
         suptitle="Potential Vorticity at 850 hPa — EPx − EPALL Anomaly",
         out_name="composite_pv850_anom_epall.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -950,7 +953,7 @@ def figure_advT850_epall_anom(datasets):
         unit_label="(−V·∇T) − EPALL (K h⁻¹)",
         suptitle="Temperature Advection at 850 hPa — EPx − EPALL Anomaly",
         out_name="composite_advT850_anom_epall.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -964,7 +967,7 @@ def figure_slp_epall_anom(datasets):
         unit_label="SLP − EPALL (hPa)",
         suptitle="Sea Level Pressure — EPx − EPALL Anomaly",
         out_name="composite_slp_anom_epall.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -992,7 +995,7 @@ def figure_rk_criterion_epall_anom(datasets):
         unit_label="RK − EPALL (s⁻¹ m⁻¹)",
         suptitle="Rayleigh-Kuo Criterion at 250 hPa — EPx − EPALL Anomaly",
         out_name="composite_rk_criterion_anom_epall.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1028,7 +1031,7 @@ def figure_afc_epall_anom(datasets):
 # ============================================================================
 
 def _anom_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
-              cmap="RdBu_r", wind_u=None, wind_v=None, wind_scale=None):
+              cmap=CMAP_PV_ANOM, wind_u=None, wind_v=None, wind_scale=None):
     """Generic multi-panel climatology-based anomaly figure builder.
 
     Plots EP1, EP2, EP3, EPALL in a 2×2 layout.
@@ -1117,7 +1120,7 @@ def figure_egr_anom(datasets):
         suptitle="Eady Growth Rate Anomaly — departure from 1991–2020 climatology\n"
                  "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_egr_anom.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1132,7 +1135,7 @@ def figure_pv200_anom(datasets):
         suptitle="PV Anomaly at 200 hPa — departure from 1991–2020 climatology\n"
                  "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_pv200_anom.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
         wind_u="u_250_prime",
         wind_v="v_250_prime",
         wind_scale=VECTOR_SCALE,
@@ -1150,7 +1153,7 @@ def figure_pv850_anom(datasets):
         suptitle="PV Anomaly at 850 hPa — departure from 1991–2020 climatology\n"
                  "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_pv850_anom.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
         wind_u="u_850_prime",
         wind_v="v_850_prime",
         wind_scale=100,
@@ -1168,7 +1171,7 @@ def figure_advT850_anom(datasets):
         suptitle="Temperature Advection Anomaly at 850 hPa — departure from climatology\n"
                  "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_advT850_anom.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
         wind_u="u_850_prime",
         wind_v="v_850_prime",
         wind_scale=100,
@@ -1222,7 +1225,7 @@ def figure_slp_anom(datasets):
         suptitle="Sea Level Pressure Anomaly — departure from 1991–2020 climatology\n"
                  "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
         out_name="composite_slp_anom.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
         wind_u="u_850_prime",
         wind_v="v_850_prime",
         wind_scale=100,
@@ -1289,7 +1292,7 @@ def figure_btcr(datasets):
         X, Y = np.meshgrid(x, y)
 
         # Shading: full Δm field (diverging, centered at 0)
-        im = ax.contourf(X, Y, dm, levels=clevels, cmap="RdBu_r", extend="both")
+        im = ax.contourf(X, Y, dm, levels=clevels, cmap=CMAP_PV_ANOM, extend="both")
         ax.contour(X, Y, dm, levels=[0.0], colors="black", linewidths=1.2)  # zero line
 
         # Climatological 250 hPa wind speed contours for jet reference,
@@ -1352,7 +1355,7 @@ def figure_btcr(datasets):
 # ============================================================================
 
 def _diff_fig(datasets, var_key, scale_factor, unit_label, suptitle, out_name,
-              cmap="RdBu_r", n_levels=21):
+              cmap=CMAP_PV_ANOM, n_levels=21):
     """Generic single-panel (EP1 − EP2) difference figure builder.
 
     Parameters
@@ -1412,7 +1415,7 @@ def figure_egr_diff(datasets):
         unit_label="ΔEGR (day⁻¹)",
         suptitle="Eady Growth Rate Difference (EP1 − EP2)",
         out_name="composite_egr_diff.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1426,7 +1429,7 @@ def figure_pv200_diff(datasets):
         unit_label="ΔPV (PVU)",
         suptitle="Potential Vorticity at 200 hPa Difference (EP1 − EP2)",
         out_name="composite_pv200_diff.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1440,7 +1443,7 @@ def figure_pv850_diff(datasets):
         unit_label="ΔPV (PVU)",
         suptitle="Potential Vorticity at 850 hPa Difference (EP1 − EP2)",
         out_name="composite_pv850_diff.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1454,7 +1457,7 @@ def figure_advT850_diff(datasets):
         unit_label="Δ(−V·∇T) (K h⁻¹)",
         suptitle="Temperature Advection at 850 hPa Difference (EP1 − EP2)",
         out_name="composite_advT850_diff.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1482,7 +1485,7 @@ def figure_slp_diff(datasets):
         unit_label="ΔSLP (hPa)",
         suptitle="Sea Level Pressure Difference (EP1 − EP2)",
         out_name="composite_slp_diff.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1499,7 +1502,7 @@ def figure_rk_criterion_diff(datasets):
         unit_label="ΔRK (×10⁻⁵ s⁻¹)",
         suptitle="Rayleigh-Kuo Criterion at 250 hPa Difference (EP1 − EP2)",
         out_name="composite_rk_criterion_diff.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1550,7 +1553,7 @@ def figure_btcr_diff(datasets):
         unit_label="ΔΔm (×10⁻⁹ s⁻²)",
         suptitle="Barotropic Critical Region (Δm) Difference (EP1 − EP2)",
         out_name="composite_btcr_diff.png",
-        cmap="RdBu_r",
+        cmap=CMAP_PV_ANOM,
     )
 
 
@@ -1618,7 +1621,7 @@ def figure_wind250_anom(datasets):
         v_clim = v - vp
         wspd_anom = np.hypot(u, v) - np.hypot(u_clim, v_clim)
 
-        im = ax.contourf(x, y, wspd_anom, levels=clevels, cmap="RdBu_r", extend="both")
+        im = ax.contourf(x, y, wspd_anom, levels=clevels, cmap=CMAP_PV_ANOM, extend="both")
         ax.contour(x, y, wspd_anom, levels=[0], colors="black", linewidths=1.2)
 
         n = int(ds.attrs.get("n_cases", "?"))

@@ -26,7 +26,29 @@ CMAP_AFC = CMAP_PV_ANOM
 
 # ── KE advection colormap (diverging: purple-blue → yellow-green → dark) ────
 KE_ADV_COLORS = [
-    '#19253D', '#5777BA',  '#98A8E1', '#DBD7FE',   # blue/purple side (negative)
-    '#D9E49A', '#899365', '#374030', '#0E1615',   # yellow/green/brown side (positive)
+    '#003c30', '#01665e', '#35978f', '#80cdc1', '#c7eae5', '#f5f5f5', # green side (negative KE advection)
+    '#f7f7f7', '#d8daeb', '#b2abd2', '#8073ac', '#542788', '#2d004b' # purple-blue side (positive KE advection)
 ]
 CMAP_KE_ADV = LinearSegmentedColormap.from_list('ke_adv', KE_ADV_COLORS)
+
+# ── EGR total field colormap (sequential: white → orange-red → dark red) ──────
+EGR_TOTAL_COLORS = [
+    '#FFFFFF', '#FFFACC', '#FFEB80', '#FFD133', '#FFAD00',   # light to orange
+    '#FF8000', '#FA4C00', '#E61A00', '#BF001A', '#8C0033',   # orange to dark red
+]
+CMAP_EGR_TOTAL = LinearSegmentedColormap.from_list('egr_total', EGR_TOTAL_COLORS)
+
+# ── Moisture flux divergence colormap (diverging: blue-green → neutral → brown) 
+MOISTURE_FLUX_COLORS = [
+    '#003c30', '#01665e', '#35978f', '#80cdc1', '#c7eae5',   # wet side (more moisture)
+    '#f5f5f5',                                                 # neutral
+    '#f6e8c3', '#dfc27d', '#bf812d', '#8c510a', '#543005',   # dry side (less moisture)
+]
+CMAP_MOISTURE_FLUX = LinearSegmentedColormap.from_list('moisture_flux', MOISTURE_FLUX_COLORS)
+
+# ── RK criterion colormap (diverging: purple → gray → brown) ──────────────────
+RK_COLORS = [
+    '#2C1D4F', '#3C6795', '#AABFD3', '#D8E4E6',   # purple side (negative RK)
+    '#D7E2E0', '#BBC6B7', '#7E895C', '#434E05',  # brown side (positive RK)
+]
+CMAP_RK = LinearSegmentedColormap.from_list('rk_criterion', RK_COLORS)

@@ -109,7 +109,7 @@
       "api_path": "figures/ep_structure/composite_rk_criterion.png"
     },
     "diff": {
-      "exists": true,
+      "exists": false,
       "api_path": "figures/ep_structure/composite_rk_criterion_diff.png"
     }
   },

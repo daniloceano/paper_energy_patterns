@@ -25,7 +25,9 @@ FIGURE 3 — EPALL-RELATIVE ANOMALY FIELDS  (3 columns: EP1−EPALL | EP2−EPAL
   mean of ALL intensifying cyclones, not the multi-year monthly mean.
   Row 1: PV − EPALL @ 200 hPa + EGR contours + 250 hPa EPALL-relative wind
   Row 2: PV − EPALL @ 850 hPa + T-adv − EPALL contours + 850 hPa EPALL-relative wind
-  Row 3: AFC (total) + EPALL-relative 250 hPa wind + RK − EPALL hatching
+  Row 3: AFC − EPALL (shading) + EPALL-relative 250 hPa wind
+         + RK total sign-reversal hatching (total composite, not EPALL-relative
+           — RK = β − ∂²ū/∂y² is a background-flow diagnostic)
          + KE-adv − EPALL contours
 
 Input:
@@ -631,15 +633,13 @@ def create_figure_epall_anom(datasets):
     This reference is the typical intensifying extratropical cyclone; it differs
     from the climatological anomaly which is referenced to the monthly mean state.
 
-    Row 1: (PV@200) − EPALL + EGR contours + (u,v)_250 − EPALL wind vectors
+    Row 1: (PV@200) − EPALL + (EGR) − EPALL contours + (u,v)_250 − EPALL wind vectors
     Row 2: (PV@850) − EPALL + (T-adv) − EPALL contours + (u,v)_850 − EPALL wind
-    Row 3: AFC total (shading) + (u,v)_250 − EPALL wind
-           + RK sign-reversal hatching (total RK, not EPALL-relative)
+    Row 3: AFC − EPALL (shading) + (u,v)_250 − EPALL wind
+           + RK total sign-reversal hatching (total RK, not EPALL-relative)
            + (KE-adv) − EPALL contours
 
     Notes:
-    - AFC: no EPALL-relative version (uses climatological decomp by construction;
-      Orlanski & Katzfey 1991). Total AFC shown for context.
     - RK criterion: shown as total composite only. RK = β − ∂²ū/∂y² is a
       background-flow diagnostic; differencing against EPALL yields near-zero
       values dominated by sampling noise in the time-mean estimate. Total RK
@@ -651,11 +651,13 @@ def create_figure_epall_anom(datasets):
 
     # Variables from EP1/EP2/EP3 datasets (pre-computed in step3)
     required_minus = [
-        'pv_200_minus_epall', 'pv_850_minus_epall', 'egr',
-        'adv_T_850_minus_epall', 'msl', 'afc_250',
+        'pv_200_minus_epall', 'pv_850_minus_epall',
+        'egr_minus_epall',           # EGR EPALL-relative
+        'adv_T_850_minus_epall', 'msl',
+        'afc_250_minus_epall',       # AFC EPALL-relative (added April 2026)
         'u_250_minus_epall', 'v_250_minus_epall',
         'u_850_minus_epall', 'v_850_minus_epall',
-        'rk_criterion_250',  # total RK — intentionally NOT minus_epall (background-flow diagnostic)
+        'rk_criterion_250',          # total RK — intentionally NOT minus_epall (background-flow diagnostic)
         'ke_adv_250_minus_epall',
     ]
     eps = ['EP1', 'EP2', 'EP3']
@@ -675,10 +677,10 @@ def create_figure_epall_anom(datasets):
         ep_data[ep] = dict(
             pv_200_mep    = ds['pv_200_minus_epall'].values * PV_SCALE,
             pv_850_mep    = ds['pv_850_minus_epall'].values * PV_SCALE,
-            egr           = ds['egr'].values,
+            egr_mep       = ds['egr_minus_epall'].values,    # EGR EPALL-relative
             adv_T_850_mep = ds['adv_T_850_minus_epall'].values * ADV_T_SCALE,
             msl_hpa       = ds['msl'].values * SLP_SCALE,
-            afc_250       = ds['afc_250'].values,
+            afc_250_mep   = ds['afc_250_minus_epall'].values,  # AFC EPALL-relative
             ke_adv_250_mep= ds['ke_adv_250_minus_epall'].values,
             u_250_mep     = ds['u_250_minus_epall'].values,
             v_250_mep     = ds['v_250_minus_epall'].values,
@@ -695,7 +697,7 @@ def create_figure_epall_anom(datasets):
 
     lim_pv200 = _sym_lim('pv_200_mep')
     lim_pv850 = _sym_lim('pv_850_mep')
-    lim_afc   = _sym_lim('afc_250')
+    lim_afc   = _sym_lim('afc_250_mep')
     lim_tadv  = _sym_lim('adv_T_850_mep')
     lim_keadv = _sym_lim('ke_adv_250_mep')
 
@@ -711,7 +713,7 @@ def create_figure_epall_anom(datasets):
     fig = plt.figure(figsize=(15, 13))
     gs = _make_3col_gridspec(fig)
 
-    # ── ROW 0: (PV@200)−EPALL + EGR + (u,v)_250−EPALL ───────────────────────
+    # ── ROW 0: (PV@200)−EPALL + EGR−EPALL + (u,v)_250−EPALL ────────────────
     im_r0 = None
     for col, ep in enumerate(eps):
         d  = ep_data[ep]
@@ -720,12 +722,17 @@ def create_figure_epall_anom(datasets):
                          levels=levels_pv200, cmap=CMAP_PV, extend='both')
         if col == 0:
             im_r0 = im
-        egr_valid = EGR_CONTOUR_LEVELS[
-            (EGR_CONTOUR_LEVELS >= np.nanmin(d['egr'])) &
-            (EGR_CONTOUR_LEVELS <= np.nanmax(d['egr']))]
-        if len(egr_valid):
-            cs = ax.contour(d['x_2d'], d['y_2d'], d['egr'],
-                            levels=egr_valid, colors='k', linewidths=1.0, alpha=0.85, zorder=5)
+        # EGR EPALL-relative: contour positive departures (EPx grew faster than typical)
+        egr_pos_levels = EGR_CONTOUR_LEVELS[EGR_CONTOUR_LEVELS <= np.nanmax(d['egr_mep'])]
+        egr_neg_levels = -EGR_CONTOUR_LEVELS[EGR_CONTOUR_LEVELS <= np.nanmax(np.abs(d['egr_mep']))]
+        if len(egr_pos_levels):
+            cs = ax.contour(d['x_2d'], d['y_2d'], d['egr_mep'],
+                            levels=egr_pos_levels, colors='k', linewidths=1.0, alpha=0.85, zorder=5)
+            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
+        if len(egr_neg_levels):
+            cs = ax.contour(d['x_2d'], d['y_2d'], d['egr_mep'],
+                            levels=sorted(egr_neg_levels), colors='dimgray',
+                            linewidths=0.8, linestyles='dashed', alpha=0.75, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
                          scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 2))
@@ -761,12 +768,12 @@ def create_figure_epall_anom(datasets):
         panel_label(ax, PANEL_LABELS_3[1][col])
     add_colorbar(fig, gs[1, 3], im_r1, r"PV$_{850}$ − EPALL (PVU)")
 
-    # ── ROW 2: AFC + (u,v)_250−EPALL + RK−EPALL hatching + KE-adv−EPALL ─────
+    # ── ROW 2: AFC−EPALL + (u,v)_250−EPALL + RK total hatching + KE-adv−EPALL ─
     im_r2 = None
     for col, ep in enumerate(eps):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[2, col])
-        im = ax.contourf(d['x_2d'], d['y_2d'], d['afc_250'],
+        im = ax.contourf(d['x_2d'], d['y_2d'], d['afc_250_mep'],
                          levels=levels_afc, cmap=CMAP_AFC, extend='both')
         if col == 0:
             im_r2 = im
@@ -789,7 +796,7 @@ def create_figure_epall_anom(datasets):
         add_lec_box(ax); mark_center(ax)
         ax_setup(ax, d['x'], d['y'], show_xlabels=True, show_ylabels=(col == 0))
         panel_label(ax, PANEL_LABELS_3[2][col])
-    add_colorbar(fig, gs[2, 3], im_r2, r"AFC$_{250}$ total (W m$^{-2}$)")
+    add_colorbar(fig, gs[2, 3], im_r2, r"AFC$_{250}$ − EPALL (m$^2$ s$^{-3}$)")
 
     fig.suptitle(
         "Dynamical Composites — EPALL-Relative Anomaly  "

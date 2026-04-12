@@ -81,6 +81,10 @@ SLP_SCALE   = 1e-2     # Pa                  →  hPa
 # ── EGR contour levels [day⁻¹] — only ≥ 0.5 day⁻¹ ──────────────────────────
 EGR_CONTOUR_LEVELS = np.array([0.50, 0.55, 0.60, 0.65])
 
+# ── EGR EPALL-relative contour levels [day⁻¹] — ±0.02 step, capped ±0.10 ────
+EGR_EPALL_POS_LEVELS = np.array([0.02, 0.04, 0.06, 0.08, 0.10])
+EGR_EPALL_NEG_LEVELS = np.array([-0.10, -0.08, -0.06, -0.04, -0.02])
+
 # ── Temperature advection contour levels [K h⁻¹] ────────────────────────────
 TADV_NEG_LEVELS = np.array([-0.120, -0.080, -0.040])  # cold advection
 TADV_POS_LEVELS = np.array([0.040,  0.080,  0.120])   # warm advection
@@ -722,17 +726,18 @@ def create_figure_epall_anom(datasets):
                          levels=levels_pv200, cmap=CMAP_PV, extend='both')
         if col == 0:
             im_r0 = im
-        # EGR EPALL-relative: contour positive departures (EPx grew faster than typical)
-        egr_pos_levels = EGR_CONTOUR_LEVELS[EGR_CONTOUR_LEVELS <= np.nanmax(d['egr_mep'])]
-        egr_neg_levels = -EGR_CONTOUR_LEVELS[EGR_CONTOUR_LEVELS <= np.nanmax(np.abs(d['egr_mep']))]
-        if len(egr_pos_levels):
+        # EGR EPALL-relative: fixed ±0.02 step levels capped at ±0.10 day⁻¹
+        # Red = EPx grew faster than typical cyclone; blue = slower
+        pos_v = EGR_EPALL_POS_LEVELS[EGR_EPALL_POS_LEVELS <= np.nanmax(d['egr_mep'])]
+        neg_v = EGR_EPALL_NEG_LEVELS[EGR_EPALL_NEG_LEVELS >= np.nanmin(d['egr_mep'])]
+        if len(pos_v):
             cs = ax.contour(d['x_2d'], d['y_2d'], d['egr_mep'],
-                            levels=egr_pos_levels, colors='k', linewidths=1.0, alpha=0.85, zorder=5)
+                            levels=pos_v, colors='firebrick', linewidths=1.0, alpha=0.90, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
-        if len(egr_neg_levels):
+        if len(neg_v):
             cs = ax.contour(d['x_2d'], d['y_2d'], d['egr_mep'],
-                            levels=sorted(egr_neg_levels), colors='dimgray',
-                            linewidths=0.8, linestyles='dashed', alpha=0.75, zorder=5)
+                            levels=neg_v, colors='steelblue', linewidths=1.0,
+                            linestyles='dashed', alpha=0.90, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
                          scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 2))

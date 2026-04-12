@@ -82,12 +82,22 @@ SLP_SCALE   = 1e-2     # Pa                  →  hPa
 EGR_CONTOUR_LEVELS = np.array([0.50, 0.55, 0.60, 0.65])
 
 # ── EGR EPALL-relative contour levels [day⁻¹] — ±0.02 step, capped ±0.10 ────
-EGR_EPALL_POS_LEVELS = np.array([0.02, 0.04, 0.06, 0.08, 0.10])
-EGR_EPALL_NEG_LEVELS = np.array([-0.10, -0.08, -0.06, -0.04, -0.02])
+EGR_EPALL_POS_LEVELS = np.array([0.03, 0.06, 0.09, 0.12])
+EGR_EPALL_NEG_LEVELS = np.array([-0.12, -0.09, -0.06, -0.03])
 
 # ── Temperature advection contour levels [K h⁻¹] ────────────────────────────
-TADV_NEG_LEVELS = np.array([-0.120, -0.080, -0.040])  # cold advection
+# Used by Figures 1 & 2 (total and clim-anom)
+TADV_NEG_LEVELS = np.array([-0.240, -0.080, -0.040])  # cold advection
 TADV_POS_LEVELS = np.array([0.040,  0.080,  0.120])   # warm advection
+
+# ── Figure 3 (EPALL-relative) contour levels ─────────────────────────────────
+# T-adv − EPALL [K h⁻¹]: edit step and cap to taste
+FIG3_TADV_STEP = 0.050   # contour interval
+FIG3_TADV_CAP  = 0.20   # ±cap (levels = ±step, ±2·step, … up to ±cap)
+
+# KE-adv − EPALL [m² s⁻³]: edit step and cap to taste
+FIG3_KEADV_STEP = 0.005   # contour interval
+FIG3_KEADV_CAP  = 0.01   # ±cap
 
 # ── SLP contour interval [hPa] ──────────────────────────────────────────────
 SLP_INTERVAL = 2.0
@@ -105,8 +115,24 @@ HATCH_PATTERN = '///'
 HATCH_COLOR   = 'dimgray'
 HATCH_LW      = 0.7
 
-# ── Colormaps ────────────────────────────────────────────────────────────────
-CMAP_PV  = 'RdBu_r'
+# ── KE-adv EPALL-relative contour colors (Figure 3 only) ─────────────────────
+FIG3_KEADV_COLOR_NEG = '#DBD7FE'   # light purple  — KE divergence (negative)
+FIG3_KEADV_COLOR_POS = '#D9E49A'   # light yellow-green — KE convergence (positive)
+
+# ── PV colormap: anomaly (Figs 2 & 3, diverging) ─────────────────────────────
+CMAP_PV_ANOM_COLORS = [
+    '#011462', '#106294', '#A7C9DA',   # blue side  (negative anomaly)
+    '#E8E1DD',                          # neutral
+    '#CDB7B6', '#935B5E', '#5B020A',   # red side   (positive anomaly)
+]
+
+# ── PV colormap: total field (Fig 1, sequential) ─────────────────────────────
+CMAP_PV_TOTAL_COLORS = [
+    '#f8f9ff', '#dce4f5', '#b9caeb', '#8aaad7',
+    '#5b84bc', '#3060a0', '#1a3e7a', '#0b2557', '#040f33',
+]
+
+# ── AFC colormap ──────────────────────────────────────────────────────────────
 CMAP_AFC = 'RdBu_r'
 
 # ── Font sizes ───────────────────────────────────────────────────────────────
@@ -129,6 +155,10 @@ plt.rcParams.update({
     'axes.grid':         False,
     'font.family':       'sans-serif',
 })
+
+# Build custom colormaps from the color lists defined above
+CMAP_PV_ANOM  = mpl.colors.LinearSegmentedColormap.from_list('pv_anom',  CMAP_PV_ANOM_COLORS)
+CMAP_PV_TOTAL = mpl.colors.LinearSegmentedColormap.from_list('pv_total', CMAP_PV_TOTAL_COLORS)
 
 
 # ============================================================================
@@ -370,7 +400,7 @@ def create_figure_total(datasets):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[0, col])
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_200'],
-                         levels=levels_pv200, cmap='RdYlBu_r', extend='both')
+                         levels=levels_pv200, cmap=CMAP_PV_TOTAL, extend='both')
         if col == 0:
             im_r0 = im
         egr_valid = EGR_CONTOUR_LEVELS[
@@ -398,7 +428,7 @@ def create_figure_total(datasets):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[1, col])
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_850'],
-                         levels=levels_pv850, cmap='RdYlBu_r', extend='both')
+                         levels=levels_pv850, cmap=CMAP_PV_TOTAL, extend='both')
         if col == 0:
             im_r1 = im
         tadv = d['adv_T_850']
@@ -538,7 +568,7 @@ def create_figure_anom(datasets):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[0, col])
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_200_anom'],
-                         levels=levels_pv200, cmap=CMAP_PV, extend='both')
+                         levels=levels_pv200, cmap=CMAP_PV_ANOM, extend='both')
         if col == 0:
             im_r0 = im
         egr_valid = EGR_CONTOUR_LEVELS[
@@ -565,7 +595,7 @@ def create_figure_anom(datasets):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[1, col])
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_850_anom'],
-                         levels=levels_pv850, cmap=CMAP_PV, extend='both')
+                         levels=levels_pv850, cmap=CMAP_PV_ANOM, extend='both')
         if col == 0:
             im_r1 = im
         neg_v = tadv_neg[tadv_neg >= np.nanmin(d['adv_T_850_anom'])]
@@ -702,17 +732,15 @@ def create_figure_epall_anom(datasets):
     lim_pv200 = _sym_lim('pv_200_mep')
     lim_pv850 = _sym_lim('pv_850_mep')
     lim_afc   = _sym_lim('afc_250_mep')
-    lim_tadv  = _sym_lim('adv_T_850_mep')
-    lim_keadv = _sym_lim('ke_adv_250_mep')
-
     levels_pv200 = np.linspace(-lim_pv200, lim_pv200, 21)
     levels_pv850 = np.linspace(-lim_pv850, lim_pv850, 21)
     levels_afc   = np.linspace(-lim_afc,   lim_afc,   21)
 
-    tadv_neg  = np.array([-lim_tadv*0.6,  -lim_tadv*0.4,  -lim_tadv*0.2])
-    tadv_pos  = np.array([ lim_tadv*0.2,   lim_tadv*0.4,   lim_tadv*0.6])
-    keadv_neg = np.array([-lim_keadv*0.6, -lim_keadv*0.4, -lim_keadv*0.2])
-    keadv_pos = np.array([ lim_keadv*0.2,  lim_keadv*0.4,  lim_keadv*0.6])
+    # T-adv and KE-adv: fixed step/cap from top-of-file constants (easy to tune)
+    tadv_pos  = np.arange(FIG3_TADV_STEP,  FIG3_TADV_CAP  + FIG3_TADV_STEP  * 0.5, FIG3_TADV_STEP)
+    tadv_neg  = -tadv_pos[::-1]
+    keadv_pos = np.arange(FIG3_KEADV_STEP, FIG3_KEADV_CAP + FIG3_KEADV_STEP * 0.5, FIG3_KEADV_STEP)
+    keadv_neg = -keadv_pos[::-1]
 
     fig = plt.figure(figsize=(15, 13))
     gs = _make_3col_gridspec(fig)
@@ -723,7 +751,7 @@ def create_figure_epall_anom(datasets):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[0, col])
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_200_mep'],
-                         levels=levels_pv200, cmap=CMAP_PV, extend='both')
+                         levels=levels_pv200, cmap=CMAP_PV_ANOM, extend='both')
         if col == 0:
             im_r0 = im
         # EGR EPALL-relative: fixed ±0.02 step levels capped at ±0.10 day⁻¹
@@ -732,11 +760,12 @@ def create_figure_epall_anom(datasets):
         neg_v = EGR_EPALL_NEG_LEVELS[EGR_EPALL_NEG_LEVELS >= np.nanmin(d['egr_mep'])]
         if len(pos_v):
             cs = ax.contour(d['x_2d'], d['y_2d'], d['egr_mep'],
-                            levels=pos_v, colors='firebrick', linewidths=1.0, alpha=0.90, zorder=5)
+                            levels=pos_v, colors='firebrick', linewidths=2.0,
+                            alpha=0.90, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         if len(neg_v):
             cs = ax.contour(d['x_2d'], d['y_2d'], d['egr_mep'],
-                            levels=neg_v, colors='steelblue', linewidths=1.0,
+                            levels=neg_v, colors='steelblue', linewidths=2.0,
                             linestyles='dashed', alpha=0.90, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
@@ -754,7 +783,7 @@ def create_figure_epall_anom(datasets):
         d  = ep_data[ep]
         ax = fig.add_subplot(gs[1, col])
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_850_mep'],
-                         levels=levels_pv850, cmap=CMAP_PV, extend='both')
+                         levels=levels_pv850, cmap=CMAP_PV_ANOM, extend='both')
         if col == 0:
             im_r1 = im
         neg_v = tadv_neg[tadv_neg >= np.nanmin(d['adv_T_850_mep'])]
@@ -791,10 +820,10 @@ def create_figure_epall_anom(datasets):
         pos_ke = keadv_pos[keadv_pos <= np.nanmax(d['ke_adv_250_mep'])]
         if len(neg_ke):
             ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_mep'], levels=neg_ke,
-                       colors='gold', linewidths=1.4, linestyles='dashed', alpha=0.9, zorder=5)
+                       colors=FIG3_KEADV_COLOR_NEG, linewidths=1.4, linestyles='dashed', alpha=0.9, zorder=5)
         if len(pos_ke):
             ax.contour(d['x_2d'], d['y_2d'], d['ke_adv_250_mep'], levels=pos_ke,
-                       colors='forestgreen', linewidths=1.4, linestyles='solid', alpha=0.9, zorder=5)
+                       colors=FIG3_KEADV_COLOR_POS, linewidths=1.4, linestyles='solid', alpha=0.9, zorder=5)
         add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
                          scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250, add_key=(col == 2))
         add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])

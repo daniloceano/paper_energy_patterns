@@ -20,6 +20,9 @@ Fields plotted (total fields):
   8. KE advection at 250 hPa              — shaded (positive = acceleration)
   9. AFC at 250 hPa (Orlanski & Katzfey 1991) — shaded (positive = eddy KE source)
   10. BtCR at 250 hPa                       — barotropic critical region
+  11. Geopotential Height at 250 hPa       — shaded with contours
+  12. Geopotential Height at 500 hPa       — shaded with contours
+  13. Geopotential Height at 850 hPa       — shaded with contours
 
 EPALL-relative anomaly fields (NEW April 2026):
   - EPx anomaly = EPx composite - EPALL composite
@@ -305,6 +308,202 @@ def figure_wind250(datasets):
     fig.savefig(out, dpi=DPI, bbox_inches="tight")
     plt.close()
     logging.info(f"    ✓ {out.name}")
+
+
+# ============================================================================
+# GEOPOTENTIAL HEIGHT FIGURES
+# ============================================================================
+
+def _figure_z_height(datasets, level, var_key, wind_u, wind_v, wind_scale=100):
+    """Generic geopotential height composite: EP1, EP2, EP3, EPALL.
+
+    Parameters
+    ----------
+    datasets   : dict of xr.Dataset
+    level      : pressure level in hPa (250, 500, or 850)
+    var_key    : composite variable name (e.g. 'z_500_m')
+    wind_u/v   : wind variable keys for quiver overlay
+    wind_scale : quiver scale factor
+    """
+    logging.info(f"  Creating Z@{level} hPa total composite figure...")
+    eps = _get_available_eps(datasets)
+    if var_key not in datasets[eps[0]]:
+        logging.warning(f"    ⚠  {var_key} not in composites — skipping Z@{level} figure")
+        return
+
+    fig, axes = _create_multipanel_fig(len(eps))
+
+    vmin, vmax = None, None
+    for ep in eps:
+        d = datasets[ep][var_key].values
+        lo = np.nanpercentile(d, 1)
+        hi = np.nanpercentile(d, 99)
+        vmin = lo if vmin is None else min(vmin, lo)
+        vmax = hi if vmax is None else max(vmax, hi)
+    clevels = np.linspace(vmin, vmax, 21)
+
+    for i, ep in enumerate(eps):
+        ax = axes[i]
+        ds = datasets[ep]
+        x, y = ds.x.values, ds.y.values
+
+        im = ax.contourf(x, y, ds[var_key].values, levels=clevels,
+                         cmap="RdYlBu_r", extend="both")
+        ax.contour(x, y, ds[var_key].values, levels=clevels[::4],
+                   colors="k", linewidths=0.5, alpha=0.4)
+
+        if wind_u in ds and wind_v in ds:
+            s = VECTOR_SKIP
+            ax.quiver(x[::s], y[::s],
+                      ds[wind_u].values[::s, ::s], ds[wind_v].values[::s, ::s],
+                      color="gray", alpha=0.7, scale=wind_scale, width=VECTOR_WIDTH)
+
+        n = int(ds.attrs.get("n_cases", "?"))
+        _decorate_ax(ax, f"{ep} — Z@{level} hPa  [n={n}]", ylabel=(i % 2 == 0))
+        _add_cbar(fig, ax, im, f"Z (m)")
+
+    fig.suptitle(f"Geopotential Height at {level} hPa",
+                 fontsize=13, fontweight="bold", y=1.02)
+    plt.tight_layout()
+    out = _figure_path(f"composite_z{level}hpa.png")
+    fig.savefig(out, dpi=DPI, bbox_inches="tight")
+    plt.close()
+    logging.info(f"    ✓ {out.name}")
+
+
+def figure_z250(datasets):
+    """Geopotential height at 250 hPa: EP1, EP2, EP3, EPALL."""
+    _figure_z_height(datasets, 250, "z_250_m", "u_250", "v_250", wind_scale=VECTOR_SCALE)
+
+
+def figure_z500(datasets):
+    """Geopotential height at 500 hPa: EP1, EP2, EP3, EPALL."""
+    _figure_z_height(datasets, 500, "z_500_m", "u_850", "v_850", wind_scale=100)
+
+
+def figure_z850(datasets):
+    """Geopotential height at 850 hPa: EP1, EP2, EP3, EPALL."""
+    _figure_z_height(datasets, 850, "z_850_m", "u_850", "v_850", wind_scale=100)
+
+
+def figure_z250_epall_anom(datasets):
+    """Z@250 hPa EPALL-relative anomaly: EP1−EPALL | EP2−EPALL | EP3−EPALL."""
+    logging.info("  Creating Z@250 hPa EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="z_250_m",
+        scale_factor=1.0,
+        unit_label="Z − EPALL (m)",
+        suptitle="Geopotential Height at 250 hPa — EPx − EPALL Anomaly",
+        out_name="composite_z250hpa_anom_epall.png",
+        cmap=CMAP_PV_ANOM,
+    )
+
+
+def figure_z500_epall_anom(datasets):
+    """Z@500 hPa EPALL-relative anomaly: EP1−EPALL | EP2−EPALL | EP3−EPALL."""
+    logging.info("  Creating Z@500 hPa EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="z_500_m",
+        scale_factor=1.0,
+        unit_label="Z − EPALL (m)",
+        suptitle="Geopotential Height at 500 hPa — EPx − EPALL Anomaly",
+        out_name="composite_z500hpa_anom_epall.png",
+        cmap=CMAP_PV_ANOM,
+    )
+
+
+def figure_z850_epall_anom(datasets):
+    """Z@850 hPa EPALL-relative anomaly: EP1−EPALL | EP2−EPALL | EP3−EPALL."""
+    logging.info("  Creating Z@850 hPa EPALL-relative anomaly figure...")
+    _epall_anom_fig(
+        datasets,
+        var_key="z_850_m",
+        scale_factor=1.0,
+        unit_label="Z − EPALL (m)",
+        suptitle="Geopotential Height at 850 hPa — EPx − EPALL Anomaly",
+        out_name="composite_z850hpa_anom_epall.png",
+        cmap=CMAP_PV_ANOM,
+    )
+
+
+def figure_z250_anom(datasets):
+    """Z@250 hPa climatological anomaly: EP1, EP2, EP3, EPALL (2×2).
+
+    Z_250_anom = Z_250_total − Z_250_clim (30-yr monthly mean, 1991–2020).
+    Requires era5_climatology_250hPa.nc (downloaded by step2d --groups 250hPa).
+    Skipped if variable is absent from composites.
+    """
+    logging.info("  Creating Z@250 hPa climatological anomaly (2×2)...")
+    if not any("z_250_m_anom" in datasets.get(ep, {}) for ep in ["EP1", "EP2", "EP3", "EPALL"]):
+        logging.warning(
+            "    ⚠  z_250_m_anom not in composites — skipping. "
+            "Re-run step3 after era5_climatology_250hPa.nc is present."
+        )
+        return
+    _anom_fig(
+        datasets,
+        var_key="z_250_m_anom",
+        scale_factor=1.0,
+        unit_label="ΔZ (m)",
+        suptitle="Geopotential Height Anomaly at 250 hPa — departure from 1991–2020 climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
+        out_name="composite_z250hpa_anom.png",
+        cmap=CMAP_PV_ANOM,
+    )
+
+
+def figure_z500_anom(datasets):
+    """Z@500 hPa climatological anomaly: EP1, EP2, EP3, EPALL (2×2).
+
+    Z_500_anom = Z_500_total − Z_500_clim (30-yr monthly mean, 1991–2020).
+    Requires era5_climatology_egr.nc (downloaded by step2d --groups egr).
+    Skipped if variable is absent from composites.
+    """
+    logging.info("  Creating Z@500 hPa climatological anomaly (2×2)...")
+    if not any("z_500_m_anom" in datasets.get(ep, {}) for ep in ["EP1", "EP2", "EP3", "EPALL"]):
+        logging.warning(
+            "    ⚠  z_500_m_anom not in composites — skipping. "
+            "Re-run step3 after era5_climatology_egr.nc is present (step2d --groups egr)."
+        )
+        return
+    _anom_fig(
+        datasets,
+        var_key="z_500_m_anom",
+        scale_factor=1.0,
+        unit_label="ΔZ (m)",
+        suptitle="Geopotential Height Anomaly at 500 hPa — departure from 1991–2020 climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
+        out_name="composite_z500hpa_anom.png",
+        cmap=CMAP_PV_ANOM,
+    )
+
+
+def figure_z850_anom(datasets):
+    """Z@850 hPa climatological anomaly: EP1, EP2, EP3, EPALL (2×2).
+
+    Z_850_anom = Z_850_total − Z_850_clim (30-yr monthly mean, 1991–2020).
+    Requires era5_climatology_egr.nc (downloaded by step2d --groups egr).
+    Skipped if variable is absent from composites.
+    """
+    logging.info("  Creating Z@850 hPa climatological anomaly (2×2)...")
+    if not any("z_850_m_anom" in datasets.get(ep, {}) for ep in ["EP1", "EP2", "EP3", "EPALL"]):
+        logging.warning(
+            "    ⚠  z_850_m_anom not in composites — skipping. "
+            "Re-run step3 after era5_climatology_egr.nc is present (step2d --groups egr)."
+        )
+        return
+    _anom_fig(
+        datasets,
+        var_key="z_850_m_anom",
+        scale_factor=1.0,
+        unit_label="ΔZ (m)",
+        suptitle="Geopotential Height Anomaly at 850 hPa — departure from 1991–2020 climatology\n"
+                 "EP1 | EP2 | EP3 | EPALL  (2×2 panel)",
+        out_name="composite_z850hpa_anom.png",
+        cmap=CMAP_PV_ANOM,
+    )
 
 
 def figure_egr(datasets):
@@ -1690,9 +1889,13 @@ def main():
     # Optional diagnostics — warn but continue
     optional = [
         "rk_criterion_250", "ke_adv_250", "afc_250",
+        # z-height total fields (require step3 rerun after adding z_500_m)
+        "z_250_m", "z_500_m", "z_850_m",
         # climatology-based anomaly fields (legacy)
         "pv_200_anom", "pv_850_anom", "adv_T_850_anom",
         "div_q_975_anom", "ke_adv_250_anom", "msl_anom",
+        # geopotential height anomaly fields (require respective climatology files)
+        "z_250_m_anom", "z_500_m_anom", "z_850_m_anom",
         # eddy winds for anomaly overlays (X' = X − X̅_m)
         "u_250_prime", "v_250_prime",
         "u_850_prime", "v_850_prime",
@@ -1717,6 +1920,9 @@ def main():
     figure_rk_criterion(datasets)
     figure_ke_advection(datasets)
     figure_afc(datasets)
+    figure_z250(datasets)
+    figure_z500(datasets)
+    figure_z850(datasets)
 
     logging.info("\nCreating EPALL-relative anomaly figures (EP1−EPALL | EP2−EPALL | EP3−EPALL)...")
     # NOTE: RK criterion is intentionally excluded from EPALL-relative anomaly figures.
@@ -1730,6 +1936,9 @@ def main():
     figure_slp_epall_anom(datasets)
     figure_ke_advection_epall_anom(datasets)
     figure_afc_epall_anom(datasets)
+    figure_z250_epall_anom(datasets)
+    figure_z500_epall_anom(datasets)
+    figure_z850_epall_anom(datasets)
 
     logging.info("\nCreating climatology-relative anomaly figures (2×2: EP1|EP2|EP3|EPALL)...")
     # EGR clim-anom requires era5_climatology_egr.nc (500/850 hPa); will skip if absent.
@@ -1741,6 +1950,9 @@ def main():
     figure_ke_advection_anom(datasets)
     figure_slp_anom(datasets)
     figure_wind250_anom(datasets)
+    figure_z250_anom(datasets)
+    figure_z500_anom(datasets)
+    figure_z850_anom(datasets)
 
     logging.info("\nCreating BtCR figures (climatology-dependent)...")
     figure_btcr(datasets)

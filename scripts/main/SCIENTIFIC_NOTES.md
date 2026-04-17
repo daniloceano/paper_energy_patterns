@@ -533,10 +533,9 @@ potential *exceeds* that of a generic intensifying cyclone. Dashed steelblue con
 > *more favourable* for baroclinic development relative to the EPALL average — not
 > that intensification is faster.
 
-**SLP anomaly (thin semi-transparent contours):** EP − EPALL sea-level pressure
-departure [hPa] at 2 hPa intervals — exposes the distinctive surface pressure
-anomalies of each EP relative to a generic intensifying cyclone. No wind vectors
-are drawn in Row 1.
+**SLP total thin contours:** Total EP composite sea-level pressure [hPa] at 2 hPa
+intervals — provides the absolute cyclone position and depth as a spatial reference
+layer. No wind vectors are drawn in Row 1.
 
 ### 8.4 Row 2: Low-level frontal / thermal structure departure
 

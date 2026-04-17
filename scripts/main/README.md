@@ -257,14 +257,14 @@ a generic South Atlantic intensifying cyclone.
 
 | Row | Panels | Primary shading | Additional fields |
 |-----|--------|-----------------|-------------------|
-| 1 — Upper-level structure | (a),(b),(c) | (PV@200) − EPALL [PVU] | (EGR) − EPALL contours ±[0.03,0.06,0.09,0.12] day⁻¹; SLP anomaly (EP−EPALL) thin contours |
+| 1 — Upper-level structure | (a),(b),(c) | (PV@200) − EPALL [PVU] | (EGR) − EPALL contours ±[0.03,0.06,0.09,0.12] day⁻¹; SLP total (EP composite) thin contours |
 | 2 — Low-level frontal | (d),(e),(f) | (PV@850) − EPALL [PVU] | (T-adv@850) − EPALL contours [K h⁻¹]; Δwind₈₅₀; (Z@850) − EPALL thin contours [m] |
 | 3 — Jet energetics | (g),(h),(i) | (AFC@250) − EPALL [W m⁻²] | Δwind₂₅₀; (KE-adv@250) − EPALL contours [m² s⁻³]; RK hatching (total EP); (Z@250) − EPALL thin contours [m] |
 
 Key design decisions:
 - Wind vectors are **EPALL-relative** (`u_EP − u_EPALL`) in Rows 2–3 (reference: 5 m s⁻¹);
   Row 1 has no wind vectors.
-- **SLP anomaly** (EP − EPALL, thin contours) is shown only in Row 1. Rows 2–3 have
+- **SLP total** (EP composite, thin contours) is shown only in Row 1. Rows 2–3 have
   no SLP overlay.
 - **Geopotential height anomaly** (EP − EPALL, thin contours at ±10 m intervals,
   steelblue dashed / firebrick solid) is shown in Rows 2 and 3. These fields

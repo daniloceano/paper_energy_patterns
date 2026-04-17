@@ -15,7 +15,7 @@ Layout:
             Shading  : (PV@200) − EPALL                [PVU]
             Contours : (EGR) − EPALL                   [day⁻¹]
                        positive = solid firebrick, negative = dashed steelblue
-            Thin ctr : SLP anomaly (EP − EPALL)        [hPa]
+            Thin ctr : SLP total (EP composite)        [hPa]
   ─────────────────────────────────────────────────────────────────────
   Row 2   Low-level frontal / thermal structure departure
             Shading  : (PV@850) − EPALL                [PVU]
@@ -533,7 +533,7 @@ def create_figure(ep_data, output_png):
     # ROW 0 — Upper-level / baroclinic structure departure
     # (PV@200) − EPALL  shading
     # (EGR) − EPALL     contours  (steelblue dashed / firebrick solid)
-    # SLP anomaly (EP − EPALL)  thin contours
+    # SLP total (EP composite)  thin contours
     # =========================================================================
     print("  Row 1: (PV@200)−EPALL + EGR−EPALL ctr + Δwind250 + SLP ...", flush=True)
     im_r0 = None
@@ -569,7 +569,7 @@ def create_figure(ep_data, output_png):
                             alpha=0.90, zorder=5)
             ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
 
-        _add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_anom_hpa'])
+        _add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
         _add_lec_box(ax)
         _mark_center(ax)
         _ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
@@ -701,12 +701,7 @@ def create_figure(ep_data, output_png):
 
     _add_colorbar(fig, gs[2, 3], im_r2, r"(AFC$_{250}$ − EPALL) (W m$^{-2}$)")
 
-    # ── Title and save ────────────────────────────────────────────────────────
-    fig.suptitle(
-        "Dynamical Composites — EPALL-Relative Anomaly  "
-        r"(EP1 − EPALL  $|$  EP2 − EPALL  $|$  EP3 − EPALL)",
-        fontsize=13, fontweight='bold',
-    )
+    # ── Save   ────────────────────────────────────────────────────────
     plt.savefig(output_png, dpi=DPI, bbox_inches='tight')
     print(f"  Saved: {output_png}", flush=True)
     plt.close()

@@ -1273,8 +1273,9 @@ def _compute_diagnostics_for_timestep(ds_timestep, case_month):
     # Rayleigh-Kuo criterion at 250 hPa
     result["rk_criterion_250"] = rayleigh_kuo_criterion_250(u_250, v_250)
 
-    # Geopotential height at 850 and 250 hPa [m]  (z in m² s⁻² → m via /G)
+    # Geopotential height at 850, 500, and 250 hPa [m]  (z in m² s⁻² → m via /G)
     result["z_850_m"] = z_850.values / G.magnitude
+    result["z_500_m"] = z_500.values / G.magnitude
     result["z_250_m"] = z_250.values / G.magnitude
 
     # AFC and anomaly fields require climatology
@@ -1320,6 +1321,9 @@ def _compute_diagnostics_for_timestep(ds_timestep, case_month):
         result["ke_adv_250_anom"] = kinetic_energy_advection_250(u_250_p, v_250_p)
         result["u_250_prime"] = u_250_p.metpy.unit_array.magnitude
         result["v_250_prime"] = v_250_p.metpy.unit_array.magnitude
+
+        # Geopotential height anomaly at 250 hPa: Z_250 − Z_250_clim [m]
+        result["z_250_m_anom"] = result["z_250_m"] - clim_sub["z_clim"].values / G.magnitude
 
     # PV anomalies: TRUE ANOMALY = PV_total - PV_clim
     # Note: This is DIFFERENT from PV(u', v', T') which is "eddy PV".
@@ -1454,6 +1458,11 @@ def _compute_diagnostics_for_timestep(ds_timestep, case_month):
             # True anomaly: EGR_total − EGR_clim
             # Positive = more baroclinic instability than climatological background
             result["egr_anom"] = result["egr"] - egr_clim
+
+            # Geopotential height anomalies at 500 and 850 hPa (reuse EGR clim file)
+            # Z_anom = Z_total − Z_clim  [m]
+            result["z_500_m_anom"] = result["z_500_m"] - z500_c.values / G.magnitude
+            result["z_850_m_anom"] = result["z_850_m"] - z850_c.values / G.magnitude
         except Exception as _e:
             logging.warning(f"    ⚠  EGR clim anomaly computation failed: {_e}")
 
@@ -1680,10 +1689,12 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "div_q_975": None, "ke_adv_250": None, "rk_criterion_250": None,
         "afc_250": None, "msl": None,
         # Geopotential height fields
-        "z_850_m": None, "z_250_m": None,
+        "z_850_m": None, "z_500_m": None, "z_250_m": None,
         # Anomaly fields
         "ke_adv_250_anom": None, "adv_T_850_anom": None, "div_q_975_anom": None,
         "pv_200_anom": None, "pv_850_anom": None, "msl_anom": None,
+        # Geopotential height anomaly fields (climatological)
+        "z_250_m_anom": None, "z_500_m_anom": None, "z_850_m_anom": None,
         # Eddy winds
         "u_250_prime": None, "v_250_prime": None,
         "u_850_prime": None, "v_850_prime": None,
@@ -1836,7 +1847,12 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "msl":              ("Mean Sea Level Pressure",                      "Pa"),
         # Geopotential height fields
         "z_850_m":          ("Geopotential Height at 850 hPa",               "m"),
+        "z_500_m":          ("Geopotential Height at 500 hPa",               "m"),
         "z_250_m":          ("Geopotential Height at 250 hPa",               "m"),
+        # Geopotential height anomaly fields (Z − Z_clim, 30-yr monthly climatology)
+        "z_850_m_anom":     ("Geopotential Height Anomaly at 850 hPa",       "m"),
+        "z_500_m_anom":     ("Geopotential Height Anomaly at 500 hPa",       "m"),
+        "z_250_m_anom":     ("Geopotential Height Anomaly at 250 hPa",       "m"),
         # Anomaly fields (eddy inputs relative to 30-yr monthly climatology)
         "ke_adv_250_anom":  ("KE Advection Anomaly at 250 hPa",             "m2 s-3"),
         "adv_T_850_anom":   ("Temperature Advection Anomaly at 850 hPa",    "K s-1"),
@@ -1929,7 +1945,7 @@ def compute_epall_relative_anomalies(ds_epx, ds_epall, ep_label):
     anom_vars = [
         "egr", "pv_200", "pv_850", "adv_T_850", "div_q_975",
         "ke_adv_250", "rk_criterion_250", "msl",
-        "z_850_m", "z_250_m",
+        "z_850_m", "z_500_m", "z_250_m",
         "u_250", "v_250", "u_850", "v_850", "u_975", "v_975", "q_975",
     ]
     

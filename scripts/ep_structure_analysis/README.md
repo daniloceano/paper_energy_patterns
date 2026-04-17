@@ -258,6 +258,37 @@ Creates publication-quality composite figures for all diagnostic fields.
 python scripts/ep_structure_analysis/step4_create_figures.py
 ```
 
+### Step 4b: Generate Multi-Panel Dynamical Composite Figures (`step4b_create_dynamical_composites.py`)
+
+Creates three integrated multi-panel figures combining the key dynamical
+diagnostics across EP1, EP2, EP3 and EPALL in a single 3×N layout.  These
+complement the single-variable figures from step4 by showing the joint
+structure of upper-level and lower-level dynamics simultaneously.
+
+**Figures produced:**
+
+| Figure | Columns | Rows |
+|--------|---------|------|
+| `dynamical_composites_total.png` | EP1, EP2, EP3, EPALL | PV@200+EGR+250hPa wind / PV@850+T-adv+850hPa wind+SLP / AFC@250+RK hatching+KE-adv |
+| `dynamical_composites_anom.png` | EP1, EP2, EP3, EPALL | Same layout with climatology-relative anomaly fields (X' = X − X̄_clim 1991–2020) |
+| `dynamical_composites_epall_anom.png` | EP1−EPALL, EP2−EPALL, EP3−EPALL | Same layout with EPALL-relative anomaly fields (EPx − EPALL) |
+
+**Design notes:**
+- Colormap limits are shared across all columns within each figure for direct
+  visual comparison between EPs.
+- RK sign-reversal regions are shown as hatching (/// pattern) in rows 3;
+  for Figure 3, the *total* RK composite is used (not EPALL-relative) because
+  RK = β − ∂²ū/∂y² is a background-flow diagnostic.
+- In Figure 3, EGR contours use fixed ±0.03 step levels to show where each EP
+  grows faster (firebrick) or slower (steelblue) than the typical cyclone.
+
+**Output:** `figures/ep_structure/dynamical_composites/`
+
+**Execution:**
+```bash
+python scripts/ep_structure_analysis/step4b_create_dynamical_composites.py
+```
+
 ### Step 5: Update Scientific Notes (`step5_update_scientific_notes.py`)
 
 Updates SCIENTIFIC_NOTES.md with composite statistics and generates PDF.
@@ -292,12 +323,17 @@ data/era5_ep_structure/precomputed_composites_ep2.nc
 data/era5_ep_structure/precomputed_composites_ep3.nc
 data/era5_ep_structure/precomputed_composites_epall.nc
 
-# Figures (PNG)
+# Figures (PNG) — step4: single-variable composites
 figures/ep_structure/composite_egr.png                  # Total composites (EP1/EP2/EP3)
 figures/ep_structure/composite_egr_anom_epall.png       # EPALL-relative anomalies
 figures/ep_structure/composite_pv200.png
 figures/ep_structure/composite_pv850_anom_epall.png
 ...
+
+# Figures (PNG) — step4b: multi-panel dynamical composites
+figures/ep_structure/dynamical_composites/dynamical_composites_total.png       # Total fields
+figures/ep_structure/dynamical_composites/dynamical_composites_anom.png        # Clim-relative anomalies
+figures/ep_structure/dynamical_composites/dynamical_composites_epall_anom.png  # EPALL-relative anomalies
 
 # Statistics (JSON)
 results/ep_structure/composite_stats.json
@@ -314,6 +350,7 @@ figures/cyclone_explorer/ep2/{track_id}/panel_t001.png
 | 2M | `step2c_monitor.py` | Local/Remote | **Monitor download progress** (see below) |
 | 3 | `step3_precompute_composites.py` | **Remote** | Compute field composites (EGR, PV, adv_T, SLP, RK, KE_adv) for EP1, EP2, EP3, EPALL + EPALL-relative anomalies |
 | 4 | `step4_create_figures.py` | Local | Create EP1, EP2, EP3, EPALL composite figures + EPALL-relative anomaly figures |
+| 4b | `step4b_create_dynamical_composites.py` | Local | Create 3 multi-panel dynamical composite figures (total, clim-anom, EPALL-anom) |
 | 5 | `step5_update_scientific_notes.py` | Local | Populate SCIENTIFIC_NOTES.md with regional statistics + generate PDF |
 | 6 | `step6_generate_cyclone_explorer_panels.py` | Local/Remote | Generate individual cyclone multi-panel figures for temporal exploration |
 

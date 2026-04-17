@@ -98,6 +98,13 @@ DIAGNOSTIC_FIGURE_MAP = {
     # anom_epall = AFC_EPx − AFC_EPALL: isolates per-pattern divergence from the typical cyclone's AFC.
     "btcr":                     {"real": "composite_btcr.png",                                                                                                                         "diff": "composite_btcr_diff.png"},
     # NOTE: btcr has no anom_clim (same reason as afc) and no anom_epall.
+    # --- Geopotential Height ---
+    # All three levels have: total (2×2), climatology anomaly, and EPALL-relative anomaly.
+    # anom_clim (X' = Z − Z̄_clim, 1991–2020): available at all levels once era5_climatology_egr.nc
+    #   is downloaded (500/850 hPa use egr clim; 250 hPa uses era5_climatology_250hPa.nc).
+    "z-250":                    {"real": "composite_z250hpa.png",   "anom_clim": "composite_z250hpa_anom.png",   "anom_epall": "composite_z250hpa_anom_epall.png"},
+    "z-500":                    {"real": "composite_z500hpa.png",   "anom_clim": "composite_z500hpa_anom.png",   "anom_epall": "composite_z500hpa_anom_epall.png"},
+    "z-850":                    {"real": "composite_z850hpa.png",   "anom_clim": "composite_z850hpa_anom.png",   "anom_epall": "composite_z850hpa_anom_epall.png"},
 }
 
 

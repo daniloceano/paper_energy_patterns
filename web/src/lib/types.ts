@@ -56,6 +56,9 @@ export type DiagnosticId =
   | 'ke-advection'
   | 'afc'
   | 'btcr'
+  | 'z-250'
+  | 'z-500'
+  | 'z-850'
 
 export interface Diagnostic {
   id: DiagnosticId

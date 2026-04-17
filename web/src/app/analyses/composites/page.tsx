@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Layers } from 'lucide-react'
+import { Layers, MountainSnow } from 'lucide-react'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
@@ -87,7 +87,7 @@ export default function CompositesPage() {
             Available Diagnostics
           </h2>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {DIAGNOSTIC_LIST.map((diag) => (
+            {DIAGNOSTIC_LIST.filter((d) => !['z-250', 'z-500', 'z-850'].includes(d.id)).map((diag) => (
               <Link
                 key={diag.id}
                 href={`/analyses/composites/${diag.slug}`}
@@ -112,6 +112,51 @@ export default function CompositesPage() {
                   {diag.name}
                 </h3>
                 <p className="mt-1 text-xs text-slate-500">{diag.shortName} [{diag.unit}]</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* Geopotential Height section */}
+        <section>
+          <h2 className="mb-1 text-lg font-bold text-slate-900">
+            Geopotential Height
+          </h2>
+          <p className="mb-4 text-sm text-slate-500 leading-relaxed">
+            Storm-centred composites of geopotential height at three pressure levels. Each level
+            provides a different vertical perspective on the synoptic wave pattern: 250 hPa captures
+            upper-tropospheric ridge/trough structure, 500 hPa reflects mid-tropospheric wave
+            amplitude, and 850 hPa characterises low-tropospheric thermal structure and vertical
+            tilt. All three levels include total composites, climatology-relative anomalies
+            (Z&prime; = Z − Z̄<sub>clim</sub>), and EPALL-relative anomalies (EP<em>x</em> − EPALL).
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {DIAGNOSTIC_LIST.filter((d) => ['z-250', 'z-500', 'z-850'].includes(d.id)).map((diag) => (
+              <Link
+                key={diag.id}
+                href={`/analyses/composites/${diag.slug}`}
+                className="group rounded-xl border border-emerald-200 bg-white p-5 shadow-sm transition-all hover:border-emerald-400 hover:shadow-md"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
+                    <MountainSnow className="h-4 w-4" />
+                  </div>
+                  <div className="flex gap-1.5">
+                    <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-600">
+                      {diag.level}
+                    </span>
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-600">
+                      +anom
+                    </span>
+                  </div>
+                </div>
+                <h3 className="mt-3 text-sm font-semibold text-slate-900 group-hover:text-emerald-700">
+                  {diag.name}
+                </h3>
+                <p className="mt-1 text-xs text-slate-500">{diag.shortName} [{diag.unit}]</p>
+                <p className="mt-2 text-xs text-slate-400">
+                  total · clim anom · EPALL anom
+                </p>
               </Link>
             ))}
           </div>

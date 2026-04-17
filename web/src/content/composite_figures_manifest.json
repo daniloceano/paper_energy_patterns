@@ -154,5 +154,47 @@
       "exists": true,
       "api_path": "figures/ep_structure/composite_btcr_diff.png"
     }
+  },
+  "z-250": {
+    "real": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z250hpa.png"
+    },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z250hpa_anom.png"
+    },
+    "anom_epall": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z250hpa_anom_epall.png"
+    }
+  },
+  "z-500": {
+    "real": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z500hpa.png"
+    },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z500hpa_anom.png"
+    },
+    "anom_epall": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z500hpa_anom_epall.png"
+    }
+  },
+  "z-850": {
+    "real": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z850hpa.png"
+    },
+    "anom_clim": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z850hpa_anom.png"
+    },
+    "anom_epall": {
+      "exists": true,
+      "api_path": "figures/ep_structure/composite_z850hpa_anom_epall.png"
+    }
   }
 }

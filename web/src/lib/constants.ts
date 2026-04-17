@@ -326,6 +326,64 @@ export const DIAGNOSTICS: Record<DiagnosticId, Diagnostic> = {
     references: ['Rivière (2006)'],
     hasAnomaly: false,
   },
+  // --- Geopotential Height ---
+  'z-250': {
+    id: 'z-250',
+    slug: 'z-250',
+    name: 'Geopotential Height at 250 hPa',
+    shortName: 'HGT 250',
+    level: '250 hPa',
+    unit: 'gpm',
+    description:
+      'Geopotential height at 250 hPa characterises the large-scale upper-tropospheric wave pattern. Troughs and ridges at this level directly modulate upper-level divergence, which drives surface cyclone intensification through the quasi-geostrophic omega equation.',
+    physicalObjective:
+      'Compare the upper-tropospheric geopotential height pattern for EP1, EP2, EP3, and EPALL during intensification, and quantify departures from the climatological mean and from the full cyclone population (EPALL).',
+    formula: 'Z = \\frac{\\Phi}{g_0}',
+    formulaTerms: {
+      'Φ': 'Geopotential (m² s⁻²)',
+      'g₀': 'Standard gravity (9.80665 m s⁻²)',
+    },
+    references: ['ERA5 documentation', 'Holton and Hakim (2013)'],
+    hasAnomaly: true,
+  },
+  'z-500': {
+    id: 'z-500',
+    slug: 'z-500',
+    name: 'Geopotential Height at 500 hPa',
+    shortName: 'HGT 500',
+    level: '500 hPa',
+    unit: 'gpm',
+    description:
+      'Geopotential height at 500 hPa represents mid-tropospheric synoptic forcing. This level is traditionally used to identify atmospheric wave amplitude, trough depth, and the overall intensity of baroclinic systems. Deep 500 hPa troughs are closely associated with strong surface cyclones.',
+    physicalObjective:
+      'Evaluate mid-tropospheric wave amplitude and trough depth for EP1, EP2, EP3, and EPALL during intensification, highlighting differences in the baroclinic wave structure across energy patterns.',
+    formula: 'Z = \\frac{\\Phi}{g_0}',
+    formulaTerms: {
+      'Φ': 'Geopotential (m² s⁻²)',
+      'g₀': 'Standard gravity (9.80665 m s⁻²)',
+    },
+    references: ['ERA5 documentation', 'Holton and Hakim (2013)'],
+    hasAnomaly: true,
+  },
+  'z-850': {
+    id: 'z-850',
+    slug: 'z-850',
+    name: 'Geopotential Height at 850 hPa',
+    shortName: 'HGT 850',
+    level: '850 hPa',
+    unit: 'gpm',
+    description:
+      'Geopotential height at 850 hPa reflects low-tropospheric thickness and thermal structure. Anomalies at this level indicate warm-core or cold-core characteristics, and the trough axis position relative to the surface cyclone centre provides information on cyclone vertical tilt.',
+    physicalObjective:
+      'Characterise low-tropospheric geopotential structure and vertical tilt for EP1, EP2, EP3, and EPALL during intensification. Anomaly fields reveal the warm/cold-core contribution to geopotential.',
+    formula: 'Z = \\frac{\\Phi}{g_0}',
+    formulaTerms: {
+      'Φ': 'Geopotential (m² s⁻²)',
+      'g₀': 'Standard gravity (9.80665 m s⁻²)',
+    },
+    references: ['ERA5 documentation', 'Holton and Hakim (2013)'],
+    hasAnomaly: true,
+  },
 }
 
 export const DIAGNOSTIC_LIST = Object.values(DIAGNOSTICS)
@@ -594,6 +652,10 @@ export const DIAGNOSTIC_FIGURE_SLUGS: Record<DiagnosticId, { real: string; anom_
   'ke-advection':             { real: 'composite_ke_advection.png', anom_clim: 'composite_ke_advection_anom.png',        anom_epall: 'composite_ke_advection_anom_epall.png', diff: 'composite_ke_advection_diff.png' },
   afc:                        { real: 'composite_afc_250.png',                                                               anom_epall: 'composite_afc_anom_epall.png',          diff: 'composite_afc_diff.png' },
   btcr:                       { real: 'composite_btcr.png',                                                                                                                    diff: 'composite_btcr_diff.png' },
+  // Geopotential Height — total + climatology anomaly + EPALL-relative anomaly at all three levels
+  'z-250':                    { real: 'composite_z250hpa.png',      anom_clim: 'composite_z250hpa_anom.png',             anom_epall: 'composite_z250hpa_anom_epall.png' },
+  'z-500':                    { real: 'composite_z500hpa.png',      anom_clim: 'composite_z500hpa_anom.png',             anom_epall: 'composite_z500hpa_anom_epall.png' },
+  'z-850':                    { real: 'composite_z850hpa.png',      anom_clim: 'composite_z850hpa_anom.png',             anom_epall: 'composite_z850hpa_anom_epall.png' },
 }
 
 // --- Flux/Advection diagnostics that need boundary tables ---

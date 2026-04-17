@@ -27,10 +27,12 @@ FIGURE 3 — EPALL-RELATIVE ANOMALY FIELDS  (3 columns: EP1−EPALL | EP2−EPAL
   distinguishes each EP from a "generic" extratropical cyclone.
   Row 1: PV − EPALL @ 200 hPa + EGR − EPALL contours + 250 hPa EPALL-relative wind
   Row 2: PV − EPALL @ 850 hPa + T-adv − EPALL contours + 850 hPa EPALL-relative wind
+         + total SLP thin contours (spatial reference anchor)
   Row 3: AFC − EPALL (shading) + EPALL-relative 250 hPa wind
          + RK total sign-reversal hatching (total composite, not EPALL-relative —
            RK = β − ∂²ū/∂y² is a background-flow diagnostic)
          + KE-adv − EPALL contours
+         + total SLP thin contours (spatial reference anchor)
 
 Input (precomputed by step3):
   data/era5_ep_structure/precomputed_composites_ep1.nc

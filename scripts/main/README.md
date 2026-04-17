@@ -1,77 +1,489 @@
-# Main Figure Scripts
+# scripts/main — Publication Figure Scripts
 
-This directory contains scripts for generating publication-ready figures used in the Energy Patterns manuscript. Each script produces figure(s) formatted according to Scientific Reports guidelines (300 DPI, specific dimensions, consistent styling).
+This directory contains all scripts that produce the main and supplementary figures for
+the manuscript on **energetic patterns of South Atlantic extratropical cyclones** (1979–2020).
+All outputs are generated at 300 DPI and saved to `figures/main/`.
 
-## Script Organization
+**Scientific companion document:** [`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md)
 
-Scripts are numbered according to the order of figures in the manuscript:
+---
 
-### Main Figures
-
-- **`01_figure_tracks_genesis_frequency.py`**  
-  Figure 1: Study area and workflow overview
-
-- **`02_figure_20070643_publication.py`**  
-  Figure 2: Case study — Cyclone 20070643 energetics and trajectory
-
-- **`03_make_phase_density_2x2.py`**  
-  Figure 3: Phase space density distributions (2×2 layout)
-
-- **`04_figure_lps_combined.py`**  
-  Figure 4: Lorenz Phase Space for Energy Patterns (EP1–EP3)
-
-- **`05_figure_intensity_seasonality_trends.py`**  
-  Figure 5: Energy Pattern characteristics (intensity, seasonality, trends)
-
-- **`06_figure_genesis_density_kde.py`**  
-  Figure 6: Genesis density using Kernel Density Estimation (Hoskins & Hodges method)
-
-- **`07_figure_ep1_ep2_dynamical_composites.py`**
-  Figure 7: EP1 vs EP2 dynamical composites (3×2 layout — see full description below)
-
-### Supplementary Figures
-
-- **`S1_figure_pca_clustering_validation.py`**  
-  Figure S1: PCA and clustering validation
-
-- **`S2_figure_selected_tracks.py`**  
-  Figure S2: Selected EP1 cyclones used in the spatial structure analysis  
-  *Requires: `data/era5_ep_structure/precomputed_composites_ep1.nc` (produced by `scripts/ep_structure_analysis/step3_precompute_composites.py`)*
-
-- **`S3_figure_vertical_levels.py`**  
-  Figure S3: Vertical distribution of energy conversions for EP1 cyclones  
-  *Requires: `data/era5_ep_structure/precomputed_composites_ep1.nc` (produced by `scripts/ep_structure_analysis/step3_precompute_composites.py`)*
-
-## Usage
-
-Each script can be executed independently:
+## Quick Usage
 
 ```bash
+conda activate paper_energy_patterns
+
+# Run a single figure
 python scripts/main/01_figure_tracks_genesis_frequency.py
-python scripts/main/02_figure_20070643_publication.py
-# ... etc.
-```
 
-Or generate all figures sequentially:
-
-```bash
+# Run all figures sequentially
 python scripts/main/run_all.py
 ```
 
-## Dependencies
+> **Note:** Figures 2, 3, 4, S2, and S3 require upstream pre-processing steps
+> that must be completed first. See the per-figure sections below.
 
-All figure scripts require:
-- Processed track data: `data/tracks_SAt_filtered_with_energetics_processed.csv`
-- Clustering results: `results/cluster/kmeans_clustered_data.csv`
+---
 
-Some scripts have additional requirements (see individual script headers for details).
+## Figure Inventory
 
-## Outputs
+| ID | Script | Output file | Short description | Upstream dependency |
+|----|--------|-------------|-------------------|---------------------|
+| 1 | `01_figure_tracks_genesis_frequency.py` | `1_tracks_genesis_frequency.png` | Cyclone tracks by region + genesis-frequency sunburst | None |
+| 2 | `02_figure_20070643_publication.py` | `2_20070643_lps_track_publication.png` | Case study — cyclone 20070643 LPS and track | Exploratory images (see §Fig 2) |
+| 3 | `03_make_phase_density_2x2.py` | `3_phase_density_2x2.png` | Phase-space density for all cyclones, by lifecycle phase | Exploratory images (see §Fig 3) |
+| 4 | `04_figure_lps_combined.py` | `4_lps_combined.png` | Lorenz Phase Space (Conversion + Imports) for EP1–EP3 | Cluster figures (see §Fig 4) |
+| 5 | `05_figure_intensity_seasonality_trends.py` | `5_ep_intensity_seasonality_trends.png` | EP intensity, seasonal distribution, and interannual trends | Cluster results |
+| 6 | `06_figure_genesis_density_kde.py` | `6_ep_genesis_density_kde.png` | Genesis density (KDE, Hoskins & Hodges method) | Cluster results |
+| 7 | `07_figure_ep1_ep2_dynamical_composites.py` | `7_dynamical_composites_epall_relative.png` | EPALL-relative dynamical composites — 3×3 layout (EP1−EPALL \| EP2−EPALL \| EP3−EPALL) | ERA5 composites (see §Fig 7) |
+| S1 | `S1_figure_pca_clustering_validation.py` | `S1_pca_clustering_validation.png` | PCA variance explained + optimal-*k* cluster validation | Cluster results |
+| S2 | `S2_figure_selected_tracks.py` | `S2_selected_tracks.png` | EP1 and EP2 cyclone tracks used in composite analysis | EP structure case CSVs (see §Fig S2) |
+| S3 | `S3_figure_vertical_levels.py` | `S3_vertical_levels.png` | Vertical Ca/Ck distributions for EP1 cyclones | Zenodo LEC archive (see §Fig S3) |
 
-Generated figures are saved to: `figures/main/`
+---
 
-## Notes
+## Shared Prerequisites
 
-- Figures S2, S3, and 7 depend on outputs from the `ep_structure_analysis` pipeline (`scripts/ep_structure_analysis/`). Run steps 1–3 of that pipeline first to generate the composites in `data/era5_ep_structure/`.
-- All scripts include configuration sections at the top for customizing plot parameters (colors, dimensions, labels, etc.) without modifying core logic.
-- For detailed figure descriptions, methodology, and scientific interpretation, see `figures/main/README.md`.
+The following datasets must exist before running **any** figure script:
+
+| File | Description | Generated by |
+|------|-------------|-------------|
+| `data/tracks_SAt_filtered_with_energetics_processed.csv` | Processed cyclone track database | `scripts/preprocess_data/` |
+| `results/cluster/kmeans_clustered_data.csv` | k-means cluster labels and energy metrics per cyclone | `scripts/cluster_analysis_energy_patterns/step4_apply_kmeans.py` |
+
+---
+
+## Per-Figure Details
+
+---
+
+### Figure 1 — Cyclone tracks and genesis frequency
+
+**Script:** `01_figure_tracks_genesis_frequency.py`  
+**Output:** `figures/main/1_tracks_genesis_frequency.png`
+
+**What it shows:**
+A two-element figure combining a geographic track map and a frequency summary:
+- **Map panel:** All cyclone tracks in the dataset, color-coded by genesis region
+  (ARG — blue, SE-BR — green, LA-PLATA — orange).
+- **Sunburst/donut chart:** Genesis frequency split by region (outer ring) and season
+  (inner ring: DJF, MAM, JJA, SON), expressed as percentages of total cyclones.
+
+**Required inputs:**
+- `data/tracks_SAt_filtered_with_energetics_processed.csv`
+
+**Upstream dependencies:** None — reads directly from the track database.
+
+**How to run:**
+```bash
+python scripts/main/01_figure_tracks_genesis_frequency.py
+```
+
+---
+
+### Figure 2 — Case study: cyclone 20070643
+
+**Script:** `02_figure_20070643_publication.py`  
+**Output:** `figures/main/2_20070643_lps_track_publication.png`
+
+**What it shows:**
+A three-panel composite for cyclone 20070643 assembled from pre-rendered exploratory images:
+- **(a)** Lorenz Phase Space — Conversion plane (Ca × Ck)
+- **(b)** Lorenz Phase Space — Imports plane (BAe × BKe)
+- **(c)** Geographic track, colored by relative vorticity, sized by Ke
+
+**Required inputs (pre-rendered images — must exist):**
+```
+figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_conversion_zoom.png
+figures/exploratory/three_most_intense_cyclones_zoom/20070643_lps_imports_zoom.png
+figures/exploratory/three_most_intense_cyclones_zoom/20070643_track.png
+```
+
+**Upstream dependency:**
+```bash
+python scripts/exploratory/figure_three_intense_cyclones_individual_zoom.py
+```
+
+The script will raise `SystemExit` if any source image is missing.
+
+**How to run (after upstream step):**
+```bash
+python scripts/main/02_figure_20070643_publication.py
+```
+
+---
+
+### Figure 3 — Phase-space density (2×2 layout)
+
+**Script:** `03_make_phase_density_2x2.py`  
+**Output:** `figures/main/3_phase_density_2x2.png`
+
+**What it shows:**
+A 2×2 arrangement of four pre-rendered phase-space density images, one for each
+lifecycle phase (Incipient, Intensification, Mature, Decay). Each pre-rendered
+image itself contains two side-by-side panels (Conversion LPS and Imports LPS),
+so the combined figure effectively has 8 labeled panels: (a)–(b) Incipient,
+(c)–(d) Intensification, (e)–(f) Mature, (g)–(h) Decay.
+
+**Required inputs (pre-rendered images — must exist):**
+```
+figures/exploratory/density_ge/by_phase/inc.png
+figures/exploratory/density_ge/by_phase/int.png
+figures/exploratory/density_ge/by_phase/mat.png
+figures/exploratory/density_ge/by_phase/dec.png
+```
+
+**Upstream dependency:**
+```bash
+python scripts/exploratory/density_diagrams_with_ge.py
+```
+
+**How to run (after upstream step):**
+```bash
+python scripts/main/03_make_phase_density_2x2.py
+```
+
+---
+
+### Figure 4 — Lorenz Phase Space for EP1–EP3
+
+**Script:** `04_figure_lps_combined.py`  
+**Output:** `figures/main/4_lps_combined.png`
+
+**What it shows:**
+A single 2-panel figure combining two pre-rendered Lorenz Phase Space diagrams:
+- **(a)** Conversion LPS (Ca vs Ck) — zoomed variant showing all three EPs
+- **(b)** Imports LPS (BAe vs BKe) — zoomed variant showing all three EPs
+
+Marker color encodes Ge (generation of eddy APE); marker size encodes Ke (eddy KE).
+The figure shows phase trajectories for EP1, EP2, and EP3 through
+Incipient → Intensification → Mature → Decay stages.
+
+**Required inputs (pre-rendered images — must exist):**
+```
+figures/cluster/lps_conversion_zoom.png
+figures/cluster/lps_imports_zoom.png
+```
+
+**Upstream dependency:**
+```bash
+python scripts/cluster_analysis_energy_patterns/step5_plot_energy_patterns.py
+```
+(requires prior completion of `step1_normalize_and_pca.py` → `step4_apply_kmeans.py`)
+
+**How to run (after upstream step):**
+```bash
+python scripts/main/04_figure_lps_combined.py
+```
+
+---
+
+### Figure 5 — EP intensity, seasonality, and trends
+
+**Script:** `05_figure_intensity_seasonality_trends.py`  
+**Output:** `figures/main/5_ep_intensity_seasonality_trends.png`  
+**Side output:** `results/exploratory/mk_trend_results.csv`
+
+**What it shows:**
+Three-panel figure characterizing the climatic properties of each Energy Pattern:
+- **(a) Violin plot:** Distribution of maximum relative vorticity (×10⁻⁵ s⁻¹) per EP.
+- **(b) Grouped bar chart:** Seasonal frequency distribution (%) per EP,
+  across DJF, MAM, JJA, SON (Southern Hemisphere seasons).
+- **(c) Time series (1979–2020):** Annual cyclone counts per EP with trend lines
+  annotated by Mann–Kendall significance (↑* = significant increase, ↓* = decrease,
+  solid line = significant, dashed = non-significant).
+
+**Trend methodology (summary):**
+- Mann–Kendall family of tests via `pymannkendall`
+- Autocorrelation check: Ljung–Box portmanteau test at lag $h = \min(10, n-1)$
+  applied to Theil–Sen detrended residuals
+- When autocorrelation detected (p < 0.05): Hamed–Rao (1998) correction applied
+- Otherwise: original Mann–Kendall test used for annotation
+- Theil–Sen slope with 95% CI documented in the side CSV
+
+For all equations and interpretation guidance, see
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 5.
+
+**Required inputs:**
+- `data/tracks_SAt_filtered_with_energetics_processed.csv`
+- `results/cluster/kmeans_clustered_data.csv`
+
+**How to run:**
+```bash
+python scripts/main/05_figure_intensity_seasonality_trends.py
+```
+
+---
+
+### Figure 6 — Genesis density (KDE)
+
+**Script:** `06_figure_genesis_density_kde.py`  
+**Output:** `figures/main/6_ep_genesis_density_kde.png`
+
+**What it shows:**
+A 2×2 map figure of cyclone genesis density computed with Kernel Density Estimation
+following Hoskins & Hodges (2005):
+- **(a) All cyclones:** Absolute density in cyclones per 10⁶ km²/year.
+- **(b) EP1 / (c) EP2 / (d) EP3:** Min-max normalized relative anomaly
+  (norm(density_EP) − norm(density_All)), ranging approximately −1 to +1.
+  Red = enhanced contribution; blue = reduced contribution relative to climatology.
+
+KDE parameters: Gaussian kernel, bandwidth ≈ 0.05 radians (~555 km),
+2.5° global grid, haversine metric. See [`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md),
+§Figure 6, for the full methodology and normalization rationale.
+
+**Required inputs:**
+- `data/tracks_SAt_filtered_with_energetics_processed.csv`
+- `results/cluster/kmeans_clustered_data.csv`
+
+**How to run:**
+```bash
+python scripts/main/06_figure_genesis_density_kde.py
+```
+
+---
+
+### Figure 7 — EPALL-relative dynamical composites (EP − EPALL)
+
+**Script:** `07_figure_ep1_ep2_dynamical_composites.py`  
+**Output:** `figures/main/7_dynamical_composites_epall_relative.png`
+
+**What it shows:**
+Publication-ready 3×3 figure of EPALL-relative anomaly composites during the
+intensification phase. Each column is one Energy Pattern (EP1, EP2, EP3); each row
+shows a different physical level. All shading fields are `EP_composite − EPALL_composite`,
+so the panels isolate what is *dynamically distinctive* about each EP compared with
+a generic South Atlantic intensifying cyclone.
+
+| Row | Panels | Primary shading | Additional fields |
+|-----|--------|-----------------|-------------------|
+| 1 — Upper-level structure | (a),(b),(c) | (PV@200) − EPALL [PVU] | (EGR) − EPALL contours ±[0.03,0.06,0.09,0.12] day⁻¹; SLP anomaly (EP−EPALL) thin contours |
+| 2 — Low-level frontal | (d),(e),(f) | (PV@850) − EPALL [PVU] | (T-adv@850) − EPALL contours [K h⁻¹]; Δwind₈₅₀; (Z@850) − EPALL thin contours [m] |
+| 3 — Jet energetics | (g),(h),(i) | (AFC@250) − EPALL [W m⁻²] | Δwind₂₅₀; (KE-adv@250) − EPALL contours [m² s⁻³]; RK hatching (total EP); (Z@250) − EPALL thin contours [m] |
+
+Key design decisions:
+- Wind vectors are **EPALL-relative** (`u_EP − u_EPALL`) in Rows 2–3 (reference: 5 m s⁻¹);
+  Row 1 has no wind vectors.
+- **SLP anomaly** (EP − EPALL, thin contours) is shown only in Row 1. Rows 2–3 have
+  no SLP overlay.
+- **Geopotential height anomaly** (EP − EPALL, thin contours at ±10 m intervals,
+  steelblue dashed / firebrick solid) is shown in Rows 2 and 3. These fields
+  (`z_850_m`, `z_250_m`) require rerunning `step3_precompute_composites.py`; they are
+  silently skipped if the composite files pre-date this update.
+- EGR and KE-adv contours use **firebrick** (positive) and **steelblue** (dashed, negative)
+  at linewidth 2 pt, matching the reference step4b style.
+- Colormap limits are computed at the 98th percentile of absolute values **across all
+  three EP columns** for each row, so EP1/EP2/EP3 panels in the same row are
+  directly comparable.
+- **RK hatching** uses the TOTAL EP composite (not EPALL-relative), because
+  the Rayleigh–Kuo criterion is a background-flow diagnostic; subtracting EPALL
+  from ∂η/∂y is physically meaningless. It marks the zero-crossing band of ∂η/∂y —
+  a necessary (not sufficient) condition for barotropic instability.
+
+**Variable and unit table:**
+
+| NetCDF variable | SI units (in file) | Display units | Description |
+|---|---|---|---|
+| `pv_200_anom` | K m² kg⁻¹ s⁻¹ | PVU (×10⁶) | PV anomaly at 200 hPa |
+| `pv_850_anom` | K m² kg⁻¹ s⁻¹ | PVU (×10⁶) | PV anomaly at 850 hPa |
+| `egr` | day⁻¹ | day⁻¹ | Eady Growth Rate (500–850 hPa layer) |
+| `adv_T_850` | K s⁻¹ | K h⁻¹ (×3600) | Total temperature advection at 850 hPa |
+| `msl` | Pa | hPa (×0.01) | Mean sea-level pressure (total) |
+| `msl_anom` | Pa | hPa (×0.01) | SLP anomaly vs ERA5 climatology |
+| `afc_250` | W m⁻² | W m⁻² | Ageostrophic Flux Convergence at 250 hPa |
+| `ke_adv_250` | m² s⁻³ | m² s⁻³ | KE advection at 250 hPa |
+| `u_250`, `v_250` | m s⁻¹ | m s⁻¹ | Total wind at 250 hPa |
+| `u_850`, `v_850` | m s⁻¹ | m s⁻¹ | Total wind at 850 hPa |
+| `rk_criterion_250` | m⁻¹ s⁻¹ | m⁻¹ s⁻¹ | ∂η/∂y at 250 hPa (Rayleigh–Kuo criterion) |
+| `z_850_m` | m | m | Geopotential height at 850 hPa (requires step3 rerun) |
+| `z_250_m` | m | m | Geopotential height at 250 hPa (requires step3 rerun) |
+
+**Required inputs:**
+```
+data/era5_ep_structure/precomputed_composites_ep1.nc
+data/era5_ep_structure/precomputed_composites_ep2.nc
+```
+
+**Upstream dependency:**
+```bash
+# 1. Select cases (uses results/cluster/kmeans_clustered_data.csv)
+python scripts/ep_structure_analysis/step1_select_ep_tracks.py
+# 2. Download ERA5 data for selected cases
+python scripts/ep_structure_analysis/step2_download_era5_parallel.py
+# 3. Compute storm-relative composites
+python scripts/ep_structure_analysis/step3_precompute_composites.py
+```
+
+**How to run (after upstream steps):**
+```bash
+python scripts/main/07_figure_ep1_ep2_dynamical_composites.py
+```
+
+For physical interpretation of each diagnostic and sign conventions, see
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 7.
+
+---
+
+### Figure S1 — PCA and clustering validation
+
+**Script:** `S1_figure_pca_clustering_validation.py`  
+**Output:** `figures/main/S1_pca_clustering_validation.png`
+
+**What it shows:**
+Two-panel supplementary figure establishing the statistical validity of the
+classification:
+- **(a) PCA explained variance:** Individual and cumulative variance explained by
+  each principal component; 90% threshold marked; optimal number of PCs highlighted.
+- **(b) Optimal-*k* selection:** Multiple Cluster Validity Indices (CVI) normalized
+  to [0, 1]: Silhouette Score, Davies–Bouldin Index (inverted), Calinski–Harabasz
+  Index, Score Function, Gap Statistic, and a mean index. Optimal k = 3 marked.
+
+**Required inputs:**
+- `results/cluster/pca_explained_variance.csv`
+- `results/cluster/optimal_k_normalized_indices.csv`
+- `results/cluster/optimal_k.txt`
+
+**Upstream dependency:**
+```bash
+python scripts/cluster_analysis_energy_patterns/step1_normalize_and_pca.py
+python scripts/cluster_analysis_energy_patterns/step3_optimal_k_analysis.py
+```
+
+**How to run:**
+```bash
+python scripts/main/S1_figure_pca_clustering_validation.py
+```
+
+---
+
+### Figure S2 — EP1 and EP2 cyclones used in composite analysis
+
+**Script:** `S2_figure_selected_tracks.py`  
+**Output:** `figures/main/S2_selected_tracks.png`
+
+**What it shows:**
+South Atlantic track overview map for all EP1 and EP2 cyclones used in the
+dynamical composite analysis (Figure 7):
+- **Gray thin lines:** Complete cyclone tracks (full lifecycle).
+- **Purple thick lines:** EP1 intensification phase.
+- **Dodger-blue thick lines:** EP2 intensification phase.
+- **Purple circles:** EP1 genesis locations.
+- **Dodger-blue squares:** EP2 genesis locations.
+
+**Required inputs:**
+- `results/ep_structure/ep1_cases.csv`
+- `results/ep_structure/ep2_cases.csv`
+- `data/tracks_SAt_filtered_with_energetics_processed.csv`
+
+**Upstream dependency:**
+```bash
+python scripts/ep_structure_analysis/step1_select_ep_tracks.py
+```
+
+**How to run:**
+```bash
+python scripts/main/S2_figure_selected_tracks.py
+```
+
+**Caveats:**
+- The case counts printed at runtime reflect actual data availability, which may
+  differ from the counts quoted in the manuscript if the ERA5 composite pipeline
+  is re-run with different coverage.
+
+---
+
+### Figure S3 — Vertical distribution of Ca and Ck (EP1)
+
+**Script:** `S3_figure_vertical_levels.py`  
+**Output:** `figures/main/S3_vertical_levels.png`
+
+**What it shows:**
+Two-panel boxplot showing the pressure-level distribution of energy conversions
+for EP1 cyclones during the intensification phase, across 32 levels (1000–100 hPa):
+- **(a)** Baroclinic conversion **Ca** [W m⁻²]: median maximum near 350–400 hPa.
+- **(b)** Barotropic conversion **Ck** [W m⁻²]: median minimum near 350 hPa.
+
+Box elements: IQR (box), median (line), 1.5×IQR whiskers; red star = pressure
+level of maximum median Ca; blue star = pressure level of minimum median Ck.
+
+**Data source:** Zenodo archive (DOI: `10.5281/zenodo.18243447`).
+Vertical-resolution LEC output at 32 pressure levels (3-hourly); Ca and Ck
+values per level in files `<track_id>_ERA5_track/Ca_level.csv` and `Ck_level.csv`.
+Phase timing is read from `<track_id>_ERA5_track/periods.csv`.
+
+**Data corrections applied in this script:**
+1. **Ca:** sign inversion (`Ca_corrected = −Ca_raw`) — old LorenzCycleToolkit version
+   stored Ca_level with opposite sign.
+2. **Ck:** division by gravity (`Ck_corrected = Ck_raw / 9.8 m s⁻²`) — old version
+   stored Ck_level without gravity normalization.
+
+These corrections are validated in
+`scripts/ep_structure_analysis/` (`validate_step2.py` or equivalent).
+
+**Required inputs:**
+- `results/cluster/kmeans_clustered_data.csv` (EP1 filtering)
+- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/Ca_level.csv`
+- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/Ck_level.csv`
+- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/periods.csv`
+
+**Upstream dependency (data download):**
+The Zenodo archive must be downloaded and unpacked into `data/temp_lec_zenodo/`.
+No intermediate Python preprocessing step is required beyond that download.
+
+**How to run:**
+```bash
+python scripts/main/S3_figure_vertical_levels.py
+```
+
+For the scientific interpretation of the vertical Ca/Ck profiles and the
+rationale for the pressure-level corrections, see
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure S3.
+
+---
+
+## Dependency Summary and Execution Order
+
+```
+scripts/preprocess_data/           → data/tracks_SAt_filtered_with_energetics_processed.csv
+  └─ scripts/cluster_analysis_energy_patterns/step1..4   → results/cluster/kmeans_clustered_data.csv
+       │
+       ├─ 01_figure_tracks_genesis_frequency.py          (Figure 1)
+       ├─ 05_figure_intensity_seasonality_trends.py      (Figure 5)
+       ├─ 06_figure_genesis_density_kde.py               (Figure 6)
+       ├─ S1_figure_pca_clustering_validation.py         (Figure S1, also needs step3_optimal_k)
+       │
+       ├─ scripts/cluster_analysis_energy_patterns/step5  → figures/cluster/lps_*_zoom.png
+       │    └─ 04_figure_lps_combined.py                 (Figure 4)
+       │
+       └─ scripts/ep_structure_analysis/step1_select_ep_tracks
+            │
+            ├─ step2_download_era5 + step3_precompute_composites
+            │    └─ data/era5_ep_structure/precomputed_composites_ep{1,2}.nc
+            │         └─ 07_figure_ep1_ep2_dynamical_composites.py  (Figure 7)
+            │
+            └─ results/ep_structure/ep{1,2}_cases.csv
+                 └─ S2_figure_selected_tracks.py          (Figure S2)
+
+scripts/exploratory/figure_three_intense_cyclones_individual_zoom.py
+  └─ figures/exploratory/three_most_intense_cyclones_zoom/20070643_*.png
+       └─ 02_figure_20070643_publication.py               (Figure 2)
+
+scripts/exploratory/density_diagrams_with_ge.py
+  └─ figures/exploratory/density_ge/by_phase/{inc,int,mat,dec}.png
+       └─ 03_make_phase_density_2x2.py                   (Figure 3)
+
+Zenodo DOI 10.5281/zenodo.18243447 (manual download)
+  └─ data/temp_lec_zenodo/LEC_Results_energetic-patterns/
+       └─ S3_figure_vertical_levels.py                   (Figure S3)
+```
+
+---
+
+## Cross-Reference
+
+- **Scientific notes, equations, sign conventions, interpretation guidance:**
+  [`scripts/main/SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md)
+- **Cluster analysis pipeline documentation:**
+  [`scripts/cluster_analysis_energy_patterns/README.md`](../cluster_analysis_energy_patterns/README.md)
+- **ERA5 composite pipeline documentation:**
+  [`scripts/ep_structure_analysis/README.md`](../ep_structure_analysis/README.md)

@@ -1216,6 +1216,7 @@ def _compute_diagnostics_for_timestep(ds_timestep, case_month):
     v_975 = _sel(v_da, 975) * units("m/s")
     T_500 = _sel(T_da, 500) * units.kelvin
     T_850 = _sel(T_da, 850) * units.kelvin
+    z_250 = _sel(z_da, 250) * units("m**2/s**2")
     z_500 = _sel(z_da, 500) * units("m**2/s**2")
     z_850 = _sel(z_da, 850) * units("m**2/s**2")
     q_975 = _sel(q_da, 975) * units("kg/kg")
@@ -1272,6 +1273,10 @@ def _compute_diagnostics_for_timestep(ds_timestep, case_month):
     # Rayleigh-Kuo criterion at 250 hPa
     result["rk_criterion_250"] = rayleigh_kuo_criterion_250(u_250, v_250)
 
+    # Geopotential height at 850 and 250 hPa [m]  (z in m² s⁻² → m via /G)
+    result["z_850_m"] = z_850.values / G.magnitude
+    result["z_250_m"] = z_250.values / G.magnitude
+
     # AFC and anomaly fields require climatology
     case_lats = u_250.latitude.values
     case_lons = u_250.longitude.values
@@ -1299,7 +1304,6 @@ def _compute_diagnostics_for_timestep(ds_timestep, case_month):
     )
     if ds_clim is not None:
         clim_sub = _interp_clim(ds_clim)
-        z_250 = _sel(z_da, 250) * units("m**2/s**2")
         result["afc_250"] = ageostrophic_flux_convergence_250(
             u_250, v_250, z_250,
             clim_sub["u_clim"], clim_sub["v_clim"], clim_sub["z_clim"],
@@ -1675,6 +1679,8 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "egr": None, "pv_200": None, "pv_850": None, "adv_T_850": None,
         "div_q_975": None, "ke_adv_250": None, "rk_criterion_250": None,
         "afc_250": None, "msl": None,
+        # Geopotential height fields
+        "z_850_m": None, "z_250_m": None,
         # Anomaly fields
         "ke_adv_250_anom": None, "adv_T_850_anom": None, "div_q_975_anom": None,
         "pv_200_anom": None, "pv_850_anom": None, "msl_anom": None,
@@ -1828,6 +1834,9 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "rk_criterion_250": ("Rayleigh-Kuo Criterion at 250 hPa",           "s-1 m-1"),
         "afc_250":          ("Ageostrophic Flux Convergence 250 hPa",        "m2 s-3"),
         "msl":              ("Mean Sea Level Pressure",                      "Pa"),
+        # Geopotential height fields
+        "z_850_m":          ("Geopotential Height at 850 hPa",               "m"),
+        "z_250_m":          ("Geopotential Height at 250 hPa",               "m"),
         # Anomaly fields (eddy inputs relative to 30-yr monthly climatology)
         "ke_adv_250_anom":  ("KE Advection Anomaly at 250 hPa",             "m2 s-3"),
         "adv_T_850_anom":   ("Temperature Advection Anomaly at 850 hPa",    "K s-1"),
@@ -1920,6 +1929,7 @@ def compute_epall_relative_anomalies(ds_epx, ds_epall, ep_label):
     anom_vars = [
         "egr", "pv_200", "pv_850", "adv_T_850", "div_q_975",
         "ke_adv_250", "rk_criterion_250", "msl",
+        "z_850_m", "z_250_m",
         "u_250", "v_250", "u_850", "v_850", "u_975", "v_975", "q_975",
     ]
     

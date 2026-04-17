@@ -559,18 +559,6 @@ weaker frontal thermal gradients than the average intensifying cyclone.
 
 **Wind vectors — $(u, v)_{850} - \text{EPALL}$ [m s⁻¹]:** Reference vector: 5 m s⁻¹.
 
-**Geopotential height thin contours — $Z_{850} - \text{EPALL}$ [m]:**
-
-Geopotential height at 850 hPa minus the EPALL composite, contoured at ±10, ±20,
-±30, ±40, ±50, ±60 m (interval: 10 m, maximum 60 m). Dashed steelblue = EP has a
-*lower* 850 hPa height than the average cyclone (deeper low); solid firebrick = EP has
-a *higher* height (ridging relative to EPALL). Linewidth: 0.8 pt. Used as a height
-reference field for the thermal structure interpretation.
-
-> **Step3 dependency:** `z_850_m` is saved only by the updated version of
-> `step3_precompute_composites.py`. Composite files built before this update will
-> silently omit these contours until step3 is rerun on the remote server.
-
 ### 8.5 Row 3: Jet-level energetics departure
 
 **Shading — $\text{AFC}_{250} - \text{EPALL}$ [W m⁻²]:**
@@ -604,16 +592,6 @@ Kinetic energy advection at 250 hPa minus the EPALL composite, contoured at ±0.
 the generic cyclone; dashed steelblue = EP has *less*. This field directly represents
 the local KE flux divergence signature at the jet level — complementary to AFC
 (which captures the ageostrophic flux convergence contribution). Linewidths: 2.0 pt.
-
-**Geopotential height thin contours — $Z_{250} - \text{EPALL}$ [m]:**
-
-Geopotential height at 250 hPa minus the EPALL composite. Same contouring scheme as
-the 850 hPa field: ±10 m interval, maximum 60 m, steelblue dashed (low) / firebrick
-solid (ridge), linewidth 0.8 pt. At jet level, height departures reflect the trough
-and ridge structure that sets the ageostrophic forcing (AFC) and KE advection.
-
-> **Step3 dependency:** `z_250_m` requires the updated `step3_precompute_composites.py`;
-> silently omitted from the figure until composite files are regenerated.
 
 **Rayleigh–Kuo sign-reversal hatching:**
 

@@ -22,7 +22,6 @@ Layout:
             Contours : (T-adv@850) − EPALL             [K h⁻¹]
                        negative = dashed steelblue, positive = solid firebrick
             Vectors  : (u, v)_850 − EPALL wind         [m s⁻¹]
-            Thin ctr : (Z@850) − EPALL anomaly contours [m]
   ─────────────────────────────────────────────────────────────────────
   Row 3   Jet-level energetics departure + barotropic favorability
             Shading  : AFC@250 − EPALL                 [W m⁻²]
@@ -32,7 +31,6 @@ Layout:
             Hatching : RK meridional sign-reversal mask
                        (from TOTAL EP composite, not EPALL-relative —
                         RK = β − ∂²ū/∂y² is a background-flow diagnostic)
-            Thin ctr : (Z@250) − EPALL anomaly contours [m]
 
 ────────────────────────────────────────────────────────────────────────────
 DOCUMENTATION MAINTENANCE
@@ -143,10 +141,6 @@ TADV_EPALL_CAP  = 0.20    # maximum level [K h⁻¹]
 # thin contours: steelblue dashed (neg) / firebrick solid (pos)
 KEADV_EPALL_STEP = 0.005   # contour interval [m² s⁻³]
 KEADV_EPALL_CAP  = 0.010   # maximum level [m² s⁻³]
-
-# ── Geopotential height − EPALL contour levels [m] ──────────────────────────────────
-HGT_EPALL_STEP = 10.0    # contour interval [m]
-HGT_EPALL_CAP  = 60.0    # maximum level [m]   (adjust if data range differs)
 
 # ── SLP contour interval [hPa] ───────────────────────────────────────────────
 SLP_INTERVAL = 2.0
@@ -287,10 +281,6 @@ def compute_epall_relative(raw, ep):
         'msl_anom_hpa'    : _diff('msl') * SLP_SCALE,
         # SLP total: EP composite, Pa → hPa
         'msl_hpa'         : _req(ds_ep, 'msl') * SLP_SCALE,
-        # Geopotential height − EPALL [m]: row 1 and row 2 thin contours
-        # NOTE: None when composites pre-date step3 update (step3 must be rerun)
-        'z_850_mep'       : _diff_opt('z_850_m'),
-        'z_250_mep'       : _diff_opt('z_250_m'),
         # Grid
         'x'      : x,
         'y'      : y,
@@ -503,22 +493,6 @@ def create_figure(ep_data, output_png):
     keadv_pos = np.arange(KEADV_EPALL_STEP, _keadv_cap + KEADV_EPALL_STEP * 0.5, KEADV_EPALL_STEP)
     keadv_neg = -keadv_pos[::-1]
 
-    # HGT − EPALL contour levels [m]: step-based, capped at data range
-    # (empty arrays if composites pre-date step3 update — plotting blocks are guarded)
-    _hgt_available = ep_data[eps[0]]['z_850_mep'] is not None
-    if _hgt_available:
-        _max_hgt850 = _sym_lim('z_850_mep')
-        _hgt850_cap = min(HGT_EPALL_CAP, _max_hgt850)
-        hgt850_pos  = np.arange(HGT_EPALL_STEP, _hgt850_cap + HGT_EPALL_STEP * 0.5, HGT_EPALL_STEP)
-        hgt850_neg  = -hgt850_pos[::-1]
-        _max_hgt250 = _sym_lim('z_250_mep')
-        _hgt250_cap = min(HGT_EPALL_CAP, _max_hgt250)
-        hgt250_pos  = np.arange(HGT_EPALL_STEP, _hgt250_cap + HGT_EPALL_STEP * 0.5, HGT_EPALL_STEP)
-        hgt250_neg  = -hgt250_pos[::-1]
-    else:
-        hgt850_pos = hgt850_neg = np.array([])
-        hgt250_pos = hgt250_neg = np.array([])
-
     # ── GridSpec: 3 rows × 4 cols (EP1 | EP2 | EP3 | colorbar) ──────────────
     fig = plt.figure(figsize=FIGSIZE)
     gs = gridspec.GridSpec(
@@ -614,19 +588,6 @@ def create_figure(ep_data, output_png):
         _add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_850_mep'], d['v_850_mep'],
                           scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850,
                           add_key=(col == 2))
-        # HGT@850 − EPALL thin contours: steelblue dashed / firebrick solid
-        # (skipped if composites were built before step3 added z_850_m)
-        if d['z_850_mep'] is not None:
-            neg_hgt = hgt850_neg[hgt850_neg >= np.nanmin(d['z_850_mep'])]
-            if len(neg_hgt):
-                ax.contour(d['x_2d'], d['y_2d'], d['z_850_mep'], levels=neg_hgt,
-                           colors='steelblue', linewidths=0.8,
-                           linestyles='dashed', alpha=0.75, zorder=4)
-            pos_hgt = hgt850_pos[hgt850_pos <= np.nanmax(d['z_850_mep'])]
-            if len(pos_hgt):
-                ax.contour(d['x_2d'], d['y_2d'], d['z_850_mep'], levels=pos_hgt,
-                           colors='firebrick', linewidths=0.8,
-                           linestyles='solid', alpha=0.75, zorder=4)
         _add_lec_box(ax)
         _mark_center(ax)
         _ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
@@ -680,19 +641,6 @@ def create_figure(ep_data, output_png):
         _add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
                           scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250,
                           add_key=(col == 2))
-        # HGT@250 − EPALL thin contours: steelblue dashed / firebrick solid
-        # (skipped if composites were built before step3 added z_250_m)
-        if d['z_250_mep'] is not None:
-            neg_h250 = hgt250_neg[hgt250_neg >= np.nanmin(d['z_250_mep'])]
-            if len(neg_h250):
-                ax.contour(d['x_2d'], d['y_2d'], d['z_250_mep'], levels=neg_h250,
-                           colors='steelblue', linewidths=0.8,
-                           linestyles='dashed', alpha=0.75, zorder=4)
-            pos_h250 = hgt250_pos[hgt250_pos <= np.nanmax(d['z_250_mep'])]
-            if len(pos_h250):
-                ax.contour(d['x_2d'], d['y_2d'], d['z_250_mep'], levels=pos_h250,
-                           colors='firebrick', linewidths=0.8,
-                           linestyles='solid', alpha=0.75, zorder=4)
         _add_lec_box(ax)
         _mark_center(ax)
         _ax_setup(ax, d['x'], d['y'],

@@ -258,18 +258,14 @@ a generic South Atlantic intensifying cyclone.
 | Row | Panels | Primary shading | Additional fields |
 |-----|--------|-----------------|-------------------|
 | 1 — Upper-level structure | (a),(b),(c) | (PV@200) − EPALL [PVU] | (EGR) − EPALL contours ±[0.03,0.06,0.09,0.12] day⁻¹; SLP total (EP composite) thin contours |
-| 2 — Low-level frontal | (d),(e),(f) | (PV@850) − EPALL [PVU] | (T-adv@850) − EPALL contours [K h⁻¹]; Δwind₈₅₀; (Z@850) − EPALL thin contours [m] |
-| 3 — Jet energetics | (g),(h),(i) | (AFC@250) − EPALL [W m⁻²] | Δwind₂₅₀; (KE-adv@250) − EPALL contours [m² s⁻³]; RK hatching (total EP); (Z@250) − EPALL thin contours [m] |
+| 2 — Low-level frontal | (d),(e),(f) | (PV@850) − EPALL [PVU] | (T-adv@850) − EPALL contours [K h⁻¹]; Δwind₈₅₀ |
+| 3 — Jet energetics | (g),(h),(i) | (AFC@250) − EPALL [W m⁻²] | Δwind₂₅₀; (KE-adv@250) − EPALL contours [m² s⁻³]; RK hatching (total EP) |
 
 Key design decisions:
 - Wind vectors are **EPALL-relative** (`u_EP − u_EPALL`) in Rows 2–3 (reference: 5 m s⁻¹);
   Row 1 has no wind vectors.
 - **SLP total** (EP composite, thin contours) is shown only in Row 1. Rows 2–3 have
   no SLP overlay.
-- **Geopotential height anomaly** (EP − EPALL, thin contours at ±10 m intervals,
-  steelblue dashed / firebrick solid) is shown in Rows 2 and 3. These fields
-  (`z_850_m`, `z_250_m`) require rerunning `step3_precompute_composites.py`; they are
-  silently skipped if the composite files pre-date this update.
 - EGR and KE-adv contours use **firebrick** (positive) and **steelblue** (dashed, negative)
   at linewidth 2 pt, matching the reference step4b style.
 - Colormap limits are computed at the 98th percentile of absolute values **across all
@@ -295,8 +291,6 @@ Key design decisions:
 | `u_250`, `v_250` | m s⁻¹ | m s⁻¹ | Total wind at 250 hPa |
 | `u_850`, `v_850` | m s⁻¹ | m s⁻¹ | Total wind at 850 hPa |
 | `rk_criterion_250` | m⁻¹ s⁻¹ | m⁻¹ s⁻¹ | ∂η/∂y at 250 hPa (Rayleigh–Kuo criterion) |
-| `z_850_m` | m | m | Geopotential height at 850 hPa (requires step3 rerun) |
-| `z_250_m` | m | m | Geopotential height at 250 hPa (requires step3 rerun) |
 
 **Required inputs:**
 ```

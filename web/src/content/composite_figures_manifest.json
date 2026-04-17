@@ -5,7 +5,7 @@
       "api_path": "figures/ep_structure/composite_egr.png"
     },
     "anom_clim": {
-      "exists": false,
+      "exists": true,
       "api_path": "figures/ep_structure/composite_egr_anom.png"
     },
     "anom_epall": {

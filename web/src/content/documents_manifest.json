@@ -40,5 +40,11 @@
     "path": "scripts/ep_structure_analysis_legacy/SCIENTIFIC_NOTES.md",
     "type": "markdown",
     "parent_dir": "scripts/ep_structure_analysis_legacy"
+  },
+  {
+    "filename": "SCIENTIFIC_NOTES.md",
+    "path": "scripts/main/SCIENTIFIC_NOTES.md",
+    "type": "markdown",
+    "parent_dir": "scripts/main"
   }
 ]

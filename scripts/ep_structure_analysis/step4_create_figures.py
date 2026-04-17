@@ -1894,6 +1894,7 @@ def main():
         # climatology-based anomaly fields (legacy)
         "pv_200_anom", "pv_850_anom", "adv_T_850_anom",
         "div_q_975_anom", "ke_adv_250_anom", "msl_anom",
+        "egr_anom",
         # geopotential height anomaly fields (require respective climatology files)
         "z_250_m_anom", "z_500_m_anom", "z_850_m_anom",
         # eddy winds for anomaly overlays (X' = X − X̅_m)

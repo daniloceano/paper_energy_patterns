@@ -450,6 +450,7 @@ Groups and output files:
   pv850   → era5_climatology_pv850.nc    (u, v, t at 825/850/875 hPa)
   mfd975  → era5_climatology_mfd975.nc   (u, v, q at 975 hPa)
   slp     → era5_climatology_slp.nc      (msl at surface)
+  egr     → era5_climatology_egr.nc      (u, v, t, z at 500/850 hPa)
         """,
     )
     parser.add_argument(

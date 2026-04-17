@@ -176,6 +176,36 @@ CLIMATOLOGY_EGR_FILE    = DATA_DIR / "era5_climatology_egr.nc"   # 500+850 hPa; 
 # Populated lazily on first access; shared across all cases in the same process.
 _CLIM_CACHE: dict = {}
 
+# Maps each computed field to the climatology file it requires.
+# Used by the per-EP summary to explain *why* a field is absent.
+_FIELD_CLIM_MAP: dict[str, str] = {
+    # 250 hPa — AFC, BtCR, eddy winds, Z-250 anomaly
+    "afc_250":         "era5_climatology_250hPa.nc  (step2d --groups 250hPa)",
+    "ke_adv_250_anom": "era5_climatology_250hPa.nc  (step2d --groups 250hPa)",
+    "z_250_m_anom":    "era5_climatology_250hPa.nc  (step2d --groups 250hPa)",
+    "btcr_delta_m":    "era5_climatology_250hPa.nc  (step2d --groups 250hPa)",
+    "btcr_dil_angle":  "era5_climatology_250hPa.nc  (step2d --groups 250hPa)",
+    "u_250_prime":     "era5_climatology_250hPa.nc  (step2d --groups 250hPa)",
+    "v_250_prime":     "era5_climatology_250hPa.nc  (step2d --groups 250hPa)",
+    # PV@200 — 175/200/225 hPa u,v,t
+    "pv_200_anom":     "era5_climatology_pv200.nc   (step2d --groups pv200)",
+    # PV@850 / T_adv@850 — 825/850/875 hPa u,v,t
+    "pv_850_anom":     "era5_climatology_pv850.nc   (step2d --groups pv850)",
+    "adv_T_850_anom":  "era5_climatology_pv850.nc   (step2d --groups pv850)",
+    "u_850_prime":     "era5_climatology_pv850.nc   (step2d --groups pv850)",
+    "v_850_prime":     "era5_climatology_pv850.nc   (step2d --groups pv850)",
+    # MFD@975 — 975 hPa u,v,q
+    "div_q_975_anom":  "era5_climatology_mfd975.nc  (step2d --groups mfd975)",
+    "u_975_prime":     "era5_climatology_mfd975.nc  (step2d --groups mfd975)",
+    "v_975_prime":     "era5_climatology_mfd975.nc  (step2d --groups mfd975)",
+    # SLP
+    "msl_anom":        "era5_climatology_slp.nc     (step2d --groups slp)",
+    # EGR / Z-500 / Z-850 — 500+850 hPa u,v,t,z
+    "egr_anom":        "era5_climatology_egr.nc     (step2d --groups egr)",
+    "z_500_m_anom":    "era5_climatology_egr.nc     (step2d --groups egr)",
+    "z_850_m_anom":    "era5_climatology_egr.nc     (step2d --groups egr)",
+}
+
 
 def _load_clim(path, label, skip_msg):
     """
@@ -199,13 +229,9 @@ def _load_clim(path, label, skip_msg):
     """
     if path not in _CLIM_CACHE:
         if not path.exists():
-            logging.warning(
-                f"   {label} climatology not found: {path.name}. {skip_msg}"
-            )
             _CLIM_CACHE[path] = None
         else:
             _CLIM_CACHE[path] = xr.open_dataset(path)
-            logging.info(f"   Loaded {label} climatology: {path.name}")
     return _CLIM_CACHE[path]
 
 
@@ -1693,6 +1719,7 @@ def compute_composite(cases, ep_label, n_jobs=1):
         # Anomaly fields
         "ke_adv_250_anom": None, "adv_T_850_anom": None, "div_q_975_anom": None,
         "pv_200_anom": None, "pv_850_anom": None, "msl_anom": None,
+        "egr_anom": None,
         # Geopotential height anomaly fields (climatological)
         "z_250_m_anom": None, "z_500_m_anom": None, "z_850_m_anom": None,
         # Eddy winds
@@ -1730,23 +1757,21 @@ def compute_composite(cases, ep_label, n_jobs=1):
     fail_no_timesteps = 0
     fail_no_valid_ts  = 0
     fail_exception    = 0
+    exception_samples: list[str] = []  # first few exception messages for the summary
 
     for tid, results_list, error, meta in raw_results:
         if results_list is None:
             cases_failed += 1
             if error == "file_missing":
                 fail_file_missing += 1
-                # Log at DEBUG level only — noisy if many legacy files lack metadata
-                logging.debug(f"      file_missing: {tid}")
             elif error == "no_timesteps":
                 fail_no_timesteps += 1
-                logging.warning(f"      no_timesteps: {tid}")
             elif error == "no_valid_timesteps":
                 fail_no_valid_ts += 1
-                logging.warning(f"      no_valid_timesteps: {tid} meta={meta}")
             else:
                 fail_exception += 1
-                logging.warning(f"      exception [{tid}]: {error}")
+                if len(exception_samples) < 3:
+                    exception_samples.append(f"{tid}: {str(error)[:100]}")
             continue
 
         # Update statistics from metadata
@@ -1819,20 +1844,6 @@ def compute_composite(cases, ep_label, n_jobs=1):
     if total_timesteps == 0:
         raise RuntimeError(f"No valid timesteps for {ep_label}")
 
-    logging.info(f"      {ep_label}: cases_ok={cases_ok}, cases_failed={cases_failed}")
-    logging.info(
-        f"      {ep_label}: total_timesteps={total_timesteps}, "
-        f"skipped_no_pos={total_skipped_no_pos}, skipped_oob={total_skipped_oob}"
-    )
-    if cases_failed:
-        logging.info(
-            f"      {ep_label} failure breakdown: "
-            f"file_missing={fail_file_missing}, "
-            f"no_timesteps={fail_no_timesteps}, "
-            f"no_valid_timesteps={fail_no_valid_ts}, "
-            f"exception={fail_exception}"
-        )
-
     # ── Compute means from sum accumulators ───────────────────────────────
     # Scalar / single-level derived fields specifications
     scalar_specs = {
@@ -1860,6 +1871,7 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "pv_200_anom":      ("Potential Vorticity Anomaly at 200 hPa",      "K m2 kg-1 s-1"),
         "pv_850_anom":      ("Potential Vorticity Anomaly at 850 hPa",      "K m2 kg-1 s-1"),
         "msl_anom":         ("Sea Level Pressure Anomaly",                   "Pa"),
+        "egr_anom":         ("Eady Growth Rate Anomaly (EGR \u2212 EGR_clim)", "day-1"),
         # Eddy (primed) winds for anomaly figure overlays  X' = X − X̅_m
         "u_250_prime":      ("Eddy Zonal Wind at 250 hPa (X - Xbar_m)",     "m s-1"),
         "v_250_prime":      ("Eddy Meridional Wind at 250 hPa (X - Xbar_m)","m s-1"),
@@ -1917,6 +1929,46 @@ def compute_composite(cases, ep_label, n_jobs=1):
         "position at that instant, extracted from the track data."
     )
 
+    # ── Per-EP composite summary ─────────────────────────────────────────
+    # Classify accumulated fields as computed (not None) or absent.
+    fields_computed: list[str] = []
+    fields_absent:   list[str] = []
+    for k in sum_accum:
+        (fields_computed if sum_accum[k] is not None else fields_absent).append(k)
+    for var in ("u", "v"):
+        for lv in (250, 850, 975):
+            k = f"{var}_{lv}"
+            (fields_computed if level_sum[var][lv] is not None else fields_absent).append(k)
+    (fields_computed if level_sum["q"][975] is not None else fields_absent).append("q_975")
+
+    sep = "─" * 68
+    logging.info(f"   {sep}")
+    logging.info(
+        f"   {ep_label} COMPOSITE DONE  │  "
+        f"Cases: {cases_ok} OK, {cases_failed} failed  │  "
+        f"Timesteps: {total_timesteps} used, "
+        f"{total_skipped_no_pos} no-pos, {total_skipped_oob} OOB"
+    )
+    logging.info(f"   Fields: {len(fields_computed)} computed, {len(fields_absent)} absent")
+    if cases_failed:
+        parts = []
+        if fail_file_missing:  parts.append(f"{fail_file_missing} ERA5-file-missing")
+        if fail_no_timesteps:  parts.append(f"{fail_no_timesteps} no-timesteps")
+        if fail_no_valid_ts:   parts.append(f"{fail_no_valid_ts} no-valid-timesteps")
+        if fail_exception:     parts.append(f"{fail_exception} exception(s)")
+        logging.warning(f"   Case failures: {', '.join(parts)}")
+        for s in exception_samples:
+            logging.error(f"   ✗ {s}")
+    if fields_absent:
+        logging.warning(f"   Absent fields ({len(fields_absent)}):")
+        for k in sorted(fields_absent):
+            reason = _FIELD_CLIM_MAP.get(k)
+            if reason:
+                logging.warning(f"     {k:<28} → {reason}")
+            else:
+                logging.warning(f"     {k:<28} → not produced (check step3 logic)")
+    logging.info(f"   {sep}")
+
     return ds_out
 
 
@@ -1944,7 +1996,7 @@ def compute_epall_relative_anomalies(ds_epx, ds_epall, ep_label):
     # List of variables to compute EPALL-relative anomalies for
     anom_vars = [
         "egr", "pv_200", "pv_850", "adv_T_850", "div_q_975",
-        "ke_adv_250", "rk_criterion_250", "msl",
+        "ke_adv_250", "rk_criterion_250", "afc_250", "msl",
         "z_850_m", "z_500_m", "z_250_m",
         "u_250", "v_250", "u_850", "v_850", "u_975", "v_975", "q_975",
     ]

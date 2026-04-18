@@ -258,6 +258,13 @@ fi
 if should_run 4; then
     if $SKIP_DONE && output_ready "$RESULTS_DIR/step4_features_absolute.csv"; then
         _log "SKIP   [step4]  output already exists"
+        # When parallel-streams is on, step5 is launched from within step4's block.
+        # If step4 is skipped, step5 never gets launched.  Log the skip explicitly.
+        if $PARALLEL_STREAMS && output_ready "$RESULTS_DIR/step5_features_anomaly.csv"; then
+            _log "SKIP   [step5]  output already exists (parallel-streams)"
+        elif $PARALLEL_STREAMS; then
+            _log "WARNING  [step5]  step4 skipped but step5 output missing — rerun without --skip-done"
+        fi
     else
         CMD="$PYTHON $PIPELINE_DIR/step4_extract_features_absolute.py \
             --era5-dir $ERA5_DIR --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"

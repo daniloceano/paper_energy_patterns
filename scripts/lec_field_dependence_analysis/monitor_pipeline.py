@@ -247,22 +247,51 @@ def check_step(step: StepDef) -> tuple[str, str, str]:
     recent_log = logs[0] if logs else None
     last_log_ts = _log_last_modified(recent_log) if recent_log else "—"
 
-    # --- Step 8b: check figures dir ---
+    # --- Step 8b: figure-count based detection ---
     if step.key == "8b":
         fig_count = len(list(FIGURES_DIR.glob("significance_*.png"))) + \
                     len(list(FIGURES_DIR.glob("effect_*.png"))) + \
                     len(list(FIGURES_DIR.glob("volcano_*.png")))
-        if fig_count >= 9:
+        # Use log success marker as primary signal, figure count as detail
+        if recent_log and _log_has_success(recent_log, step.key):
+            return Status.DONE, f"{fig_count} figures", last_log_ts
+        if fig_count > 0 and recent_log and not _log_has_error(recent_log) \
+                and not _log_is_recent(recent_log):
+            # Stale log without error + figures present → treat as done
             return Status.DONE, f"{fig_count} figures", last_log_ts
         if recent_log and _log_has_error(recent_log):
-            return Status.FAILED, "see log", last_log_ts
+            return Status.FAILED, _extract_error_line(recent_log), last_log_ts
         if recent_log and _log_is_recent(recent_log):
-            return Status.RUNNING, f"{fig_count}/12 figures", last_log_ts
+            return Status.RUNNING, f"{fig_count} figures so far", last_log_ts
+        if fig_count > 0:
+            return Status.DONE, f"{fig_count} figures", last_log_ts
         return Status.PENDING, "—", last_log_ts
 
     # All primary outputs present → DONE
     if outputs_total > 0 and len(outputs_present) == outputs_total:
         return Status.DONE, f"{len(outputs_present)}/{outputs_total} files", last_log_ts
+
+    # For chunked steps: chunk files alone are valid output when log
+    # confirms success (downstream steps read chunks directly).
+    if step.chunk_output_pattern and chunk_count > 0:
+        # Check if ANY of the step's logs contain the success marker
+        all_logs = _find_recent_logs(step.log_prefix)
+        any_success = any(_log_has_success(l, step.key) for l in all_logs[:5])
+        any_error   = any(_log_has_error(l) for l in all_logs[:5])
+        if any_success and not any_error:
+            return Status.DONE, f"{chunk_count} chunks", last_log_ts
+        # Chunks exist but no success marker: could still be running
+        if recent_log and _log_is_recent(recent_log):
+            return Status.RUNNING, f"{chunk_count} chunks so far", last_log_ts
+        # Stale log with chunks but no success → check for errors
+        if any_error:
+            detail = _extract_error_line(all_logs[0]) if all_logs else "see log"
+            return Status.FAILED, detail, last_log_ts
+        # Chunks exist, no recent activity, no success/error in logs
+        # Accept as done if chunk count is reasonable (≥ n_chunks)
+        if chunk_count >= 10:
+            return Status.DONE, f"{chunk_count} chunks (no merge needed)", last_log_ts
+        return Status.PARTIAL, f"{chunk_count} chunks", last_log_ts
 
     # Log-based checks
     if recent_log:
@@ -270,7 +299,7 @@ def check_step(step: StepDef) -> tuple[str, str, str]:
             # success marker present but output file missing (unusual)
             if outputs_total > 0 and not outputs_present:
                 return Status.FAILED, "log OK but output missing", last_log_ts
-            detail = f"{chunk_count} chunks" if chunk_count else "done (log)"
+            detail = "done (log)"
             return Status.DONE, detail, last_log_ts
 
         if _log_has_error(recent_log):
@@ -278,18 +307,8 @@ def check_step(step: StepDef) -> tuple[str, str, str]:
             return Status.FAILED, detail, last_log_ts
 
         if _log_is_recent(recent_log):
-            # Chunk progress
-            if step.chunk_output_pattern and chunk_count > 0:
-                return Status.RUNNING, f"{chunk_count} chunks done so far", last_log_ts
             last_line = _log_tail(recent_log, 1)[:60]
             return Status.RUNNING, last_line or "active", last_log_ts
-
-        # Stale log — may be a previous run that failed silently
-        if chunk_count > 0 and outputs_total > 0 and not outputs_present:
-            return Status.PARTIAL, f"{chunk_count} chunk files, main CSV missing", last_log_ts
-
-    if chunk_count > 0:
-        return Status.PARTIAL, f"{chunk_count} chunk files (no merged output)", last_log_ts
 
     return Status.PENDING, "—", "—"
 
@@ -413,21 +432,52 @@ def render(use_color: bool = True, show_log_tail: bool = False) -> str:
     lines.append("  " + "   ".join(summary_parts))
     lines.append("")
 
-    # Active log tails
-    if show_log_tail:
-        for step in STEPS:
-            logs = _find_recent_logs(step.log_prefix)
-            if logs and _log_is_recent(logs[0]):
-                tail = _log_tail(logs[0], 3)
-                if tail:
-                    label = f"  [{step.key}] {step.label}"
-                    if use_color:
-                        lines.append(f"{C.DIM}{label}:{C.RESET}")
-                        lines.append(f"{C.DIM}    {tail[:90]}{C.RESET}")
-                    else:
-                        lines.append(f"{label}:")
-                        lines.append(f"    {tail[:90]}")
-                    lines.append("")
+    # Active log tails — show last message from recently active or completed steps
+    shown_tails = False
+    for step in STEPS:
+        logs = _find_recent_logs(step.log_prefix)
+        if not logs:
+            continue
+        latest = logs[0]
+        status_for_step, _, _ = check_step(step)
+        # Show tail for: running, failed, or recently completed steps
+        show = (show_log_tail
+                or status_for_step in (Status.RUNNING, Status.FAILED)
+                or (status_for_step == Status.DONE and _log_is_recent(latest)))
+        if not show:
+            continue
+        tail = _log_tail(latest, 3)
+        if not tail:
+            continue
+        label = f"  [{step.key}] {step.label}"
+        if use_color:
+            col = C.RED if status_for_step == Status.FAILED else C.DIM
+            lines.append(f"{col}{label}:{C.RESET}")
+            lines.append(f"{col}    {tail[:90]}{C.RESET}")
+        else:
+            lines.append(f"{label}:")
+            lines.append(f"    {tail[:90]}")
+        lines.append("")
+        shown_tails = True
+
+    # Show orchestrator log tail if pipeline recently active
+    orch_logs = sorted(LOG_DIR.glob("orchestrator_*.log"),
+                       key=lambda f: f.stat().st_mtime, reverse=True) \
+                if LOG_DIR.exists() else []
+    if orch_logs:
+        orch_tail = _log_tail(orch_logs[0], 4)
+        if orch_tail and (show_log_tail or _log_is_recent(orch_logs[0])):
+            if use_color:
+                lines.append(f"{C.DIM}  [orchestrator]:{C.RESET}")
+                lines.append(f"{C.DIM}    {orch_tail[:90]}{C.RESET}")
+            else:
+                lines.append("  [orchestrator]:")
+                lines.append(f"    {orch_tail[:90]}")
+            lines.append("")
+            shown_tails = True
+
+    if not shown_tails:
+        lines.append("")
 
     # Paths
     lines.append(f"{C.DIM if use_color else ''}  Results: {RESULTS_DIR}{C.RESET if use_color else ''}")

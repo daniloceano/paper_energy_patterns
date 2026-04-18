@@ -31,6 +31,9 @@ RESULTS_DIR = PROJECT_DIR / "results" / "lec_field_dependence"
 LOG_DIR     = PROJECT_DIR / "logs"
 FIGURES_DIR = PROJECT_DIR / "figures" / "lec_field_dependence"
 
+PID_FILE    = LOG_DIR / "pipeline.pid"
+STATUS_FILE = LOG_DIR / "pipeline_status.txt"
+
 # ---------------------------------------------------------------------------
 # ANSI colours
 # ---------------------------------------------------------------------------
@@ -94,6 +97,64 @@ STEPS: list[StepDef] = [
 # Status detection
 # ---------------------------------------------------------------------------
 STALE_THRESHOLD_SECONDS = 300   # log file modified within this = "running"
+
+# ---------------------------------------------------------------------------
+# Pipeline-level (orchestrator) status
+# ---------------------------------------------------------------------------
+
+def _pid_is_alive(pid: int) -> bool:
+    """Return True if the process with this PID is still running."""
+    import os
+    try:
+        os.kill(pid, 0)   # signal 0: existence check only
+        return True
+    except (ProcessLookupError, PermissionError):
+        return False   # ProcessLookupError = gone; PermissionError = exists but not ours (treat as alive)
+
+def check_orchestrator() -> tuple[str, str, str]:
+    """
+    Returns (orch_status, detail_str, timestamp_str).
+    orch_status: 'RUNNING' | 'COMPLETED' | 'FAILED' | 'UNKNOWN'
+    """
+    status_str = "UNKNOWN"
+    detail     = "no status file"
+    ts_str     = "—"
+
+    # Try reading status file written by run_pipeline.sh
+    if STATUS_FILE.exists():
+        try:
+            line = STATUS_FILE.read_text().strip().split("|")  # STATUS|epoch|pid
+            status_str = line[0] if line else "UNKNOWN"
+            epoch      = int(line[1]) if len(line) > 1 else None
+            pid        = int(line[2]) if len(line) > 2 else None
+            if epoch:
+                ts_str = datetime.fromtimestamp(epoch).strftime("%H:%M:%S")
+            if pid:
+                detail = f"PID {pid}"
+                if status_str == "RUNNING":
+                    if _pid_is_alive(pid):
+                        elapsed = int(time.time()) - epoch if epoch else 0
+                        h, rem = divmod(elapsed, 3600)
+                        m, s   = divmod(rem, 60)
+                        detail = f"PID {pid}  running {h:02d}:{m:02d}:{s:02d}"
+                    else:
+                        # Process dead but status still says RUNNING → crashed
+                        status_str = "CRASHED"
+                        detail = f"PID {pid} no longer alive — may have crashed"
+        except Exception as e:
+            detail = f"parse error: {e}"
+
+    elif PID_FILE.exists():
+        # Fallback: only PID file, no status file
+        try:
+            pid = int(PID_FILE.read_text().strip())
+            alive = _pid_is_alive(pid)
+            status_str = "RUNNING" if alive else "STOPPED"
+            detail     = f"PID {pid}" + (" (alive)" if alive else " (no longer alive)")
+        except Exception:
+            pass
+
+    return status_str, detail, ts_str
 
 class Status:
     DONE    = "DONE"
@@ -273,6 +334,33 @@ def render(use_color: bool = True, show_log_tail: bool = False) -> str:
     ts_pad = width - len(ts_str)
     lines.append(f"║{ts_str}{' ' * ts_pad}║")
     lines.append(f"╚{border}╝")
+    lines.append("")
+
+    # --- Orchestrator status ---
+    orch_status, orch_detail, orch_ts = check_orchestrator()
+    ORCH_COLORS = {
+        "RUNNING":   C.YELLOW,
+        "COMPLETED": C.GREEN,
+        "FAILED":    C.RED,
+        "CRASHED":   C.RED,
+        "STOPPED":   C.RED,
+        "UNKNOWN":   C.DIM,
+    }
+    ORCH_ICONS = {
+        "RUNNING":   "▶",
+        "COMPLETED": "✓",
+        "FAILED":    "✗",
+        "CRASHED":   "✗",
+        "STOPPED":   "✗",
+        "UNKNOWN":   "?",
+    }
+    orch_icon = ORCH_ICONS.get(orch_status, "?")
+    if use_color:
+        col = ORCH_COLORS.get(orch_status, "")
+        orch_line = f"  {col}{C.BOLD}Pipeline: {orch_icon} {orch_status}{C.RESET}   {orch_detail}   [{orch_ts}]"
+    else:
+        orch_line = f"  Pipeline: {orch_icon} {orch_status}   {orch_detail}   [{orch_ts}]"
+    lines.append(orch_line)
     lines.append("")
 
     # Table header

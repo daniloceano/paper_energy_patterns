@@ -91,6 +91,24 @@ mkdir -p "$RESULTS_DIR" "$LOG_DIR"
 
 PYTHON="conda run -n $CONDA_ENV python"
 
+PID_FILE="$LOG_DIR/pipeline.pid"
+STATUS_FILE="$LOG_DIR/pipeline_status.txt"
+
+# Write PID so the monitor can track this process
+echo "$$" > "$PID_FILE"
+printf 'RUNNING|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
+
+# Cleanup on unexpected exit (SIGINT, SIGTERM, unhandled error)
+_on_unexpected_exit() {
+    local code=$?
+    if [[ $code -ne 0 ]]; then
+        printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
+        # log the failure if _log is already defined
+        type _log &>/dev/null && _log "Pipeline terminated unexpectedly (exit $code)"
+    fi
+}
+trap '_on_unexpected_exit' EXIT
+
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
@@ -297,6 +315,24 @@ if should_run 6; then
     fi
 fi
 
+# --- Coverage guard after step6 ---
+# If the integrated table exists but has too few rows, the ERA5 dir was wrong.
+if should_run 6 || should_run 4 || should_run 5; then
+    INT_FILE="$RESULTS_DIR/step6_integrated_all.csv"
+    if [[ -f "$INT_FILE" ]]; then
+        N_ROWS=$(tail -n +2 "$INT_FILE" | wc -l | tr -d ' ')
+        MIN_ROWS=30
+        if [[ $N_ROWS -lt $MIN_ROWS ]]; then
+            _log "ERROR: step6_integrated_all.csv has only $N_ROWS rows (expected >=$MIN_ROWS)."
+            _log "       ERA5 directory ('$ERA5_DIR') likely has no per-cyclone NetCDF files."
+            _log "       Check the path and rerun with --only 4,5,6,7,7b,8,8b,9 --skip-done"
+            printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
+            exit 1
+        fi
+        _log "INFO   coverage check OK: $N_ROWS rows in integrated table"
+    fi
+fi
+
 # ---------------------------------------------------------------------------
 # Step 7 — Compute PREDEP (absolute + anomaly field types)
 # ---------------------------------------------------------------------------
@@ -389,9 +425,14 @@ fi
 _log "=================================================================="
 if [[ $STEP_ERRORS -eq 0 ]]; then
     _log " ✓  ALL STEPS COMPLETED  —  total time: $(_elapsed $PIPELINE_START)"
+    printf 'COMPLETED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
 else
     _log " ✗  PIPELINE FINISHED WITH $STEP_ERRORS ERRORS  —  $(_elapsed $PIPELINE_START)"
+    printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
 fi
 _log "=================================================================="
+
+# Disable the trap so it doesn't overwrite COMPLETED/FAILED status
+trap - EXIT
 
 exit $STEP_ERRORS

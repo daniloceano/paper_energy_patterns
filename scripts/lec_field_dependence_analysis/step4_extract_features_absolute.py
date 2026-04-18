@@ -207,6 +207,16 @@ def main():
             if status != "ok":
                 logging.info(f"      {status}: {count}")
 
+    # Guard: if every single cyclone has no ERA5 file, the directory is almost
+    # certainly wrong.  Fail loudly instead of saving an empty CSV.
+    if n_ok == 0:
+        logging.error(
+            "CRITICAL: 0 cyclones had ERA5 data in this chunk. "
+            "Check that --era5-dir points to the directory with per-cyclone "
+            f"*_era5.nc files (current value: {args.era5_dir})."
+        )
+        sys.exit(1)
+
     # Drop status column before saving
     save_df = new_df[new_df["_status"] == "ok"].drop(columns=["_status"])
 

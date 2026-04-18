@@ -1,5 +1,9 @@
 # LEC–Field Dependence Analysis
 
+> **→ Day-to-day use:** see [USER_GUIDE.md](USER_GUIDE.md) — clean, run, monitor, transfer.
+> **→ Errors and debugging:** see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+> **→ Methodology and scientific decisions:** see [SCIENTIFIC_NOTES.md](SCIENTIFIC_NOTES.md).
+
 Investigates, at the individual-cyclone level, the predictive dependence between Lorenz Energy Cycle (LEC) terms and dynamic/meteorological scalar features derived from ERA5 composite fields, using the **PREDEP** measure (Assunção et al. 2025).
 
 ---
@@ -108,40 +112,62 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 
 ## Running on the Remote Server (single command)
 
+> **See [USER_GUIDE.md](USER_GUIDE.md) for the full operational workflow.**
+
 Use the provided orchestrator to run steps 4–9 in one shot.  Steps 1–3 must have been completed locally first.
 
 ```bash
 # Activate the conda environment
 conda activate paper_energy_patterns
 
-# Full pipeline (16 parallel chunks, 4 workers per chunk)
-bash run_pipeline.sh --era5-dir /path/to/era5/
+# Full pipeline — 16 parallel chunks per step, 4 workers per chunk, detached
+bash run_pipeline.sh --era5-dir /path/to/era5/ --background
+
+# Clean previous outputs first, then run
+bash run_pipeline.sh --era5-dir /data/era5/ --clean --background
 
 # With custom parallelism
-bash run_pipeline.sh --era5-dir /data/era5/ --n-chunks 20 --workers 8
+bash run_pipeline.sh --era5-dir /data/era5/ --n-chunks 32 --workers 8 --background
 
 # Resume an interrupted run (skip steps with existing outputs)
-bash run_pipeline.sh --era5-dir /data/era5/ --skip-done
+bash run_pipeline.sh --era5-dir /data/era5/ --skip-done --background
 
 # Run only specific steps
-bash run_pipeline.sh --era5-dir /data/era5/ --only 4,5,6
-
-# Maximum parallelism (steps 4+5 together, 7-abs+7-anom together)
-bash run_pipeline.sh --era5-dir /data/era5/ --parallel-streams
+bash run_pipeline.sh --era5-dir /data/era5/ --only 7,7b,8,8b --background
 ```
+
+**Pipeline execution model:** steps run **sequentially** (each step finishes before
+the next starts).  Within each heavy step (4, 5, 7) up to `--n-chunks` parallel
+background jobs run simultaneously — this is the in-step parallelism.
 
 Options summary:
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--era5-dir PATH` | — | **Required.** Directory with per-cyclone ERA5 files |
-| `--n-chunks N` | 16 | Parallel background jobs for steps 4, 5, 7 |
+| `--background` | off | Detach under nohup (survives SSH disconnect) |
+| `--clean` | off | Wipe previous results + logs before running |
+| `--dry-run` | off | With `--clean`: preview deletions, don't delete |
+| `--n-chunks N` | 16 | Parallel background jobs **within** each heavy step |
 | `--workers N` | 4 | CPU workers per chunk (within-chunk parallelism) |
-| `--skip-done` | false | Skip steps whose output files already exist |
+| `--skip-done` | off | Skip steps whose output files already exist |
 | `--only STEPS` | all | Run only listed steps, e.g. `"4,5,6"` or `"7b,8b"` |
-| `--parallel-streams` | false | Run abs+anomaly simultaneously (needs ≥ 2× resources) |
+| `--stop-on-error` | off | Halt at first failure (default: continue all steps) |
 
 All step logs are saved to `logs/` with timestamped filenames.
+
+## Cleaning Previous Outputs
+
+```bash
+# Preview what would be deleted (safe, no changes)
+bash scripts/lec_field_dependence_analysis/clean_pipeline_outputs.sh --all
+
+# Actually delete everything (fresh start)
+bash scripts/lec_field_dependence_analysis/clean_pipeline_outputs.sh --all --yes
+
+# Scoped cleanup: --results | --chunks | --figures | --logs
+bash scripts/lec_field_dependence_analysis/clean_pipeline_outputs.sh --logs --yes
+```
 
 ## Monitoring Execution
 

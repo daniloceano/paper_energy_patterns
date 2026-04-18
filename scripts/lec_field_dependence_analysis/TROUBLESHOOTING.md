@@ -1,6 +1,7 @@
 # TROUBLESHOOTING — LEC–Field Dependence Pipeline
 
-Common issues, root causes, and fixes encountered during development and auditing.
+> **For day-to-day usage, see [USER_GUIDE.md](USER_GUIDE.md).**
+> This document covers known bugs, root causes, and diagnostic commands.
 
 ---
 
@@ -126,29 +127,37 @@ python scripts/lec_field_dependence_analysis/monitor_pipeline.py --verify
 # Quick status
 python scripts/lec_field_dependence_analysis/monitor_pipeline.py --no-color
 
+# ── Cleaning ──────────────────────────────────────────────────────────────────
+
+# Preview all files that would be deleted (safe — no changes)
+bash scripts/lec_field_dependence_analysis/clean_pipeline_outputs.sh --all
+
+# Full clean (results + figures + logs)
+bash scripts/lec_field_dependence_analysis/clean_pipeline_outputs.sh --all --yes
+
+# Scoped: chunks only, logs only, etc.
+bash scripts/lec_field_dependence_analysis/clean_pipeline_outputs.sh --chunks --yes
+bash scripts/lec_field_dependence_analysis/clean_pipeline_outputs.sh --logs --yes
+
+# ── Running ───────────────────────────────────────────────────────────────────
+
 # Run pipeline in background (survives SSH disconnect)
 bash scripts/lec_field_dependence_analysis/run_pipeline.sh --era5-dir /path/to/era5/ --background
 # → prints PID and nohup log path, then exits; pipeline keeps running
 
-# Then monitor progress
-python scripts/lec_field_dependence_analysis/monitor_pipeline.py --watch
-
-# Wipe all previous results and logs, then run from scratch
-bash scripts/lec_field_dependence_analysis/run_pipeline.sh --era5-dir /path/to/era5/ --clean
-# Cleans: results/lec_field_dependence/  figures/lec_field_dependence/
-#         logs/step*  logs/orchestrator*  logs/nohup_pipeline*  logs/pipeline.{pid,status}
-
-# Preview what --clean would delete without actually deleting anything
-bash scripts/lec_field_dependence_analysis/run_pipeline.sh --era5-dir /path/to/era5/ --clean --dry-run
-
-# Combine: wipe + run in background
+# Clean + run in one command
 bash scripts/lec_field_dependence_analysis/run_pipeline.sh --era5-dir /path/to/era5/ --clean --background
 
-# Halt on first failure instead of continuing (old behaviour)
+# Halt on first failure instead of continuing (default: continue all)
 bash scripts/lec_field_dependence_analysis/run_pipeline.sh --era5-dir /path/to/era5/ --stop-on-error
 
 # Re-run only specific steps after a partial failure
 bash scripts/lec_field_dependence_analysis/run_pipeline.sh --era5-dir /path/to/era5/ --only 6,7,7b --skip-done
+
+# Then monitor progress
+python scripts/lec_field_dependence_analysis/monitor_pipeline.py --watch
+
+# ── Diagnostics ───────────────────────────────────────────────────────────────
 
 # Check step 3 manifest (is era5_available all False = dry-run?)
 python -c "import pandas as pd; m=pd.read_csv('results/lec_field_dependence/step3_era5_field_manifest.csv'); print(m['era5_available'].value_counts())"

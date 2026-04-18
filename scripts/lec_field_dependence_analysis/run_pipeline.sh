@@ -12,9 +12,13 @@
 #    bash run_pipeline.sh --era5-dir /data/era5/ --n-chunks 20 --workers 4
 #    bash run_pipeline.sh --era5-dir /data/era5/ --skip-done
 #    bash run_pipeline.sh --era5-dir /data/era5/ --only 4,5,6
-#    bash run_pipeline.sh --era5-dir /data/era5/ --parallel-streams
 #    bash run_pipeline.sh --era5-dir /data/era5/ --clean                # wipe results+logs first
 #    bash run_pipeline.sh --era5-dir /data/era5/ --clean --dry-run      # preview what would be deleted
+#
+#  Pipeline execution model:
+#    Steps run SEQUENTIALLY.  The next step only starts after the previous one
+#    finishes.  Within each heavy step (4, 5, 7) up to N_CHUNKS parallel
+#    background jobs are used — that parallelism is internal to the step.
 #
 #  Options:
 #    --era5-dir PATH       Path to per-cyclone ERA5 NetCDF files [REQUIRED]
@@ -36,8 +40,6 @@
 #                          Default: continue — all errors are logged and
 #                          reported in the final summary.
 #    --only STEPS          Run only these steps, e.g. "4,5,6" or "7,7b"
-#    --parallel-streams    Run absolute+anomaly in parallel for steps 4,5,7
-#                          (double the CPU load — use on servers with many cores)
 #
 #  Error handling:
 #    By default every step is attempted.  If a step fails, its exit code and
@@ -70,7 +72,6 @@ N_WORKERS=4
 CONDA_ENV="paper_energy_patterns"
 SKIP_DONE=false
 ONLY_STEPS=""
-PARALLEL_STREAMS=false
 BACKGROUND=false
 STOP_ON_ERROR=false
 CLEAN=false
@@ -89,7 +90,6 @@ while [[ $# -gt 0 ]]; do
         --stop-on-error)    STOP_ON_ERROR=true;   shift   ;;
         --background)       BACKGROUND=true;      shift   ;;
         --only)             ONLY_STEPS="$2";      shift 2 ;;
-        --parallel-streams) PARALLEL_STREAMS=true; shift  ;;
         --clean)            CLEAN=true;             shift   ;;
         --dry-run)          DRY_RUN=true;           shift   ;;
         -h|--help)
@@ -351,7 +351,6 @@ _log " Workers/chunk:   $N_WORKERS"
 _log " Conda env:       $CONDA_ENV"
 _log " Skip done:       $SKIP_DONE"
 _log " Only steps:      ${ONLY_STEPS:-all}"
-_log " Parallel streams:$PARALLEL_STREAMS"
 _log " Orch log:        $ORCH_LOG"
 _log "=================================================================="
 
@@ -399,48 +398,17 @@ fi
 if should_run 4; then
     if $SKIP_DONE && output_ready "$RESULTS_DIR/step4_features_absolute.csv"; then
         _log "SKIP   [step4]  output already exists"
-        # When parallel-streams is on, step5 is launched from within step4's block.
-        # If step4 is skipped, step5 never gets launched.  Log the skip explicitly.
-        if $PARALLEL_STREAMS && output_ready "$RESULTS_DIR/step5_features_anomaly.csv"; then
-            _log "SKIP   [step5]  output already exists (parallel-streams)"
-        elif $PARALLEL_STREAMS; then
-            _log "WARNING  [step5]  step4 skipped but step5 output missing — rerun without --skip-done"
-        fi
     else
         CMD="$PYTHON $PIPELINE_DIR/step4_extract_features_absolute.py \
             --era5-dir $ERA5_DIR --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
-
-        if $PARALLEL_STREAMS; then
-            # Launch step 5 at the same time in a subshell, then handle step 4 here
-            CMD5="$PYTHON $PIPELINE_DIR/step5_extract_features_anomaly.py \
-                --era5-dir $ERA5_DIR --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
-            if ! $SKIP_DONE || ! output_ready "$RESULTS_DIR/step5_features_anomaly.csv"; then
-                _log "PARALLEL-STREAMS: launching step4 + step5 together"
-                ( run_chunks "step4" $N_CHUNKS "$CMD" ) &
-                PID4=$!
-                ( run_chunks "step5" $N_CHUNKS "$CMD5" ) &
-                PID5=$!
-                PSTREAMS_FAIL=0
-                wait $PID4 || PSTREAMS_FAIL=$(( PSTREAMS_FAIL + 1 ))
-                wait $PID5 || PSTREAMS_FAIL=$(( PSTREAMS_FAIL + 1 ))
-                if [[ $PSTREAMS_FAIL -gt 0 ]]; then
-                    _log "WARN   [step4+step5 parallel-streams]  $PSTREAMS_FAIL stream(s) failed — see FAILED_STEPS in summary"
-                    # failures already recorded inside run_chunks; continue
-fi
-            else
-                _log "SKIP   [step5]  output already exists (parallel-streams)"
-                run_chunks "step4" $N_CHUNKS "$CMD"
-            fi
-        else
-            run_chunks "step4" $N_CHUNKS "$CMD"
-        fi
+        run_chunks "step4" $N_CHUNKS "$CMD"
     fi
 fi
 
 # ---------------------------------------------------------------------------
-# Step 5 — Extract anomaly features (skipped if already done in parallel above)
+# Step 5 — Extract anomaly features
 # ---------------------------------------------------------------------------
-if should_run 5 && ! $PARALLEL_STREAMS; then
+if should_run 5; then
     if $SKIP_DONE && output_ready "$RESULTS_DIR/step5_features_anomaly.csv"; then
         _log "SKIP   [step5]  output already exists"
     else
@@ -486,48 +454,24 @@ if should_run 6 || should_run 4 || should_run 5; then
 fi
 
 # ---------------------------------------------------------------------------
-# Step 7 — Compute PREDEP (absolute + anomaly field types)
+# Step 7 — Compute PREDEP (absolute first, then anomaly — sequential)
 # ---------------------------------------------------------------------------
 if should_run 7; then
-    SKIP_ABS=false
-    SKIP_ANOM=false
-    $SKIP_DONE && output_ready "$RESULTS_DIR/step7_predep_absolute.csv" && SKIP_ABS=true
-    $SKIP_DONE && output_ready "$RESULTS_DIR/step7_predep_anomaly.csv"  && SKIP_ANOM=true
-
     CMD_ABS="$PYTHON $PIPELINE_DIR/step7_compute_predep.py \
         --field-type absolute --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
     CMD_ANOM="$PYTHON $PIPELINE_DIR/step7_compute_predep.py \
         --field-type anomaly --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
 
-    if $PARALLEL_STREAMS && ! $SKIP_ABS && ! $SKIP_ANOM; then
-        _log "PARALLEL-STREAMS: launching step7-absolute + step7-anomaly together"
-        STEP7_START=$(date +%s)
-        ( run_chunks "step7_absolute" $N_CHUNKS "$CMD_ABS" ) &
-        P7A=$!
-        ( run_chunks "step7_anomaly"  $N_CHUNKS "$CMD_ANOM" ) &
-        P7N=$!
-        P7_FAIL=0
-        wait $P7A || P7_FAIL=$(( P7_FAIL + 1 ))
-        wait $P7N || P7_FAIL=$(( P7_FAIL + 1 ))
-        if [[ $P7_FAIL -gt 0 ]]; then
-            _log "WARN   [step7 parallel-streams]  $P7_FAIL stream(s) failed — see FAILED_STEPS in summary"
-            # failures already recorded inside run_chunks; continue
-        fi
-        _log "DONE   [step7 parallel streams]  elapsed=$(_elapsed $STEP7_START)"
-
+    if $SKIP_DONE && output_ready "$RESULTS_DIR/step7_predep_absolute.csv"; then
+        _log "SKIP   [step7-absolute]  output already exists"
     else
-        # Sequential: absolute then anomaly
-        if $SKIP_ABS; then
-            _log "SKIP   [step7-absolute]  output already exists"
-        else
-            run_chunks "step7_absolute" $N_CHUNKS "$CMD_ABS"
-        fi
+        run_chunks "step7_absolute" $N_CHUNKS "$CMD_ABS"
+    fi
 
-        if $SKIP_ANOM; then
-            _log "SKIP   [step7-anomaly]  output already exists"
-        else
-            run_chunks "step7_anomaly" $N_CHUNKS "$CMD_ANOM"
-        fi
+    if $SKIP_DONE && output_ready "$RESULTS_DIR/step7_predep_anomaly.csv"; then
+        _log "SKIP   [step7-anomaly]  output already exists"
+    else
+        run_chunks "step7_anomaly" $N_CHUNKS "$CMD_ANOM"
     fi
 fi
 

@@ -563,45 +563,76 @@ def verify() -> str:
         _fail("step3_era5_field_manifest.csv MISSING")
     lines.append("")
 
+    def _check_feature_csv(label: str, path: Path, chunks: list) -> None:
+        """Check feature CSV for existence + non-null rate across feature columns."""
+        import pandas as pd
+        if path.exists():
+            n = _csv_rows(path)
+            try:
+                df_feat = pd.read_csv(path)
+                feat_cols = [c for c in df_feat.columns if "__" in c]
+                if not feat_cols:
+                    _warn(f"{path.name} — {n} rows but NO feature columns found")
+                    lines.append("       → Re-run step 4/5 without --skip-done to rebuild features.")
+                else:
+                    pct = df_feat[feat_cols].notna().mean().mean() * 100
+                    if pct < 50:
+                        _fail(f"{path.name} — {n} rows, {len(feat_cols)} feature cols, "
+                              f"only {pct:.0f}% non-null (sparse extraction!)")
+                        lines.append("       → ERA5 files were likely missing during the first run.")
+                        lines.append(f"       → Fix: delete {path.name} and re-run without --skip-done.")
+                    elif pct < 90:
+                        _warn(f"{path.name} — {n} rows, {len(feat_cols)} feature cols, "
+                              f"{pct:.0f}% non-null (expected ≥90%)")
+                    else:
+                        _ok(f"{path.name} — {n} rows, {len(feat_cols)} feature cols, {pct:.0f}% non-null")
+            except Exception as e:
+                _warn(f"{path.name} — could not inspect feature columns: {e}")
+        elif chunks:
+            _ok(f"{len(chunks)} chunk files (no merged CSV — OK, step6 reads chunks directly)")
+        else:
+            _fail(f"{label}: MISSING — no merged CSV and no chunk files found")
+
     # --- Step 4 ---
     lines.append("[Step 4] Extract absolute features")
-    f4 = RESULTS_DIR / "step4_features_absolute.csv"
     chunks4 = sorted(RESULTS_DIR.glob("step4_features_absolute_chunk*.csv"))
-    if f4.exists():
-        n = _csv_rows(f4)
-        _ok(f"step4_features_absolute.csv — {n} rows (merged)")
-    elif chunks4:
-        total = sum(_csv_rows(c) for c in chunks4)
-        _ok(f"{len(chunks4)} chunk files, ~{total} rows total (no merge needed — step6 uses chunks)")
-    else:
-        _fail("step4_features_absolute.csv MISSING and no chunk files found")
+    _check_feature_csv("step4_features_absolute",
+                       RESULTS_DIR / "step4_features_absolute.csv", chunks4)
     lines.append("")
 
     # --- Step 5 ---
     lines.append("[Step 5] Extract anomaly features")
-    f5 = RESULTS_DIR / "step5_features_anomaly.csv"
     chunks5 = sorted(RESULTS_DIR.glob("step5_features_anomaly_chunk*.csv"))
-    if f5.exists():
-        n = _csv_rows(f5)
-        _ok(f"step5_features_anomaly.csv — {n} rows (merged)")
-    elif chunks5:
-        total = sum(_csv_rows(c) for c in chunks5)
-        _ok(f"{len(chunks5)} chunk files, ~{total} rows total")
-    else:
-        _fail("step5_features_anomaly.csv MISSING and no chunk files found")
+    _check_feature_csv("step5_features_anomaly",
+                       RESULTS_DIR / "step5_features_anomaly.csv", chunks5)
     lines.append("")
 
     # --- Step 6 ---
     lines.append("[Step 6] Integrate tables")
+    import pandas as _pd
     for fname in ["step6_integrated_all.csv", "step6_integrated_absolute.csv",
                    "step6_integrated_anomaly.csv"]:
         fp = RESULTS_DIR / fname
         if fp.exists():
             n = _csv_rows(fp)
-            if n >= 30:
-                _ok(f"{fname} — {n} rows")
-            else:
+            if n < 30:
                 _warn(f"{fname} — only {n} rows (expected ≥30)")
+                continue
+            try:
+                df6 = _pd.read_csv(fp)
+                feat_cols6 = [c for c in df6.columns if "__" in c]
+                if feat_cols6:
+                    pct6 = df6[feat_cols6].notna().mean().mean() * 100
+                    if pct6 < 50:
+                        _fail(f"{fname} — {n} rows, {pct6:.0f}% feature non-null "
+                              f"(sparse — bad ERA5 run propagated)")
+                        lines.append(f"       → Fix: delete {fname} + step4/5 CSVs and re-run from step 4.")
+                    else:
+                        _ok(f"{fname} — {n} rows, {len(feat_cols6)} feature cols, {pct6:.0f}% non-null")
+                else:
+                    _ok(f"{fname} — {n} rows (LEC+metadata only, no ERA5 feature columns)")
+            except Exception:
+                _ok(f"{fname} — {n} rows")
         else:
             tag = fname.replace("step6_integrated_", "").replace(".csv", "")
             if tag == "all":
@@ -615,47 +646,87 @@ def verify() -> str:
     for ftype in ["absolute", "anomaly"]:
         merged = RESULTS_DIR / f"step7_predep_{ftype}.csv"
         chunks = sorted(RESULTS_DIR.glob(f"step7_predep_{ftype}_chunk*.csv"))
-        if merged.exists():
-            n = _csv_rows(merged)
-            _ok(f"step7_predep_{ftype}.csv — {n} rows (merged)")
-        elif chunks:
-            total = sum(_csv_rows(c) for c in chunks)
-            _ok(f"step7_predep_{ftype}: {len(chunks)} chunk files, ~{total} rows total")
-        else:
+        all_files = ([merged] if merged.exists() else []) + chunks
+        total_rows = sum(_csv_rows(f) for f in all_files)
+        if not all_files:
             _fail(f"step7_predep_{ftype}: no merged file and no chunks")
+            continue
+        label = f"step7_predep_{ftype}.csv" if merged.exists() else f"{len(chunks)} chunk files"
+        try:
+            sample_dfs = [_pd.read_csv(f) for f in all_files[:3]]
+            sample = _pd.concat(sample_dfs, ignore_index=True)
+            if "predep" not in sample.columns:
+                _warn(f"step7_predep_{ftype}: {label}, {total_rows} rows — 'predep' column missing!")
+            else:
+                pct_valid = sample["predep"].notna().mean() * 100
+                if pct_valid < 1:
+                    _fail(f"step7_predep_{ftype}: {label}, {total_rows} rows — "
+                          f"predep {pct_valid:.0f}% non-null (all NaN!)")
+                    lines.append("       → All PREDEP computations excluded (n_valid < 30).")
+                    lines.append("       → Root cause: feature columns are NaN in step4/5/6.")
+                    lines.append("       → Fix: delete step4/5/6 outputs and re-run from step 4.")
+                elif pct_valid < 30:
+                    _warn(f"step7_predep_{ftype}: {label}, {total_rows} rows — "
+                          f"predep {pct_valid:.0f}% non-null (many exclusions)")
+                else:
+                    _ok(f"step7_predep_{ftype}: {label}, {total_rows} rows, "
+                        f"{pct_valid:.0f}% valid predep")
+        except Exception as e:
+            _warn(f"step7_predep_{ftype}: {label}, {total_rows} rows — could not sample: {e}")
     lines.append("")
 
     # --- Step 7b ---
     lines.append("[Step 7b] EP significance tests")
     f7b_diag = RESULTS_DIR / "step7b_diagnostic_table.csv"
     f7b_pair = RESULTS_DIR / "step7b_pairwise_table.csv"
+    expected_8b_figs = 0
+    n_data_blocks = 0
     if f7b_diag.exists():
         n_diag = _csv_rows(f7b_diag)
         _ok(f"step7b_diagnostic_table.csv — {n_diag} variables tested")
-        # Check which blocks are present
+        # Check which blocks are present and their skip rate
         try:
-            import pandas as pd
-            diag = pd.read_csv(f7b_diag)
-            has_lec = (diag["var_type"] == "LEC term").any() if "var_type" in diag.columns else False
-            has_abs = (diag["field_type"] == "absolute").any() if "field_type" in diag.columns else False
-            has_anom = (diag["field_type"] == "anomaly").any() if "field_type" in diag.columns else False
+            diag = _pd.read_csv(f7b_diag)
+            _blk_defs = [
+                ("LEC terms",  "var_type",   "LEC term"),
+                ("absolute",   "field_type", "absolute"),
+                ("anomaly",    "field_type", "anomaly"),
+            ]
             blocks_found = []
-            if has_lec: blocks_found.append("LEC terms")
-            if has_abs: blocks_found.append("absolute")
-            if has_anom: blocks_found.append("anomaly")
+            for blk_label, col, val in _blk_defs:
+                if col not in diag.columns:
+                    continue
+                blk = diag[diag[col] == val]
+                if len(blk) == 0:
+                    continue
+                blocks_found.append(blk_label)
+                n_skip = (blk["global_test"] == "SKIPPED").sum() \
+                         if "global_test" in blk.columns else 0
+                pct_skip = n_skip / len(blk) * 100
+                if pct_skip == 100:
+                    _warn(f"  Block '{blk_label}': {len(blk)} variables — ALL SKIPPED "
+                          f"(NaN features from bad ERA5 run)")
+                    lines.append("       → Fix: delete step4/5/6 outputs and re-run from step 4.")
+                elif pct_skip > 50:
+                    _warn(f"  Block '{blk_label}': {len(blk)} variables, {pct_skip:.0f}% SKIPPED")
+                    n_data_blocks += 1
+                else:
+                    n_sig_blk = (blk["global_p_adjusted"] < 0.05).sum() \
+                                if "global_p_adjusted" in blk.columns else "?"
+                    _ok(f"  Block '{blk_label}': {len(blk)} vars, "
+                        f"{n_sig_blk} significant, {pct_skip:.0f}% skipped")
+                    n_data_blocks += 1
             if blocks_found:
-                _ok(f"  Blocks tested: {', '.join(blocks_found)}")
+                pass  # already printed per-block
             else:
                 _warn("  No recognizable blocks (var_type/field_type) in diagnostic table")
-            n_sig = (diag["global_p_adjusted"] < 0.05).sum() if "global_p_adjusted" in diag.columns else "?"
+            n_sig = (diag["global_p_adjusted"] < 0.05).sum() \
+                    if "global_p_adjusted" in diag.columns else "?"
             _ok(f"  Significant variables (p_adj < 0.05): {n_sig} / {n_diag}")
-            # Expected figure count = blocks × 4 figure types (volcano, ranking always;
-            # significance_heatmap, effect_size_heatmap only if pairwise data)
-            n_blocks = len(blocks_found)
             has_pair = f7b_pair.exists() and _csv_rows(f7b_pair) > 0
-            expected_figs = n_blocks * 2 + (n_blocks * 2 if has_pair else 0)
-            lines.append(f"       Expected step8b figures: {expected_figs} "
-                         f"({n_blocks} blocks × {'4' if has_pair else '2'} types)")
+            expected_8b_figs = n_data_blocks * (4 if has_pair else 2)
+            lines.append(f"       Expected step8b figures: {expected_8b_figs} "
+                         f"({n_data_blocks} data-bearing blocks × {'4' if has_pair else '2'} types)")
         except Exception as e:
             _warn(f"  Could not parse diagnostic table: {e}")
     else:
@@ -671,7 +742,15 @@ def verify() -> str:
     lines.append("[Step 8] Synthesis figures (PREDEP)")
     f8_summary = RESULTS_DIR / "step8_summary_table.csv"
     if f8_summary.exists():
-        _ok(f"step8_summary_table.csv — {_csv_rows(f8_summary)} rows")
+        n8 = _csv_rows(f8_summary)
+        if n8 == 0:
+            _fail("step8_summary_table.csv — 0 rows (all PREDEP values are NaN)")
+            lines.append("       → Root cause: NaN feature columns in step4/5/6 → step7 excluded all rows.")
+            lines.append("       → Fix: delete step4/5/6/7 outputs and re-run from step 4.")
+        elif n8 < 10:
+            _warn(f"step8_summary_table.csv — only {n8} rows (expected ≥10)")
+        else:
+            _ok(f"step8_summary_table.csv — {n8} rows")
     else:
         _fail("step8_summary_table.csv MISSING")
     # Count step8 figures
@@ -692,12 +771,18 @@ def verify() -> str:
                 list(FIGURES_DIR.glob("effect_size_heatmap_*.png")) +
                 list(FIGURES_DIR.glob("volcano_*.png")) +
                 list(FIGURES_DIR.glob("effect_ranking_*.png")))
-    if s8b_figs:
-        _ok(f"Step 8b figures: {len(s8b_figs)} files")
+    actual_8b = len(s8b_figs)
+    if actual_8b == 0:
+        _warn("No step 8b figures found")
+    elif expected_8b_figs > 0 and actual_8b < expected_8b_figs:
+        _warn(f"Step 8b figures: {actual_8b}/{expected_8b_figs} expected "
+              f"({expected_8b_figs - actual_8b} missing — blocks with all-SKIPPED tests produce no figures)")
         for fg in sorted(s8b_figs):
             lines.append(f"       {fg.name}")
     else:
-        _warn("No step 8b figures found")
+        _ok(f"Step 8b figures: {actual_8b} files")
+        for fg in sorted(s8b_figs):
+            lines.append(f"       {fg.name}")
     lines.append("")
 
     # --- Step 9 ---
@@ -710,23 +795,27 @@ def verify() -> str:
     lines.append("")
 
     # --- Log errors scan ---
-    lines.append("[Logs] Scanning for errors in latest logs...")
-    all_logs = sorted(LOG_DIR.glob("*.log"), key=lambda f: f.stat().st_mtime,
-                      reverse=True)[:20]
-    error_logs = []
-    for lp in all_logs:
-        if _log_has_error(lp):
-            # Only flag pipeline-relevant logs
-            if any(lp.name.startswith(pfx) for pfx in
-                   ["lec_field_", "step", "orchestrator_"]):
-                error_logs.append(lp)
+    lines.append("[Logs] Scanning for errors in pipeline logs...")
+    import re as _re
+    # Match only logs from this pipeline (lec_field_dependence) to avoid false positives
+    # from other pipelines (e.g. ep_structure_analysis) that share the logs/ directory.
+    _lec_log_re = _re.compile(
+        r'^(lec_field_|orchestrator_|step[45]_chunk\d+_|step7_(absolute|anomaly)_chunk\d+_)',
+        _re.IGNORECASE,
+    )
+    all_pipe_logs = [
+        lp for lp in LOG_DIR.glob("*.log")
+        if _lec_log_re.match(lp.name)
+    ] if LOG_DIR.exists() else []
+    all_pipe_logs.sort(key=lambda f: f.stat().st_mtime, reverse=True)
+    error_logs = [lp for lp in all_pipe_logs if _log_has_error(lp)]
     if error_logs:
         _warn(f"{len(error_logs)} log(s) contain ERROR/Traceback:")
-        for lp in error_logs[:5]:
+        for lp in error_logs[:8]:
             err_line = _extract_error_line(lp)
             lines.append(f"       {lp.name}: {err_line}")
     else:
-        _ok("No errors found in recent pipeline logs")
+        _ok(f"No errors in {len(all_pipe_logs)} pipeline logs")
     lines.append("")
 
     # --- Summary ---

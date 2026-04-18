@@ -11,10 +11,11 @@ scripts/
 ├── main/                               # Final publication figure scripts (01–07, S1–S3)
 ├── exploratory/                        # Preliminary exploratory scripts (not in paper)
 ├── cluster_analysis_energy_patterns/   # PCA + K-Means Energy Pattern classification
-├── ep_structure_analysis/              # CURRENT FOCUS: ERA5 composite analysis (EP1 vs EP2)
+├── ep_structure_analysis/              # CURRENT FOCUS: ERA5 composite analysis (EP1, EP2, EP3, EPALL)
 ├── ck_subterms_analysis/               # Ck decomposition into subterms for EP1
 ├── preprocess_data/                    # Data download and preprocessing
 ├── utils/                              # Shared utility functions
+├── web/                                # Scripts to build and update the results website
 ├── setup_and_examples/                 # Environment verification and script templates
 └── documentation/                      # Compile all READMEs into a consolidated PDF
 ```
@@ -37,13 +38,13 @@ Repository of final publication-ready figure scripts, numbered by figure order (
 | `04_figure_lps_combined.py` | Fig 4: Lorenz Phase Space for EP1–EP3 |
 | `05_figure_intensity_seasonality_trends.py` | Fig 5: EP intensity, seasonality, trends |
 | `06_figure_genesis_density_kde.py` | Fig 6: Genesis density (KDE) |
-| `07_figure_ep1_instability_composite.py` | Fig 7: EP1 instability composite |
+| `07_figure_ep1_ep2_dynamical_composites.py` | Fig 7: EPALL-relative dynamical composites (3×3, EP1/EP2/EP3) |
 | `S1_figure_pca_clustering_validation.py` | Fig S1: PCA/clustering validation |
 | `S2_figure_selected_tracks.py` | Fig S2: Selected EP1 tracks |
 | `S3_figure_vertical_levels.py` | Fig S3: Vertical energy conversion distribution |
 | `run_all.py` | Run all figure scripts sequentially |
 
-**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; S2 and S3 additionally require composites from `data/era5_ep_structure/` produced by `ep_structure_analysis`.
+**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; Fig 7, S2, and S3 additionally require composites from `data/era5_ep_structure/` produced by `ep_structure_analysis`.
 
 **Outputs:** `figures/main/`
 
@@ -96,19 +97,19 @@ Scripts for generating the Energy Patterns via PCA + K-Means clustering of Loren
 
 **Outputs:** `results/cluster/` (CSV assignments, PCA/KMeans model pickles), `figures/`, `docs/scientific_notes_cluster_analysis.pdf`
 
-**Key results:** EP1 (11.6%, N=444), EP2 (25.6%, N=979), EP3 (62.7%)
+**Key results (cluster analysis):** EP1 (11.6%, N=444), EP2 (25.6%, N=979), EP3 (62.7%, N=2,397). After ≥ 24 h duration filter (ep_structure_analysis): EP1 N=332, EP2 N=776, EP3 N=1,625, EPALL N=2,733.
 
 ---
 
 ### `ep_structure_analysis/` — Spatial Structure Analysis (Current Scientific Focus)
 
-Composite analysis of ERA5 reanalysis fields to understand the atmospheric structure of EP1 (N=444) and EP2 (N=979) cyclones during intensification. EP3 is excluded because it represents less intense, climatological-background cyclones.
+Composite analysis of ERA5 reanalysis fields to understand the atmospheric structure of EP1, EP2, EP3, and EPALL (all cyclones combined) during intensification. The primary figure output uses **EPALL-relative anomalies** (EP − EPALL) to isolate what is dynamically distinctive about each energy pattern.
 
 #### Scientific Summary
 
-**Objective:** Investigate what structural differences in the large-scale atmospheric environment distinguish EP1 (high-conversion) from EP2 (moderate-conversion) cyclones.
+**Objective:** Investigate atmospheric structural differences among the three Energy Patterns and relative to a generic intensifying South Atlantic cyclone (EPALL).
 
-**Sample:** All 444 EP1 and 979 EP2 cyclones identified by `cluster_analysis_energy_patterns`, using intensification-phase timesteps only.
+**Sample:** Cyclones with intensification phase ≥ 24 h, after applying a duration filter that removes ~28.5% of cases (short intensification phases). Final sample sizes: EP1 (N=332), EP2 (N=776), EP3 (N=1,625), EPALL (N=2,733). Composites use central intensification timesteps only.
 
 **ERA5 data:** 0.25° resolution, storm-centred 30°×30° domain, 6-hourly. Pressure-level variables: u, v, t, z, q at levels 175–975 hPa. Single-level variable: msl.
 
@@ -130,16 +131,20 @@ Anomaly versions (departure from 1991–2020 WMO climatology) are computed for P
 
 **Pipeline:**
 
-1. `step1_select_ep_tracks.py` — Select EP1/EP2 tracks from cluster results
-2. `step2_download_era5_parallel.py` — Download ERA5 fields (run **remotely**)
-3. `step2_1_download_era5_monthly_means.py` — Download monthly mean climatology (run **remotely**)
-4. `step3_precompute_composites.py` — Compute composites (run **remotely**)
-5. `step4_create_figures.py` — Create composite figures (run **locally**)
-6. `step5_update_scientific_notes.py` — Update SCIENTIFIC_NOTES.md and regenerate PDF (run **locally**)
+1. `step1_select_ep_tracks.py` — Select EP1/EP2/EP3 tracks from cluster results
+2. `step2_download_era5_parallel.py` — Download ERA5 pressure-level and single-level fields (run **remotely**)
+3. `step2b_reuse_legacy_era5.py` — Reuse previously downloaded ERA5 data where available (run **remotely**)
+4. `step2c_monitor.py` — Monitor download progress (run **remotely**)
+5. `step2d_download_era5_monthly_means.py` — Download 1991–2020 monthly mean climatology (run **remotely**)
+6. `step3_precompute_composites.py` — Compute storm-relative composites for all EPs (run **remotely**)
+7. `step4_create_figures.py` — Create per-diagnostic composite figures (run **locally**)
+8. `step4b_create_dynamical_composites.py` — Create dynamical composite figures (run **locally**)
+9. `step5_update_scientific_notes.py` — Update SCIENTIFIC_NOTES.md and regenerate PDF (run **locally**)
+10. `step6_generate_cyclone_explorer_panels.py` — Generate per-cyclone panels for the results website (run **locally**)
 
 **Inputs:** `results/cluster/kmeans_clustered_data.csv`, ERA5 via CDS API
 
-**Outputs:** `data/era5_ep_structure/precomputed_composites_ep1.nc`, `data/era5_ep_structure/precomputed_composites_ep2.nc`, `figures/`, `docs/scientific_notes_ep_structure.pdf`
+**Outputs:** `data/era5_ep_structure/precomputed_composites_ep{1,2,3,all}.nc`, `figures/ep_structure/`, `docs/scientific_notes_ep_structure.pdf`
 
 ---
 
@@ -187,6 +192,9 @@ Shared utility functions used across the repository.
 |--------|-------------|
 | `load_data.py` | Load cyclone tracks and energy data |
 | `gap_statistic.py` | Gap Statistic implementation (Tibshirani et al. 2001) |
+| `colormaps.py` | Custom diverging colormaps (`CMAP_PV_ANOM`, `CMAP_AFC`) used across figures |
+| `ep_mapping.py` | Mapping between cluster labels and EP names/colours |
+| `timestep_selection.py` | Central-timestep selection logic for composite pipeline |
 
 ---
 
@@ -197,6 +205,30 @@ Shared utility functions used across the repository.
 | `verify_environment.py` | Check all required packages are installed |
 | `example_analysis.py` | Minimal working example of a complete analysis |
 | `template_analysis.py` | Boilerplate template for new scripts |
+
+---
+
+### `web/` — Results Website Scripts
+
+Scripts to build and update the [Vercel + Supabase results website](https://paper-energy-patterns.vercel.app). These scripts extract data from local analysis outputs and push it to the web frontend.
+
+| Script | Description |
+|--------|-------------|
+| `prepare_site.py` | Master orchestrator: runs extraction scripts and copies figures |
+| `extract_composite_site_data.py` | Generates `composite_figures_manifest.json` from `figures/ep_structure/` |
+| `extract_cluster_site_data.py` | Extracts cluster/LPS data for the web frontend |
+| `extract_ck_subterms_site_data.py` | Extracts Ck subterm data for the web frontend |
+| `extract_cyclone_explorer_data.py` | Extracts per-cyclone panel data for the Cyclone Explorer |
+| `copy_figures_to_web.py` | Copies figure files into `web/public/figures/` |
+| `upload_figures_to_supabase.py` | Uploads figures to Supabase Storage |
+| `build_site_manifest.py` | Builds general site asset manifest |
+| `generate_hotfix_manifest.py` | Patches the manifest after hotfix figure updates |
+
+**Workflow:**
+```bash
+python scripts/web/prepare_site.py        # full site update
+cd web && npx next build && vercel --prod  # deploy
+```
 
 ---
 

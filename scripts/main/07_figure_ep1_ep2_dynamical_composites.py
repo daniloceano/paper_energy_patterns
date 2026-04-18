@@ -147,11 +147,12 @@ SLP_INTERVAL = 2.0
 
 # ── Wind vectors (EPALL-relative anomaly winds; magnitudes ~1–5 m/s) ─────────
 VECTOR_SKIP      = 16
+VECTOR_WIDTH     = 0.009   # shaft width (fraction of axes width); increase → thicker
 # 250 hPa anomaly wind
-VECTOR_SCALE_250 = 100
+VECTOR_SCALE_250 = 75
 QUIVER_KEY_U_250 = 5.0    # reference vector [m s⁻¹]
 # 850 hPa anomaly wind
-VECTOR_SCALE_850 = 50
+VECTOR_SCALE_850 = 40
 QUIVER_KEY_U_850 = 5.0    # reference vector [m s⁻¹]
 
 # ── RK meridional sign-reversal hatching ─────────────────────────────────────
@@ -403,7 +404,7 @@ def _add_wind_vectors(ax, x_2d, y_2d, u, v, scale, key_u,
     Q = ax.quiver(
         x_2d[::sk, ::sk], y_2d[::sk, ::sk],
         u[::sk, ::sk], v[::sk, ::sk],
-        scale=scale, width=0.004, color=color, alpha=alpha,
+        scale=scale, width=VECTOR_WIDTH, color=color, alpha=alpha,
         headwidth=3, headlength=4, headaxislength=3.5,
         zorder=8,
     )

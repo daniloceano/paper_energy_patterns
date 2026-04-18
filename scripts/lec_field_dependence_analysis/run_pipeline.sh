@@ -196,6 +196,45 @@ _log "=================================================================="
 cd "$PROJECT_DIR"
 
 # ---------------------------------------------------------------------------
+# Step 1 — Consolidate metadata
+# ---------------------------------------------------------------------------
+if should_run 1; then
+    if $SKIP_DONE && [[ -f "$RESULTS_DIR/step1_eligible_cases.csv" ]]; then
+        _log "SKIP   [step1]  output already exists"
+    else
+        run_single "step1" \
+            "$PYTHON $PIPELINE_DIR/step1_consolidate_metadata.py" \
+            || { _log "Stopping."; exit 1; }
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Step 2 — Build LEC table
+# ---------------------------------------------------------------------------
+if should_run 2; then
+    if $SKIP_DONE && [[ -f "$RESULTS_DIR/step2_lec_intensification_means.csv" ]]; then
+        _log "SKIP   [step2]  output already exists"
+    else
+        run_single "step2" \
+            "$PYTHON $PIPELINE_DIR/step2_build_lec_table.py" \
+            || { _log "Stopping."; exit 1; }
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# Step 3 — Map ERA5 field availability
+# ---------------------------------------------------------------------------
+if should_run 3; then
+    if $SKIP_DONE && [[ -f "$RESULTS_DIR/step3_era5_field_manifest.csv" ]]; then
+        _log "SKIP   [step3]  output already exists"
+    else
+        run_single "step3" \
+            "$PYTHON $PIPELINE_DIR/step3_map_era5_fields.py --era5-dir $ERA5_DIR" \
+            || { _log "Stopping."; exit 1; }
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Step 4 — Extract absolute features
 # ---------------------------------------------------------------------------
 if should_run 4; then

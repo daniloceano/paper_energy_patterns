@@ -169,7 +169,16 @@ def main():
     # 1. Load manifest
     manifest = pd.read_csv(INPUT_MANIFEST)
     if "era5_available" in manifest.columns:
-        manifest = manifest[manifest["era5_available"]]
+        n_available = manifest["era5_available"].sum()
+        n_total = len(manifest)
+        if n_available == 0:
+            logging.warning(
+                f"Manifest has {n_total} cases but ALL are marked era5_available=False. "
+                "This usually means step3 ran in dry-run mode (without --era5-dir). "
+                "Proceeding without filtering — missing files will be handled individually."
+            )
+        else:
+            manifest = manifest[manifest["era5_available"]]
     track_ids = manifest["track_id"].astype(str).tolist()
     logging.info(f"Total cases: {len(track_ids)}")
 
@@ -192,7 +201,14 @@ def main():
         logging.info("Nothing to process.")
         return
 
-    # 4. Extract features (serial for now — EPALL fields are in global memory)
+    # 4. Extract features (serial — EPALL fields are in global memory,
+    #    not safe for ProcessPoolExecutor without explicit init_worker)
+    if args.workers > 1:
+        logging.warning(
+            f"--workers={args.workers} was requested but step 5 runs serially "
+            "because _EPALL_FIELDS is in global memory. Use orchestrator chunking "
+            "for parallelism (--chunk / --n-chunks)."
+        )
     logging.info(f"\nExtracting anomaly features...")
     era5_dir = args.era5_dir.resolve()
     results = []

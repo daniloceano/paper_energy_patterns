@@ -88,6 +88,9 @@ Thumbs.db
 *.swo
 *~
 
+# Pipeline logs (generated at runtime, never commit)
+logs/
+
 # Temporary files
 *.tmp
 *.bak

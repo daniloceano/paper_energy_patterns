@@ -354,8 +354,11 @@ def main():
         logging.info("\n[C] Loading anomaly features...")
         anom_df = _load_integrated(INPUT_INTEGRATED_ANOM)
         if len(anom_df) > 0:
+            # Step 5 creates anomaly columns as {field_key}_anom_epall__{feat}
+            # where field_key is from DYNAMIC_FIELDS_ABSOLUTE (e.g. pv_850).
+            anom_field_keys = [f"{fk}_anom_epall" for fk in DYNAMIC_FIELDS_ABSOLUTE]
             anom_cols = [f"{fk}__{fn}"
-                         for fk in DYNAMIC_FIELDS_ANOMALY
+                         for fk in anom_field_keys
                          for fn in feature_names
                          if f"{fk}__{fn}" in anom_df.columns]
             logging.info(f"    Anomaly feature columns: {len(anom_cols)}")

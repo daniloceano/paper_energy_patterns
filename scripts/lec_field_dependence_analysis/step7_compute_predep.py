@@ -177,17 +177,8 @@ def main():
     # 1. Load integrated table
     if args.field_type == "absolute":
         input_file = RESULTS_DIR / "step6_integrated_absolute.csv"
-        field_registry = DYNAMIC_FIELDS_ABSOLUTE
     else:
         input_file = RESULTS_DIR / "step6_integrated_anomaly.csv"
-        field_registry = {
-            k.replace("_minus_epall", "_anom_epall"): v
-            for k, v in DYNAMIC_FIELDS_ANOMALY.items()
-        }
-        # Adjust field keys for anomaly feature columns
-        field_registry = {
-            f"{k}_anom_epall": v for k, v in DYNAMIC_FIELDS_ABSOLUTE.items()
-        }
 
     if not input_file.exists():
         logging.error(f"Input file not found: {input_file}")

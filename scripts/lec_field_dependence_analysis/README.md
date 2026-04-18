@@ -79,6 +79,12 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 
 ### Steps that run locally
 
+> **⚠️ Step 3 note:** When running locally without `--era5-dir`, step 3 creates a
+> manifest with all cases marked `era5_available=False` (dry-run mode). If using the
+> **orchestrator** (`run_pipeline.sh`), step 3 is automatically re-run on the remote
+> server with `--era5-dir`, so this is handled. If running steps **manually**, re-run
+> step 3 on the remote server with `--era5-dir /path/to/era5/` before steps 4–5.
+
 | Step | Script | Description | Input | Output |
 |------|--------|-------------|-------|--------|
 | 1 | `step1_consolidate_metadata.py` | Build eligible cases table | `results/ep_structure/`, LEC Zenodo | `step1_eligible_cases.csv` |
@@ -325,3 +331,9 @@ See `SCIENTIFIC_NOTES.md` for detailed methodology and interpretation guidance.
 ## Reference
 
 Assunção, R., Figueiredo, F., Tinoco Junior, F. N., de Sá-Freire, L. M., & Silva, F. (2025). *An Interpretable Measure for Quantifying Predictive Dependence between Continuous Random Variables*. arXiv:2501.10815v1.
+
+---
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for known issues, root causes, fixes, and diagnostic commands.

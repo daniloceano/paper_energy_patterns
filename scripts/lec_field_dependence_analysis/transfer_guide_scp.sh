@@ -95,6 +95,8 @@ if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
         "step6_integrated_absolute.csv"
         "step6_integrated_anomaly.csv"
         "step6_integration_qa_report.txt"
+        "step7_predep_absolute.csv"
+        "step7_predep_anomaly.csv"
         "step7b_diagnostic_table.csv"
         "step7b_pairwise_table.csv"
         "step7b_significance_report.txt"

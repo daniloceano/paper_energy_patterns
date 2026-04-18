@@ -8,20 +8,43 @@
 #
 #  Usage:
 #    bash run_pipeline.sh --era5-dir /data/era5/
+#    bash run_pipeline.sh --era5-dir /data/era5/ --background          # nohup mode
 #    bash run_pipeline.sh --era5-dir /data/era5/ --n-chunks 20 --workers 4
 #    bash run_pipeline.sh --era5-dir /data/era5/ --skip-done
 #    bash run_pipeline.sh --era5-dir /data/era5/ --only 4,5,6
-#    bash run_pipeline.sh --era5-dir /data/era5/ --parallel-streams  # run abs+anom in parallel
+#    bash run_pipeline.sh --era5-dir /data/era5/ --parallel-streams
+#    bash run_pipeline.sh --era5-dir /data/era5/ --clean                # wipe results+logs first
+#    bash run_pipeline.sh --era5-dir /data/era5/ --clean --dry-run      # preview what would be deleted
 #
 #  Options:
 #    --era5-dir PATH       Path to per-cyclone ERA5 NetCDF files [REQUIRED]
+#    --background          Re-exec under nohup (survives SSH disconnect).
+#                          Prints PID + log path and exits immediately.
+#    --clean               Delete all previous results and pipeline logs before
+#                          running, so the pipeline starts from a clean slate.
+#                          Clears: results/lec_field_dependence/  figures/lec_field_dependence/
+#                                  logs/step*  logs/orchestrator*  logs/nohup_pipeline*
+#                                  logs/pipeline.pid  logs/pipeline_status.txt
+#                          Combine with --dry-run to preview what would be deleted.
+#    --dry-run             When used with --clean: list what would be deleted and exit.
+#                          Has no effect without --clean.
 #    --n-chunks N          Parallel chunks per heavy step (default: 16)
 #    --workers N           CPU workers per chunk (default: 4)
 #    --conda-env NAME      Conda environment to use (default: paper_energy_patterns)
 #    --skip-done           Skip steps whose output files already exist
+#    --stop-on-error       Halt the pipeline on the first failed step.
+#                          Default: continue — all errors are logged and
+#                          reported in the final summary.
 #    --only STEPS          Run only these steps, e.g. "4,5,6" or "7,7b"
 #    --parallel-streams    Run absolute+anomaly in parallel for steps 4,5,7
 #                          (double the CPU load — use on servers with many cores)
+#
+#  Error handling:
+#    By default every step is attempted.  If a step fails, its exit code and
+#    log file are recorded.  The pipeline continues.  At the end a summary
+#    lists every failed step with the path to its log so you can inspect it
+#    and decide whether to remove or rerun that step.
+#    Use --stop-on-error to restore the old "halt at first failure" behaviour.
 #
 #  Notes:
 #    - Steps 4, 5, 7 use parallel background jobs (n-chunks processes at once).
@@ -32,6 +55,7 @@
 # =============================================================================
 
 set -uo pipefail
+ORIG_ARGS=("$@")   # Saved before parsing — used by --background re-exec
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -47,6 +71,10 @@ CONDA_ENV="paper_energy_patterns"
 SKIP_DONE=false
 ONLY_STEPS=""
 PARALLEL_STREAMS=false
+BACKGROUND=false
+STOP_ON_ERROR=false
+CLEAN=false
+DRY_RUN=false
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -57,9 +85,13 @@ while [[ $# -gt 0 ]]; do
         --n-chunks)         N_CHUNKS="$2";     shift 2 ;;
         --workers)          N_WORKERS="$2";    shift 2 ;;
         --conda-env)        CONDA_ENV="$2";    shift 2 ;;
-        --skip-done)        SKIP_DONE=true;    shift   ;;
-        --only)             ONLY_STEPS="$2";   shift 2 ;;
-        --parallel-streams) PARALLEL_STREAMS=true; shift ;;
+        --skip-done)        SKIP_DONE=true;       shift   ;;
+        --stop-on-error)    STOP_ON_ERROR=true;   shift   ;;
+        --background)       BACKGROUND=true;      shift   ;;
+        --only)             ONLY_STEPS="$2";      shift 2 ;;
+        --parallel-streams) PARALLEL_STREAMS=true; shift  ;;
+        --clean)            CLEAN=true;             shift   ;;
+        --dry-run)          DRY_RUN=true;           shift   ;;
         -h|--help)
             sed -n '/^#  Usage/,/^# ====/p' "$0" | head -n -1
             exit 0
@@ -77,6 +109,83 @@ fi
 if [[ ! -d "$ERA5_DIR" ]]; then
     echo "ERROR: ERA5 directory not found: $ERA5_DIR" >&2
     exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Clean mode: remove previous results and pipeline logs
+# ---------------------------------------------------------------------------
+if $CLEAN; then
+    _RESULTS_CLEAN="$PROJECT_DIR/results/lec_field_dependence"
+    _FIGURES_CLEAN="$PROJECT_DIR/figures/lec_field_dependence"
+    _LOGS_DIR="$PROJECT_DIR/logs"
+
+    # Collect targets — bash 3.2-compatible (no mapfile)
+    _RESULT_FILES=()
+    while IFS= read -r f; do _RESULT_FILES+=("$f"); done < \
+        <(find "$_RESULTS_CLEAN" -mindepth 1 -maxdepth 1 -type f 2>/dev/null | sort)
+
+    _FIGURE_FILES=()
+    while IFS= read -r f; do _FIGURE_FILES+=("$f"); done < \
+        <(find "$_FIGURES_CLEAN" -mindepth 1 -maxdepth 1 -type f 2>/dev/null | sort)
+
+    _LOG_FILES=()
+    while IFS= read -r f; do _LOG_FILES+=("$f"); done < \
+        <(find "$_LOGS_DIR" -maxdepth 1 -type f \( \
+            -name "step*_*.log"           \
+            -o -name "orchestrator_*.log" \
+            -o -name "nohup_pipeline_*.log" \
+            -o -name "pipeline.pid"       \
+            -o -name "pipeline_status.txt" \
+        \) 2>/dev/null | sort)
+
+    _ALL_TARGETS=("${_RESULT_FILES[@]+"${_RESULT_FILES[@]}"}" "${_FIGURE_FILES[@]+"${_FIGURE_FILES[@]}"}" "${_LOG_FILES[@]+"${_LOG_FILES[@]}"}")
+
+    echo "=== CLEAN MODE ==="
+    if [[ ${#_ALL_TARGETS[@]} -eq 0 ]]; then
+        echo "  Nothing to clean — output directories are already empty."
+        $DRY_RUN && exit 0
+    else
+        echo "  Results  : ${#_RESULT_FILES[@]} file(s) in $_RESULTS_CLEAN"
+        echo "  Figures  : ${#_FIGURE_FILES[@]} file(s) in $_FIGURES_CLEAN"
+        echo "  Logs     : ${#_LOG_FILES[@]} file(s) in $_LOGS_DIR"
+        echo ""
+        if $DRY_RUN; then
+            echo "  [DRY RUN] The following files would be deleted:"
+            for f in "${_ALL_TARGETS[@]}"; do echo "    $f"; done
+            exit 0
+        fi
+        echo "  Deleting..."
+        for f in "${_ALL_TARGETS[@]}"; do
+            rm -f "$f" && echo "    removed: $f"
+        done
+        echo "  Done. Clean slate ready."
+    fi
+    echo "=================="
+    echo ""
+fi
+
+# ---------------------------------------------------------------------------
+# Background mode: re-exec this script under nohup and exit the parent
+# ---------------------------------------------------------------------------
+if $BACKGROUND; then
+    LOG_DIR_EARLY="$PROJECT_DIR/logs"
+    mkdir -p "$LOG_DIR_EARLY"
+    NOHUP_LOG="$LOG_DIR_EARLY/nohup_pipeline_$(date +%Y%m%d_%H%M%S).log"
+    # Rebuild args without --background so the child does not fork again
+    NEW_ARGS=()
+    for arg in "${ORIG_ARGS[@]}"; do
+        [[ "$arg" == "--background" ]] && continue
+        NEW_ARGS+=("$arg")
+    done
+    echo "Starting pipeline in background (nohup)..."
+    echo "  nohup log : $NOHUP_LOG"
+    echo "  Monitor   : python scripts/lec_field_dependence_analysis/monitor_pipeline.py --watch"
+    nohup bash "$SCRIPT_DIR/run_pipeline.sh" "${NEW_ARGS[@]}" > "$NOHUP_LOG" 2>&1 &
+    BGPID=$!
+    echo "  PID       : $BGPID"
+    echo "$BGPID" > "$LOG_DIR_EARLY/pipeline.pid"
+    printf 'RUNNING|%s|%s\n' "$(date +%s)" "$BGPID" > "$LOG_DIR_EARLY/pipeline_status.txt"
+    exit 0
 fi
 
 # ---------------------------------------------------------------------------
@@ -98,13 +207,22 @@ STATUS_FILE="$LOG_DIR/pipeline_status.txt"
 echo "$$" > "$PID_FILE"
 printf 'RUNNING|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
 
+PIPELINE_START=$(date +%s)
+STEP_ERRORS=0
+FAILED_STEPS=()
+
 # Cleanup on unexpected exit (SIGINT, SIGTERM, unhandled error)
 _on_unexpected_exit() {
     local code=$?
     if [[ $code -ne 0 ]]; then
         printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
-        # log the failure if _log is already defined
         type _log &>/dev/null && _log "Pipeline terminated unexpectedly (exit $code)"
+        if [[ ${#FAILED_STEPS[@]} -gt 0 ]]; then
+            type _log &>/dev/null && _log "Steps that failed before termination:"
+            for _entry in "${FAILED_STEPS[@]}"; do
+                type _log &>/dev/null && _log "   ✗  $_entry"
+            done
+        fi
     fi
 }
 trap '_on_unexpected_exit' EXIT
@@ -112,9 +230,6 @@ trap '_on_unexpected_exit' EXIT
 # ---------------------------------------------------------------------------
 # Helper functions
 # ---------------------------------------------------------------------------
-PIPELINE_START=$(date +%s)
-STEP_ERRORS=0
-
 _log() {
     local msg="$1"
     printf "[%s] %s\n" "$(date '+%Y-%m-%d %H:%M:%S')" "$msg" | tee -a "$ORCH_LOG"
@@ -145,7 +260,8 @@ output_ready() {
     return 1
 }
 
-# Run a single (non-chunked) step
+# Run a single (non-chunked) step.
+# On failure: records in FAILED_STEPS and continues unless --stop-on-error.
 run_single() {
     local step="$1"
     local cmd="$2"
@@ -157,13 +273,24 @@ run_single() {
         _log "DONE   [$step]  elapsed=$(_elapsed $step_start)  log=$(basename $step_log)"
         return 0
     else
-        _log "FAILED [$step]  elapsed=$(_elapsed $step_start)  log=$(basename $step_log)"
+        local exit_code=$?
+        _log "FAILED [$step] (exit $exit_code)  elapsed=$(_elapsed $step_start)"
+        _log "       Log: $step_log"
         STEP_ERRORS=$(( STEP_ERRORS + 1 ))
+        FAILED_STEPS+=("[$step]  exit=$exit_code  log=$step_log")
+        if $STOP_ON_ERROR; then
+            _log "Halting (--stop-on-error is set)."
+            printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
+            trap - EXIT
+            exit 1
+        fi
         return 1
     fi
 }
 
-# Run N_CHUNKS parallel background jobs, wait, collect exit codes
+# Run N_CHUNKS parallel background jobs, wait, and collect per-chunk exit codes.
+# On failure: logs which chunks failed with their log paths, records in
+# FAILED_STEPS, and continues unless --stop-on-error.
 run_chunks() {
     local step="$1"
     local n="$2"
@@ -173,21 +300,38 @@ run_chunks() {
     _log "START  [$step]  launching $n parallel chunks..."
 
     local pids=()
+    local chunk_logs=()
     for i in $(seq 0 $(( n - 1 ))); do
         local chunk_log="$LOG_DIR/${step}_chunk${i}_${TS}.log"
+        chunk_logs+=("$chunk_log")
         local cmd="${cmd_tmpl//\{CHUNK\}/$i}"
         eval "$cmd" >> "$chunk_log" 2>&1 &
         pids+=($!)
     done
 
-    local failed=0
-    for pid in "${pids[@]}"; do
-        wait "$pid" || failed=$(( failed + 1 ))
+    local failed_chunks=()
+    for i in "${!pids[@]}"; do
+        if ! wait "${pids[$i]}"; then
+            failed_chunks+=("chunk${i}")
+        fi
     done
 
-    if [[ $failed -gt 0 ]]; then
-        _log "FAILED [$step]  $failed/$n chunks failed  elapsed=$(_elapsed $step_start)"
+    local n_failed=${#failed_chunks[@]}
+    if [[ $n_failed -gt 0 ]]; then
+        _log "FAILED [$step]  $n_failed/$n chunks failed  elapsed=$(_elapsed $step_start)"
+        _log "       Failed chunks and their logs:"
+        for fc in "${failed_chunks[@]}"; do
+            local idx="${fc#chunk}"
+            _log "         $LOG_DIR/${step}_${fc}_${TS}.log"
+        done
         STEP_ERRORS=$(( STEP_ERRORS + 1 ))
+        FAILED_STEPS+=("[$step]  $n_failed/$n chunks failed: ${failed_chunks[*]}  logs: $LOG_DIR/${step}_chunk*_${TS}.log")
+        if $STOP_ON_ERROR; then
+            _log "Halting (--stop-on-error is set)."
+            printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
+            trap - EXIT
+            exit 1
+        fi
         return 1
     fi
 
@@ -221,8 +365,7 @@ if should_run 1; then
         _log "SKIP   [step1]  output already exists"
     else
         run_single "step1" \
-            "$PYTHON $PIPELINE_DIR/step1_consolidate_metadata.py" \
-            || { _log "Stopping."; exit 1; }
+            "$PYTHON $PIPELINE_DIR/step1_consolidate_metadata.py"
     fi
 fi
 
@@ -234,8 +377,7 @@ if should_run 2; then
         _log "SKIP   [step2]  output already exists"
     else
         run_single "step2" \
-            "$PYTHON $PIPELINE_DIR/step2_build_lec_table.py" \
-            || { _log "Stopping."; exit 1; }
+            "$PYTHON $PIPELINE_DIR/step2_build_lec_table.py"
     fi
 fi
 
@@ -247,8 +389,7 @@ if should_run 3; then
         _log "SKIP   [step3]  output already exists"
     else
         run_single "step3" \
-            "$PYTHON $PIPELINE_DIR/step3_map_era5_fields.py --era5-dir $ERA5_DIR" \
-            || { _log "Stopping."; exit 1; }
+            "$PYTHON $PIPELINE_DIR/step3_map_era5_fields.py --era5-dir $ERA5_DIR"
     fi
 fi
 
@@ -283,15 +424,15 @@ if should_run 4; then
                 wait $PID4 || PSTREAMS_FAIL=$(( PSTREAMS_FAIL + 1 ))
                 wait $PID5 || PSTREAMS_FAIL=$(( PSTREAMS_FAIL + 1 ))
                 if [[ $PSTREAMS_FAIL -gt 0 ]]; then
-                    _log "FAILED [step4+step5 parallel streams]  stopping."
-                    exit 1
-                fi
+                    _log "WARN   [step4+step5 parallel-streams]  $PSTREAMS_FAIL stream(s) failed — see FAILED_STEPS in summary"
+                    # failures already recorded inside run_chunks; continue
+fi
             else
                 _log "SKIP   [step5]  output already exists (parallel-streams)"
-                run_chunks "step4" $N_CHUNKS "$CMD" || { _log "Stopping."; exit 1; }
+                run_chunks "step4" $N_CHUNKS "$CMD"
             fi
         else
-            run_chunks "step4" $N_CHUNKS "$CMD" || { _log "Stopping."; exit 1; }
+            run_chunks "step4" $N_CHUNKS "$CMD"
         fi
     fi
 fi
@@ -305,7 +446,7 @@ if should_run 5 && ! $PARALLEL_STREAMS; then
     else
         CMD="$PYTHON $PIPELINE_DIR/step5_extract_features_anomaly.py \
             --era5-dir $ERA5_DIR --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
-        run_chunks "step5" $N_CHUNKS "$CMD" || { _log "Stopping."; exit 1; }
+        run_chunks "step5" $N_CHUNKS "$CMD"
     fi
 fi
 
@@ -317,8 +458,7 @@ if should_run 6; then
         _log "SKIP   [step6]  output already exists"
     else
         run_single "step6" \
-            "$PYTHON $PIPELINE_DIR/step6_integrate_tables.py" \
-            || { _log "Stopping."; exit 1; }
+            "$PYTHON $PIPELINE_DIR/step6_integrate_tables.py"
     fi
 fi
 
@@ -330,11 +470,16 @@ if should_run 6 || should_run 4 || should_run 5; then
         N_ROWS=$(tail -n +2 "$INT_FILE" | wc -l | tr -d ' ')
         MIN_ROWS=30
         if [[ $N_ROWS -lt $MIN_ROWS ]]; then
-            _log "ERROR: step6_integrated_all.csv has only $N_ROWS rows (expected >=$MIN_ROWS)."
+            _log "ERROR  [coverage-guard]  step6_integrated_all.csv has only $N_ROWS rows (expected >=$MIN_ROWS)."
             _log "       ERA5 directory ('$ERA5_DIR') likely has no per-cyclone NetCDF files."
             _log "       Check the path and rerun with --only 4,5,6,7,7b,8,8b,9 --skip-done"
-            printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
-            exit 1
+            STEP_ERRORS=$(( STEP_ERRORS + 1 ))
+            FAILED_STEPS+=("[coverage-guard]  step6 has $N_ROWS rows (<$MIN_ROWS) — check --era5-dir")
+            if $STOP_ON_ERROR; then
+                printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
+                trap - EXIT
+                exit 1
+            fi
         fi
         _log "INFO   coverage check OK: $N_ROWS rows in integrated table"
     fi
@@ -365,8 +510,8 @@ if should_run 7; then
         wait $P7A || P7_FAIL=$(( P7_FAIL + 1 ))
         wait $P7N || P7_FAIL=$(( P7_FAIL + 1 ))
         if [[ $P7_FAIL -gt 0 ]]; then
-            _log "FAILED [step7 parallel streams]  stopping."
-            exit 1
+            _log "WARN   [step7 parallel-streams]  $P7_FAIL stream(s) failed — see FAILED_STEPS in summary"
+            # failures already recorded inside run_chunks; continue
         fi
         _log "DONE   [step7 parallel streams]  elapsed=$(_elapsed $STEP7_START)"
 
@@ -375,13 +520,13 @@ if should_run 7; then
         if $SKIP_ABS; then
             _log "SKIP   [step7-absolute]  output already exists"
         else
-            run_chunks "step7_absolute" $N_CHUNKS "$CMD_ABS" || { _log "Stopping."; exit 1; }
+            run_chunks "step7_absolute" $N_CHUNKS "$CMD_ABS"
         fi
 
         if $SKIP_ANOM; then
             _log "SKIP   [step7-anomaly]  output already exists"
         else
-            run_chunks "step7_anomaly" $N_CHUNKS "$CMD_ANOM" || { _log "Stopping."; exit 1; }
+            run_chunks "step7_anomaly" $N_CHUNKS "$CMD_ANOM"
         fi
     fi
 fi
@@ -394,8 +539,7 @@ if should_run 7b; then
         _log "SKIP   [step7b]  output already exists"
     else
         run_single "step7b" \
-            "$PYTHON $PIPELINE_DIR/step7b_ep_significance_tests.py" \
-            || { _log "Stopping."; exit 1; }
+            "$PYTHON $PIPELINE_DIR/step7b_ep_significance_tests.py"
     fi
 fi
 
@@ -404,8 +548,7 @@ fi
 # ---------------------------------------------------------------------------
 if should_run 8; then
     run_single "step8" \
-        "$PYTHON $PIPELINE_DIR/step8_synthesis_figures.py" \
-        || { _log "Stopping."; exit 1; }
+        "$PYTHON $PIPELINE_DIR/step8_synthesis_figures.py"
 fi
 
 # ---------------------------------------------------------------------------
@@ -413,8 +556,7 @@ fi
 # ---------------------------------------------------------------------------
 if should_run 8b; then
     run_single "step8b" \
-        "$PYTHON $PIPELINE_DIR/step8b_significance_figures.py" \
-        || { _log "Stopping."; exit 1; }
+        "$PYTHON $PIPELINE_DIR/step8b_significance_figures.py"
 fi
 
 # ---------------------------------------------------------------------------
@@ -422,8 +564,7 @@ fi
 # ---------------------------------------------------------------------------
 if should_run 9; then
     run_single "step9" \
-        "$PYTHON $PIPELINE_DIR/step9_update_docs.py" \
-        || { _log "Stopping."; exit 1; }
+        "$PYTHON $PIPELINE_DIR/step9_update_docs.py"
 fi
 
 # ---------------------------------------------------------------------------
@@ -434,7 +575,15 @@ if [[ $STEP_ERRORS -eq 0 ]]; then
     _log " ✓  ALL STEPS COMPLETED  —  total time: $(_elapsed $PIPELINE_START)"
     printf 'COMPLETED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
 else
-    _log " ✗  PIPELINE FINISHED WITH $STEP_ERRORS ERRORS  —  $(_elapsed $PIPELINE_START)"
+    _log " ✗  PIPELINE FINISHED WITH $STEP_ERRORS FAILED STEP(S)  —  $(_elapsed $PIPELINE_START)"
+    _log ""
+    _log " Failed steps:"
+    for entry in "${FAILED_STEPS[@]}"; do
+        _log "   ✗  $entry"
+    done
+    _log ""
+    _log " To re-run only failed steps, use --only <steps> --skip-done"
+    _log " To halt at first failure: --stop-on-error"
     printf 'FAILED|%s|%s\n' "$(date +%s)" "$$" > "$STATUS_FILE"
 fi
 _log "=================================================================="

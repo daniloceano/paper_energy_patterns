@@ -147,7 +147,16 @@ def main():
     manifest = pd.read_csv(INPUT_MANIFEST)
     # Filter to available cases only (if manifest was built in live mode)
     if "era5_available" in manifest.columns:
-        manifest = manifest[manifest["era5_available"]]
+        n_available = manifest["era5_available"].sum()
+        n_total = len(manifest)
+        if n_available == 0:
+            logging.warning(
+                f"Manifest has {n_total} cases but ALL are marked era5_available=False. "
+                "This usually means step3 ran in dry-run mode (without --era5-dir). "
+                "Proceeding without filtering — missing files will be handled individually."
+            )
+        else:
+            manifest = manifest[manifest["era5_available"]]
     track_ids = manifest["track_id"].astype(str).tolist()
     logging.info(f"Total cases in manifest: {len(track_ids)}")
 

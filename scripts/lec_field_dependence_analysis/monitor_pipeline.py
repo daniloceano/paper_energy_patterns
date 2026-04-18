@@ -486,8 +486,258 @@ def render(use_color: bool = True, show_log_tail: bool = False) -> str:
     return "\n".join(lines)
 
 # ---------------------------------------------------------------------------
-# Entry point
+# Deep verification (--verify)
 # ---------------------------------------------------------------------------
+def verify() -> str:
+    """
+    Deep-check all pipeline outputs: expected files, row counts, figure counts,
+    log errors.  Returns a detailed report string.
+    """
+    import csv as _csv
+
+    lines: list[str] = []
+    ok_count = 0
+    warn_count = 0
+    fail_count = 0
+
+    def _ok(msg: str):
+        nonlocal ok_count
+        ok_count += 1
+        lines.append(f"  ✓  {msg}")
+
+    def _warn(msg: str):
+        nonlocal warn_count
+        warn_count += 1
+        lines.append(f"  ⚠  {msg}")
+
+    def _fail(msg: str):
+        nonlocal fail_count
+        fail_count += 1
+        lines.append(f"  ✗  {msg}")
+
+    def _csv_rows(path: Path) -> int:
+        try:
+            with open(path) as f:
+                reader = _csv.reader(f)
+                next(reader)  # header
+                return sum(1 for _ in reader)
+        except Exception:
+            return -1
+
+    lines.append("=" * 80)
+    lines.append("  LEC Field Dependence Pipeline — Deep Verification Report")
+    lines.append(f"  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    lines.append("=" * 80)
+    lines.append("")
+
+    # --- Step 1 ---
+    lines.append("[Step 1] Consolidate metadata")
+    f1 = RESULTS_DIR / "step1_eligible_cases.csv"
+    if f1.exists():
+        n = _csv_rows(f1)
+        if n > 100:
+            _ok(f"step1_eligible_cases.csv — {n} cyclones")
+        else:
+            _warn(f"step1_eligible_cases.csv — only {n} cyclones (expected >100)")
+    else:
+        _fail("step1_eligible_cases.csv MISSING")
+    lines.append("")
+
+    # --- Step 2 ---
+    lines.append("[Step 2] Build LEC table")
+    f2 = RESULTS_DIR / "step2_lec_intensification_means.csv"
+    if f2.exists():
+        n = _csv_rows(f2)
+        _ok(f"step2_lec_intensification_means.csv — {n} rows")
+    else:
+        _fail("step2_lec_intensification_means.csv MISSING")
+    lines.append("")
+
+    # --- Step 3 ---
+    lines.append("[Step 3] Map ERA5 fields")
+    f3 = RESULTS_DIR / "step3_era5_field_manifest.csv"
+    if f3.exists():
+        n = _csv_rows(f3)
+        _ok(f"step3_era5_field_manifest.csv — {n} rows")
+    else:
+        _fail("step3_era5_field_manifest.csv MISSING")
+    lines.append("")
+
+    # --- Step 4 ---
+    lines.append("[Step 4] Extract absolute features")
+    f4 = RESULTS_DIR / "step4_features_absolute.csv"
+    chunks4 = sorted(RESULTS_DIR.glob("step4_features_absolute_chunk*.csv"))
+    if f4.exists():
+        n = _csv_rows(f4)
+        _ok(f"step4_features_absolute.csv — {n} rows (merged)")
+    elif chunks4:
+        total = sum(_csv_rows(c) for c in chunks4)
+        _ok(f"{len(chunks4)} chunk files, ~{total} rows total (no merge needed — step6 uses chunks)")
+    else:
+        _fail("step4_features_absolute.csv MISSING and no chunk files found")
+    lines.append("")
+
+    # --- Step 5 ---
+    lines.append("[Step 5] Extract anomaly features")
+    f5 = RESULTS_DIR / "step5_features_anomaly.csv"
+    chunks5 = sorted(RESULTS_DIR.glob("step5_features_anomaly_chunk*.csv"))
+    if f5.exists():
+        n = _csv_rows(f5)
+        _ok(f"step5_features_anomaly.csv — {n} rows (merged)")
+    elif chunks5:
+        total = sum(_csv_rows(c) for c in chunks5)
+        _ok(f"{len(chunks5)} chunk files, ~{total} rows total")
+    else:
+        _fail("step5_features_anomaly.csv MISSING and no chunk files found")
+    lines.append("")
+
+    # --- Step 6 ---
+    lines.append("[Step 6] Integrate tables")
+    for fname in ["step6_integrated_all.csv", "step6_integrated_absolute.csv",
+                   "step6_integrated_anomaly.csv"]:
+        fp = RESULTS_DIR / fname
+        if fp.exists():
+            n = _csv_rows(fp)
+            if n >= 30:
+                _ok(f"{fname} — {n} rows")
+            else:
+                _warn(f"{fname} — only {n} rows (expected ≥30)")
+        else:
+            tag = fname.replace("step6_integrated_", "").replace(".csv", "")
+            if tag == "all":
+                _fail(f"{fname} MISSING")
+            else:
+                _warn(f"{fname} MISSING (optional if {tag} features not extracted)")
+    lines.append("")
+
+    # --- Step 7 ---
+    lines.append("[Step 7] Compute PREDEP")
+    for ftype in ["absolute", "anomaly"]:
+        merged = RESULTS_DIR / f"step7_predep_{ftype}.csv"
+        chunks = sorted(RESULTS_DIR.glob(f"step7_predep_{ftype}_chunk*.csv"))
+        if merged.exists():
+            n = _csv_rows(merged)
+            _ok(f"step7_predep_{ftype}.csv — {n} rows (merged)")
+        elif chunks:
+            total = sum(_csv_rows(c) for c in chunks)
+            _ok(f"step7_predep_{ftype}: {len(chunks)} chunk files, ~{total} rows total")
+        else:
+            _fail(f"step7_predep_{ftype}: no merged file and no chunks")
+    lines.append("")
+
+    # --- Step 7b ---
+    lines.append("[Step 7b] EP significance tests")
+    f7b_diag = RESULTS_DIR / "step7b_diagnostic_table.csv"
+    f7b_pair = RESULTS_DIR / "step7b_pairwise_table.csv"
+    if f7b_diag.exists():
+        n_diag = _csv_rows(f7b_diag)
+        _ok(f"step7b_diagnostic_table.csv — {n_diag} variables tested")
+        # Check which blocks are present
+        try:
+            import pandas as pd
+            diag = pd.read_csv(f7b_diag)
+            has_lec = (diag["var_type"] == "LEC term").any() if "var_type" in diag.columns else False
+            has_abs = (diag["field_type"] == "absolute").any() if "field_type" in diag.columns else False
+            has_anom = (diag["field_type"] == "anomaly").any() if "field_type" in diag.columns else False
+            blocks_found = []
+            if has_lec: blocks_found.append("LEC terms")
+            if has_abs: blocks_found.append("absolute")
+            if has_anom: blocks_found.append("anomaly")
+            if blocks_found:
+                _ok(f"  Blocks tested: {', '.join(blocks_found)}")
+            else:
+                _warn("  No recognizable blocks (var_type/field_type) in diagnostic table")
+            n_sig = (diag["global_p_adjusted"] < 0.05).sum() if "global_p_adjusted" in diag.columns else "?"
+            _ok(f"  Significant variables (p_adj < 0.05): {n_sig} / {n_diag}")
+            # Expected figure count = blocks × 4 figure types (volcano, ranking always;
+            # significance_heatmap, effect_size_heatmap only if pairwise data)
+            n_blocks = len(blocks_found)
+            has_pair = f7b_pair.exists() and _csv_rows(f7b_pair) > 0
+            expected_figs = n_blocks * 2 + (n_blocks * 2 if has_pair else 0)
+            lines.append(f"       Expected step8b figures: {expected_figs} "
+                         f"({n_blocks} blocks × {'4' if has_pair else '2'} types)")
+        except Exception as e:
+            _warn(f"  Could not parse diagnostic table: {e}")
+    else:
+        _fail("step7b_diagnostic_table.csv MISSING")
+    if f7b_pair.exists():
+        n_pair = _csv_rows(f7b_pair)
+        _ok(f"step7b_pairwise_table.csv — {n_pair} pairwise comparisons")
+    else:
+        _warn("step7b_pairwise_table.csv MISSING (no pairwise tests?)")
+    lines.append("")
+
+    # --- Step 8 ---
+    lines.append("[Step 8] Synthesis figures (PREDEP)")
+    f8_summary = RESULTS_DIR / "step8_summary_table.csv"
+    if f8_summary.exists():
+        _ok(f"step8_summary_table.csv — {_csv_rows(f8_summary)} rows")
+    else:
+        _fail("step8_summary_table.csv MISSING")
+    # Count step8 figures
+    s8_figs = (list(FIGURES_DIR.glob("heatmap_predep_*.png")) +
+               list(FIGURES_DIR.glob("top_predep_*.png")) +
+               list(FIGURES_DIR.glob("ep_comparison_*.png")))
+    if s8_figs:
+        _ok(f"Step 8 figures: {len(s8_figs)} files")
+        for fg in sorted(s8_figs):
+            lines.append(f"       {fg.name}")
+    else:
+        _warn("No step 8 figures found (heatmap_predep_*, top_predep_*, ep_comparison_*)")
+    lines.append("")
+
+    # --- Step 8b ---
+    lines.append("[Step 8b] Significance figures")
+    s8b_figs = (list(FIGURES_DIR.glob("significance_heatmap_*.png")) +
+                list(FIGURES_DIR.glob("effect_size_heatmap_*.png")) +
+                list(FIGURES_DIR.glob("volcano_*.png")) +
+                list(FIGURES_DIR.glob("effect_ranking_*.png")))
+    if s8b_figs:
+        _ok(f"Step 8b figures: {len(s8b_figs)} files")
+        for fg in sorted(s8b_figs):
+            lines.append(f"       {fg.name}")
+    else:
+        _warn("No step 8b figures found")
+    lines.append("")
+
+    # --- Step 9 ---
+    lines.append("[Step 9] Update docs")
+    f9 = RESULTS_DIR / "step9_pipeline_status.txt"
+    if f9.exists():
+        _ok("step9_pipeline_status.txt present")
+    else:
+        _warn("step9_pipeline_status.txt MISSING")
+    lines.append("")
+
+    # --- Log errors scan ---
+    lines.append("[Logs] Scanning for errors in latest logs...")
+    all_logs = sorted(LOG_DIR.glob("*.log"), key=lambda f: f.stat().st_mtime,
+                      reverse=True)[:20]
+    error_logs = []
+    for lp in all_logs:
+        if _log_has_error(lp):
+            # Only flag pipeline-relevant logs
+            if any(lp.name.startswith(pfx) for pfx in
+                   ["lec_field_", "step", "orchestrator_"]):
+                error_logs.append(lp)
+    if error_logs:
+        _warn(f"{len(error_logs)} log(s) contain ERROR/Traceback:")
+        for lp in error_logs[:5]:
+            err_line = _extract_error_line(lp)
+            lines.append(f"       {lp.name}: {err_line}")
+    else:
+        _ok("No errors found in recent pipeline logs")
+    lines.append("")
+
+    # --- Summary ---
+    lines.append("=" * 80)
+    label = "ALL CHECKS PASSED" if fail_count == 0 and warn_count == 0 \
+        else "PASSED WITH WARNINGS" if fail_count == 0 \
+        else "ISSUES FOUND"
+    lines.append(f"  {label}:  ✓ {ok_count} ok   ⚠ {warn_count} warnings   ✗ {fail_count} failures")
+    lines.append("=" * 80)
+
+    return "\n".join(lines)
 def main():
     parser = argparse.ArgumentParser(
         description="Monitor LEC field dependence pipeline execution status"
@@ -502,6 +752,8 @@ def main():
                         help="Override log directory (default: <project>/logs/)")
     parser.add_argument("--log-tail", action="store_true",
                         help="Show last log lines for running steps")
+    parser.add_argument("--verify", action="store_true",
+                        help="Deep-check all outputs: row counts, figures, log errors")
     args = parser.parse_args()
 
     global LOG_DIR
@@ -509,6 +761,10 @@ def main():
         LOG_DIR = args.log_dir
 
     use_color = not args.no_color and sys.stdout.isatty()
+
+    if args.verify:
+        print(verify())
+        return
 
     if args.watch:
         try:

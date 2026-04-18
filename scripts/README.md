@@ -11,7 +11,8 @@ scripts/
 ├── main/                               # Final publication figure scripts (01–07, S1–S3)
 ├── exploratory/                        # Preliminary exploratory scripts (not in paper)
 ├── cluster_analysis_energy_patterns/   # PCA + K-Means Energy Pattern classification
-├── ep_structure_analysis/              # CURRENT FOCUS: ERA5 composite analysis (EP1, EP2, EP3, EPALL)
+├── ep_structure_analysis/              # ERA5 composite analysis (EP1, EP2, EP3, EPALL)
+├── lec_field_dependence_analysis/      # PREDEP: individual-cyclone LEC–field predictive dependence
 ├── ck_subterms_analysis/               # Ck decomposition into subterms for EP1
 ├── preprocess_data/                    # Data download and preprocessing
 ├── utils/                              # Shared utility functions
@@ -145,6 +146,37 @@ Anomaly versions (departure from 1991–2020 WMO climatology) are computed for P
 **Inputs:** `results/cluster/kmeans_clustered_data.csv`, ERA5 via CDS API
 
 **Outputs:** `data/era5_ep_structure/precomputed_composites_ep{1,2,3,all}.nc`, `figures/ep_structure/`, `docs/scientific_notes_ep_structure.pdf`
+
+---
+
+### `lec_field_dependence_analysis/` — PREDEP: Individual-Cyclone LEC–Field Dependence
+
+Investigates, at the individual-cyclone level, the predictive dependence (PREDEP, Assunção et al. 2025) between LEC terms and scalar features derived from ERA5 dynamical fields. Analysis direction: X = dynamic feature, Y = LEC term.
+
+**Pipeline (9 steps + 2 significance steps):**
+
+| Step | Script | Local/Remote |
+|------|--------|-------------|
+| 1 | `step1_consolidate_metadata.py` | Local |
+| 2 | `step2_build_lec_table.py` | Local |
+| 3 | `step3_map_era5_fields.py` | Local (dry-run) |
+| 4 | `step4_extract_features_absolute.py` | **Remote** |
+| 5 | `step5_extract_features_anomaly.py` | **Remote** |
+| 6 | `step6_integrate_tables.py` | Remote |
+| 7 | `step7_compute_predep.py` | Remote |
+| 7b | `step7b_ep_significance_tests.py` | Local (`--lec-only`) / Remote (full) |
+| 8 | `step8_synthesis_figures.py` | Local |
+| 8b | `step8b_significance_figures.py` | Local |
+| 9 | `step9_update_docs.py` | Local |
+
+Steps 4–7 support `--chunk/--n-chunks` for HPC job arrays and `--workers` for multiprocessing.
+Step 7b runs Shapiro-Wilk → Levene → ANOVA/Welch/Kruskal-Wallis → Tukey/Dunn post-hoc → FDR correction per variable.
+
+**Inputs:** `results/ep_structure/`, LEC Zenodo (`data/temp_lec_zenodo/`), per-cyclone ERA5 fields (remote only)
+
+**Outputs:** `results/lec_field_dependence/`, `figures/lec_field_dependence/`
+
+See `scripts/lec_field_dependence_analysis/README.md` and `SCIENTIFIC_NOTES.md` for full details.
 
 ---
 

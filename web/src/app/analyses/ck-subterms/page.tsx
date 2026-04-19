@@ -6,7 +6,8 @@ import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import FigurePanel from '@/components/analysis/FigurePanel'
 import FormulaBlock from '@/components/analysis/FormulaBlock'
 import { ENERGY_PATTERNS } from '@/lib/constants'
-import { readManifest, figureUrl } from '@/lib/utils'
+import { readManifest } from '@/lib/server-utils'
+import { figureUrl } from '@/lib/utils'
 import InlineMath from '@/components/analysis/InlineMath'
 
 /**

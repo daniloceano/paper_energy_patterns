@@ -158,6 +158,49 @@ ls -lh .next/server/app/analyses/ck-subterms.rsc
 
 1. `web/.vercelignore` (created)
 2. `.gitignore` (updated cyclone_explorer section)
+
+---
+
+## Second Regression — April 2026
+
+**Issue:** After adding LEC field dependence section, build failed again on the same routes.
+
+**Cause 1 — `utils.ts` had `import fs from 'fs'` and `repoRoot()` at module scope:**
+```typescript
+// BAD — caused NFT to trace entire ../data/ and ../docs/ into function bundles:
+import fs from 'fs'
+import path from 'path'
+
+export function repoRoot(): string {
+  return path.resolve(process.cwd(), '..')  // ← NFT sees ".." → bundles repo root
+}
+```
+`utils.ts` was imported by both problem pages. Even though `repoRoot()` was never called by any page, its presence caused Next.js NFT (Node File Tracer) to mark the entire parent directory as a potential dependency, bundling `data/era5_ep_structure_legacy/*.nc` (~160 MB) and other repo-level assets into each function.
+
+**Cause 2 — `.vercelignore` was fixed too broadly:**
+A previous fix changed `public/figures/` to `public/figures/cyclone_explorer/`, allowing ep_structure (47 MB) + cluster (6.4 MB) + main (8.3 MB) = ~62 MB of extra figures into the Vercel build.
+
+**Fix applied:**
+1. `readManifest()` moved to `web/src/lib/server-utils.ts` — `import fs from 'fs'` is now confined to that file, which only accesses `web/src/content/`  
+2. `repoRoot()`, `repoFileExists()`, `readCSV()` removed from `utils.ts` (dead code — nothing imported them)
+3. `ck-subterms/page.tsx` updated to `import { readManifest } from '@/lib/server-utils'`
+4. `.vercelignore` updated: ep_structure, cluster, main excluded again (Supabase serves them); **only** `lec_field_dependence` remains in Vercel (uses direct `/figures/...` paths, not on Supabase)
+
+**Permanent rule:**
+> `web/src/lib/utils.ts` MUST NOT contain any `import fs` or `import path` or `path.resolve(cwd, '..')`.
+> These go in `server-utils.ts` only, and ONLY if they access paths inside `web/` (never `..`).
+
+**What's deployed vs what's on Supabase:**
+
+| Directory | Size | Deployed to Vercel? | Supabase? |
+|-----------|------|---------------------|-----------|
+| `public/figures/cyclone_explorer/` | 1.8 GB | ❌ excluded | ✅ |
+| `public/figures/ep_structure/` | 47 MB | ❌ excluded | ✅ |
+| `public/figures/cluster/` | 6.4 MB | ❌ excluded | ✅ |
+| `public/figures/main/` | 8.3 MB | ❌ excluded | ✅ |
+| `public/figures/lec_field_dependence/` | 59 MB | ✅ included | ❌ uses direct paths |
+| `public/data/` | 16 MB | ✅ included | ❌ client-side fetch assets |
+| `public/docs/` | 12 MB | ❌ excluded | — |
 3. `web/DEPLOYMENT.md` (added "Bundle Size Management" section)
 4. `web/public/figures/cyclone_explorer/.gitkeep` (documentation)
 5. This document (`SESSION_BUNDLE_FIX.md`)

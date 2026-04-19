@@ -1,42 +1,10 @@
-// Utility helpers for data loading and formatting
-
-import fs from 'fs'
-import path from 'path'
-
-/** Root of the repository (parent of web/) */
-export function repoRoot(): string {
-  return path.resolve(process.cwd(), '..')
-}
-
-/** Read a JSON manifest from web/src/content/ */
-export function readManifest<T>(filename: string): T {
-  const filePath = path.join(process.cwd(), 'src', 'content', filename)
-  const raw = fs.readFileSync(filePath, 'utf-8')
-  return JSON.parse(raw) as T
-}
-
-/** Check if a file exists relative to repo root */
-export function repoFileExists(relativePath: string): boolean {
-  return fs.existsSync(path.join(repoRoot(), relativePath))
-}
-
-/** Read CSV file and return parsed rows */
-export function readCSV(relativePath: string): Record<string, string>[] {
-  const filePath = path.join(repoRoot(), relativePath)
-  if (!fs.existsSync(filePath)) return []
-  const content = fs.readFileSync(filePath, 'utf-8')
-  const lines = content.trim().split('\n')
-  if (lines.length < 2) return []
-  const headers = lines[0].split(',').map((h) => h.trim())
-  return lines.slice(1).map((line) => {
-    const values = line.split(',').map((v) => v.trim())
-    const row: Record<string, string> = {}
-    headers.forEach((h, i) => {
-      row[h] = values[i] ?? ''
-    })
-    return row
-  })
-}
+// Utility helpers for formatting and figure URL resolution.
+//
+// IMPORTANT — bundle size:
+//   This file has NO Node.js fs/path imports.
+//   Functions that read files (readManifest) live in server-utils.ts.
+//   Never add import fs / import path here — it would cause Next.js NFT
+//   to trace the entire parent repository into every serverless function.
 
 /** Get the URL for a figure.
  *

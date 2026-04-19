@@ -1,16 +1,22 @@
 # Exclude large data directories and figures
 # These bloat serverless functions and aren't needed at runtime
 
-# Large figure directories
-# IMPORTANT: only exclude cyclone_explorer (211 MB) — other figure dirs are small static assets
-# ep_structure, cluster, main, and lec_field_dependence figures are committed and must be deployed
+# Figure directories — all served from Supabase Storage on Vercel (via figureUrl()).
+# EXCEPTION: lec_field_dependence uses direct /figures/... paths (NOT on Supabase)
+#   so it must be deployed as a static asset. Keep it included.
+# DO NOT change "cyclone_explorer" to a parent glob — that would re-include lec_field_dependence.
 public/figures/cyclone_explorer/
+public/figures/ep_structure/
+public/figures/cluster/
+public/figures/main/
 public/docs/
 
-# public/data/ must NOT be excluded — lfd_predep.json and scatter JSONs are client-fetched assets
-# (no rule needed — public/data/ is included by default)
+# public/data/ must NOT be excluded:
+#   lfd_predep.json and lfd_scatter_*.json are client-side fetched by DependenceExplorerClient.
+# public/figures/lec_field_dependence/ must NOT be excluded:
+#   those figures use absolute /figures/lec_field_dependence/... paths (bypass Supabase).
 
-# Repository-level directories (these are above the web/ root, patterns kept for safety)
+# Repository-level directories (not needed for the web build)
 # NOTE: bare "data/" without a leading slash would match public/data/ too — do NOT add it
 logs/
 results/

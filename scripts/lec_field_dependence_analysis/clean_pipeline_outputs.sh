@@ -128,7 +128,7 @@ fi
 
 if $DO_FIGURES; then
     while IFS= read -r f; do FIGURE_FILES+=("$f"); done < <(
-        find "$FIGURES_DIR" -mindepth 1 -maxdepth 1 -type f 2>/dev/null | sort
+        find "$FIGURES_DIR" -mindepth 1 -type f 2>/dev/null | sort
     )
 fi
 

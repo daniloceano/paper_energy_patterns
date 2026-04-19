@@ -1,15 +1,18 @@
 import type { Metadata } from 'next'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
-import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import MethodologyAccordion from '@/components/analysis/MethodologyAccordion'
 import FigurePanel from '@/components/analysis/FigurePanel'
-import { figureUrl } from '@/lib/utils'
 import EpDifferencesClient from './EpDifferencesClient'
 
 import significanceData from '@/content/lfd_significance.json'
 import pairwiseData from '@/content/lfd_pairwise.json'
 import type { LfdSignificanceRow, LfdPairwiseRow } from '@/lib/types'
+
+// LFD figures are committed to web/public/figures/lec_field_dependence/.
+// Use absolute paths so they always load from the static public/ directory,
+// regardless of whether NEXT_PUBLIC_SUPABASE_FIGURES_URL is set on Vercel.
+const lfd = (name: string) => `/figures/lec_field_dependence/${name}`
 
 export const metadata: Metadata = {
   title: 'EP Differences — LEC Field Dependence',
@@ -72,20 +75,20 @@ export default function EpDifferencesPage() {
         </p>
         <div className="grid gap-6 md:grid-cols-1">
           <FigurePanel
-            src={figureUrl('figures/lec_field_dependence/significance_heatmap_lec_terms.png')}
+            src={lfd('significance_heatmap_lec_terms.png')}
             alt="Significance heatmap — LEC terms"
             caption="Pairwise significance for all 24 LEC terms. Nearly all contrasts are significant, confirming robust EP separation."
             source="figures/lec_field_dependence/significance_heatmap_lec_terms.png"
           />
           <div className="grid gap-6 md:grid-cols-2">
             <FigurePanel
-              src={figureUrl('figures/lec_field_dependence/significance_heatmap_absolute_features.png')}
+              src={lfd('significance_heatmap_absolute_features.png')}
               alt="Significance heatmap — absolute features"
               caption="Absolute-field features: most dynamical features differ significantly across EPs."
               source="figures/lec_field_dependence/significance_heatmap_absolute_features.png"
             />
             <FigurePanel
-              src={figureUrl('figures/lec_field_dependence/significance_heatmap_anomaly_features.png')}
+              src={lfd('significance_heatmap_anomaly_features.png')}
               alt="Significance heatmap — anomaly features"
               caption="Anomaly-field features (EPALL-relative): pattern broadly mirrors absolute fields."
               source="figures/lec_field_dependence/significance_heatmap_anomaly_features.png"
@@ -104,20 +107,20 @@ export default function EpDifferencesPage() {
         </p>
         <div className="grid gap-6 md:grid-cols-1">
           <FigurePanel
-            src={figureUrl('figures/lec_field_dependence/effect_size_heatmap_lec_terms.png')}
+            src={lfd('effect_size_heatmap_lec_terms.png')}
             alt="Effect size heatmap — LEC terms"
             caption="Pairwise effect sizes for LEC terms. Ke, RKe, Ce, and Ca show the largest inter-EP differences."
             source="figures/lec_field_dependence/effect_size_heatmap_lec_terms.png"
           />
           <div className="grid gap-6 md:grid-cols-2">
             <FigurePanel
-              src={figureUrl('figures/lec_field_dependence/effect_size_heatmap_absolute_features.png')}
+              src={lfd('effect_size_heatmap_absolute_features.png')}
               alt="Effect size heatmap — absolute features"
               caption="Absolute-field feature effect sizes across EP contrasts."
               source="figures/lec_field_dependence/effect_size_heatmap_absolute_features.png"
             />
             <FigurePanel
-              src={figureUrl('figures/lec_field_dependence/effect_size_heatmap_anomaly_features.png')}
+              src={lfd('effect_size_heatmap_anomaly_features.png')}
               alt="Effect size heatmap — anomaly features"
               caption="Anomaly-field feature effect sizes."
               source="figures/lec_field_dependence/effect_size_heatmap_anomaly_features.png"
@@ -136,19 +139,19 @@ export default function EpDifferencesPage() {
         </p>
         <div className="grid gap-6 md:grid-cols-3">
           <FigurePanel
-            src={figureUrl('figures/lec_field_dependence/volcano_lec_terms.png')}
+            src={lfd('volcano_lec_terms.png')}
             alt="Volcano plot — LEC terms"
             caption="LEC terms"
             source="figures/lec_field_dependence/volcano_lec_terms.png"
           />
           <FigurePanel
-            src={figureUrl('figures/lec_field_dependence/volcano_absolute_features.png')}
+            src={lfd('volcano_absolute_features.png')}
             alt="Volcano plot — absolute features"
             caption="Absolute features"
             source="figures/lec_field_dependence/volcano_absolute_features.png"
           />
           <FigurePanel
-            src={figureUrl('figures/lec_field_dependence/volcano_anomaly_features.png')}
+            src={lfd('volcano_anomaly_features.png')}
             alt="Volcano plot — anomaly features"
             caption="Anomaly features"
             source="figures/lec_field_dependence/volcano_anomaly_features.png"
@@ -165,19 +168,19 @@ export default function EpDifferencesPage() {
         </p>
         <div className="grid gap-6 md:grid-cols-3">
           <FigurePanel
-            src={figureUrl('figures/lec_field_dependence/effect_ranking_lec_terms.png')}
+            src={lfd('effect_ranking_lec_terms.png')}
             alt="Effect ranking — LEC terms"
             caption="LEC terms"
             source="figures/lec_field_dependence/effect_ranking_lec_terms.png"
           />
           <FigurePanel
-            src={figureUrl('figures/lec_field_dependence/effect_ranking_absolute_features.png')}
+            src={lfd('effect_ranking_absolute_features.png')}
             alt="Effect ranking — absolute features"
             caption="Absolute features"
             source="figures/lec_field_dependence/effect_ranking_absolute_features.png"
           />
           <FigurePanel
-            src={figureUrl('figures/lec_field_dependence/effect_ranking_anomaly_features.png')}
+            src={lfd('effect_ranking_anomaly_features.png')}
             alt="Effect ranking — anomaly features"
             caption="Anomaly features"
             source="figures/lec_field_dependence/effect_ranking_anomaly_features.png"

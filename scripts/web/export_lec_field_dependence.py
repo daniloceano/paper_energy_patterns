@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "results" / "lec_field_dependence"
 FIGURES_SRC = ROOT / "figures" / "lec_field_dependence"
 CONTENT_DST = ROOT / "web" / "src" / "content"
+PUBLIC_DATA_DST = ROOT / "web" / "public" / "data"
 FIGURES_DST = ROOT / "web" / "public" / "figures" / "lec_field_dependence"
 
 # Canonical LEC terms (used in the clustering)
@@ -286,9 +287,12 @@ def main():
 
     print("Exporting LEC field dependence data for web...")
 
-    # 1. PREDEP data
+    # 1. PREDEP data — written to both content/ (build-time) and public/data/ (client-fetch)
     predep = export_predep()
     with open(CONTENT_DST / "lfd_predep.json", "w") as f:
+        json.dump(predep, f)
+    PUBLIC_DATA_DST.mkdir(parents=True, exist_ok=True)
+    with open(PUBLIC_DATA_DST / "lfd_predep.json", "w") as f:
         json.dump(predep, f)
 
     # 2. Significance
@@ -318,7 +322,8 @@ def main():
     copy_figures()
 
     print("\n✓ Export complete.")
-    print(f"  JSON files: {CONTENT_DST}/lfd_*.json")
+    print(f"  JSON (build-time):  {CONTENT_DST}/lfd_*.json")
+    print(f"  JSON (client-fetch): {PUBLIC_DATA_DST}/lfd_predep.json + lfd_scatter_*.json")
     print(f"  Figures: {FIGURES_DST}/")
 
 

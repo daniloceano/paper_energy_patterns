@@ -523,6 +523,35 @@ O bucket deve se chamar `figures` e ser público. Os arquivos são enviados com 
 
 ---
 
+## LEC Field Dependence — arquitetura especial
+
+A análise `field-dependence` usa uma arquitetura diferente das outras análises, devido ao tamanho dos dados.
+
+### Figuras
+
+As figuras de LEC field dependence estão commitadas em `web/public/figures/lec_field_dependence/` (não no Supabase). Isso é intencional:
+- Os caminhos usam `/figures/lec_field_dependence/...` diretamente (bypass da substituição do Supabase)
+- **Não é necessário** fazer upload para o Supabase — a Vercel serve os arquivos estáticos commitados
+
+### Dados JSON de client-side fetch
+
+`web/public/data/lfd_predep.json` (2.7 MB) e `web/public/data/lfd_scatter_absolute.json` / `lfd_scatter_anomaly.json` (5–7 MB cada) são servidos como assets estáticos e carregados pelo browser no cliente — **não** embutidos no HTML da página.
+
+Isso evita serialização de 3 MB no RSC payload (que causa lentidão / hydration failure no Vercel).
+
+**Ambos `web/src/content/lfd_predep.json` e `web/public/data/lfd_predep.json` devem estar em sincronia.** O export script (`scripts/web/export_lec_field_dependence.py`) gera os dois automaticamente.
+
+### Quando re-exportar
+
+```bash
+python scripts/web/export_lec_field_dependence.py
+git add web/public/data/lfd_predep.json web/src/content/lfd_*.json web/public/figures/lec_field_dependence/
+git commit -m "feat: update LEC field dependence data"
+git push
+```
+
+---
+
 ## Redeploy manual
 
 ```bash

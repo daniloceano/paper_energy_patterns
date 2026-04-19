@@ -5,9 +5,8 @@ import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import MethodologyAccordion from '@/components/analysis/MethodologyAccordion'
 import DependenceExplorerClient from './DependenceExplorerClient'
 
-import predepData from '@/content/lfd_predep.json'
 import topData from '@/content/lfd_top_associations.json'
-import type { LfdPredepRow, LfdTopAssociation } from '@/lib/types'
+import type { LfdTopAssociation } from '@/lib/types'
 
 export const metadata: Metadata = {
   title: 'Dependence Explorer — LEC Field Dependence',
@@ -15,7 +14,6 @@ export const metadata: Metadata = {
 }
 
 export default function DependenceExplorerPage() {
-  const predep = predepData as LfdPredepRow[]
   const top = topData as { all: LfdTopAssociation[]; canonical: LfdTopAssociation[] }
 
   return (
@@ -77,7 +75,6 @@ export default function DependenceExplorerPage() {
 
       {/* ── Explorer ──────────────────────────────────────── */}
       <DependenceExplorerClient
-        predep={predep}
         topAssociations={top}
       />
     </div>

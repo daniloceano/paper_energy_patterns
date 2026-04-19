@@ -695,6 +695,21 @@ def main():
 
     if not pending:
         logging.info("Nothing to process — all files are already derived and valid.")
+        # Still write the manifest so the monitor can confirm this chunk is done.
+        all_done_rows = [
+            {
+                "track_id": tid,
+                "status": "already_done",
+                "output_path": str(derived_dir / DERIVED_FILE_PATTERN.format(track_id=tid)),
+                "has_afc": "unknown",
+            }
+            for tid in track_ids
+        ]
+        pd.DataFrame(all_done_rows).to_csv(
+            RESULTS_DIR / f"step3b_derived_field_manifest{chunk_suffix}.csv",
+            index=False,
+        )
+        logging.info(f"  Manifest: {RESULTS_DIR}/step3b_derived_field_manifest{chunk_suffix}.csv")
         logging.info("\n✓ Step 3b complete.")
         return
 

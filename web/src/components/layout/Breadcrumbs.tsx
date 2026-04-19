@@ -18,6 +18,10 @@ const ROUTE_LABELS: Record<string, string> = {
   'step-3-optimal-k': 'Step 3 — Optimal k',
   'step-4-clustering-lps': 'Step 4 — Clustering & LPS',
   'step-5-results': 'Step 5 — Results',
+  'field-dependence': 'LEC–Field Dependence',
+  'ep-differences': 'EP Differences',
+  'dependence-explorer': 'Dependence Explorer',
+  'ck-subterms': 'Ck Subterms',
 }
 
 export default function Breadcrumbs() {

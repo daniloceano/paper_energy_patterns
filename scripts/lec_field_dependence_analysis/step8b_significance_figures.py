@@ -46,6 +46,21 @@ DPI = 300
 ALPHA = 0.05
 CONTRAST_ORDER = ["EP1 vs EP2", "EP1 vs EP3", "EP2 vs EP3"]
 
+# Discrete colour scale for |effect size| — consistent with PREDEP bins
+EFFECT_THRESHOLDS = [0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.01]
+EFFECT_COLORS = [
+    "#b3b3b3",   # < 0.10  → grey
+    "#ffff99",   # 0.10–0.20  light yellow
+    "#ffe64d",   # 0.20–0.30  yellow-light
+    "#ffcc00",   # 0.30–0.40  yellow
+    "#ffb300",   # 0.40–0.50  yellow-orange
+    "#ff9900",   # 0.50–0.60  orange
+    "#ff7300",   # 0.60–0.70  orange-dark
+    "#ff4d00",   # 0.70–0.80  dark orange
+    "#e62600",   # 0.80–0.90  red-orange
+    "#cc0000",   # > 0.90     red
+]
+
 INPUT_DIAG = RESULTS_DIR / "step7b_diagnostic_table.csv"
 INPUT_PAIR = RESULTS_DIR / "step7b_pairwise_table.csv"
 
@@ -118,8 +133,8 @@ def plot_significance_heatmap(pair_df: pd.DataFrame, block: str,
 def plot_effect_size_heatmap(pair_df: pd.DataFrame, block: str,
                              block_label: str):
     """
-    Continuous heatmap of pairwise effect sizes (|Cohen's d| or
-    |rank-biserial r|).
+    Discrete heatmap of pairwise effect sizes (|Cohen's d| or
+    |rank-biserial r|).  Grey for < 0.1, 0.1-step bins.
     """
     sub = pair_df[pair_df["field_type"] == block].copy() if block != "N/A" \
         else pair_df[pair_df["var_type"] == "LEC term"].copy()
@@ -132,24 +147,24 @@ def plot_effect_size_heatmap(pair_df: pd.DataFrame, block: str,
     pivot = pivot.reindex(columns=[c for c in CONTRAST_ORDER if c in pivot.columns])
     pivot = pivot.fillna(0)
 
+    cmap = mcolors.ListedColormap(EFFECT_COLORS)
+    norm = mcolors.BoundaryNorm([0.0] + EFFECT_THRESHOLDS, cmap.N)
+
     fig, ax = plt.subplots(figsize=(8, max(4, len(pivot) * 0.4)))
-    im = ax.imshow(pivot.values, aspect="auto", cmap="YlOrRd", vmin=0)
+    im = ax.imshow(pivot.values, aspect="auto", cmap=cmap, norm=norm)
     ax.set_xticks(range(pivot.shape[1]))
     ax.set_xticklabels(pivot.columns, fontsize=10)
     ax.set_yticks(range(pivot.shape[0]))
-    ax.set_yticklabels(pivot.index, fontsize=8)
+    ax.set_yticklabels(pivot.index, fontsize=7)
 
     es_name = sub["effect_size_name"].iloc[0] if len(sub) > 0 else "effect"
-    plt.colorbar(im, ax=ax, label=f"|{es_name}|")
+    cbar = plt.colorbar(im, ax=ax, label=f"|{es_name}|")
+    tick_vals = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90]
+    cbar.set_ticks(tick_vals)
+    cbar.set_ticklabels(["0", "0.1", "0.2", "0.3", "0.4",
+                          "0.5", "0.6", "0.7", "0.8", "0.9"])
     ax.set_title(f"Pairwise Effect Size — {block_label}",
                  fontsize=13, fontweight="bold")
-
-    # Annotate with values
-    for i in range(pivot.shape[0]):
-        for j in range(pivot.shape[1]):
-            val = pivot.values[i, j]
-            ax.text(j, i, f"{val:.2f}", ha="center", va="center",
-                    fontsize=6, color="black" if val < 0.5 else "white")
 
     fig.tight_layout()
     tag = block_label.lower().replace(" ", "_").replace("/", "_")

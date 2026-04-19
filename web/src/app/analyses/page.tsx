@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { BarChart3, Layers, TrendingDown } from 'lucide-react'
+import { BarChart3, Layers, TrendingDown, GitCompareArrows } from 'lucide-react'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import AnalysisCardGrid from '@/components/analysis/AnalysisCardGrid'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
@@ -42,6 +42,13 @@ export default function AnalysesPage() {
               'Decomposition of barotropic energy conversion (Ck) into five subterms (A–E) for EP1 cyclones. Genesis density maps and dominance classification by intensification-phase subterm.',
             href: '/analyses/ck-subterms',
             icon: TrendingDown,
+          },
+          {
+            title: 'LEC–Field Dependence',
+            description:
+              'Statistical dependence between ERA5 dynamical fields and Lorenz Energy Cycle terms. EP-level differences (Kruskal–Wallis, effect sizes, volcano plots) and per-cyclone dependence metrics (PREDEP, Pearson, Spearman) with interactive exploration.',
+            href: '/analyses/field-dependence',
+            icon: GitCompareArrows,
           },
         ]}
       />

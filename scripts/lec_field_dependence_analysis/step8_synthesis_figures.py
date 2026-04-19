@@ -56,17 +56,21 @@ TOP_N = 20  # Top N associations to highlight
 
 # ── Discrete colour scale for PREDEP heatmaps ────────────────────────────
 # Values < 0.10 → light grey (negligible)
-# Steps of 0.20 from 0.10 to 1.00
-PREDEP_THRESHOLDS = [0.10, 0.30, 0.50, 0.70, 0.90, 1.01]
-PREDEP_COLORS     = ["#d4d4d4",  # <0.10 → grey
-                      "#fee5d9",  # 0.10–0.30 → very light red
-                      "#fc9272",  # 0.30–0.50 → medium red
-                      "#ef3b2c",  # 0.50–0.70 → strong red
-                      "#99000d",  # 0.70–0.90 → dark red
-                      "#4a0010"]  # >0.90 → very dark
+# Steps of 0.10 from 0.10 to 1.00
+PREDEP_THRESHOLDS = [0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.01]
+PREDEP_COLORS     = ["#b3b3b3",  # <0.10 → grey
+                      "#ffff99",  # 0.10–0.20  light yellow
+                      "#ffe64d",  # 0.20–0.30  yellow-light
+                      "#ffcc00",  # 0.30–0.40  yellow
+                      "#ffb300",  # 0.40–0.50  yellow-orange
+                      "#ff9900",  # 0.50–0.60  orange
+                      "#ff7300",  # 0.60–0.70  orange-dark
+                      "#ff4d00",  # 0.70–0.80  dark orange
+                      "#e62600",  # 0.80–0.90  red-orange
+                      "#cc0000"]  # >0.90      red
 
 def _make_predep_cmap():
-    """Return a ListedColormap with 6 bins: grey for <0.10, then 5 red steps."""
+    """Return a ListedColormap with 10 bins: grey for <0.10, then 0.10-step red bins."""
     cmap = mcolors.ListedColormap(PREDEP_COLORS)
     norm = mcolors.BoundaryNorm([0.0] + PREDEP_THRESHOLDS, cmap.N)
     return cmap, norm
@@ -164,9 +168,9 @@ def plot_heatmap_field_vs_lec(
     # Colorbar with discrete tick labels
     cbar = plt.colorbar(im, ax=ax, pad=0.02, fraction=0.025)
     cbar.set_label(r"PREDEP $\alpha_{\mathrm{LEC\,|\,feature}}$", fontsize=10)
-    tick_vals = [0.0, 0.10, 0.30, 0.50, 0.70, 0.90]
+    tick_vals = [0.0, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90]
     cbar.set_ticks(tick_vals)
-    cbar.set_ticklabels(["0 (grey)", "0.10", "0.30", "0.50", "0.70", "0.90"])
+    cbar.set_ticklabels(["0", "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9"])
 
     ep_label = EP_LABELS[ep]
     ax.set_title(

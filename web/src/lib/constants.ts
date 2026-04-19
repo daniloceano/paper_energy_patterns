@@ -665,3 +665,39 @@ export const FLUX_DIAGNOSTICS: DiagnosticId[] = [
   'ke-advection',
   'afc',
 ]
+
+// --- LEC Field Dependence ---
+
+export const LFD_DYNAMIC_FIELDS: Record<string, { label: string; level: string }> = {
+  pv_850: { label: 'PV 850', level: '850 hPa' },
+  pv_200: { label: 'PV 200', level: '200 hPa' },
+  adv_T_850: { label: 'AdvT 850', level: '850 hPa' },
+  afc_250: { label: 'AFC 250', level: '250 hPa' },
+  ke_adv_250: { label: 'KE adv 250', level: '250 hPa' },
+}
+
+export const LFD_SPATIAL_FEATURES: Record<string, string> = {
+  domain_mean: 'Domain mean',
+  centre_value: 'Centre value',
+  border_north: 'Border N',
+  border_south: 'Border S',
+  border_east: 'Border E',
+  border_west: 'Border W',
+  contrast_ew: 'E-W contrast',
+  contrast_sn: 'S-N contrast',
+  quadrant_ne: 'Quadrant NE',
+  quadrant_nw: 'Quadrant NW',
+  quadrant_se: 'Quadrant SE',
+  quadrant_sw: 'Quadrant SW',
+  domain_abs_mean: 'Domain |mean|',
+}
+
+export const LFD_CANONICAL_TERMS = ['Ca', 'Ck', 'Ge', 'BAe', 'BKe', 'Ae', 'Ke'] as const
+
+export const LFD_EP_CONTRASTS = ['EP1 vs EP2', 'EP1 vs EP3', 'EP2 vs EP3'] as const
+
+export const LFD_EP_COLORS: Record<number, string> = {
+  1: '#e63946',
+  2: '#457b9d',
+  3: '#a8dadc',
+}

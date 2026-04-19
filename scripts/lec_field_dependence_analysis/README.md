@@ -330,7 +330,24 @@ figures/lec_field_dependence/
 ├── volcano_anomaly_features.png
 ├── effect_ranking_lec_terms.png
 ├── effect_ranking_absolute_features.png
-└── effect_ranking_anomaly_features.png
+├── effect_ranking_anomaly_features.png
+└── diagnostics/                          # Diagnostic-only figures (not for publication)
+    ├── correlation_heatmaps/             # Pearson/Spearman |r| heatmaps
+    │   ├── all/                          # All 24 LEC terms
+    │   └── canonical/                    # 7 canonical terms only
+    └── scatterplots/                     # LEC term × feature scatter grids
+```
+
+### Diagnostic Figures
+
+Two additional diagnostic scripts produce figures for internal inspection only:
+
+```bash
+# Pearson/Spearman correlation heatmaps (uses step7 outputs, no recomputation)
+python scripts/lec_field_dependence_analysis/diag_correlation_heatmaps.py
+
+# LEC × feature scatterplots (uses step6 integrated tables, no recomputation)
+python scripts/lec_field_dependence_analysis/diag_scatterplots.py
 ```
 
 ---

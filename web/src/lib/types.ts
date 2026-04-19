@@ -242,3 +242,87 @@ export interface CycloneExplorerManifest {
   }
   cyclones: Record<string, CycloneData>
 }
+
+// --- LEC Field Dependence Types ---
+
+export interface LfdPredepRow {
+  ep: number
+  lec_term: string
+  field: string
+  feature: string
+  field_type: string
+  n: number | null
+  predep: number
+  pearson_r: number | null
+  pearson_p: number | null
+  spearman_rho: number | null
+  spearman_p: number | null
+  display: string
+  is_canonical: boolean
+}
+
+export interface LfdSignificanceRow {
+  variable: string
+  display_name: string
+  var_type: string
+  field_origin: string
+  field_type: string
+  n_ep1: number | null
+  n_ep2: number | null
+  n_ep3: number | null
+  global_test: string
+  global_stat: number | null
+  global_p: number | null
+  effect_size_name: string
+  effect_size: number | null
+  decision: string
+  is_canonical: boolean
+}
+
+export interface LfdPairwiseRow {
+  variable: string
+  display_name: string
+  var_type: string
+  field_type: string
+  contrast: string
+  test_name: string
+  p_adjusted: number | null
+  effect_size: number | null
+  effect_size_name: string
+  mean_1: number | null
+  mean_2: number | null
+  direction: string
+  n_1: number | null
+  n_2: number | null
+  is_canonical: boolean
+}
+
+export interface LfdTopAssociation {
+  ep: number
+  lec_term: string
+  field: string
+  feature: string
+  field_type: string
+  predep: number | null
+  pearson_r: number | null
+  spearman_rho: number | null
+  display: string
+}
+
+export interface LfdSummaryRow {
+  ep: number
+  field_type: string
+  lec_term: string
+  mean: number | null
+  median: number | null
+  max: number | null
+  count: number | null
+  is_canonical: boolean
+}
+
+export interface LfdScatterData {
+  field_type: string
+  feature_columns: string[]
+  lec_columns: string[]
+  cyclones: Record<string, number | null>[]
+}

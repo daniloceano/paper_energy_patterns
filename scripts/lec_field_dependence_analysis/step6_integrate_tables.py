@@ -49,8 +49,7 @@ from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS
 # Configuration
 # ---------------------------------------------------------------------------
 INPUT_CASES = RESULTS_DIR / "step1_eligible_cases.csv"
-INPUT_LEC_FULL = RESULTS_DIR / "step2_lec_intensification_means.csv"
-INPUT_LEC_CENTRAL = RESULTS_DIR / "step2_lec_central_means.csv"
+INPUT_LEC = RESULTS_DIR / "step2_lec_means.csv"
 INPUT_ABS = RESULTS_DIR / "step4_features_absolute.csv"
 INPUT_ANOM = RESULTS_DIR / "step5_features_anomaly.csv"
 
@@ -95,48 +94,27 @@ def merge_chunk_files(base_path: Path) -> pd.DataFrame:
 
 def main():
     parser = argparse.ArgumentParser(description="Step 6: Integrate all tables.")
-    parser.add_argument(
-        "--lec-source",
-        choices=["full", "central"],
-        default="full",
-        help=(
-            "Which LEC table to use as the response variable. "
-            "'full' = full intensification-phase mean (step2_lec_intensification_means.csv). "
-            "'central' = central ±1 timestep window mean (step2_lec_central_means.csv, "
-            "reduced temporal mismatch with ERA5 fields). "
-            "Default: full (backwards-compatible with server run)."
-        ),
-    )
     args = parser.parse_args()
-    lec_source = args.lec_source
 
-    # Select LEC input and output paths based on lec_source
-    if lec_source == "central":
-        input_lec = INPUT_LEC_CENTRAL
-        suffix = "_central"
-    else:
-        input_lec = INPUT_LEC_FULL
-        suffix = ""
-
-    output_abs = RESULTS_DIR / f"step6_integrated_absolute{suffix}.csv"
-    output_anom = RESULTS_DIR / f"step6_integrated_anomaly{suffix}.csv"
-    output_all = RESULTS_DIR / f"step6_integrated_all{suffix}.csv"
+    output_abs = RESULTS_DIR / "step6_integrated_absolute.csv"
+    output_anom = RESULTS_DIR / "step6_integrated_anomaly.csv"
+    output_all = RESULTS_DIR / "step6_integrated_all.csv"
 
     setup_logging()
     logging.info("=" * 70)
     logging.info("STEP 6: INTEGRATE TABLES — LEC–FIELD DEPENDENCE ANALYSIS")
     logging.info("=" * 70)
-    logging.info(f"LEC source: {lec_source.upper()} ({input_lec.name})")
+    logging.info(f"LEC input: {INPUT_LEC.name} (central timesteps, canonical method)")
 
     # 1. Load source tables
     cases = pd.read_csv(INPUT_CASES)
     cases["track_id"] = cases["track_id"].astype(str)
     logging.info(f"Cases: {len(cases)}")
 
-    lec = pd.read_csv(input_lec) if input_lec.exists() else pd.DataFrame()
+    lec = pd.read_csv(INPUT_LEC) if INPUT_LEC.exists() else pd.DataFrame()
     if len(lec) > 0:
         lec["track_id"] = lec["track_id"].astype(str)
-    logging.info(f"LEC table ({lec_source}): {len(lec)} rows")
+    logging.info(f"LEC table: {len(lec)} rows")
 
     abs_feat = merge_chunk_files(INPUT_ABS)
     if len(abs_feat) > 0:

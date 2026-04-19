@@ -62,7 +62,7 @@ def main():
         "-----------",
         "",
         f"  Step 1 (metadata):        {check_file(RESULTS_DIR / 'step1_eligible_cases.csv')}",
-        f"  Step 2 (LEC table):       {check_file(RESULTS_DIR / 'step2_lec_intensification_means.csv')}",
+        f"  Step 2 (LEC table):       {check_file(RESULTS_DIR / 'step2_lec_means.csv')}",
         f"  Step 3 (ERA5 manifest):   {check_file(RESULTS_DIR / 'step3_era5_field_manifest.csv')}",
         f"  Step 4 (abs features):    {check_file(RESULTS_DIR / 'step4_features_absolute.csv')}",
         f"  Step 5 (anom features):   {check_file(RESULTS_DIR / 'step5_features_anomaly.csv')}",

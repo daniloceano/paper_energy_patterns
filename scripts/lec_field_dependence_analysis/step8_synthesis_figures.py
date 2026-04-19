@@ -9,22 +9,17 @@ families separated into dedicated subdirectories:
                      classification (Ca, Ck, BAe, BKe, Ae, Ke, Ge).
                      This is the primary set for the article.
 
-When --lec-source central is used, subdirs become:
-  all_central/     — All terms, central-window LEC
-  canonical_central/ — Canonical terms, central-window LEC
-
 Figures generated for each family × field type (absolute / anomaly):
   1. Heatmaps: PREDEP (rows = LEC term, columns = field × feature)
      — discrete scale 0.2 steps; values < 0.10 shown in light grey
-  2. Top-N associations bar chart
-  3. EP1/EP2/EP3 comparison (mean PREDEP per LEC term)
-  4. Absolute vs Anomaly comparison table
+  2. Top-N associations bar chart (all EPs combined)
+  3. Top-N associations bar chart per EP (separate figures)
+  4. EP1/EP2/EP3 comparison (mean PREDEP per LEC term)
+  5. Absolute vs Anomaly comparison table
 
 Run:
   python scripts/lec_field_dependence_analysis/step8_synthesis_figures.py
   python scripts/lec_field_dependence_analysis/step8_synthesis_figures.py --term-set canonical
-  python scripts/lec_field_dependence_analysis/step8_synthesis_figures.py --lec-source central
-  python scripts/lec_field_dependence_analysis/step8_synthesis_figures.py --lec-source central --term-set canonical
 
 Author: Danilo Couto de Souza
 Date: April 2026
@@ -47,6 +42,7 @@ import matplotlib as mpl
 
 from scripts.lec_field_dependence_analysis.utils_io import (
     RESULTS_DIR, FIGURES_DIR, LOG_DIR, LEC_TERMS_CORE, LEC_TERMS_FULL,
+    format_display_label,
 )
 from scripts.utils.ep_mapping import EP_LABELS, EP_COLORS, ALL_EPS
 
@@ -89,18 +85,17 @@ def setup_logging():
     )
 
 
-def load_predep_results(lec_source: str = "full") -> pd.DataFrame:
+def load_predep_results() -> pd.DataFrame:
     """Load and merge all PREDEP result files (absolute + anomaly, chunks)."""
-    lec_suffix = "_central" if lec_source == "central" else ""
     frames = []
     for ftype in ["absolute", "anomaly"]:
-        base = RESULTS_DIR / f"step7_predep_{ftype}{lec_suffix}.csv"
+        base = RESULTS_DIR / f"step7_predep_{ftype}.csv"
         if base.exists():
             df = pd.read_csv(base)
             df["field_type"] = ftype
             frames.append(df)
         # Check for chunk files
-        for chunk_f in sorted(RESULTS_DIR.glob(f"step7_predep_{ftype}{lec_suffix}_chunk*.csv")):
+        for chunk_f in sorted(RESULTS_DIR.glob(f"step7_predep_{ftype}_chunk*.csv")):
             df = pd.read_csv(chunk_f)
             df["field_type"] = ftype
             frames.append(df)
@@ -142,7 +137,9 @@ def plot_heatmap_field_vs_lec(
     if len(sub) == 0:
         return
 
-    sub["col_label"] = sub["field"] + "\n" + sub["feature"]
+    sub["col_label"] = sub.apply(
+        lambda r: format_display_label(r["field"], r["feature"]), axis=1
+    )
     pivot = sub.pivot_table(index="lec_term", columns="col_label", values="predep")
 
     if pivot.empty:
@@ -158,17 +155,6 @@ def plot_heatmap_field_vs_lec(
 
     fig, ax = plt.subplots(figsize=FIGSIZE_HEATMAP)
     im = ax.imshow(pivot.values, aspect="auto", cmap=cmap, norm=norm)
-
-    # Annotate cells with value if >= 0.10
-    for i in range(pivot.shape[0]):
-        for j in range(pivot.shape[1]):
-            val = pivot.values[i, j]
-            if np.isnan(val):
-                continue
-            if val >= 0.10:
-                text_color = "white" if val >= 0.50 else "black"
-                ax.text(j, i, f"{val:.2f}", ha="center", va="center",
-                        fontsize=5.5, color=text_color, fontweight="bold")
 
     ax.set_xticks(range(pivot.shape[1]))
     ax.set_xticklabels(pivot.columns, rotation=90, fontsize=6)
@@ -211,7 +197,7 @@ def plot_top_associations(
     sub["label"] = (
         sub["ep"].map(EP_LABELS) + "  |  "
         + sub["lec_term"] + "  ×  "
-        + sub["field"] + " : " + sub["feature"]
+        + sub.apply(lambda r: format_display_label(r["field"], r["feature"]), axis=1)
     )
     top = sub.nlargest(TOP_N, "predep")
 
@@ -238,6 +224,53 @@ def plot_top_associations(
     fig.savefig(outpath, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     logging.info(f"   Saved: {outpath}")
+
+
+def plot_top_associations_per_ep(
+    df: pd.DataFrame,
+    field_type: str,
+    out_dir: Path,
+    term_label: str = "all",
+):
+    """Bar chart of top PREDEP associations for each EP separately."""
+    for ep in ALL_EPS:
+        sub = df[
+            (df["field_type"] == field_type) & (df["ep"] == ep) & df["predep"].notna()
+        ].copy()
+        if len(sub) == 0:
+            continue
+
+        sub["label"] = (
+            sub["lec_term"] + "  ×  "
+            + sub.apply(lambda r: format_display_label(r["field"], r["feature"]), axis=1)
+        )
+        top = sub.nlargest(TOP_N, "predep")
+
+        fig, ax = plt.subplots(figsize=FIGSIZE_BAR)
+        color = EP_COLORS.get(ep, "gray")
+        ax.barh(range(len(top)), top["predep"].values, color=color,
+                edgecolor="black", linewidth=0.4)
+        ax.set_yticks(range(len(top)))
+        ax.set_yticklabels(top["label"].values, fontsize=7.5)
+        ax.set_xlabel(r"PREDEP $\alpha_{\mathrm{LEC\,|\,feature}}$", fontsize=11)
+        ep_label = EP_LABELS[ep]
+        ax.set_title(
+            f"Top {TOP_N} PREDEP — {ep_label} | {field_type.capitalize()} ({term_label})",
+            fontsize=12, fontweight="bold",
+        )
+        ax.set_xlim(0, 1)
+        ax.axvline(0.1, color="gray", linestyle="--", linewidth=0.8, label="0.10 threshold")
+        ax.axvline(0.3, color="#fc9272", linestyle="--", linewidth=0.8, label="0.30")
+        ax.axvline(0.5, color="#ef3b2c", linestyle="--", linewidth=0.8, label="0.50")
+        ax.legend(fontsize=7, loc="lower right")
+        ax.invert_yaxis()
+        fig.tight_layout()
+
+        fname = f"top_predep_{ep_label.lower().replace(' ', '_')}_{field_type}_{term_label}.png"
+        outpath = out_dir / fname
+        fig.savefig(outpath, dpi=DPI, bbox_inches="tight")
+        plt.close(fig)
+        logging.info(f"   Saved: {outpath}")
 
 
 def plot_ep_comparison(
@@ -311,6 +344,7 @@ def _generate_figures_for_term_set(
         for ep in ALL_EPS:
             plot_heatmap_field_vs_lec(df, ep, ftype, out_dir, term_label=term_set)
         plot_top_associations(df, ftype, out_dir, term_label=term_set)
+        plot_top_associations_per_ep(df, ftype, out_dir, term_label=term_set)
         plot_ep_comparison(df, ftype, out_dir, term_label=term_set)
 
 
@@ -329,30 +363,18 @@ def main():
             "'both' = generate both (default)."
         ),
     )
-    parser.add_argument(
-        "--lec-source",
-        choices=["full", "central"],
-        default="full",
-        help=(
-            "Which PREDEP results to use. "
-            "'full' = full intensification-phase LEC (default). "
-            "'central' = ±1 timestep central-window LEC. "
-            "Reads step7_predep_*_central_chunk*.csv when 'central'."
-        ),
-    )
     args = parser.parse_args()
 
     setup_logging()
     logging.info("=" * 70)
     logging.info("STEP 8: SYNTHESIS FIGURES — LEC–FIELD DEPENDENCE ANALYSIS")
-    logging.info(f"LEC source : {args.lec_source.upper()}")
+    logging.info("LEC method : central timesteps (canonical ep_structure rule)")
     logging.info("=" * 70)
 
-    df = load_predep_results(lec_source=args.lec_source)
+    df = load_predep_results()
     if len(df) == 0:
         logging.error(
-            f"No PREDEP results found for lec_source='{args.lec_source}'. "
-            "Run step7 (with matching --lec-source) first."
+            "No PREDEP results found. Run step7 first."
         )
         return
 
@@ -361,38 +383,36 @@ def main():
     logging.info(f"EPs: {sorted(df['ep'].unique().tolist())}")
     logging.info(f"LEC terms: {sorted(df['lec_term'].unique().tolist())}")
 
-    # Subdirectories per term set (with central suffix when applicable)
-    lec_dir_suffix = "_central" if args.lec_source == "central" else ""
+    # Subdirectories per term set
     term_sets_to_run = (
         ["all", "canonical"] if args.term_set == "both" else [args.term_set]
     )
 
     for term_set in term_sets_to_run:
-        out_dir = FIGURES_DIR / f"{term_set}{lec_dir_suffix}"
+        out_dir = FIGURES_DIR / term_set
         logging.info(f"\n{'='*60}")
         logging.info(f"Term set: {term_set.upper()} → {out_dir}")
         _generate_figures_for_term_set(df, term_set, out_dir)
 
     # ── Summary tables (global, all terms) ──────────────────────────────
-    lec_sfx = "_central" if args.lec_source == "central" else ""
     logging.info("\n--- Summary tables (all terms) ---")
 
     top_all = df[df["predep"].notna()].nlargest(50, "predep")
-    top_all.to_csv(RESULTS_DIR / f"step8_top_associations{lec_sfx}.csv", index=False)
-    logging.info(f"   Saved: step8_top_associations{lec_sfx}.csv")
+    top_all.to_csv(RESULTS_DIR / "step8_top_associations.csv", index=False)
+    logging.info("   Saved: step8_top_associations.csv")
 
     top_canonical = (
         df[df["predep"].notna() & df["lec_term"].isin(LEC_TERMS_CORE)]
         .nlargest(50, "predep")
     )
-    top_canonical.to_csv(RESULTS_DIR / f"step8_top_associations_canonical{lec_sfx}.csv", index=False)
-    logging.info(f"   Saved: step8_top_associations_canonical{lec_sfx}.csv")
+    top_canonical.to_csv(RESULTS_DIR / "step8_top_associations_canonical.csv", index=False)
+    logging.info("   Saved: step8_top_associations_canonical.csv")
 
     summary = df[df["predep"].notna()].groupby(
         ["ep", "field_type", "lec_term"]
     )["predep"].agg(["mean", "median", "max", "count"]).reset_index()
-    summary.to_csv(RESULTS_DIR / f"step8_summary_table{lec_sfx}.csv", index=False)
-    logging.info(f"   Saved: step8_summary_table{lec_sfx}.csv")
+    summary.to_csv(RESULTS_DIR / "step8_summary_table.csv", index=False)
+    logging.info("   Saved: step8_summary_table.csv")
 
     # Absolute vs Anomaly comparison
     if len(df["field_type"].unique()) > 1:
@@ -403,8 +423,8 @@ def main():
                      .groupby(["ep", "lec_term"])["predep"].mean().reset_index()
                      .rename(columns={"predep": "predep_anomaly"}))
         comparison = abs_mean.merge(anom_mean, on=["ep", "lec_term"], how="outer")
-        comparison.to_csv(RESULTS_DIR / f"step8_abs_vs_anom_comparison{lec_sfx}.csv", index=False)
-        logging.info(f"   Saved: step8_abs_vs_anom_comparison{lec_sfx}.csv")
+        comparison.to_csv(RESULTS_DIR / "step8_abs_vs_anom_comparison.csv", index=False)
+        logging.info("   Saved: step8_abs_vs_anom_comparison.csv")
 
     logging.info("\n✓ Step 8 complete.")
 

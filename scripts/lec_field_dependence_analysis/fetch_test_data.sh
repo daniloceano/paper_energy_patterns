@@ -16,7 +16,7 @@
 #
 #  WHAT IT DOWNLOADS  (6 cyclones, ~2 per EP, median-duration cases)
 #  -------------------------------------------------------------------
-#  Selected via `step3_era5_field_manifest.csv` + `step2_lec_intensification_means.csv`
+#  Selected via `step3_era5_field_manifest.csv` + `step2_lec_means.csv`
 #  picking the 40th and 60th percentile of intensification duration per EP so
 #  that chosen cases are representative (not outliers) of each energy pattern:
 #

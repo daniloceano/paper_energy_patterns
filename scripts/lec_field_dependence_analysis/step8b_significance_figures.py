@@ -84,13 +84,13 @@ def plot_significance_heatmap(pair_df: pd.DataFrame, block: str,
     pivot = pivot.reindex(columns=[c for c in CONTRAST_ORDER if c in pivot.columns])
     pivot = pivot.fillna(0)
 
-    fig, ax = plt.subplots(figsize=(6, max(4, len(pivot) * 0.35)))
+    fig, ax = plt.subplots(figsize=(8, max(4, len(pivot) * 0.4)))
     cmap = mcolors.ListedColormap(["#f0f0f0", "#d62728"])
     im = ax.imshow(pivot.values, aspect="auto", cmap=cmap, vmin=0, vmax=1)
     ax.set_xticks(range(pivot.shape[1]))
     ax.set_xticklabels(pivot.columns, fontsize=10)
     ax.set_yticks(range(pivot.shape[0]))
-    ax.set_yticklabels(pivot.index, fontsize=8)
+    ax.set_yticklabels(pivot.index, fontsize=7)
     ax.set_title(f"Pairwise Significance — {block_label}",
                  fontsize=13, fontweight="bold")
 
@@ -132,7 +132,7 @@ def plot_effect_size_heatmap(pair_df: pd.DataFrame, block: str,
     pivot = pivot.reindex(columns=[c for c in CONTRAST_ORDER if c in pivot.columns])
     pivot = pivot.fillna(0)
 
-    fig, ax = plt.subplots(figsize=(6, max(4, len(pivot) * 0.35)))
+    fig, ax = plt.subplots(figsize=(8, max(4, len(pivot) * 0.4)))
     im = ax.imshow(pivot.values, aspect="auto", cmap="YlOrRd", vmin=0)
     ax.set_xticks(range(pivot.shape[1]))
     ax.set_xticklabels(pivot.columns, fontsize=10)
@@ -229,7 +229,7 @@ def plot_effect_ranking(diag_df: pd.DataFrame, block: str,
 
     top = sub.nlargest(min(top_n, len(sub)), "effect_size")
 
-    fig, ax = plt.subplots(figsize=(9, max(4, len(top) * 0.35)))
+    fig, ax = plt.subplots(figsize=(10, max(4, len(top) * 0.4)))
     colors = ["#d62728" if p < ALPHA else "#bbbbbb"
               for p in top["global_p_adjusted"]]
     ax.barh(range(len(top)), top["effect_size"].values,
@@ -238,7 +238,7 @@ def plot_effect_ranking(diag_df: pd.DataFrame, block: str,
     ax.set_yticklabels(
         [f"{row['display_name']}  ({row['effect_size_name']})"
          for _, row in top.iterrows()],
-        fontsize=7)
+        fontsize=6.5)
     ax.invert_yaxis()
     ax.set_xlabel("Effect Size", fontsize=11)
     ax.set_title(f"Effect Size Ranking — {block_label}",

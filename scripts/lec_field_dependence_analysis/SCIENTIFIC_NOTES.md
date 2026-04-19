@@ -121,16 +121,19 @@ Two versions of each field:
 
 ### Temporal Representation
 
-Two LEC temporal windows are available (produced by `step2_build_lec_table.py --temporal-window`):
+LEC temporal averaging follows the canonical `ep_structure_analysis` methodology, selecting the **central timesteps** of the intensification phase:
 
-| Window | Flag | Output file | Description |
-|--------|------|-------------|-------------|
-| **Full phase** | `full` (default) | `step2_lec_intensification_means.csv` | Mean over all 3-hourly timesteps in the intensification phase (~14 timesteps, ~42h) |
-| **Central window** | `central` | `step2_lec_central_means.csv` | Mean over ±1 timestep around phase midpoint (3 timesteps = 9h window) |
+| Intensification length (N) | Timesteps selected | Rationale |
+|---|---|---|
+| Odd N (e.g. 5) | 3 central: `[N//2−1, N//2, N//2+1]` | Symmetric window around midpoint |
+| Even N (e.g. 4) | 2 central: `[N//2−1, N//2]` | Balanced pair around midpoint |
+| N ≤ 3 | All timesteps | Too short for sub-selection |
+
+Only cyclones with intensification duration > 24 h (N > 8 at 3-hourly resolution) are included.
 
 **ERA5 fields**: single central timestep of the intensification phase (canonical ep_structure methodology; snapshot at cyclone mature stage).
 
-**Temporal mismatch**: The full-phase LEC window includes early and late intensification, while the ERA5 snapshot captures only the mature stage.  The central-window option reduces this mismatch to 9h vs a single snapshot.  See Assumptions section for a quantified example.
+**Temporal consistency**: Both the LEC values and the ERA5 fields are centred on the same portion of the intensification phase, eliminating the temporal mismatch that would arise from averaging LEC over the entire phase.
 
 ---
 
@@ -278,16 +281,11 @@ For each variable separately:
 
 ## Assumptions
 
-1. **Phase-mean LEC representativeness**: The intensification-phase mean captures the dominant energetic behaviour. Sub-phase variability is averaged out.
+1. **Central-timestep representativeness**: The 2–3 central timesteps of intensification represent the mature structure of the intensifying cyclone. This is the same assumption used in the ep_structure_analysis composites and is now applied consistently to the LEC averaging as well.
 
-2. **Central-timestep representativeness**: The 2–3 central timesteps of intensification represent the mature structure of the intensifying cyclone. This is the same assumption used in the ep_structure_analysis composite.
+2. **Temporal alignment (resolved)**: Both LEC values and ERA5 fields are now extracted at the central timesteps of the intensification phase, ensuring temporal consistency. The previous full-phase approach (averaging LEC over ~42h while ERA5 was a single snapshot) was removed to eliminate this mismatch.
 
-3. **Temporal mismatch (quantified)**: In the default configuration, the LEC term covers the **full** intensification phase (~42h), while the ERA5 field is from the **central** single timestep only.  This mismatch is large in practice.  Example — cyclone ID 19790001:
-   - Full-phase mean $C_a$ = +0.28 W m⁻²
-   - Central-window (±1 ts, 9h) mean $C_a$ = −0.35 W m⁻²
-   The sign reversal indicates that early/late intensification dominates the full-phase mean for this cyclone.  **Mitigation**: the `--temporal-window central` option produces `step2_lec_central_means.csv` which averages LEC over the same 9h window around the midpoint, reducing the temporal mismatch.  The central-window PREDEP run (on the server) is needed to quantify whether this reduces or increases PREDEP values.  All current results use the **full-phase** mean (default).
-
-4. **Storm-centred domain validity**: The 30°×30° domain adequately captures the synoptic-scale structure relevant to the energy budget. Some influence from neighbouring systems is possible.
+3. **Storm-centred domain validity**: The 30°×30° domain adequately captures the synoptic-scale structure relevant to the energy budget. Some influence from neighbouring systems is possible.
 
 5. **PREDEP estimation validity**: The bootstrap estimator requires sufficient sample size. EP1 (N ≈ 330) is marginal; EP2 (N ≈ 770) and EP3 (N ≈ 1600) are adequate.
 
@@ -319,7 +317,6 @@ For each variable separately:
 
 ## Known Methodological Risks
 
-- **Temporal mismatch (quantified risk)**: Full-phase LEC mean vs ERA5 central-snapshot can produce sign-reversal in individual LEC terms.  This inflates within-EP variance of LEC values, which biases PREDEP downward (attenuates the signal).  Estimated magnitude: ≥0.10 reduction in PREDEP for some Ca/Ck terms.  Mitigation: `--temporal-window central` rerun on server.
 - The Ward linkage clustering used to define X-bins in PREDEP may be sub-optimal for some LEC term distributions that are multi-modal
 - The fixed number of bins ($k = \sqrt{N}$) may under-resolve conditional densities for EP3 (large N) or over-resolve for EP1 (small N)
 - If per-cyclone ERA5 fields have variable grid sizes (non-standard domain), the feature extraction functions assume 121×121 and will produce incorrect results
@@ -329,11 +326,13 @@ For each variable separately:
 
 ## Results and Interpretation
 
-### 2025-04-19 — First full pipeline run (full-phase LEC, absolute + anomaly fields)
+### 2025-04-19 — First full pipeline run (full-phase LEC — SUPERSEDED)
+
+> **Note (2025-06)**: These results used the now-removed full-phase LEC averaging. The pipeline has been updated to use the canonical central-timestep method. A full rerun is required; these results are retained for reference only.
 
 **Run summary**: 2733 cyclones (EP1=330, EP2=768, EP3=1635), 65 ERA5 features, 24 LEC terms, absolute + anomaly field types.  Total PREDEP estimates: ~9,360.  Server runtime: ~2h 8m.
 
-**General pattern**: Most PREDEP values fall in the 0.40–0.70 range.  A genuine floor exists around 0.40 for the full-phase LEC — consistent with the temporal mismatch (LEC full-phase mean vs ERA5 snapshot reduces correlation for all features).  Values below 0.10 are sparse.
+**General pattern**: Most PREDEP values fell in the 0.40–0.70 range.  A genuine floor existed around 0.40, likely due to the temporal mismatch between full-phase LEC and ERA5 central snapshot.  The central-timestep method should eliminate this floor.
 
 **Top canonical associations (PREDEP > 0.70, canonical 7 terms):**
 
@@ -357,25 +356,186 @@ For each variable separately:
 **Physical interpretation (EP1)**:
 - PV at 200 hPa NE quadrant ($\alpha \approx 0.699$ for $G_e$) identifies upper-level tropopause structure northeast of the cyclone as informative for diabatic APE generation.  This is consistent with the EP1 composite showing a cut-off low or upper-level trough.
 
-**Anomaly vs Absolute**: For EP3 top associations, EPALL-relative anomaly fields (`afc_250_anom_epall`) generally outperform absolute fields, suggesting that **deviation from the climatological extratropical cyclone structure** is more informative than the absolute field intensity.  For EP1, the absolute field performs comparably.
+**Anomaly vs Absolute**: For EP3 top associations, EPALL-relative anomaly fields (`afc_250_anom_epall`) generally outperformed absolute fields, suggesting that **deviation from the climatological extratropical cyclone structure** is more informative than the absolute field intensity.  For EP1, the absolute field performed comparably.
 
-**[PRELIMINARY]** These results use the full-phase LEC mean (temporal mismatch present).  A rerun with `--temporal-window central` on the server will isolate the central-window effect.
+---
+
+## How to Read the Figures
+
+This section provides an interpretation guide for each figure family produced by the pipeline.  The recommended reading order is: **effect size / magnitude first → significance → physical coherence**.
+
+---
+
+### Label Convention
+
+All figure labels for dynamic features follow the format:
+
+> **Field Label — Feature Label**
+
+where *Field Label* is a human-readable physical variable identifier and *Feature Label* describes the spatial extraction.
+
+| Field Label | Meaning |
+|---|---|
+| PV 850 | Potential vorticity at 850 hPa (absolute) |
+| PV 200 | Potential vorticity at 200 hPa (absolute) |
+| AdvT 850 | Temperature advection at 850 hPa (absolute) |
+| AFC 250 | Ageostrophic flux convergence at 250 hPa (absolute) |
+| KE adv 250 | Kinetic energy advection at 250 hPa (absolute) |
+| PV 850 anom | PV 850 anomaly relative to all-EP composite |
+| PV 200 anom | PV 200 anomaly relative to all-EP composite |
+| AdvT 850 anom | AdvT 850 anomaly |
+| AFC 250 anom | AFC 250 anomaly |
+| KE adv 250 anom | KE adv 250 anomaly |
+
+Spatial features (right side of the "—"):
+
+| Feature Label | Meaning |
+|---|---|
+| domain mean | Spatial mean over the 30°×30° storm-centred domain |
+| centre value | Value at the cyclone centre grid point |
+| border N/S/E/W | Mean along the N/S/E/W border of the domain |
+| E–W contrast | (border E) − (border W) |
+| S–N contrast | (border S) − (border N) |
+| NE/NW/SE/SW quadrant | Mean over the respective quadrant |
+| domain \|mean\| | Mean of absolute values over the domain |
+
+LEC terms (Ca, Ck, Ce, Ge, BAe, BAz, BKe, BKz, etc.) use just the term name with no field prefix.
+
+---
+
+### PREDEP Heatmap (step 8)
+
+**What it shows**: A matrix of PREDEP ($\alpha_{\text{LEC}\,|\,\text{feature}}$) values.  Rows = LEC terms, columns = field–feature combinations.
+
+**Colour scale**: Discrete levels.
+- **Grey** (PREDEP < 0.10): negligible predictive dependence.
+- **Light red → dark red** (0.10, 0.30, 0.50, 0.70, 0.90): increasing dependence.
+
+**How to read**:
+1. Scan for the darkest cells — these are the strongest LEC–feature associations.
+2. Check which *row* (LEC term) has concentrated dark cells — that term is the most predictable from the synoptic structure.
+3. Check which *column* (field–feature) predicts many LEC terms — that feature has broad predictive relevance.
+4. Compare the `canonical` (7 core LEC terms) vs `all` (full term set) variants. If results are consistent, the finding is robust.
+
+**What NOT to infer**: PREDEP does not imply physical causation.  A high PREDEP between AFC 250 S–N contrast and Ca means the spatial gradient of ageostrophic flux convergence carries information about baroclinic conversion magnitude, NOT that one causes the other.
+
+---
+
+### Top Associations Bar Chart (step 8)
+
+**What it shows**: The TOP_N (default 20) strongest PREDEP values across all EP × LEC term × field–feature triples, ranked by magnitude.
+
+**Colour**: Bars are coloured by EP (EP1, EP2, EP3 following the standard EP palette).
+
+**How to read**:
+1. Look at whether one EP dominates the top associations — this indicates which pattern has the most structured LEC–field relationships.
+2. Read labels: each bar is labelled as `EP Label  |  LEC term  ×  Field — Feature`.
+3. If the same field–feature combination appears for multiple LEC terms or EPs, it is a broadly relevant predictor.
+
+---
+
+### Per-EP Ranking Bar Chart (step 8)
+
+**What it shows**: The top PREDEP associations *within a single EP*, separately for absolute and anomaly fields.
+
+**How to read**:
+1. Compare the rankings across EP1, EP2, EP3 to see if the same physical features appear or if each EP relies on different structural predictors.
+2. Look at the magnitude axis: if EP3 has generally lower PREDEP values than EP1, the energetics of barotropic cyclones are less predictable from the synoptic fields examined here.
+
+---
+
+### Significance Heatmap (step 8b)
+
+**What it shows**: A binary matrix.  Rows = display names (field — feature), columns = EP pair contrasts (e.g., EP1 vs EP2).  Red = statistically significant difference ($p_{\text{adj}} < \alpha$).  Light grey = not significant.
+
+**How to read**:
+1. Scan for red cells.  These indicate that the distribution of the variable differs significantly between the two EPs being compared.
+2. A *row full of red* means the variable distinguishes all EP pairs — it is a strong discriminator (e.g., a field–feature that is structurally different across all three energy patterns).
+3. A *column full of red* means the two EPs compared in that column differ in many features — they are very distinct.
+4. **Do not stop here.** Significance alone (especially with $N > 300$) does not indicate meaningful differences.  Always cross-reference with the effect size heatmap.
+
+---
+
+### Effect Size Heatmap (step 8b)
+
+**What it shows**: A continuous heatmap of |effect size| for each variable × EP-pair contrast.  Effect sizes are $\omega^2$ (for global tests with 3+ groups, shown in the diagonal block) or Cohen's $d$ / rank-biserial $r$ (for pairwise contrasts).
+
+**Colour scale**: Yellow → Orange → Red (low → high effect size).
+
+**Guidelines for interpreting $\omega^2$**:
+| $\omega^2$ | Interpretation |
+|---|---|
+| < 0.01 | Negligible |
+| 0.01 – 0.06 | Small |
+| 0.06 – 0.14 | Medium |
+| > 0.14 | Large |
+
+**How to read**:
+1. Focus on dark-coloured (high effect size) cells.
+2. Cross-reference with the significance heatmap: a variable that is red in the significance heatmap AND has a high effect size here is a robust finding.
+3. Variables with statistically significant $p$ but negligible effect size ($\omega^2 < 0.01$) should be *ignored* — they are artefacts of large sample size.
+
+---
+
+### Effect Ranking Bar Chart (step 8b)
+
+**What it shows**: Top 20 variables ranked by global effect size ($\omega^2$ or $\epsilon^2$), for each analysis block (LEC terms, absolute features, anomaly features).
+
+**Colour**: Red = significant ($p_{\text{adj}} < \alpha$), grey = not significant.
+
+**How to read**:
+1. This is the single most informative figure for identifying *which features matter most*.
+2. Read from top to bottom: the first bar is the variable with the largest effect size.
+3. Grey bars in the top ranks indicate variables with large effect size but failing the significance test after FDR correction — these are *suggestive but unconfirmed*.
+4. Label format: `Field — Feature  (effect size name)`.
+
+---
+
+### Volcano Plot (step 8b)
+
+**What it shows**: A scatter plot of effect size (x-axis) vs $-\log_{10}(p_{\text{adj}})$ (y-axis) for all variables within a block.
+
+**Decision quadrants**:
+- **Top-right**: Large effect AND significant — *highest confidence findings*.
+- **Top-left**: Small effect but significant — large-sample artefacts, interpret with caution.
+- **Bottom-right**: Large effect but not significant — potential discoveries lost to multiple-comparison correction; *suggestive*.
+- **Bottom-left**: Small effect AND not significant — noise.
+
+**How to read**:
+1. Focus on the top-right quadrant.
+2. The horizontal dashed line marks $-\log_{10}(\alpha)$.  Points above it are significant.
+3. Labelled points are the top 5 by combined significance + effect size.  Their labels follow the `Field — Feature` convention.
+4. If the plot is clustered entirely in the bottom-left, the variables in that block do not differ meaningfully across EPs.
+
+---
+
+### Recommended Reading Workflow
+
+1. **Start with the effect ranking** (step 8b) to identify the variables with the largest magnitude of difference across EPs.
+2. **Check the volcano plot** to see whether those high-effect variables are also statistically significant.
+3. **Consult the PREDEP heatmap** (step 8) to see whether the significant variables are also good predictors of the LEC terms.
+4. **Use the top associations bar chart** (step 8) to get a synthetic view of the strongest LEC–field links.
+5. **Verify physical coherence**: ask whether the identified associations make sense given known cyclone dynamics (e.g., strong PV 200 anomaly predicting upper-level energy conversions is physically plausible; a border feature predicting a boundary flux is mechanistically expected).
 
 ---
 
 ## Next Steps
 
 ### Completed (as of 2025-04-19)
-- [x] Steps 1–8 executed (full pipeline, full-phase LEC)
+- [x] Steps 1–8 executed (full pipeline, full-phase LEC — now superseded)
 - [x] LEC_TERMS_CORE corrected to 7 matching terms
 - [x] Figures regenerated with discrete PREDEP scale (grey <0.10, 5 red bins)
 - [x] Two figure families: `canonical/` (7 terms) and `all/` (all terms)
-- [x] `step2_lec_central_means.csv` generated locally (central-window LEC)
-- [x] `step6_integrated_*_central.csv` generated locally
+
+### Completed (as of 2025-06)
+- [x] Unified temporal method: central timesteps only (canonical ep_structure rule)
+- [x] Removed all full-phase options (`--temporal-window`, `--lec-source`)
+- [x] Removed cell annotations from heatmaps (cleaner visual)
+- [x] Added per-EP ranking bar charts (separate figures per EP)
 
 ### Pending
-1. **Run step7 on server with central-window LEC** — transfer `step6_integrated_*_central.csv` and run full step7; compare PREDEP distributions between full-phase and central-window outputs
-2. **Assess PREDEP floor**: PREDEP~0.40 floor for full-phase LEC may reflect temporal mismatch.  Central-window rerun will test this hypothesis.
+1. **Full pipeline rerun on server with canonical central-timestep method** — Steps 2, 6, 7, 7b, 8, 8b, 9 must be rerun. Command: `bash run_pipeline.sh --era5-dir data/era5_ep_structure --only 2,6,7,7b,8,8b,9 --n-chunks 32 --workers 100 --background`
+2. **Assess PREDEP floor change**: The ~0.40 floor seen with full-phase LEC should decrease with the central-timestep method. Compare distributions.
 3. **Identify physically meaningful top associations** — current top results point to AFC anomaly S–N contrast for EP3.  Validate with ep_structure composites.
 4. **Steps 9/10 (significance analysis and CK analysis)** — if applicable
 5. **Consider extending to:**

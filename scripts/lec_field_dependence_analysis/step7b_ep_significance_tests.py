@@ -49,6 +49,7 @@ import pandas as pd
 from scripts.lec_field_dependence_analysis.utils_io import (
     RESULTS_DIR, LOG_DIR, LEC_TERMS_FULL,
     DYNAMIC_FIELDS_ABSOLUTE, DYNAMIC_FIELDS_ANOMALY,
+    format_display_label,
 )
 from scripts.lec_field_dependence_analysis.utils_features import get_feature_names
 from scripts.lec_field_dependence_analysis.utils_statistical_tests import (
@@ -60,7 +61,7 @@ from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS
 # Paths
 # ---------------------------------------------------------------------------
 INPUT_CASES = RESULTS_DIR / "step1_eligible_cases.csv"
-INPUT_LEC = RESULTS_DIR / "step2_lec_intensification_means.csv"
+INPUT_LEC = RESULTS_DIR / "step2_lec_means.csv"
 INPUT_INTEGRATED_ABS = RESULTS_DIR / "step6_integrated_absolute.csv"
 INPUT_INTEGRATED_ANOM = RESULTS_DIR / "step6_integrated_anomaly.csv"
 
@@ -160,13 +161,15 @@ def analyse_block(df: pd.DataFrame,
         if "__" in col:
             field_origin = col.split("__")[0]
             feature = col.split("__")[1]
+            display = format_display_label(field_origin, feature)
         else:
             field_origin = field_origin_map.get(col, "N/A")
             feature = col
+            display = col
 
         diag_rows.append({
             "variable": col,
-            "display_name": feature,
+            "display_name": display,
             "var_type": var_type,
             "field_origin": field_origin,
             "field_type": field_type,
@@ -194,7 +197,7 @@ def analyse_block(df: pd.DataFrame,
         for pw in result["pairwise"]:
             pair_rows.append({
                 "variable": col,
-                "display_name": feature,
+                "display_name": display,
                 "var_type": var_type,
                 "field_origin": field_origin,
                 "field_type": field_type,

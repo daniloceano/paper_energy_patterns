@@ -92,7 +92,7 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 | Step | Script | Description | Input | Output |
 |------|--------|-------------|-------|--------|
 | 1 | `step1_consolidate_metadata.py` | Build eligible cases table | `results/ep_structure/`, LEC Zenodo | `step1_eligible_cases.csv` |
-| 2 | `step2_build_lec_table.py` | LEC intensification means per cyclone | LEC Zenodo | `step2_lec_intensification_means.csv` |
+| 2 | `step2_build_lec_table.py` | LEC central-timestep means per cyclone | LEC Zenodo | `step2_lec_means.csv` |
 | 3 | `step3_map_era5_fields.py` | Map ERA5 field availability (dry-run locally) | Step 1 output | `step3_era5_field_manifest.csv` |
 
 ### Steps that require remote/HPC
@@ -288,7 +288,7 @@ All steps are **restart-friendly**: they detect already-processed outputs and sk
 results/lec_field_dependence/
 ├── step1_eligible_cases.csv              # Eligible cyclones
 ├── step1_metadata_report.txt
-├── step2_lec_intensification_means.csv   # LEC means per cyclone
+├── step2_lec_means.csv                   # LEC means per cyclone (central timesteps)
 ├── step2_lec_qa_report.txt
 ├── step3_era5_field_manifest.csv         # ERA5 availability
 ├── step3_field_mapping_report.txt

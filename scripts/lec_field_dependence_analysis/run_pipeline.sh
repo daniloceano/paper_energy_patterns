@@ -14,7 +14,6 @@
 #    bash run_pipeline.sh --era5-dir /data/era5/ --only 3b,4,5,6
 #    bash run_pipeline.sh --era5-dir /data/era5/ --clean                # wipe results+logs first
 #    bash run_pipeline.sh --era5-dir /data/era5/ --clean --dry-run      # preview what would be deleted
-#    bash run_pipeline.sh --era5-dir /data/era5/ --lec-source central --only 6,7,7b,8,8b,9
 #
 #  Pipeline execution model:
 #    Steps run SEQUENTIALLY.  The next step only starts after the previous one
@@ -44,13 +43,6 @@
 #                          Default: continue — all errors are logged and
 #                          reported in the final summary.
 #    --only STEPS          Run only these steps, e.g. "4,5,6" or "3b,4,5"
-#    --lec-source SOURCE   LEC temporal window: 'full' (default) or 'central'.
-#                          'full'    = full intensification-phase mean (step2 default).
-#                          'central' = ±1 timestep central-window mean (step2 --temporal-window central).
-#                          Affects step 6, 7, and 8.  When 'central', step 6 reads
-#                          step2_lec_central_means.csv and outputs step6_integrated_*_central.csv;
-#                          step 7 reads those and outputs step7_predep_*_central_chunk*.csv;
-#                          step 8 reads step7 central chunks and saves to figures/*_central/.
 #
 #  Error handling:
 #    By default every step is attempted.  If a step fails, its exit code and
@@ -89,7 +81,6 @@ BACKGROUND=false
 STOP_ON_ERROR=false
 CLEAN=false
 DRY_RUN=false
-LEC_SOURCE="full"
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -105,7 +96,6 @@ while [[ $# -gt 0 ]]; do
         --stop-on-error)    STOP_ON_ERROR=true;   shift   ;;
         --background)       BACKGROUND=true;      shift   ;;
         --only)             ONLY_STEPS="$2";      shift 2 ;;
-        --lec-source)       LEC_SOURCE="$2";      shift 2 ;;
         --clean)            CLEAN=true;             shift   ;;
         --dry-run)          DRY_RUN=true;           shift   ;;
         -h|--help)
@@ -373,7 +363,6 @@ _log " Workers/chunk:   $N_WORKERS"
 _log " Conda env:       $CONDA_ENV"
 _log " Skip done:       $SKIP_DONE"
 _log " Only steps:      ${ONLY_STEPS:-all}"
-_log " LEC source:      $LEC_SOURCE"
 _log " Orch log:        $ORCH_LOG"
 _log "=================================================================="
 
@@ -395,7 +384,7 @@ fi
 # Step 2 — Build LEC table
 # ---------------------------------------------------------------------------
 if should_run 2; then
-    if $SKIP_DONE && [[ -f "$RESULTS_DIR/step2_lec_intensification_means.csv" ]]; then
+    if $SKIP_DONE && [[ -f "$RESULTS_DIR/step2_lec_means.csv" ]]; then
         _log "SKIP   [step2]  output already exists"
     else
         run_single "step2" \
@@ -467,7 +456,7 @@ if should_run 6; then
         _log "SKIP   [step6]  output already exists"
     else
         run_single "step6" \
-            "$PYTHON $PIPELINE_DIR/step6_integrate_tables.py --lec-source $LEC_SOURCE"
+            "$PYTHON $PIPELINE_DIR/step6_integrate_tables.py"
     fi
 fi
 
@@ -501,20 +490,14 @@ fi
 # Step 7 — Compute PREDEP (absolute first, then anomaly — sequential)
 # ---------------------------------------------------------------------------
 if should_run 7; then
-    # Determine the skip-done target based on lec-source
-    if [[ "$LEC_SOURCE" == "central" ]]; then
-        _skip_abs="$RESULTS_DIR/step7_predep_absolute_central.csv"
-        _skip_anom="$RESULTS_DIR/step7_predep_anomaly_central.csv"
-    else
-        _skip_abs="$RESULTS_DIR/step7_predep_absolute.csv"
-        _skip_anom="$RESULTS_DIR/step7_predep_anomaly.csv"
-    fi
+    _skip_abs="$RESULTS_DIR/step7_predep_absolute.csv"
+    _skip_anom="$RESULTS_DIR/step7_predep_anomaly.csv"
 
     CMD_ABS="$PYTHON $PIPELINE_DIR/step7_compute_predep.py \
-        --field-type absolute --lec-source $LEC_SOURCE \
+        --field-type absolute \
         --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
     CMD_ANOM="$PYTHON $PIPELINE_DIR/step7_compute_predep.py \
-        --field-type anomaly --lec-source $LEC_SOURCE \
+        --field-type anomaly \
         --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
 
     if $SKIP_DONE && output_ready "$_skip_abs"; then
@@ -547,7 +530,7 @@ fi
 # ---------------------------------------------------------------------------
 if should_run 8; then
     run_single "step8" \
-        "$PYTHON $PIPELINE_DIR/step8_synthesis_figures.py --lec-source $LEC_SOURCE"
+        "$PYTHON $PIPELINE_DIR/step8_synthesis_figures.py"
 fi
 
 # ---------------------------------------------------------------------------

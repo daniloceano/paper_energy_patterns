@@ -163,17 +163,7 @@ def main():
                         help="Skip Pearson/Spearman")
     parser.add_argument("--min-n", type=int, default=None,
                         help="Override MIN_SAMPLE_SIZE (default 30; use 2 for smoke tests)")
-    parser.add_argument(
-        "--lec-source",
-        choices=["full", "central"],
-        default="full",
-        help=(
-            "Which LEC table to use. "
-            "'full' = full intensification-phase mean (default). "
-            "'central' = \u00b11 timestep central-window mean (step2 --temporal-window central). "
-            "The central option reduces temporal mismatch with the ERA5 snapshot."
-        ),
-    )
+
     args = parser.parse_args()
 
     global COMPUTE_BASELINES, MIN_SAMPLE_SIZE
@@ -182,20 +172,19 @@ def main():
     if args.min_n is not None:
         MIN_SAMPLE_SIZE = args.min_n
 
-    lec_suffix = "_central" if args.lec_source == "central" else ""
     chunk_suffix = f"_chunk{args.chunk}" if args.chunk is not None else ""
     setup_logging(args.field_type, args.chunk)
 
     logging.info("=" * 70)
-    logging.info(f"STEP 7: COMPUTE PREDEP ({args.field_type.upper()}) \u2014 LEC\u2013FIELD DEPENDENCE")
-    logging.info(f"LEC source : {args.lec_source.upper()} ({'\u00b11 timestep central window' if args.lec_source == 'central' else 'full intensification phase'})")
+    logging.info(f"STEP 7: COMPUTE PREDEP ({args.field_type.upper()}) — LEC–FIELD DEPENDENCE")
+    logging.info("LEC method : central timesteps (canonical ep_structure rule)")
     logging.info("=" * 70)
 
     # 1. Load integrated table
     if args.field_type == "absolute":
-        input_file = RESULTS_DIR / f"step6_integrated_absolute{lec_suffix}.csv"
+        input_file = RESULTS_DIR / "step6_integrated_absolute.csv"
     else:
-        input_file = RESULTS_DIR / f"step6_integrated_anomaly{lec_suffix}.csv"
+        input_file = RESULTS_DIR / "step6_integrated_anomaly.csv"
 
     if not input_file.exists():
         logging.error(f"Input file not found: {input_file}")
@@ -294,7 +283,7 @@ def main():
     logging.info(f"\n   Valid PREDEP estimates: {n_valid}")
     logging.info(f"   Excluded:              {n_excluded}")
 
-    output_path = RESULTS_DIR / f"step7_predep_{args.field_type}{lec_suffix}{chunk_suffix}.csv"
+    output_path = RESULTS_DIR / f"step7_predep_{args.field_type}{chunk_suffix}.csv"
     result_df.to_csv(output_path, index=False)
     logging.info(f"   Saved: {output_path}")
 

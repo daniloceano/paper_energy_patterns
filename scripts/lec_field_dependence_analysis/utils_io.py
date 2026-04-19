@@ -102,10 +102,36 @@ def load_cluster_assignments() -> pd.DataFrame:
 # LEC data loader (per-cyclone, phase-averaged from GitHub)
 # ---------------------------------------------------------------------------
 
-def load_lec_intensification_from_zenodo(track_id: str) -> Optional[pd.DataFrame]:
+def _select_central_indices(n: int) -> list:
     """
-    Load LEC time series from Zenodo data and extract intensification-phase
-    mean values for all terms.
+    Select central timestep indices using the canonical ep_structure rule.
+
+    Consistent with scripts/utils/timestep_selection.py::select_central_timesteps:
+      - N odd  → 3 central: [N//2 - 1, N//2, N//2 + 1]
+      - N even → 2 central: [N//2 - 1, N//2]
+      - N <= 3 → all
+    """
+    if n <= 3:
+        return list(range(n))
+    mid = n // 2
+    if n % 2 == 1:
+        return [mid - 1, mid, mid + 1]
+    else:
+        return [mid - 1, mid]
+
+
+def load_lec_from_zenodo(track_id: str) -> Optional[pd.DataFrame]:
+    """
+    Load LEC time series from Zenodo and return the mean over the central
+    timesteps of the intensification phase.
+
+    Uses the canonical ep_structure temporal selection:
+      - Odd  N timesteps → 3 central (indices N//2-1, N//2, N//2+1)
+      - Even N timesteps → 2 central (indices N//2-1, N//2)
+      - N ≤ 3            → all timesteps
+
+    This ensures temporal consistency with the ERA5 dynamic fields, which
+    are extracted at the single central timestep of the intensification phase.
 
     Parameters
     ----------
@@ -116,7 +142,8 @@ def load_lec_intensification_from_zenodo(track_id: str) -> Optional[pd.DataFrame
     -------
     pd.DataFrame or None
         Single-row DataFrame with columns = LEC terms,
-        values = mean during intensification.
+        values = mean over central timesteps of intensification.
+        Returns None if data unavailable or window is empty.
     """
     lec_dir = LEC_ZENODO_DIR / f"{track_id}_ERA5_track"
     if not lec_dir.exists():
@@ -153,8 +180,11 @@ def load_lec_intensification_from_zenodo(track_id: str) -> Optional[pd.DataFrame
     if len(df_intens) == 0:
         return None
 
-    # Compute mean over intensification
-    mean_vals = df_intens.mean(numeric_only=True)
+    # Select central timesteps (canonical ep_structure rule)
+    central_idx = _select_central_indices(len(df_intens))
+    df_central = df_intens.iloc[central_idx]
+
+    mean_vals = df_central.mean(numeric_only=True)
     result = mean_vals.to_frame().T
     result.index = [track_id]
     result.index.name = "track_id"
@@ -188,78 +218,6 @@ LEC_TERMS_CORE = [
 ]
 
 
-def load_lec_central_from_zenodo(track_id: str, half_window: int = 1) -> Optional[pd.DataFrame]:
-    """
-    Load LEC time series and return the mean over the central window of the
-    intensification phase (default: ±1 timestep around the phase midpoint).
-
-    This provides better temporal alignment with the ERA5 fields used in
-    step3b, which are extracted at the single central intensification timestep.
-    Averaging over ±1 timesteps (3 timesteps at 3-hourly resolution = 9h window)
-    reduces spurious noise while maintaining temporal consistency with ERA5.
-
-    Parameters
-    ----------
-    track_id : str
-        Cyclone ID (e.g., '19790135').
-    half_window : int
-        Number of timesteps on each side of the central timestep to include.
-        Default 1 → window of 3 timesteps (central ± 1).
-
-    Returns
-    -------
-    pd.DataFrame or None
-        Single-row DataFrame with columns = LEC terms,
-        values = mean over the central window of intensification.
-        Returns None if data unavailable or window is empty.
-    """
-    lec_dir = LEC_ZENODO_DIR / f"{track_id}_ERA5_track"
-    if not lec_dir.exists():
-        return None
-
-    periods_path = resolve_csv(lec_dir / "periods.csv")
-    if periods_path is None:
-        return None
-    periods = pd.read_csv(periods_path, index_col=0)
-    if "intensification" not in periods.index:
-        return None
-
-    intens = periods.loc["intensification"]
-    t_start = pd.to_datetime(intens["start"])
-    t_end = pd.to_datetime(intens["end"])
-
-    results_name = f"{track_id}_ERA5_track_results.csv"
-    results_path = resolve_csv(lec_dir / results_name)
-    if results_path is None:
-        return None
-
-    try:
-        df = pd.read_csv(results_path, index_col=0)
-    except Exception:
-        return None
-
-    df.index = pd.to_datetime(df.index)
-    mask = (df.index >= t_start) & (df.index <= t_end)
-    df_intens = df.loc[mask]
-
-    if len(df_intens) == 0:
-        return None
-
-    # Central index within the intensification window
-    central_idx = len(df_intens) // 2
-    i_start = max(0, central_idx - half_window)
-    i_end = min(len(df_intens) - 1, central_idx + half_window)
-    df_window = df_intens.iloc[i_start : i_end + 1]
-
-    if len(df_window) == 0:
-        return None
-
-    mean_vals = df_window.mean(numeric_only=True)
-    result = mean_vals.to_frame().T
-    result.index = [track_id]
-    result.index.name = "track_id"
-    return result
-
 
 # ---------------------------------------------------------------------------
 # Dynamic field variable registry
@@ -286,3 +244,59 @@ DYNAMIC_FIELDS_ANOMALY = {
 
 # Combined for convenience
 DYNAMIC_FIELDS_ALL = {**DYNAMIC_FIELDS_ABSOLUTE, **DYNAMIC_FIELDS_ANOMALY}
+
+
+# ---------------------------------------------------------------------------
+# Human-readable label formatting
+# ---------------------------------------------------------------------------
+# Maps internal field keys → short scientific labels for figures
+FIELD_DISPLAY_NAMES: Dict[str, str] = {
+    "pv_850":                   "PV 850",
+    "pv_200":                   "PV 200",
+    "adv_T_850":                "AdvT 850",
+    "afc_250":                  "AFC 250",
+    "ke_adv_250":               "KE adv 250",
+    "pv_850_anom_epall":        "PV 850 anom",
+    "pv_200_anom_epall":        "PV 200 anom",
+    "adv_T_850_anom_epall":     "AdvT 850 anom",
+    "afc_250_anom_epall":       "AFC 250 anom",
+    "ke_adv_250_anom_epall":    "KE adv 250 anom",
+    # Legacy keys (composite files use _minus_epall)
+    "pv_850_minus_epall":       "PV 850 anom",
+    "pv_200_minus_epall":       "PV 200 anom",
+    "adv_T_850_minus_epall":    "AdvT 850 anom",
+    "afc_250_minus_epall":      "AFC 250 anom",
+    "ke_adv_250_minus_epall":   "KE adv 250 anom",
+}
+
+FEATURE_DISPLAY_NAMES: Dict[str, str] = {
+    "domain_mean":    "domain mean",
+    "centre_value":   "centre value",
+    "border_north":   "border N",
+    "border_south":   "border S",
+    "border_east":    "border E",
+    "border_west":    "border W",
+    "contrast_ew":    "E\u2013W contrast",
+    "contrast_sn":    "S\u2013N contrast",
+    "quadrant_ne":    "NE quadrant",
+    "quadrant_nw":    "NW quadrant",
+    "quadrant_se":    "SE quadrant",
+    "quadrant_sw":    "SW quadrant",
+    "domain_abs_mean": "domain |mean|",
+}
+
+
+def format_display_label(field_key: str, feature: str) -> str:
+    """
+    Build a human-readable label from a field key and feature name.
+
+    Examples
+    --------
+    >>> format_display_label("pv_850", "domain_mean")
+    'PV 850 — domain mean'
+    >>> format_display_label("afc_250_anom_epall", "contrast_sn")
+    'AFC 250 anom — S–N contrast'
+    """
+    field_label = FIELD_DISPLAY_NAMES.get(field_key, field_key)
+    feat_label = FEATURE_DISPLAY_NAMES.get(feature, feature)
+    return f"{field_label} — {feat_label}"

@@ -136,7 +136,7 @@ fi
 
 # Check production step1/step2 outputs exist (we'll filter them for the test)
 PROD_STEP1="$PROJECT_ROOT/results/lec_field_dependence/step1_eligible_cases.csv"
-PROD_STEP2="$PROJECT_ROOT/results/lec_field_dependence/step2_lec_intensification_means.csv"
+PROD_STEP2="$PROJECT_ROOT/results/lec_field_dependence/step2_lec_means.csv"
 PROD_STEP3="$PROJECT_ROOT/results/lec_field_dependence/step3_era5_field_manifest.csv"
 
 for f in "$PROD_STEP1" "$PROD_STEP2" "$PROD_STEP3"; do
@@ -175,7 +175,7 @@ conda run -n "$CONDA_ENV" python3 -c "
 import pandas as pd, sys
 tracks = [int(t) for t in '$TRACKS_STR'.split(',')]
 
-for fname in ['step1_eligible_cases.csv', 'step2_lec_intensification_means.csv', 'step3_era5_field_manifest.csv']:
+for fname in ['step1_eligible_cases.csv', 'step2_lec_means.csv', 'step3_era5_field_manifest.csv']:
     src = '$PROJECT_ROOT/results/lec_field_dependence/' + fname
     df = pd.read_csv(src)
     avail = df[df['track_id'].isin(tracks)]

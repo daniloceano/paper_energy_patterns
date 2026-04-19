@@ -67,7 +67,7 @@ STEPS: list[StepDef] = [
     StepDef("1",  "Consolidate metadata",
             ["step1_eligible_cases.csv"], ["lec_field_step1", "step1_"]),
     StepDef("2",  "Build LEC table",
-            ["step2_lec_intensification_means.csv"], ["lec_field_step2", "step2_"]),
+            ["step2_lec_means.csv"], ["lec_field_step2", "step2_"]),
     StepDef("3",  "Map ERA5 fields",
             ["step3_era5_field_manifest.csv"], ["lec_field_step3", "step3_"]),
     StepDef("3b", "Derive dynamic ERA5 fields",
@@ -562,12 +562,12 @@ def verify() -> str:
 
     # --- Step 2 ---
     lines.append("[Step 2] Build LEC table")
-    f2 = RESULTS_DIR / "step2_lec_intensification_means.csv"
+    f2 = RESULTS_DIR / "step2_lec_means.csv"
     if f2.exists():
         n = _csv_rows(f2)
-        _ok(f"step2_lec_intensification_means.csv — {n} rows")
+        _ok(f"step2_lec_means.csv — {n} rows")
     else:
-        _fail("step2_lec_intensification_means.csv MISSING")
+        _fail("step2_lec_means.csv MISSING")
     lines.append("")
 
     # --- Step 3 ---

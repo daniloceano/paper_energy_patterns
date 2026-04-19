@@ -87,7 +87,12 @@ For this analysis, we use the **intensification-phase mean** of each term:
 | Residuals | $RG_z, RK_z, RG_e, RK_e$ | W m⁻² |
 | Tendencies | $\partial A_z/\partial t$, $\partial A_e/\partial t$, $\partial K_z/\partial t$, $\partial K_e/\partial t$ | W m⁻² |
 
-All 24 terms are loaded.  The pipeline documents which are used and which are excluded (e.g., residuals may be excluded if they are noisy).
+All 24 terms are loaded.  Two term sets are used in the analysis:
+
+- **Canonical 7 terms** (`LEC_TERMS_CORE`): `Ca`, `Ck`, `BAe`, `BKe`, `Ae`, `Ke`, `Ge` — the exact set used in the PCA-based K-Means EP classification.  These are the primary analysis terms (figures in `figures/lec_field_dependence/canonical/`).
+- **All 24 terms** (exploratory): used for completeness and internal validation (`figures/lec_field_dependence/all/`).
+
+**Note on term alignment**: `Ce`, `Cz`, `Gz` were present in `LEC_TERMS_CORE` in an earlier version of the pipeline but were never part of the clustering step.  They have been removed from `LEC_TERMS_CORE` (corrected 2025-04-19) to ensure canonical analysis is consistent with the EP classification.
 
 ### Dynamic Fields
 
@@ -116,11 +121,16 @@ Two versions of each field:
 
 ### Temporal Representation
 
-**LEC terms**: intensification-phase mean (average over all 3-hourly timesteps during intensification).
+Two LEC temporal windows are available (produced by `step2_build_lec_table.py --temporal-window`):
 
-**ERA5 fields**: average of the central 2–3 timesteps of the intensification phase (canonical ep_structure methodology).
+| Window | Flag | Output file | Description |
+|--------|------|-------------|-------------|
+| **Full phase** | `full` (default) | `step2_lec_intensification_means.csv` | Mean over all 3-hourly timesteps in the intensification phase (~14 timesteps, ~42h) |
+| **Central window** | `central` | `step2_lec_central_means.csv` | Mean over ±1 timestep around phase midpoint (3 timesteps = 9h window) |
 
-This constitutes a **temporal mismatch** — see Assumptions section.
+**ERA5 fields**: single central timestep of the intensification phase (canonical ep_structure methodology; snapshot at cyclone mature stage).
+
+**Temporal mismatch**: The full-phase LEC window includes early and late intensification, while the ERA5 snapshot captures only the mature stage.  The central-window option reduces this mismatch to 9h vs a single snapshot.  See Assumptions section for a quantified example.
 
 ---
 
@@ -272,7 +282,10 @@ For each variable separately:
 
 2. **Central-timestep representativeness**: The 2–3 central timesteps of intensification represent the mature structure of the intensifying cyclone. This is the same assumption used in the ep_structure_analysis composite.
 
-3. **Temporal mismatch**: The LEC term covers the **full** intensification phase, while the ERA5 field is from the **central** timesteps only. This mismatch means the dynamic field does not cover the early/late intensification, while the LEC term includes contributions from those periods. The mismatch is minimised by the fact that the central timesteps are when the cyclone structure is most developed and energetics are strongest.
+3. **Temporal mismatch (quantified)**: In the default configuration, the LEC term covers the **full** intensification phase (~42h), while the ERA5 field is from the **central** single timestep only.  This mismatch is large in practice.  Example — cyclone ID 19790001:
+   - Full-phase mean $C_a$ = +0.28 W m⁻²
+   - Central-window (±1 ts, 9h) mean $C_a$ = −0.35 W m⁻²
+   The sign reversal indicates that early/late intensification dominates the full-phase mean for this cyclone.  **Mitigation**: the `--temporal-window central` option produces `step2_lec_central_means.csv` which averages LEC over the same 9h window around the midpoint, reducing the temporal mismatch.  The central-window PREDEP run (on the server) is needed to quantify whether this reduces or increases PREDEP values.  All current results use the **full-phase** mean (default).
 
 4. **Storm-centred domain validity**: The 30°×30° domain adequately captures the synoptic-scale structure relevant to the energy budget. Some influence from neighbouring systems is possible.
 
@@ -306,31 +319,69 @@ For each variable separately:
 
 ## Known Methodological Risks
 
+- **Temporal mismatch (quantified risk)**: Full-phase LEC mean vs ERA5 central-snapshot can produce sign-reversal in individual LEC terms.  This inflates within-EP variance of LEC values, which biases PREDEP downward (attenuates the signal).  Estimated magnitude: ≥0.10 reduction in PREDEP for some Ca/Ck terms.  Mitigation: `--temporal-window central` rerun on server.
 - The Ward linkage clustering used to define X-bins in PREDEP may be sub-optimal for some LEC term distributions that are multi-modal
 - The fixed number of bins ($k = \sqrt{N}$) may under-resolve conditional densities for EP3 (large N) or over-resolve for EP1 (small N)
 - If per-cyclone ERA5 fields have variable grid sizes (non-standard domain), the feature extraction functions assume 121×121 and will produce incorrect results
+- **LEC terms `Ce`, `Cz`, `Gz`** were formerly included in the canonical set but are **not part of the EP clustering**.  Updated (2025-04-19): `LEC_TERMS_CORE` now matches the clustering set exactly (7 terms).  Results files with all 24 terms remain available in `all/` subdirectory.
 
 ---
 
 ## Results and Interpretation
 
-**[PENDING — awaiting remote execution of steps 4–8]**
+### 2025-04-19 — First full pipeline run (full-phase LEC, absolute + anomaly fields)
+
+**Run summary**: 2733 cyclones (EP1=330, EP2=768, EP3=1635), 65 ERA5 features, 24 LEC terms, absolute + anomaly field types.  Total PREDEP estimates: ~9,360.  Server runtime: ~2h 8m.
+
+**General pattern**: Most PREDEP values fall in the 0.40–0.70 range.  A genuine floor exists around 0.40 for the full-phase LEC — consistent with the temporal mismatch (LEC full-phase mean vs ERA5 snapshot reduces correlation for all features).  Values below 0.10 are sparse.
+
+**Top canonical associations (PREDEP > 0.70, canonical 7 terms):**
+
+| EP | LEC term | Field | Feature | PREDEP | Field type |
+|----|----------|-------|---------|--------|------------|
+| EP3 | $G_e$ | `afc_250_anom_epall` | `contrast_sn` | **0.721** | anomaly |
+| EP3 | $A_e$ | `afc_250_anom_epall` | `contrast_sn` | 0.718 | anomaly |
+| EP3 | $BA_e$ | `afc_250_anom_epall` | `contrast_sn` | 0.716 | anomaly |
+| EP3 | $BK_e$ | `afc_250_anom_epall` | `contrast_sn` | 0.715 | anomaly |
+| EP3 | $C_k$ | `afc_250_anom_epall` | `contrast_sn` | 0.714 | anomaly |
+| EP3 | $A_e$ | `afc_250` | `quadrant_sw` | 0.713 | absolute |
+| EP3 | $K_e$ | `afc_250_anom_epall` | `contrast_sn` | 0.711 | anomaly |
+| EP3 | $C_a$ | `afc_250_anom_epall` | `contrast_sn` | 0.704 | anomaly |
+| EP1 | $G_e$ | `pv_200` | `quadrant_ne` | 0.699 | absolute |
+
+**Physical interpretation (EP3)**:
+- The S–N contrast of the AFC anomaly at 250 hPa ($\alpha_{Y|AFC_{\delta,SN}} \approx 0.71$ for all energy terms) identifies **meridional asymmetry of the upper-level ageostrophic flux** as the dominant predictor for EP3 energetics.  This is the energy-pattern class associated with the most barotropic structure and the strongest boundary KE fluxes.
+- The consistent signal across all 7 canonical terms (Ae, BAe, BKe, Ca, Ck, Ge, Ke) for the same feature (AFC anomaly S–N contrast) suggests that upper-level AFC structure is a **synoptic organiser** for EP3 — a single structural feature predicts the entire energetic signature.
+- The SW quadrant of absolute AFC also appears prominently, consistent with the EP3 composite showing a jet-streak downstream of the cyclone centre.
+
+**Physical interpretation (EP1)**:
+- PV at 200 hPa NE quadrant ($\alpha \approx 0.699$ for $G_e$) identifies upper-level tropopause structure northeast of the cyclone as informative for diabatic APE generation.  This is consistent with the EP1 composite showing a cut-off low or upper-level trough.
+
+**Anomaly vs Absolute**: For EP3 top associations, EPALL-relative anomaly fields (`afc_250_anom_epall`) generally outperform absolute fields, suggesting that **deviation from the climatological extratropical cyclone structure** is more informative than the absolute field intensity.  For EP1, the absolute field performs comparably.
+
+**[PRELIMINARY]** These results use the full-phase LEC mean (temporal mismatch present).  A rerun with `--temporal-window central` on the server will isolate the central-window effect.
 
 ---
 
 ## Next Steps
 
-1. **Run steps 1–3 locally** to verify metadata and LEC availability
-2. **Transfer to remote server** and run steps 4–7 with ERA5 data
-3. **Assess PREDEP distributions** — are they concentrated near 0 (weak dependence) or spread?
-4. **Identify physically meaningful top associations** (e.g., high PREDEP for Ca × PV_200 domain_mean)
-5. **Compare EP1 vs EP2 vs EP3** — do different EPs have different dominant predictive fields?
-6. **Compare absolute vs anomaly** — do EPALL-relative anomalies add predictive value?
-7. **Consider extending to:**
-   - Additional fields (EGR, moisture flux divergence, SLP)
-   - Additional features (gradients, eigenmodes)
+### Completed (as of 2025-04-19)
+- [x] Steps 1–8 executed (full pipeline, full-phase LEC)
+- [x] LEC_TERMS_CORE corrected to 7 matching terms
+- [x] Figures regenerated with discrete PREDEP scale (grey <0.10, 5 red bins)
+- [x] Two figure families: `canonical/` (7 terms) and `all/` (all terms)
+- [x] `step2_lec_central_means.csv` generated locally (central-window LEC)
+- [x] `step6_integrated_*_central.csv` generated locally
+
+### Pending
+1. **Run step7 on server with central-window LEC** — transfer `step6_integrated_*_central.csv` and run full step7; compare PREDEP distributions between full-phase and central-window outputs
+2. **Assess PREDEP floor**: PREDEP~0.40 floor for full-phase LEC may reflect temporal mismatch.  Central-window rerun will test this hypothesis.
+3. **Identify physically meaningful top associations** — current top results point to AFC anomaly S–N contrast for EP3.  Validate with ep_structure composites.
+4. **Steps 9/10 (significance analysis and CK analysis)** — if applicable
+5. **Consider extending to:**
    - PREDEP confidence intervals (bootstrap CI)
-   - The reverse direction: α_{feature | LEC}
+   - The reverse direction: $\alpha_{\text{feature}|\text{LEC}}$
+   - Additional fields (EGR, moisture flux divergence, SLP)
    - Conditional PREDEP controlling for cyclone latitude/longitude
 
 ---

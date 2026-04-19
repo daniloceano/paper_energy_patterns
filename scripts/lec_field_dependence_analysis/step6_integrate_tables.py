@@ -40,6 +40,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 
+import argparse
+
 from scripts.lec_field_dependence_analysis.utils_io import RESULTS_DIR, LOG_DIR
 from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS
 
@@ -47,13 +49,11 @@ from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS
 # Configuration
 # ---------------------------------------------------------------------------
 INPUT_CASES = RESULTS_DIR / "step1_eligible_cases.csv"
-INPUT_LEC = RESULTS_DIR / "step2_lec_intensification_means.csv"
+INPUT_LEC_FULL = RESULTS_DIR / "step2_lec_intensification_means.csv"
+INPUT_LEC_CENTRAL = RESULTS_DIR / "step2_lec_central_means.csv"
 INPUT_ABS = RESULTS_DIR / "step4_features_absolute.csv"
 INPUT_ANOM = RESULTS_DIR / "step5_features_anomaly.csv"
 
-OUTPUT_ABS = RESULTS_DIR / "step6_integrated_absolute.csv"
-OUTPUT_ANOM = RESULTS_DIR / "step6_integrated_anomaly.csv"
-OUTPUT_ALL = RESULTS_DIR / "step6_integrated_all.csv"
 OUTPUT_QA = RESULTS_DIR / "step6_integration_qa_report.txt"
 
 
@@ -94,20 +94,49 @@ def merge_chunk_files(base_path: Path) -> pd.DataFrame:
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Step 6: Integrate all tables.")
+    parser.add_argument(
+        "--lec-source",
+        choices=["full", "central"],
+        default="full",
+        help=(
+            "Which LEC table to use as the response variable. "
+            "'full' = full intensification-phase mean (step2_lec_intensification_means.csv). "
+            "'central' = central ±1 timestep window mean (step2_lec_central_means.csv, "
+            "reduced temporal mismatch with ERA5 fields). "
+            "Default: full (backwards-compatible with server run)."
+        ),
+    )
+    args = parser.parse_args()
+    lec_source = args.lec_source
+
+    # Select LEC input and output paths based on lec_source
+    if lec_source == "central":
+        input_lec = INPUT_LEC_CENTRAL
+        suffix = "_central"
+    else:
+        input_lec = INPUT_LEC_FULL
+        suffix = ""
+
+    output_abs = RESULTS_DIR / f"step6_integrated_absolute{suffix}.csv"
+    output_anom = RESULTS_DIR / f"step6_integrated_anomaly{suffix}.csv"
+    output_all = RESULTS_DIR / f"step6_integrated_all{suffix}.csv"
+
     setup_logging()
     logging.info("=" * 70)
     logging.info("STEP 6: INTEGRATE TABLES — LEC–FIELD DEPENDENCE ANALYSIS")
     logging.info("=" * 70)
+    logging.info(f"LEC source: {lec_source.upper()} ({input_lec.name})")
 
     # 1. Load source tables
     cases = pd.read_csv(INPUT_CASES)
     cases["track_id"] = cases["track_id"].astype(str)
     logging.info(f"Cases: {len(cases)}")
 
-    lec = pd.read_csv(INPUT_LEC) if INPUT_LEC.exists() else pd.DataFrame()
+    lec = pd.read_csv(input_lec) if input_lec.exists() else pd.DataFrame()
     if len(lec) > 0:
         lec["track_id"] = lec["track_id"].astype(str)
-    logging.info(f"LEC table: {len(lec)} rows")
+    logging.info(f"LEC table ({lec_source}): {len(lec)} rows")
 
     abs_feat = merge_chunk_files(INPUT_ABS)
     if len(abs_feat) > 0:
@@ -151,20 +180,20 @@ def main():
 
     # 6. Save
     if len(integrated_abs) > 0:
-        integrated_abs.to_csv(OUTPUT_ABS, index=False)
-        logging.info(f"   Saved: {OUTPUT_ABS}")
+        integrated_abs.to_csv(output_abs, index=False)
+        logging.info(f"   Saved: {output_abs}")
     if len(integrated_anom) > 0:
-        integrated_anom.to_csv(OUTPUT_ANOM, index=False)
-        logging.info(f"   Saved: {OUTPUT_ANOM}")
+        integrated_anom.to_csv(output_anom, index=False)
+        logging.info(f"   Saved: {output_anom}")
 
     # Combined: all features in one table
     if len(abs_feat) > 0 and len(anom_feat) > 0:
         all_feat = abs_feat.merge(anom_feat, on="track_id", how="outer")
         integrated_all = base.merge(all_feat, on="track_id", how="inner")
-        integrated_all.to_csv(OUTPUT_ALL, index=False)
-        logging.info(f"   Saved: {OUTPUT_ALL} ({len(integrated_all)} rows)")
+        integrated_all.to_csv(output_all, index=False)
+        logging.info(f"   Saved: {output_all} ({len(integrated_all)} rows)")
     elif len(integrated_abs) > 0:
-        integrated_abs.to_csv(OUTPUT_ALL, index=False)
+        integrated_abs.to_csv(output_all, index=False)
 
     # 7. QA report
     qa = _generate_qa_report(cases, lec, abs_feat, anom_feat,

@@ -165,6 +165,7 @@ class Status:
     FAILED  = "FAILED"
     PENDING = "PENDING"
     PARTIAL = "PARTIAL"   # some chunks done, not all
+    STALE   = "STALE"    # log from a previous run, output was cleaned
 
 def _find_recent_logs(prefix: str | list) -> list[Path]:
     """Return log files matching one or more prefix patterns, sorted newest first."""
@@ -230,6 +231,11 @@ def _extract_error_line(log_path: Path) -> str:
         return "error (see log)"
     except Exception:
         return "error (see log)"
+
+def _pipeline_has_no_status() -> bool:
+    """True when no pipeline_status.txt exists (no active or recently active run)."""
+    return not STATUS_FILE.exists()
+
 
 def check_step(step: StepDef) -> tuple[str, str, str]:
     """
@@ -299,8 +305,12 @@ def check_step(step: StepDef) -> tuple[str, str, str]:
     # Log-based checks
     if recent_log:
         if _log_has_success(recent_log, step.key):
-            # success marker present but output file missing (unusual)
+            # success marker present but output file missing:
+            # if no pipeline is running/registered, this is a stale log from
+            # a previous run whose outputs were cleaned — show as STALE, not FAILED
             if outputs_total > 0 and not outputs_present:
+                if _pipeline_has_no_status():
+                    return Status.STALE, "prev run log (output cleaned)", last_log_ts
                 return Status.FAILED, "log OK but output missing", last_log_ts
             detail = "done (log)"
             return Status.DONE, detail, last_log_ts
@@ -324,6 +334,7 @@ STATUS_COLORS = {
     Status.FAILED:  C.RED,
     Status.PENDING: C.DIM,
     Status.PARTIAL: C.CYAN,
+    Status.STALE:   C.DIM,
 }
 
 STATUS_ICONS = {
@@ -332,6 +343,7 @@ STATUS_ICONS = {
     Status.FAILED:  "✗",
     Status.PENDING: "·",
     Status.PARTIAL: "◑",
+    Status.STALE:   "~",
 }
 
 def _color_status(status: str, use_color: bool) -> str:
@@ -400,11 +412,11 @@ def render(use_color: bool = True, show_log_tail: bool = False) -> str:
     lines.append("─" * width)
 
     counts = {Status.DONE: 0, Status.RUNNING: 0, Status.FAILED: 0,
-              Status.PENDING: 0, Status.PARTIAL: 0}
+              Status.PENDING: 0, Status.PARTIAL: 0, Status.STALE: 0}
 
     for step in STEPS:
         status, detail, last_ts = check_step(step)
-        counts[status] += 1
+        counts[status] = counts.get(status, 0) + 1
 
         # Trim detail
         if len(detail) > 38:
@@ -444,9 +456,11 @@ def render(use_color: bool = True, show_log_tail: bool = False) -> str:
         latest = logs[0]
         status_for_step, _, _ = check_step(step)
         # Show tail for: running, failed, or recently completed steps
-        show = (show_log_tail
-                or status_for_step in (Status.RUNNING, Status.FAILED)
-                or (status_for_step == Status.DONE and _log_is_recent(latest)))
+        # STALE logs are from previous cleaned runs — do not show their tails
+        show = (status_for_step != Status.STALE
+                and (show_log_tail
+                     or status_for_step in (Status.RUNNING, Status.FAILED)
+                     or (status_for_step == Status.DONE and _log_is_recent(latest))))
         if not show:
             continue
         tail = _log_tail(latest, 3)

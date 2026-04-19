@@ -8,6 +8,7 @@ Author: Danilo Couto de Souza
 Date: April 2026
 """
 
+import os
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -23,7 +24,13 @@ EP_CASES_DIR = PROJECT_ROOT / "results" / "ep_structure"
 LEC_ZENODO_DIR = PROJECT_ROOT / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 ERA5_EP_DIR = PROJECT_ROOT / "data" / "era5_ep_structure"
 
-RESULTS_DIR = PROJECT_ROOT / "results" / "lec_field_dependence"
+# Allow isolated test runs by setting LEC_TEST_RESULTS_DIR in the environment.
+# The smoke test (run_smoke_test.sh) uses this to redirect outputs to a temp
+# directory so it never touches the production results/ folder.
+_test_results_override = os.environ.get("LEC_TEST_RESULTS_DIR", "")
+RESULTS_DIR = Path(_test_results_override) if _test_results_override else \
+    PROJECT_ROOT / "results" / "lec_field_dependence"
+
 FIGURES_DIR = PROJECT_ROOT / "figures" / "lec_field_dependence"
 LOG_DIR = PROJECT_ROOT / "logs"
 

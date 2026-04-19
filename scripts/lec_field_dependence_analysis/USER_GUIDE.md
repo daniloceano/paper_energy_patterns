@@ -28,6 +28,38 @@ Steps 3b–9 are heavy (require per-cyclone ERA5 files) and run on the remote se
 
 ---
 
+## A0 — (Optional) Local smoke test before server run
+
+Use this when you have fixed a bug and want to **verify the fix on real data locally**
+before committing to a full server run.  The smoke test exercises steps 3b → 4 → 5 → 6 → 7
+on 6 representative real per-cyclone ERA5 files in an isolated temp directory, leaving the
+production results folder untouched.
+
+```bash
+# One-time: download 6 real cyclones from the server (2 per EP, ~few hundred MB total)
+bash scripts/lec_field_dependence_analysis/fetch_test_data.sh
+
+# Run the smoke test:
+bash scripts/lec_field_dependence_analysis/run_smoke_test.sh
+
+# Verbose mode (shows all Python log output):
+bash scripts/lec_field_dependence_analysis/run_smoke_test.sh --verbose
+
+# Keep temp results for manual inspection:
+bash scripts/lec_field_dependence_analysis/run_smoke_test.sh --keep-tmp
+```
+
+**Expected result: 15/15 checks passed.**  All 5 derived fields (pv_850, pv_200,
+adv_T_850, ke_adv_250, afc_250) are validated; absolutely zero NaN in step4/step5
+feature outputs (65 columns each, 100% valid).  Step 7 PREDEP runs but returns NaN
+for all pairs — this is expected with only 2 cases per EP (the real run has ~300+
+per EP).
+
+**Only proceed to the full server run if the smoke test passes.**  
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for the full local testing workflow.
+
+---
+
 ## A — Clean previous outputs
 
 Use this when you want a completely fresh run from scratch.

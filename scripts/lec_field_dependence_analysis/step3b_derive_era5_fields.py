@@ -382,6 +382,20 @@ def _derive_fields_for_cyclone(track_id: str, era5_dir: Path, derived_dir: Path)
         T_da = ds_c["t"]
         z_da = ds_c["z"]
 
+        # Log subdomain info for the first cyclone to aid diagnostics
+        if not hasattr(_derive_fields_for_cyclone, "_logged_once"):
+            _derive_fields_for_cyclone._logged_once = True
+            logging.info(
+                f"   Subdomain info for {track_id}: dims={dict(ds_c.sizes)} "
+                f"lat=[{float(ds_c.latitude.min()):.2f},{float(ds_c.latitude.max()):.2f}] "
+                f"lon=[{float(ds_c.longitude.min()):.2f},{float(ds_c.longitude.max()):.2f}] "
+                f"levels={levels.tolist()} "
+                f"T_850_range=[{float((_sel(T_da,850)).min()):.1f},{float((_sel(T_da,850)).max()):.1f}]K "
+                f"u_850_range=[{float((_sel(u_da,850)).min()):.1f},{float((_sel(u_da,850)).max()):.1f}]m/s "
+                f"has_nan_u850={bool(np.any(np.isnan(_sel(u_da,850).values)))} "
+                f"has_nan_T850={bool(np.any(np.isnan(_sel(T_da,850).values)))}"
+            )
+
         # ── PV @ 850 hPa ──────────────────────────────────────────────────
         pv_850_arr = compute_pv_at_level(
             _sel(u_da, 825) * units("m/s"),
@@ -540,11 +554,26 @@ def _derive_fields_for_cyclone(track_id: str, era5_dir: Path, derived_dir: Path)
         # ── Post-save validation ──────────────────────────────────────────
         valid, valid_msg = _validate_derived_nc(out_path)
         if not valid:
+            # Delete the invalid file so it doesn't mislead subsequent runs.
+            # Without this, a NaN-filled file left on disk would look valid
+            # to step 4 (file exists, variables present) and silently produce
+            # all-NaN features downstream.
+            try:
+                out_path.unlink()
+                logging.warning(
+                    f"   {track_id}: Deleted invalid derived file "
+                    f"({valid_msg}) — will recompute on next run."
+                )
+            except Exception as del_err:
+                logging.warning(
+                    f"   {track_id}: Could not delete invalid file "
+                    f"({del_err}); it will be retried on next run."
+                )
             return {
                 "track_id": track_id,
                 "status": f"validation_failed: {valid_msg}",
-                "output_path": str(out_path),
-                "has_afc": has_afc,
+                "output_path": "",
+                "has_afc": False,
             }
 
         return {

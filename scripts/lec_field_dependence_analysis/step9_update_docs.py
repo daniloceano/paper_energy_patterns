@@ -33,6 +33,24 @@ def check_file(path: Path) -> str:
     return "✓" if path.exists() else "✗"
 
 
+def check_step7(field_type: str) -> str:
+    """
+    Check step 7 PREDEP output — accepts EITHER a merged file or chunk files.
+
+    When run_pipeline.sh uses --n-chunks > 1 (the default), step7 only
+    writes chunk files (step7_predep_{type}_chunk*.csv) — the merged file
+    is never produced.  step8 reads the chunk files directly, so this is
+    the expected normal state.
+    """
+    merged = RESULTS_DIR / f"step7_predep_{field_type}.csv"
+    if merged.exists():
+        return "✓"
+    chunks = list(RESULTS_DIR.glob(f"step7_predep_{field_type}_chunk*.csv"))
+    if chunks:
+        return f"✓ ({len(chunks)} chunks)"
+    return "✗"
+
+
 def main():
     lines = [
         "=" * 70,
@@ -49,8 +67,8 @@ def main():
         f"  Step 4 (abs features):    {check_file(RESULTS_DIR / 'step4_features_absolute.csv')}",
         f"  Step 5 (anom features):   {check_file(RESULTS_DIR / 'step5_features_anomaly.csv')}",
         f"  Step 6 (integration):     {check_file(RESULTS_DIR / 'step6_integrated_absolute.csv')}",
-        f"  Step 7 (PREDEP abs):      {check_file(RESULTS_DIR / 'step7_predep_absolute.csv')}",
-        f"  Step 7 (PREDEP anom):     {check_file(RESULTS_DIR / 'step7_predep_anomaly.csv')}",
+        f"  Step 7 (PREDEP abs):      {check_step7('absolute')}",
+        f"  Step 7 (PREDEP anom):     {check_step7('anomaly')}",
         f"  Step 8 (synthesis):       {check_file(RESULTS_DIR / 'step8_summary_table.csv')}",
         "",
         "REMOTE EXECUTION DEPENDENCIES",

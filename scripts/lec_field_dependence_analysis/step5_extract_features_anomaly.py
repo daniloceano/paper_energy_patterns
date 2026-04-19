@@ -332,6 +332,23 @@ def main():
         )
         sys.exit(1)
 
+    ok_df = new_df[new_df["_status"] == "ok"]
+    era5_cols = [c for c in ok_df.columns if c not in ("track_id", "_status", "_note")]
+    if len(era5_cols) > 0 and ok_df[era5_cols].isna().all(axis=None):
+        logging.error(
+            "CRITICAL: All ERA5 anomaly features are NaN for every cyclone in this chunk.\n"
+            "Root cause: step 3b produced NaN-filled derived files.\n"
+            f"Derived directory: {derived_dir}\n"
+            "Fix:\n"
+            "  1. Delete the NaN-filled derived files:\n"
+            f"     rm -rf {derived_dir}\n"
+            "  2. Re-run step 3b to recompute them:\n"
+            f"     python step3b_derive_era5_fields.py --era5-dir {era5_dir} "
+            f"--derived-dir {derived_dir}\n"
+            "  3. Check the step 3b logs for the underlying error."
+        )
+        sys.exit(1)
+
     drop_cols = [c for c in ["_status", "_note"] if c in new_df.columns]
     save_df = new_df[new_df["_status"] == "ok"].drop(columns=drop_cols)
     if output_path.exists() and len(processed_ids) > 0:

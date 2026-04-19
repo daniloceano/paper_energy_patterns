@@ -69,7 +69,7 @@ from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-MIN_SAMPLE_SIZE = 30  # Minimum cyclones for PREDEP to be meaningful
+MIN_SAMPLE_SIZE = 30  # Default minimum (overridable via --min-n)
 N_WORKERS = 8
 COMPUTE_BASELINES = True  # Also compute Pearson/Spearman
 
@@ -161,11 +161,15 @@ def main():
     parser.add_argument("--workers", type=int, default=N_WORKERS)
     parser.add_argument("--no-baselines", action="store_true",
                         help="Skip Pearson/Spearman")
+    parser.add_argument("--min-n", type=int, default=None,
+                        help="Override MIN_SAMPLE_SIZE (default 30; use 2 for smoke tests)")
     args = parser.parse_args()
 
-    global COMPUTE_BASELINES
+    global COMPUTE_BASELINES, MIN_SAMPLE_SIZE
     if args.no_baselines:
         COMPUTE_BASELINES = False
+    if args.min_n is not None:
+        MIN_SAMPLE_SIZE = args.min_n
 
     chunk_suffix = f"_chunk{args.chunk}" if args.chunk is not None else ""
     setup_logging(args.field_type, args.chunk)

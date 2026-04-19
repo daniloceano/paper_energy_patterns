@@ -155,6 +155,44 @@ python scripts/lec_field_dependence_analysis/stepN_...py
 
 ---
 
+---
+
+## Local Smoke Testing (recommended before re-running on server)
+
+When debugging regressions or testing fixes: download a small real subset of data
+and run the smoke test locally before committing to a full server run.
+
+```bash
+# 1. Download 6 representative real cyclones from the server (one-time):
+bash scripts/lec_field_dependence_analysis/fetch_test_data.sh
+
+# 2. Run the smoke test (tests step3b → 4 → 5 → 6 → 7 in an isolated temp dir):
+bash scripts/lec_field_dependence_analysis/run_smoke_test.sh
+
+# For verbose output showing all Python log lines:
+bash scripts/lec_field_dependence_analysis/run_smoke_test.sh --verbose
+
+# Keep the temp results dir after the run for manual inspection:
+bash scripts/lec_field_dependence_analysis/run_smoke_test.sh --keep-tmp
+```
+
+**What the smoke test validates (15 checks total):**
+- `step3b` derives all 5 fields (`pv_850`, `pv_200`, `adv_T_850`, `ke_adv_250`, `afc_250`) without NaN  
+- `step4` extracts 65 non-NaN absolute scalar features per cyclone (100% valid)  
+- `step5` extracts 65 non-NaN anomaly features per cyclone (100% valid)  
+- `step6` integrates correctly with LEC terms in output (96 cols, 0% NaN)  
+- `step7` produces output CSV with expected structure (PREDEP values are NaN with n=2 per EP — expected)  
+
+**Note on `afc_250`:** The `fetch_test_data.sh` script downloads the 250 hPa climatology to
+`data/test/lec_field_dependence/composites/era5_climatology_250hPa.nc`. A symlink to
+`data/era5_ep_structure/era5_climatology_250hPa.nc` ensures `afc_250` is computed.
+If the symlink is broken, `afc_250` will be skipped (non-fatal).
+
+**Test data lives at:** `data/test/lec_field_dependence/`  
+**Never committed to git.** The directory is `.gitignore`d.
+
+---
+
 ## Diagnostic Commands
 
 ```bash

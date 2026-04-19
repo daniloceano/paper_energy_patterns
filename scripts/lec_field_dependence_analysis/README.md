@@ -120,6 +120,22 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 
 > **See [USER_GUIDE.md](USER_GUIDE.md) for the full operational workflow.**
 
+### Before running on the server: local smoke test (recommended)
+
+Download 6 real representative cyclones and validate the pipeline logic locally
+before committing to a full server run:
+
+```bash
+# Download test data (one-time, ~few hundred MB):
+bash scripts/lec_field_dependence_analysis/fetch_test_data.sh
+
+# Run smoke test — exercises step3b → 4 → 5 → 6 → 7 in an isolated temp dir
+bash scripts/lec_field_dependence_analysis/run_smoke_test.sh
+```
+
+See [`data/test/lec_field_dependence/README.md`](../../data/test/lec_field_dependence/README.md)
+for details on which cyclones are included and why they were chosen.
+
 Use the provided orchestrator to run steps 3b–9 in one shot.  Steps 1–3 must have been completed locally first.
 
 ```bash
@@ -237,6 +253,7 @@ python step5_extract_features_anomaly.py --era5-dir /path/to/era5/ --workers 32
 python step6_integrate_tables.py
 python step7_compute_predep.py --field-type absolute --workers 32
 python step7_compute_predep.py --field-type anomaly --workers 32
+# For smoke tests with small samples: --min-n 2 (default: 30)
 
 # Full significance tests (LEC + all features)
 python step7b_ep_significance_tests.py

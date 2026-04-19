@@ -70,6 +70,9 @@ STEPS: list[StepDef] = [
             ["step2_lec_intensification_means.csv"], ["lec_field_step2", "step2_"]),
     StepDef("3",  "Map ERA5 fields",
             ["step3_era5_field_manifest.csv"], ["lec_field_step3", "step3_"]),
+    StepDef("3b", "Derive dynamic ERA5 fields",
+            ["step3b_derived_field_manifest.csv"], ["lec_field_step3b", "step3b_chunk"],
+            chunk_output_pattern="step3b_derived_field_manifest_chunk*.csv"),
     StepDef("4",  "Extract absolute features",
             ["step4_features_absolute.csv"], ["lec_field_step4", "step4_chunk"],
             chunk_output_pattern="step4_features_absolute_chunk*.csv"),
@@ -563,6 +566,30 @@ def verify() -> str:
         _fail("step3_era5_field_manifest.csv MISSING")
     lines.append("")
 
+    # --- Step 3b ---
+    lines.append("[Step 3b] Derive dynamic ERA5 fields")
+    f3b = RESULTS_DIR / "step3b_derived_field_manifest.csv"
+    chunks_3b = sorted(RESULTS_DIR.glob("step3b_derived_field_manifest_chunk*.csv"))
+    if f3b.exists():
+        n = _csv_rows(f3b)
+        try:
+            import pandas as _pd3b
+            df3b = _pd3b.read_csv(f3b)
+            n_ok_derived = (df3b.get("status", df3b.get("_status", _pd3b.Series(["ok"] * len(df3b)))) == "ok").sum()
+            _ok(f"step3b_derived_field_manifest.csv — {n} rows ({n_ok_derived} derived OK)")
+        except Exception:
+            _ok(f"step3b_derived_field_manifest.csv — {n} rows")
+    elif chunks_3b:
+        _ok(f"{len(chunks_3b)} chunk manifest files found (merged manifest not yet written — OK)")
+    else:
+        _fail(
+            "step3b_derived_field_manifest.csv MISSING — step 3b was not run.\n"
+            "       → Steps 4 and 5 require derived files from step 3b.\n"
+            "       → If step 4/5 results show all-NaN features, this is the root cause.\n"
+            "       → Fix: run step 3b before steps 4 and 5."
+        )
+    lines.append("")
+
     def _check_feature_csv(label: str, path: Path, chunks: list) -> None:
         """Check feature CSV for existence + non-null rate across feature columns."""
         import pandas as pd
@@ -579,8 +606,8 @@ def verify() -> str:
                     if pct < 50:
                         _fail(f"{path.name} — {n} rows, {len(feat_cols)} feature cols, "
                               f"only {pct:.0f}% non-null (sparse extraction!)")
-                        lines.append("       → ERA5 files were likely missing during the first run.")
-                        lines.append(f"       → Fix: delete {path.name} and re-run without --skip-done.")
+                        lines.append("       → Root cause: step 3b was likely not run before steps 4/5.")
+                        lines.append(f"       → Fix: run step 3b, then delete {path.name} and re-run.")
                     elif pct < 90:
                         _warn(f"{path.name} — {n} rows, {len(feat_cols)} feature cols, "
                               f"{pct:.0f}% non-null (expected ≥90%)")

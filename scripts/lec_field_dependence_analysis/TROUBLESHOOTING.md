@@ -47,11 +47,9 @@
 
 ---
 
-## B5 (MINOR, FIXED): Transfer guide missing step 7 PREDEP result files
+## B5 (MINOR, FIXED): Step 8 figures wrong / empty
 
-**Symptom:** After running `transfer_guide_scp.sh`, the local machine is missing `step7_predep_absolute.csv` and `step7_predep_anomaly.csv` — the primary PREDEP results.
-
-**Fix:** Added both files to the `ESSENTIAL_FILES` list in `transfer_guide_scp.sh`.
+This was previously tracked but has been consolidated into the [Operational Issues](#step-8-figures-look-wrong--empty) section below.
 
 ---
 
@@ -71,9 +69,44 @@
 
 ---
 
+## B8 (CRITICAL, FIXED): Steps 4/5 produce all-NaN ERA5 dynamic features
+
+**Symptom:** Steps 4 and 5 complete without error. The output CSVs exist and have the correct number of rows. But all ERA5-derived feature columns (`pv_850__*`, `pv_200__*`, `adv_T_850__*`, `afc_250__*`, `ke_adv_250__*`) are entirely NaN. Downstream PREDEP values (step 7) are also NaN or 0 for all these features.
+
+Running `python monitor_pipeline.py --verify` shows:
+```
+✗  step4_features_absolute.csv — ... only X% non-null (sparse extraction!)
+   → Root cause: step 3b was likely not run before steps 4/5.
+```
+
+**Root cause:** The raw per-cyclone ERA5 files (`{track_id}_era5.nc`) contain the instantaneous multi-level fields downloaded from the CDS API: `u`, `v`, `t`, `z`, `q` at pressure levels 175/200/225/250/500/825/850/875/975 hPa, plus `msl` at single level. They do **not** contain the derived dynamic diagnostics (`pv_850`, `pv_200`, `adv_T_850`, `afc_250`, `ke_adv_250`). The old steps 4 and 5 silently filled NaN for any variable not found in the file — no crash, no loud error.
+
+**Fix (implemented in this codebase):** A new preprocessing step, **step 3b** (`step3b_derive_era5_fields.py`), must be run between step 3 and step 4. Step 3b reads each raw ERA5 file, applies the validated diagnostic functions from `ep_structure_analysis/step3_precompute_composites.py`, and saves the computed fields to `{derived_dir}/{track_id}_era5_derived.nc`. Steps 4 and 5 now read from these derived files and fail loudly (with `sys.exit(1)` and a clear message) if the derived directory is missing or empty.
+
+**Recovery steps for existing all-NaN results:**
+```bash
+# 1. Run step 3b on the server
+python step3b_derive_era5_fields.py \
+    --era5-dir /data/era5/ --derived-dir /data/era5/derived/
+
+# 2. Delete the all-NaN feature CSVs
+rm results/lec_field_dependence/step4_features_absolute*.csv
+rm results/lec_field_dependence/step5_features_anomaly*.csv
+rm results/lec_field_dependence/step6_integrated*.csv
+rm results/lec_field_dependence/step7_predep*.csv
+
+# 3. Re-run from step 4
+bash run_pipeline.sh --era5-dir /data/era5/ --derived-dir /data/era5/derived/ \
+    --only 4,5,6,7,7b,8,8b,9
+```
+
+**How to detect going forward:** `python monitor_pipeline.py --verify` checks the non-null rate of feature columns and now explicitly warns if step 3b manifest is missing.
+
+---
+
 ## Common Operational Issues
 
-### Pipeline appears stuck at step 4/5
+### Pipeline appears stuck at step 3b / 4 / 5
 
 **Check:** Use the monitor to see chunk-level status:
 ```bash
@@ -88,11 +121,15 @@ If individual chunks are completing but slowly, this is normal — 2733 cases ×
 
 **Fix:** Reduce workers: `--workers 4` or use chunking: `--chunk 0 --n-chunks 10`.
 
-### Step 4/5 has many "file_not_found" failures
+### Step 4/5 exits with "CRITICAL: Derived directory does not exist"
 
-**Cause:** Per-cyclone ERA5 files don't exist for all track IDs. This is expected if the ERA5 extraction was done for a subset.
+**Cause:** Step 3b was either not run or used a different `--derived-dir` than what step 4/5 are now pointing to.
 
-**Check:** The QA guard in step 4/5 will exit with code 1 if ALL cases are `file_not_found`, indicating the `--era5-dir` path is wrong. A partial failure rate is normal.
+**Fix:** Run step 3b first with the same `--derived-dir`:
+```bash
+python step3b_derive_era5_fields.py --era5-dir /path/to/era5/ --derived-dir /path/to/derived/
+python step4_extract_features_absolute.py --era5-dir /path/to/era5/ --derived-dir /path/to/derived/
+```
 
 ### Step 8 figures look wrong / empty
 
@@ -110,11 +147,11 @@ cd /path/to/paper_energy_patterns
 python scripts/lec_field_dependence_analysis/stepN_...py
 ```
 
-### SSH/SCP connection issues with transfer guide
+### SSH/rsync connection issues
 
 **Cause:** SSH key path or remote host may be wrong.
 
-**Fix:** Edit the `REMOTE_USER`, `REMOTE_HOST`, `SSH_KEY`, and `REMOTE_BASE` variables at the top of `transfer_guide_scp.sh`.
+**Fix:** Edit the `REMOTE_USER`, `REMOTE_HOST`, `SSH_KEY`, and `REMOTE_BASE` variables at the top of `sync_from_remote.sh`.
 
 ---
 

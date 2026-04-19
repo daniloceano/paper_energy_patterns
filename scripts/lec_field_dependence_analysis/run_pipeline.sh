@@ -3,7 +3,7 @@
 #  run_pipeline.sh  —  LEC Field Dependence Analysis — Remote Pipeline Runner
 # =============================================================================
 #
-#  Orchestrates steps 4–9 on a remote server.
+#  Orchestrates steps 3b–9 on a remote server.
 #  Steps 1–3 MUST already have been run locally before using this script.
 #
 #  Usage:
@@ -11,17 +11,20 @@
 #    bash run_pipeline.sh --era5-dir /data/era5/ --background          # nohup mode
 #    bash run_pipeline.sh --era5-dir /data/era5/ --n-chunks 20 --workers 4
 #    bash run_pipeline.sh --era5-dir /data/era5/ --skip-done
-#    bash run_pipeline.sh --era5-dir /data/era5/ --only 4,5,6
+#    bash run_pipeline.sh --era5-dir /data/era5/ --only 3b,4,5,6
 #    bash run_pipeline.sh --era5-dir /data/era5/ --clean                # wipe results+logs first
 #    bash run_pipeline.sh --era5-dir /data/era5/ --clean --dry-run      # preview what would be deleted
 #
 #  Pipeline execution model:
 #    Steps run SEQUENTIALLY.  The next step only starts after the previous one
-#    finishes.  Within each heavy step (4, 5, 7) up to N_CHUNKS parallel
+#    finishes.  Within each heavy step (3b, 4, 5, 7) up to N_CHUNKS parallel
 #    background jobs are used — that parallelism is internal to the step.
 #
 #  Options:
-#    --era5-dir PATH       Path to per-cyclone ERA5 NetCDF files [REQUIRED]
+#    --era5-dir PATH       Path to per-cyclone raw ERA5 NetCDF files [REQUIRED]
+#    --derived-dir PATH    Path for derived per-cyclone field files (*_era5_derived.nc)
+#                          (default: {era5-dir}/derived/)
+#                          Produced by step 3b; consumed by steps 4 and 5.
 #    --background          Re-exec under nohup (survives SSH disconnect).
 #                          Prints PID + log path and exits immediately.
 #    --clean               Delete all previous results and pipeline logs before
@@ -39,7 +42,7 @@
 #    --stop-on-error       Halt the pipeline on the first failed step.
 #                          Default: continue — all errors are logged and
 #                          reported in the final summary.
-#    --only STEPS          Run only these steps, e.g. "4,5,6" or "7,7b"
+#    --only STEPS          Run only these steps, e.g. "4,5,6" or "3b,4,5"
 #
 #  Error handling:
 #    By default every step is attempted.  If a step fails, its exit code and
@@ -49,7 +52,8 @@
 #    Use --stop-on-error to restore the old "halt at first failure" behaviour.
 #
 #  Notes:
-#    - Steps 4, 5, 7 use parallel background jobs (n-chunks processes at once).
+#    - Steps 3b, 4, 5, 7 use parallel background jobs (n-chunks processes at once).
+#    - Step 3b MUST complete before steps 4 and 5 (stored in --derived-dir).
 #    - Step 6 handles chunk merging for steps 4 and 5 automatically.
 #    - Step 8 handles chunk merging for step 7 automatically.
 #    - All output goes to logs/ in the project root.
@@ -67,6 +71,7 @@ PIPELINE_DIR="$SCRIPT_DIR"
 # Defaults
 # ---------------------------------------------------------------------------
 ERA5_DIR=""
+DERIVED_DIR=""
 N_CHUNKS=16
 N_WORKERS=4
 CONDA_ENV="paper_energy_patterns"
@@ -83,6 +88,7 @@ DRY_RUN=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --era5-dir)         ERA5_DIR="$2";     shift 2 ;;
+        --derived-dir)      DERIVED_DIR="$2"; shift 2 ;;
         --n-chunks)         N_CHUNKS="$2";     shift 2 ;;
         --workers)          N_WORKERS="$2";    shift 2 ;;
         --conda-env)        CONDA_ENV="$2";    shift 2 ;;
@@ -109,6 +115,11 @@ fi
 if [[ ! -d "$ERA5_DIR" ]]; then
     echo "ERROR: ERA5 directory not found: $ERA5_DIR" >&2
     exit 1
+fi
+
+# Derived directory defaults to {era5-dir}/derived/ (same default as step 3b)
+if [[ -z "$DERIVED_DIR" ]]; then
+    DERIVED_DIR="${ERA5_DIR%/}/derived"
 fi
 
 # ---------------------------------------------------------------------------
@@ -346,6 +357,7 @@ _log "=================================================================="
 _log " LEC Field Dependence Pipeline"
 _log " Project dir:     $PROJECT_DIR"
 _log " ERA5 dir:        $ERA5_DIR"
+_log " Derived dir:     $DERIVED_DIR"
 _log " Chunks:          $N_CHUNKS"
 _log " Workers/chunk:   $N_WORKERS"
 _log " Conda env:       $CONDA_ENV"
@@ -393,6 +405,22 @@ if should_run 3; then
 fi
 
 # ---------------------------------------------------------------------------
+# Step 3b — Derive dynamic ERA5 fields per cyclone
+#   MUST run before steps 4 and 5.  Reads raw ERA5 NetCDFs from --era5-dir
+#   and writes derived files (*_era5_derived.nc) to --derived-dir.
+# ---------------------------------------------------------------------------
+if should_run 3b; then
+    if $SKIP_DONE && [[ -f "$RESULTS_DIR/step3b_derived_field_manifest.csv" ]]; then
+        _log "SKIP   [step3b]  manifest already exists"
+    else
+        CMD="$PYTHON $PIPELINE_DIR/step3b_derive_era5_fields.py \
+            --era5-dir $ERA5_DIR --derived-dir $DERIVED_DIR \
+            --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
+        run_chunks "step3b" $N_CHUNKS "$CMD"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
 # Step 4 — Extract absolute features
 # ---------------------------------------------------------------------------
 if should_run 4; then
@@ -400,7 +428,8 @@ if should_run 4; then
         _log "SKIP   [step4]  output already exists"
     else
         CMD="$PYTHON $PIPELINE_DIR/step4_extract_features_absolute.py \
-            --era5-dir $ERA5_DIR --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
+            --era5-dir $ERA5_DIR --derived-dir $DERIVED_DIR \
+            --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
         run_chunks "step4" $N_CHUNKS "$CMD"
     fi
 fi
@@ -413,7 +442,8 @@ if should_run 5; then
         _log "SKIP   [step5]  output already exists"
     else
         CMD="$PYTHON $PIPELINE_DIR/step5_extract_features_anomaly.py \
-            --era5-dir $ERA5_DIR --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
+            --era5-dir $ERA5_DIR --derived-dir $DERIVED_DIR \
+            --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
         run_chunks "step5" $N_CHUNKS "$CMD"
     fi
 fi
@@ -439,8 +469,11 @@ if should_run 6 || should_run 4 || should_run 5; then
         MIN_ROWS=30
         if [[ $N_ROWS -lt $MIN_ROWS ]]; then
             _log "ERROR  [coverage-guard]  step6_integrated_all.csv has only $N_ROWS rows (expected >=$MIN_ROWS)."
-            _log "       ERA5 directory ('$ERA5_DIR') likely has no per-cyclone NetCDF files."
-            _log "       Check the path and rerun with --only 4,5,6,7,7b,8,8b,9 --skip-done"
+            _log "       Possible causes:"
+            _log "         1. Step 3b was not run or failed — derived fields are missing."
+            _log "         2. ERA5 directory ('$ERA5_DIR') has no per-cyclone NetCDF files."
+            _log "         3. Derived dir ('$DERIVED_DIR') is empty or mismatched."
+            _log "       Check the paths and rerun: --only 3b,4,5,6,7,7b,8,8b,9 --skip-done"
             STEP_ERRORS=$(( STEP_ERRORS + 1 ))
             FAILED_STEPS+=("[coverage-guard]  step6 has $N_ROWS rows (<$MIN_ROWS) — check --era5-dir")
             if $STOP_ON_ERROR; then

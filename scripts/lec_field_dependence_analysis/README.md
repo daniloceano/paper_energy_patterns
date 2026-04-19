@@ -87,7 +87,7 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 > manifest with all cases marked `era5_available=False` (dry-run mode). If using the
 > **orchestrator** (`run_pipeline.sh`), step 3 is automatically re-run on the remote
 > server with `--era5-dir`, so this is handled. If running steps **manually**, re-run
-> step 3 on the remote server with `--era5-dir /path/to/era5/` before steps 4–5.
+> step 3 on the remote server with `--era5-dir /path/to/era5/` before steps 3b–5.
 
 | Step | Script | Description | Input | Output |
 |------|--------|-------------|-------|--------|
@@ -97,10 +97,16 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 
 ### Steps that require remote/HPC
 
+> **⚠️ Step 3b must run before steps 4 and 5.** It derives the dynamic diagnostic fields
+> (`pv_850`, `pv_200`, `adv_T_850`, `ke_adv_250`, `afc_250`) from the raw ERA5 per-cyclone
+> NetCDFs. Steps 4 and 5 read from the derived files and will **fail explicitly** if the
+> derived directory is missing or empty.
+
 | Step | Script | Description | Input | Output |
 |------|--------|-------------|-------|--------|
-| 4 | `step4_extract_features_absolute.py` | Extract scalar features from absolute fields | Per-cyclone ERA5 | `step4_features_absolute.csv` |
-| 5 | `step5_extract_features_anomaly.py` | Extract features from EPALL-relative anomalies | Per-cyclone ERA5 + EPALL composite | `step5_features_anomaly.csv` |
+| **3b** | `step3b_derive_era5_fields.py` | **Derive dynamic fields from raw ERA5** | Raw `*_era5.nc` (per-cyclone) | `{derived-dir}/*_era5_derived.nc`, `step3b_derived_field_manifest.csv` |
+| 4 | `step4_extract_features_absolute.py` | Extract scalar features from absolute derived fields | `*_era5_derived.nc` (from step 3b) | `step4_features_absolute.csv` |
+| 5 | `step5_extract_features_anomaly.py` | Extract features from EPALL-relative anomalies | `*_era5_derived.nc` + EPALL composite | `step5_features_anomaly.csv` |
 | 6 | `step6_integrate_tables.py` | Merge cases + LEC + features | Steps 1-5 | `step6_integrated_*.csv` |
 | 7 | `step7_compute_predep.py` | Compute PREDEP for all combinations | Step 6 | `step7_predep_*.csv` |
 | 7b | `step7b_ep_significance_tests.py` | Statistical significance between EPs | Steps 1-2 (LEC) + Step 6 (features) | `step7b_diagnostic_table.csv`, `step7b_pairwise_table.csv` |
@@ -114,7 +120,7 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 
 > **See [USER_GUIDE.md](USER_GUIDE.md) for the full operational workflow.**
 
-Use the provided orchestrator to run steps 4–9 in one shot.  Steps 1–3 must have been completed locally first.
+Use the provided orchestrator to run steps 3b–9 in one shot.  Steps 1–3 must have been completed locally first.
 
 ```bash
 # Activate the conda environment
@@ -122,6 +128,9 @@ conda activate paper_energy_patterns
 
 # Full pipeline — 16 parallel chunks per step, 4 workers per chunk, detached
 bash run_pipeline.sh --era5-dir /path/to/era5/ --background
+
+# Custom derived-dir (default: {era5-dir}/derived/)
+bash run_pipeline.sh --era5-dir /data/era5/ --derived-dir /scratch/derived/ --background
 
 # Clean previous outputs first, then run
 bash run_pipeline.sh --era5-dir /data/era5/ --clean --background

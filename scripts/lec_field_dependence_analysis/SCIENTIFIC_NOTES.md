@@ -101,8 +101,17 @@ Source: ERA5 reanalysis, 0.25° resolution, storm-centred 30°×30° domain.
 | AFC | `afc_250` | 250 hPa | Ageostrophic flux convergence (eddy KE redistribution) |
 | KE advection | `ke_adv_250` | 250 hPa | Jet-level kinetic energy tendency |
 
+**Derivation (step 3b):** The raw per-cyclone ERA5 files contain instantaneous pressure-level fields (`u`, `v`, `t`, `z`, `q`) downloaded from the CDS API. The dynamic diagnostics listed above are NOT present in the raw files. They are computed in pipeline **step 3b** (`step3b_derive_era5_fields.py`) using the validated diagnostic functions from `scripts/ep_structure_analysis/step3_precompute_composites.py`, ensuring methodological consistency between this analysis and the ep_structure composites. Derived fields are saved to `{derived_dir}/{track_id}_era5_derived.nc` (raw files are never modified). Steps 4 and 5 read exclusively from the derived files.
+
+Diagnostic formulas (consistent with ep_structure_analysis):
+
+- **PV at 850/200 hPa**: Ertel potential vorticity $q = -g\left(\frac{\partial\theta}{\partial p}\right)\zeta_a$ computed via MetPy using 3-level centred finite differences on `h-1`, `h`, `h+1` pressure levels.
+- **Temperature advection at 850 hPa**: $-\mathbf{V} \cdot \nabla T$ via MetPy advection with spherical-geometry gradients.
+- **KE advection at 250 hPa**: $-\mathbf{V} \cdot \nabla\left(\frac{1}{2}|\mathbf{V}|^2\right)$ via MetPy advection.
+- **AFC at 250 hPa**: Ageostrophic flux convergence following Orlanski & Katzfey (1991): $-\nabla \cdot (\mathbf{V}_a K)$ where $\mathbf{V}_a$ is the ageostrophic wind and $K$ is kinetic energy anomaly relative to the ERA5 climatological mean at 250 hPa.
+
 Two versions of each field:
-1. **Absolute**: the field as computed for the cyclone
+1. **Absolute**: the field as derived for the cyclone
 2. **EPALL-relative anomaly**: cyclone field − EPALL composite mean (isolates what is distinctive about each cyclone relative to the average cyclone)
 
 ### Temporal Representation

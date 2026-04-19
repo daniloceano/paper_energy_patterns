@@ -19,7 +19,12 @@
 ```
 
 Steps 1–3 are lightweight (no ERA5 needed) and run locally.
-Steps 4–9 are heavy (require per-cyclone ERA5 files) and run on the remote server.
+Steps 3b–9 are heavy (require per-cyclone ERA5 files) and run on the remote server.
+
+> **⚠️ IMPORTANT — Step 3b:** Step 3b derives dynamic diagnostic fields from raw ERA5
+> NetCDFs and **must run before steps 4 and 5**. Steps 4/5 now open `*_era5_derived.nc`
+> files (not the raw `*_era5.nc`). If step 3b has not been run, steps 4 and 5 will
+> exit immediately with a clear error message.
 
 ---
 
@@ -90,8 +95,16 @@ cd /discos-varal/swell/p1-swell/danilocs/paper_energy_patterns
 conda activate paper_energy_patterns
 
 # Standard run: 16 parallel chunks per step, 4 workers per chunk
+# Step 3b runs automatically before steps 4 and 5.
+# Derived files go to {era5-dir}/derived/ by default.
 bash scripts/lec_field_dependence_analysis/run_pipeline.sh \
     --era5-dir /path/to/era5/ \
+    --background
+
+# Custom derived-dir (if ERA5 dir is read-only or on a different filesystem):
+bash scripts/lec_field_dependence_analysis/run_pipeline.sh \
+    --era5-dir /data/era5/ \
+    --derived-dir /scratch/era5_derived/ \
     --background
 ```
 
@@ -102,8 +115,8 @@ The pipeline keeps running even if you close the terminal.
 **High-parallelism run (for large servers):**
 ```bash
 bash scripts/lec_field_dependence_analysis/run_pipeline.sh \
-    --era5-dir /path/to/era5/ \
-    --n-chunks 32 --workers 8 \
+    --era5-dir data/era5_ep_structure \
+    --n-chunks 32 --workers 100 \
     --background
 ```
 
@@ -140,26 +153,31 @@ tail -f logs/orchestrator_*.log
 
 ## E — Transfer results to your local machine
 
-When the pipeline finishes, run the interactive transfer script locally:
+Run this locally once the pipeline finishes:
 
 ```bash
-bash scripts/lec_field_dependence_analysis/transfer_guide_scp.sh
+bash scripts/lec_field_dependence_analysis/sync_from_remote.sh
 ```
 
-It will verify pipeline outputs on the server, then guide you through
-transferring CSVs, figures, and logs section by section.
+You will be prompted for your password or key passphrase **at most once**.
+SSH ControlMaster reuses that connection for all subsequent transfers.
 
-For a quick manual transfer of just the essential CSVs and figures:
+What it copies:
+- `results/lec_field_dependence/` — all merged CSVs and reports
+- `figures/lec_field_dependence/` — all generated figures
+
+Safety guarantees:
+- Local files that are the same age or **newer** than the remote are never overwritten
+  (so your step 1–3 outputs from B are protected)
+- Files that exist only locally are **never deleted**
+
+**Other options:**
 ```bash
-# Results
-rsync -avz --progress \
-    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/results/lec_field_dependence/ \
-    results/lec_field_dependence/
+# Preview what would be transferred without copying anything
+bash sync_from_remote.sh --dry-run
 
-# Figures
-rsync -avz --progress \
-    danilocs@master.iag.usp.br:/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns/figures/lec_field_dependence/ \
-    figures/lec_field_dependence/
+# Also transfer pipeline logs
+bash sync_from_remote.sh --logs
 ```
 
 ---

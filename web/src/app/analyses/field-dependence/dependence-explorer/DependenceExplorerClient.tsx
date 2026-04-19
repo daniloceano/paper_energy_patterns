@@ -86,12 +86,13 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
 
   // ── Fetch predep data on mount ────────────────────────
   useEffect(() => {
+    const url = '/data/lfd_predep.json'
     let cancelled = false
     setPredepLoading(true)
     setPredepError(null)
-    fetch('/data/lfd_predep.json')
+    fetch(url)
       .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        if (!r.ok) throw new Error(`HTTP ${r.status} — ${url}`)
         return r.json()
       })
       .then((data: LfdPredepRow[]) => {
@@ -102,7 +103,9 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setPredepError(`Failed to load analysis data: ${err instanceof Error ? err.message : String(err)}`)
+          setPredepError(
+            `Failed to load analysis data (${url}): ${err instanceof Error ? err.message : String(err)}`
+          )
           setPredepLoading(false)
         }
       })
@@ -175,15 +178,18 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
 
   // ── Load scatter data on demand ───────────────────────
   const loadScatter = useCallback(async () => {
+    const url = `/data/lfd_scatter_${fieldType}.json`
     setScatterLoading(true)
     setScatterError(null)
     try {
-      const resp = await fetch(`/data/lfd_scatter_${fieldType}.json`)
-      if (!resp.ok) throw new Error(`HTTP ${resp.status} — scatter data unavailable`)
+      const resp = await fetch(url)
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} — ${url}`)
       const data = await resp.json() as LfdScatterData
       setScatterData(data)
     } catch (err: unknown) {
-      setScatterError(err instanceof Error ? err.message : 'Failed to load scatter data')
+      setScatterError(
+        err instanceof Error ? err.message : `Failed to load scatter data (${url})`
+      )
     } finally {
       setScatterLoading(false)
     }

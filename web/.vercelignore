@@ -2,11 +2,16 @@
 # These bloat serverless functions and aren't needed at runtime
 
 # Large figure directories
-public/figures/
+# IMPORTANT: only exclude cyclone_explorer (211 MB) — other figure dirs are small static assets
+# ep_structure, cluster, main, and lec_field_dependence figures are committed and must be deployed
+public/figures/cyclone_explorer/
 public/docs/
 
-# Data directories (not needed for web deployment)
-data/
+# public/data/ must NOT be excluded — lfd_predep.json and scatter JSONs are client-fetched assets
+# (no rule needed — public/data/ is included by default)
+
+# Repository-level directories (these are above the web/ root, patterns kept for safety)
+# NOTE: bare "data/" without a leading slash would match public/data/ too — do NOT add it
 logs/
 results/
 

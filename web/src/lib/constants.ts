@@ -697,6 +697,7 @@ export const LFD_CANONICAL_TERMS = ['Ca', 'Ck', 'Ge', 'BAe', 'BKe', 'Ae', 'Ke'] 
 export const LFD_EP_CONTRASTS = ['EP1 vs EP2', 'EP1 vs EP3', 'EP2 vs EP3'] as const
 
 export const LFD_EP_COLORS: Record<number, string> = {
+  0: '#6366f1', // EPALL — indigo (pooled, not a cluster)
   1: '#e63946',
   2: '#457b9d',
   3: '#a8dadc',

@@ -24,7 +24,14 @@ const METRIC_LABELS: Record<Metric, string> = {
   spearman: '|Spearman ρ|',
 }
 
-const EP_LABELS: Record<number, string> = { 1: 'EP1', 2: 'EP2', 3: 'EP3' }
+// EP labels including EPALL (ep=0: all cyclones pooled, not a cluster)
+const EP_LABELS: Record<number, string> = { 0: 'EPALL', 1: 'EP1', 2: 'EP2', 3: 'EP3' }
+
+// Filename abbreviations matching step8/diag script output naming convention
+// e.g. heatmap_predep_epall_absolute_canonical.png (not ep0)
+const EP_FILE_LABEL: Record<number, string> = { 0: 'epall', 1: 'ep1', 2: 'ep2', 3: 'ep3' }
+
+const ALL_EPS_UI = [0, 1, 2, 3]  // EP selector order in the UI
 
 const ALL_FIELDS = Object.keys(LFD_DYNAMIC_FIELDS)
 const ALL_FEATURES = Object.keys(LFD_SPATIAL_FEATURES)
@@ -174,6 +181,8 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
 
   // ── Top associations ──────────────────────────────────
   const topList = scope === 'canonical' ? topAssociations.canonical : topAssociations.all
+  // For EPALL (ep=0) the top-associations JSON from step8 will include ep=0.
+  // If data hasn't been recomputed yet, EPALL shows empty (no crash).
   const topForEp = useMemo(() => topList.filter((t) => t.ep === selectedEp), [topList, selectedEp])
 
   // ── Load scatter data on demand ───────────────────────
@@ -202,6 +211,20 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
   }, [fieldType])
 
   // ── Draw scatter on canvas ────────────────────────────
+  // Robust axis ranges: use 1st–99th percentile with a small pad
+  // to avoid outlier-dominated "vertical smear" artefacts.
+  // Extreme points beyond the percentile clip are still drawn;
+  // only the visible window is adjusted (no data is hidden).
+  function robustRange(vals: number[], padFraction = 0.05): [number, number] {
+    const sorted = [...vals].sort((a, b) => a - b)
+    const n = sorted.length
+    if (n < 4) return [sorted[0], sorted[n - 1]]
+    const lo = sorted[Math.max(0, Math.floor(n * 0.01))]
+    const hi = sorted[Math.min(n - 1, Math.ceil(n * 0.99) - 1)]
+    const span = hi - lo || 1
+    return [lo - span * padFraction, hi + span * padFraction]
+  }
+
   useEffect(() => {
     if (!scatterData) return
 
@@ -226,10 +249,16 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
       const featureCol = `${resolvedField}__${selectedFeature}`
       const lecCol = selectedLecTerm
 
-      const points = scatterData.cyclones
-        .filter((c) => c.ep === selectedEp)
-        .map((c) => ({ x: c[featureCol] as number | null, y: c[lecCol] as number | null }))
-        .filter((p) => p.x != null && p.y != null) as { x: number; y: number }[]
+      // For EPALL (ep=0): show all cyclones regardless of EP, coloured by their EP.
+      // For EP1/2/3: show only cyclones of that EP.
+      const filteredCyclones =
+        selectedEp === 0
+          ? scatterData.cyclones
+          : scatterData.cyclones.filter((c) => c.ep === selectedEp)
+
+      const points = filteredCyclones
+        .map((c) => ({ x: c[featureCol] as number | null, y: c[lecCol] as number | null, ep: c.ep as number }))
+        .filter((p) => p.x != null && p.y != null) as { x: number; y: number; ep: number }[]
 
       if (points.length === 0) {
         ctx.clearRect(0, 0, width, height)
@@ -242,8 +271,10 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
 
       const xVals = points.map((p) => p.x)
       const yVals = points.map((p) => p.y)
-      const xMin = Math.min(...xVals), xMax = Math.max(...xVals)
-      const yMin = Math.min(...yVals), yMax = Math.max(...yVals)
+      // Robust axis ranges: 1st–99th percentile + 5% pad
+      // Prevents outliers from compressing the main data cloud into a narrow band.
+      const [xMin, xMax] = robustRange(xVals)
+      const [yMin, yMax] = robustRange(yVals)
       const xRange = xMax - xMin || 1
       const yRange = yMax - yMin || 1
 
@@ -294,10 +325,13 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
       ctx.fillText(selectedLecTerm, 0, 0)
       ctx.restore()
 
-      // Points
-      const epColor = LFD_EP_COLORS[selectedEp] ?? '#6366f1'
-      ctx.fillStyle = epColor + '99'
+      // Points — for EPALL use per-EP colours; for single EP use that EP's colour
       for (const p of points) {
+        const ptColor =
+          selectedEp === 0
+            ? (LFD_EP_COLORS[p.ep] ?? '#94a3b8') + '88'
+            : (LFD_EP_COLORS[selectedEp] ?? '#6366f1') + '99'
+        ctx.fillStyle = ptColor
         ctx.beginPath()
         ctx.arc(toX(p.x), toY(p.y), 2.5, 0, Math.PI * 2)
         ctx.fill()
@@ -380,12 +414,15 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
 
         {/* EP */}
         <div className="flex rounded-lg border border-slate-200 text-sm">
-          {[1, 2, 3].map((ep) => (
+          {ALL_EPS_UI.map((ep) => (
             <button
               key={ep}
               onClick={() => setSelectedEp(ep)}
-              className={`px-3 py-1.5 first:rounded-l-lg last:rounded-r-lg ${selectedEp === ep ? 'text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+              className={`px-3 py-1.5 first:rounded-l-lg last:rounded-r-lg ${
+                selectedEp === ep ? 'text-white' : 'text-slate-600 hover:bg-slate-50'
+              }`}
               style={selectedEp === ep ? { backgroundColor: LFD_EP_COLORS[ep] } : {}}
+              title={ep === 0 ? 'All cyclones pooled (not a cluster)' : undefined}
             >
               {EP_LABELS[ep]}
             </button>
@@ -397,6 +434,9 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
       <section>
         <h2 className="mb-3 text-lg font-semibold text-slate-900">
           Reference Heatmaps — {EP_LABELS[selectedEp]}
+          {selectedEp === 0 && (
+            <span className="ml-2 text-xs font-normal text-slate-400">all cyclones pooled</span>
+          )}
         </h2>
         <p className="mb-4 text-sm text-slate-500">
           Static pipeline heatmaps for PREDEP, |Pearson|, and |Spearman| — {scopeLabel} terms,
@@ -406,8 +446,8 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <div className="bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">PREDEP</div>
             <img
-              src={lfd(`${scopeLabel}/heatmap_predep_ep${selectedEp}_${fieldType}_${scopeLabel}.png`)}
-              alt={`PREDEP heatmap EP${selectedEp} ${fieldType}`}
+              src={lfd(`${scopeLabel}/heatmap_predep_${EP_FILE_LABEL[selectedEp]}_${fieldType}_${scopeLabel}.png`)}
+              alt={`PREDEP heatmap ${EP_LABELS[selectedEp]} ${fieldType}`}
               className="w-full"
               loading="lazy"
               onError={(e) => { (e.target as HTMLImageElement).alt = 'Figure not available' }}
@@ -416,8 +456,8 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <div className="bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">|Pearson r|</div>
             <img
-              src={lfd(`diagnostics/correlation_heatmaps/${scopeLabel}/heatmap_pearson_ep${selectedEp}_${fieldType}_${scopeLabel}.png`)}
-              alt={`Pearson heatmap EP${selectedEp} ${fieldType}`}
+              src={lfd(`diagnostics/correlation_heatmaps/${scopeLabel}/heatmap_pearson_${EP_FILE_LABEL[selectedEp]}_${fieldType}_${scopeLabel}.png`)}
+              alt={`Pearson heatmap ${EP_LABELS[selectedEp]} ${fieldType}`}
               className="w-full"
               loading="lazy"
               onError={(e) => { (e.target as HTMLImageElement).alt = 'Figure not available' }}
@@ -426,8 +466,8 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
           <div className="overflow-hidden rounded-lg border border-slate-200">
             <div className="bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">|Spearman ρ|</div>
             <img
-              src={lfd(`diagnostics/correlation_heatmaps/${scopeLabel}/heatmap_spearman_ep${selectedEp}_${fieldType}_${scopeLabel}.png`)}
-              alt={`Spearman heatmap EP${selectedEp} ${fieldType}`}
+              src={lfd(`diagnostics/correlation_heatmaps/${scopeLabel}/heatmap_spearman_${EP_FILE_LABEL[selectedEp]}_${fieldType}_${scopeLabel}.png`)}
+              alt={`Spearman heatmap ${EP_LABELS[selectedEp]} ${fieldType}`}
               className="w-full"
               loading="lazy"
               onError={(e) => { (e.target as HTMLImageElement).alt = 'Figure not available' }}
@@ -440,6 +480,9 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
       <section>
         <h2 className="mb-3 text-lg font-semibold text-slate-900">
           Interactive Heatmap — {METRIC_LABELS[metric]}, {EP_LABELS[selectedEp]}, {fieldType}
+          {selectedEp === 0 && (
+            <span className="ml-2 text-xs font-normal text-slate-400">all cyclones pooled</span>
+          )}
         </h2>
         <p className="mb-4 text-sm text-slate-500">
           Click any cell to populate the explorer below with that field × feature × LEC term.
@@ -592,8 +635,10 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
                 onChange={(e) => setSelectedEp(Number(e.target.value))}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
-                {[1, 2, 3].map((ep) => (
-                  <option key={ep} value={ep}>{EP_LABELS[ep]}</option>
+                {ALL_EPS_UI.map((ep) => (
+                  <option key={ep} value={ep}>
+                    {EP_LABELS[ep]}{ep === 0 ? ' (all pooled)' : ''}
+                  </option>
                 ))}
               </select>
             </div>
@@ -711,13 +756,14 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
               />
             )}
           </div>
-          {scatterData && drilldownRow && (
-            <p className="mt-2 text-xs text-slate-500">
-              {LFD_DYNAMIC_FIELDS[selectedField]?.label ?? selectedField} — {LFD_SPATIAL_FEATURES[selectedFeature] ?? selectedFeature} (x)
-              vs {selectedLecTerm} (y) for {EP_LABELS[selectedEp]} cyclones.
-              Each dot = one cyclone during intensification.
-            </p>
-          )}
+        {scatterData && drilldownRow && (
+          <p className="mt-2 text-xs text-slate-500">
+            {LFD_DYNAMIC_FIELDS[selectedField]?.label ?? selectedField} — {LFD_SPATIAL_FEATURES[selectedFeature] ?? selectedFeature} (x)
+            vs {selectedLecTerm} (y) for {selectedEp === 0 ? 'all cyclones (EPALL, coloured by EP)' : `${EP_LABELS[selectedEp]} cyclones`}.
+            Each dot = one cyclone during intensification.
+            {' '}<span className="text-slate-400">(axis range: 1st–99th percentile)</span>
+          </p>
+        )}
         </div>
       </section>
     </div>

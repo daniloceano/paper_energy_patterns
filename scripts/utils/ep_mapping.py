@@ -37,10 +37,17 @@ CLUSTER_TO_EP: Dict[int, int] = {
 EP_TO_CLUSTER: Dict[int, int] = {ep: cluster for cluster, ep in CLUSTER_TO_EP.items()}
 
 # All Energy Pattern identifiers (ordered for consistent iteration)
-ALL_EPS: List[int] = [1, 2, 3]  # EP1, EP2, EP3
+ALL_EPS: List[int] = [1, 2, 3]  # EP1, EP2, EP3 only (clustered groups)
+
+# EPALL as ep=0: all cyclones pooled regardless of cluster assignment.
+# Not a "cluster" — use only where pool-level analysis makes sense
+# (PREDEP, Pearson, Spearman on the full sample).
+EPALL_EP: int = 0
+ALL_EPS_WITH_EPALL: List[int] = [0, 1, 2, 3]  # 0 = EPALL, 1/2/3 = clustered EPs
 
 # Energy Pattern label strings
 EP_LABELS: Dict[int, str] = {
+    0: "EPALL",  # All cyclones pooled (not a cluster)
     1: "EP1",
     2: "EP2",
     3: "EP3",
@@ -48,6 +55,7 @@ EP_LABELS: Dict[int, str] = {
 
 # Canonical abbreviations for filenames and output
 EP_ABBREVS: Dict[int, str] = {
+    0: "epall",
     1: "ep1",
     2: "ep2",
     3: "ep3",
@@ -63,6 +71,7 @@ EPALL_ABBREV = "epall"
 
 # Color palette for each EP (consistent across all figures)
 EP_COLORS: Dict[int, str] = {
+    0: "gray",        # EPALL - neutral grey (pooled, not a cluster)
     1: "gold",        # EP1 - warm gold
     2: "dodgerblue",  # EP2 - blue
     3: "forestgreen", # EP3 - green
@@ -70,10 +79,10 @@ EP_COLORS: Dict[int, str] = {
 
 # Extended colors including EPALL
 EP_COLORS_EXTENDED: Dict[str, str] = {
+    "EPALL": "gray",
     "EP1": "gold",
     "EP2": "dodgerblue",
     "EP3": "forestgreen",
-    "EPALL": "gray",
 }
 
 # =============================================================================

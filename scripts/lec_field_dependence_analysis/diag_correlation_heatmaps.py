@@ -39,7 +39,7 @@ from scripts.lec_field_dependence_analysis.utils_io import (
     LEC_TERMS_CORE, LEC_TERMS_FULL,
     format_display_label,
 )
-from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS
+from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS, ALL_EPS_WITH_EPALL
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -88,7 +88,7 @@ def setup_logging():
 
 
 def load_predep_results() -> pd.DataFrame:
-    """Load and merge all PREDEP result files (reuses step8 logic)."""
+    """Load and merge all PREDEP result files (reuses step8 logic, includes epall)."""
     frames = []
     for ftype in ["absolute", "anomaly"]:
         base = RESULTS_DIR / f"step7_predep_{ftype}.csv"
@@ -98,6 +98,12 @@ def load_predep_results() -> pd.DataFrame:
             frames.append(df)
         for chunk_f in sorted(RESULTS_DIR.glob(f"step7_predep_{ftype}_chunk*.csv")):
             df = pd.read_csv(chunk_f)
+            df["field_type"] = ftype
+            frames.append(df)
+        # EPALL file (ep=0)
+        epall_f = RESULTS_DIR / f"step7_predep_{ftype}_epall.csv"
+        if epall_f.exists():
+            df = pd.read_csv(epall_f)
             df["field_type"] = ftype
             frames.append(df)
     if not frames:
@@ -210,7 +216,8 @@ def _generate_for_term_set(df: pd.DataFrame, term_set: str, out_dir: Path):
         metric_name = "Pearson" if metric == "pearson_r" else "Spearman"
         logging.info(f"\n  --- {metric_name} ({term_set}) ---")
         for ftype in df["field_type"].unique():
-            for ep in ALL_EPS:
+            eps_in_data = sorted(df["ep"].unique())
+            for ep in [e for e in ALL_EPS_WITH_EPALL if e in eps_in_data]:
                 plot_correlation_heatmap(
                     df, ep, ftype, metric, sub_dir, term_label=term_set
                 )

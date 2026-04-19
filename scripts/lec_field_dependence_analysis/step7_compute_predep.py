@@ -64,7 +64,7 @@ from scripts.lec_field_dependence_analysis.utils_io import (
     DYNAMIC_FIELDS_ABSOLUTE, DYNAMIC_FIELDS_ANOMALY,
 )
 from scripts.lec_field_dependence_analysis.utils_features import get_feature_names
-from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS
+from scripts.utils.ep_mapping import EP_LABELS, EP_ABBREVS, ALL_EPS
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -155,7 +155,9 @@ def main():
     parser.add_argument("--field-type", choices=["absolute", "anomaly"],
                         required=True, help="Which field type to process")
     parser.add_argument("--ep", type=int, default=None,
-                        help="Process only this EP (1, 2, or 3)")
+                        help="Process only this EP (0=EPALL, 1, 2, or 3). "
+                             "EPALL (0) pools all cyclones regardless of cluster. "
+                             "Default: run EP1, EP2, EP3 only (EPALL excluded unless explicitly requested).")
     parser.add_argument("--chunk", type=int, default=None)
     parser.add_argument("--n-chunks", type=int, default=None)
     parser.add_argument("--workers", type=int, default=N_WORKERS)
@@ -195,7 +197,11 @@ def main():
     logging.info(f"Loaded: {input_file} ({len(df)} rows)")
 
     # 2. Determine EPs to process
-    eps_to_process = [args.ep] if args.ep else ALL_EPS
+    # ep=0 is EPALL (all cyclones pooled, no EP filter) — must be requested explicitly
+    if args.ep is not None:
+        eps_to_process = [args.ep]
+    else:
+        eps_to_process = ALL_EPS  # [1, 2, 3] — EPALL is never run implicitly
     logging.info(f"EPs: {[EP_LABELS[e] for e in eps_to_process]}")
 
     # 3. Identify LEC columns and feature columns
@@ -231,7 +237,11 @@ def main():
     # 4. Build work items
     work_items = []
     for ep in eps_to_process:
-        ep_df = df[df["ep"] == ep]
+        # ep=0 means EPALL: use all cyclones without EP filter
+        if ep == 0:
+            ep_df = df
+        else:
+            ep_df = df[df["ep"] == ep]
         n_ep = len(ep_df)
         logging.info(f"\n{EP_LABELS[ep]}: {n_ep} cyclones")
 
@@ -283,7 +293,20 @@ def main():
     logging.info(f"\n   Valid PREDEP estimates: {n_valid}")
     logging.info(f"   Excluded:              {n_excluded}")
 
-    output_path = RESULTS_DIR / f"step7_predep_{args.field_type}{chunk_suffix}.csv"
+    # Determine output filename:
+    # – Single EP requested → use EP abbrev suffix (e.g. _epall, _ep1)
+    # – Chunked run        → use original chunk suffix (backward-compatible)
+    # – Full multi-EP run  → no suffix (same as before)
+    if args.ep is not None:
+        ep_abbrev = EP_ABBREVS[args.ep]
+        if args.chunk is not None:
+            # Chunked EPALL or single-EP chunked: include both ep and chunk
+            output_path = RESULTS_DIR / f"step7_predep_{args.field_type}_{ep_abbrev}_chunk{args.chunk}.csv"
+        else:
+            output_path = RESULTS_DIR / f"step7_predep_{args.field_type}_{ep_abbrev}.csv"
+    else:
+        output_path = RESULTS_DIR / f"step7_predep_{args.field_type}{chunk_suffix}.csv"
+
     result_df.to_csv(output_path, index=False)
     logging.info(f"   Saved: {output_path}")
 

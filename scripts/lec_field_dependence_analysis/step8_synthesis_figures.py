@@ -44,7 +44,7 @@ from scripts.lec_field_dependence_analysis.utils_io import (
     RESULTS_DIR, FIGURES_DIR, LOG_DIR, LEC_TERMS_CORE, LEC_TERMS_FULL,
     format_display_label,
 )
-from scripts.utils.ep_mapping import EP_LABELS, EP_COLORS, ALL_EPS
+from scripts.utils.ep_mapping import EP_LABELS, EP_COLORS, ALL_EPS, ALL_EPS_WITH_EPALL
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -90,7 +90,7 @@ def setup_logging():
 
 
 def load_predep_results() -> pd.DataFrame:
-    """Load and merge all PREDEP result files (absolute + anomaly, chunks)."""
+    """Load and merge all PREDEP result files (absolute + anomaly, chunks + epall)."""
     frames = []
     for ftype in ["absolute", "anomaly"]:
         base = RESULTS_DIR / f"step7_predep_{ftype}.csv"
@@ -98,9 +98,15 @@ def load_predep_results() -> pd.DataFrame:
             df = pd.read_csv(base)
             df["field_type"] = ftype
             frames.append(df)
-        # Check for chunk files
+        # Per-EP chunk files (EP1/EP2/EP3, generated on server)
         for chunk_f in sorted(RESULTS_DIR.glob(f"step7_predep_{ftype}_chunk*.csv")):
             df = pd.read_csv(chunk_f)
+            df["field_type"] = ftype
+            frames.append(df)
+        # EPALL file (ep=0, all cyclones pooled — generated locally with --ep 0)
+        epall_f = RESULTS_DIR / f"step7_predep_{ftype}_epall.csv"
+        if epall_f.exists():
+            df = pd.read_csv(epall_f)
             df["field_type"] = ftype
             frames.append(df)
 
@@ -236,8 +242,9 @@ def plot_top_associations_per_ep(
     out_dir: Path,
     term_label: str = "all",
 ):
-    """Bar chart of top PREDEP associations for each EP separately."""
-    for ep in ALL_EPS:
+    """Bar chart of top PREDEP associations for each EP separately (including EPALL)."""
+    eps_in_data = sorted(df["ep"].unique())
+    for ep in [e for e in ALL_EPS_WITH_EPALL if e in eps_in_data]:
         sub = df[
             (df["field_type"] == field_type) & (df["ep"] == ep) & df["predep"].notna()
         ].copy()
@@ -294,16 +301,19 @@ def plot_ep_comparison(
     if pivot.empty:
         return
 
+    # Determine which EPs are present (may include ep=0 EPALL)
+    eps_in_data = [e for e in ALL_EPS_WITH_EPALL if e in pivot.columns]
+    n_eps = len(eps_in_data)
     fig, ax = plt.subplots(figsize=(13, 5))
     x = np.arange(len(pivot))
-    width = 0.25
-    for i, ep in enumerate(ALL_EPS):
+    width = max(0.15, 0.7 / max(n_eps, 1))
+    for i, ep in enumerate(eps_in_data):
         if ep in pivot.columns:
             vals = pivot[ep].fillna(0).values
             ax.bar(x + i * width, vals, width, label=EP_LABELS[ep],
                    color=EP_COLORS[ep], edgecolor="black", linewidth=0.3)
 
-    ax.set_xticks(x + width)
+    ax.set_xticks(x + width * (n_eps - 1) / 2)
     ax.set_xticklabels(pivot.index, rotation=45, ha="right", fontsize=8)
     ax.set_ylabel(r"Mean PREDEP $\alpha_{\mathrm{LEC\,|\,feature}}$", fontsize=10)
     ax.set_ylim(0, 1)
@@ -345,7 +355,9 @@ def _generate_figures_for_term_set(
 
     for ftype in df["field_type"].unique():
         logging.info(f"\n  [{term_set} / {ftype}]")
-        for ep in ALL_EPS:
+        # Generate heatmap for each EP including EPALL (ep=0)
+        eps_in_data = sorted(df["ep"].unique())
+        for ep in [e for e in ALL_EPS_WITH_EPALL if e in eps_in_data]:
             plot_heatmap_field_vs_lec(df, ep, ftype, out_dir, term_label=term_set)
         plot_top_associations(df, ftype, out_dir, term_label=term_set)
         plot_top_associations_per_ep(df, ftype, out_dir, term_label=term_set)

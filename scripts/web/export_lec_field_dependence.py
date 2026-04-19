@@ -83,13 +83,13 @@ def format_display(field: str, feature: str) -> str:
 # ── Export functions ─────────────────────────────────────────────
 
 def export_predep() -> list[dict]:
-    """Merge all step7 PREDEP chunks into a single JSON-friendly list."""
+    """Merge all step7 PREDEP chunks + EPALL into a single JSON-friendly list."""
     rows = []
-    for chunk_file in sorted(RESULTS.glob("step7_predep_*_chunk*.csv")):
-        field_type = "absolute" if "_absolute_" in chunk_file.name else "anomaly"
+
+    def _read_file(chunk_file: Path, field_type: str):
         for r in read_csv(chunk_file):
-            predep = safe_float(r.get("predep"))
-            if predep is None:
+            predep_val = safe_float(r.get("predep"))
+            if predep_val is None:
                 continue
             rows.append({
                 "ep": int(r["ep"]),
@@ -98,7 +98,7 @@ def export_predep() -> list[dict]:
                 "feature": r["feature"],
                 "field_type": field_type,
                 "n": safe_int(r.get("n_valid")),
-                "predep": predep,
+                "predep": predep_val,
                 "pearson_r": safe_float(r.get("pearson_r")),
                 "pearson_p": safe_float(r.get("pearson_p")),
                 "spearman_rho": safe_float(r.get("spearman_rho")),
@@ -109,6 +109,17 @@ def export_predep() -> list[dict]:
                 ),
                 "is_canonical": r["lec_term"] in CANONICAL_TERMS,
             })
+
+    for chunk_file in sorted(RESULTS.glob("step7_predep_*_chunk*.csv")):
+        field_type = "absolute" if "_absolute_" in chunk_file.name else "anomaly"
+        _read_file(chunk_file, field_type)
+
+    # EPALL files (ep=0, all cyclones pooled)
+    for ftype in ("absolute", "anomaly"):
+        epall_file = RESULTS / f"step7_predep_{ftype}_epall.csv"
+        if epall_file.exists():
+            _read_file(epall_file, ftype)
+
     print(f"  PREDEP: {len(rows)} rows")
     return rows
 

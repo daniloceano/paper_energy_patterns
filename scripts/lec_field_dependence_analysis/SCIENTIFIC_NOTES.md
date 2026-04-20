@@ -153,25 +153,31 @@ Each 2D storm-centred field is summarised into 13 scalar features computed on th
 | border_west | Mean of western 5-cell strip |
 | contrast_ew | $\bar{f}_E - \bar{f}_W$ (zonal asymmetry) |
 | contrast_sn | $\bar{f}_S - \bar{f}_N$ (meridional asymmetry) |
-| quadrant_ne | Mean of NE quadrant |
-| quadrant_nw | Mean of NW quadrant |
-| quadrant_se | Mean of SE quadrant |
-| quadrant_sw | Mean of SW quadrant |
+| sector_north | Mean over the northern half of the inner box |
+| sector_south | Mean over the southern half of the inner box |
+| sector_east | Mean over the eastern half of the inner box |
+| sector_west | Mean over the western half of the inner box |
 | domain_abs_mean | $\frac{1}{N}\sum_i |f_i|$ (mean absolute value) |
 
 **Rationale for feature choices:**
 
 - `domain_mean`: overall field intensity in the cyclone vicinity
 - `centre_value`: field intensity at the cyclone core
-- Border means: spatial structure on each side of the cyclone
+- Border means (5-cell strip): sharp spatial structure on each side
 - Contrasts: capture baroclinic tilt (E-W) and frontal structure (S-N)
-- Quadrant means: resolve the four-quadrant structure relevant to cyclone dynamics
-- `domain_abs_mean`: important for signed fields where cancellation masks the intensity
+- Sector means: cardinal-hemisphere structure (North/South/East/West halves).  Preferred over diagonal quadrants (NE/NW/SE/SW) because the LEC framework captures zonal and meridional energy contrasts, not diagonal ones.
+- `domain_abs_mean`: important for signed fields where sign cancellation masks overall intensity
 
 **Notes on potential redundancy:**
-- `domain_mean` and the mean of the four quadrants are mathematically related
-- If quadrant means are all very similar, contrasts will be near zero — this is informative, not redundant
+- `domain_mean` equals the unweighted mean of all four sector means — mathematically dependent but not statistically redundant (sectors can differ even when the mean is the same)
+- If sector means are all similar, contrasts will be near zero — this is informative, not redundant
 - `domain_abs_mean` adds value mainly for temperature advection and AFC where sign patterns are physically meaningful
+
+**Note on sector vs. quadrant design (updated 2025):** Earlier versions of the pipeline used diagonal quadrant means (`quadrant_ne`, `quadrant_nw`, `quadrant_se`, `quadrant_sw`).  These were replaced with cardinal sector means (`sector_north`, `sector_south`, `sector_east`, `sector_west`) because:
+(a) The LEC describes zonal and meridional energy exchanges, not diagonal ones.
+(b) Cardinal sectors are aligned with the physical axes of the Coriolis effect, frontal orientation, and the LEC reference frame.
+(c) Sectors integrate over larger areas (half of the inner box vs. a quarter), reducing sampling noise.
+All pipeline outputs (step 4 onward) from the current run use sector features.
 
 ### PREDEP Estimation
 
@@ -276,6 +282,216 @@ For each variable separately:
 3. **Global FDR correction**: With ~150+ variables tested, the FDR correction reduces the number of discoveries.  Variables that are significant at raw $p < 0.05$ but not after FDR correction should be flagged as *suggestive but unconfirmed*.
 
 4. **Independence assumption**: Variables (especially derived features from the same field) are correlated.  FDR correction treats them as independent tests, which is conservative in the presence of positive dependence (Benjamini & Yekutieli 2001 show FDR still controls at $q$ level under positive regression dependency).
+
+#### Algorithmic Pseudocode
+
+The following captures the exact logic implemented in `utils_statistical_tests.py` and `step7b_ep_significance_tests.py`.  Constants are literal values from the code.
+
+```
+CONSTANTS:
+  ALPHA           = 0.05
+  MIN_SAMPLE_SIZE = 8
+  SHAPIRO_MAX_N   = 5000
+
+FOR each block IN [lec_terms, absolute_features, anomaly_features]:
+
+  FOR each variable IN block:
+
+    # ── 1. DATA PREPARATION ───────────────────────────────────────────
+    groups = split variable values by EP label  # three arrays: EP1, EP2, EP3
+    FOR each group:
+        remove NaN and non-finite values
+        record n_i = len(group)
+
+    # ── 2. DEGENERACY CHECK ───────────────────────────────────────────
+    IF any n_i < MIN_SAMPLE_SIZE (8):
+        record SKIPPED: "insufficient samples"; continue to next variable
+    IF any group has zero variance (ptp == 0):
+        record SKIPPED: "zero variance"; continue to next variable
+
+    # ── 3. NORMALITY — Shapiro-Wilk per group ────────────────────────
+    FOR each group:
+        IF n_i > SHAPIRO_MAX_N (5000):
+            subsample 5000 observations uniformly (seed=42)
+            append note: "Shapiro-Wilk subsampled; over-rejection risk"
+        IF n_i < 3:
+            mark is_normal = False; append note: "n < 3, skipped"
+        ELIF all values identical:
+            mark is_normal = False; append note: "zero variance"
+        ELSE:
+            SW_stat, SW_p = shapiro(group)
+            is_normal = (SW_p > ALPHA)  # True if p > 0.05
+
+    all_normal = all(is_normal for each group)
+
+    IF all groups have n > 500 AND all_normal is False:
+        append advisory note: "Shapiro-Wilk overpowered; CLT likely holds;
+          ANOVA is generally robust; non-parametric path used conservatively."
+
+    # ── 4. HOMOGENEITY — Brown-Forsythe Levene ───────────────────────
+    levene_stat, levene_p = levene(*groups, center='median')
+    equal_var = (levene_p > ALPHA)
+
+    # ── 5. GLOBAL TEST SELECTION ──────────────────────────────────────
+    IF all_normal AND equal_var:
+        global_test = one_way_ANOVA(groups)         # scipy.stats.f_oneway
+        effect_size = omega_squared(groups)          # ω²
+        decision_path = "Normal + homogeneous → One-way ANOVA"
+
+    ELIF all_normal AND NOT equal_var:
+        global_test = welch_ANOVA(groups)            # custom Welch 1951
+        effect_size = omega_squared(groups)          # ω²
+        decision_path = "Normal + heterogeneous → Welch ANOVA"
+        append note: "Games-Howell unavailable (no pingouin);
+          pairwise Welch t + Holm used instead."
+
+    ELSE:  # at least one group non-normal
+        global_test = kruskal_wallis(groups)         # scipy.stats.kruskal
+        H = global_test.statistic
+        k = 3  # number of groups
+        N = sum of all n_i
+        effect_size = epsilon_squared(H, N, k)       # ε² = (H−k+1)/(N−k)
+        decision_path = "Non-normal → Kruskal-Wallis"
+
+    # ── 6. POST-HOC (only if global p < ALPHA) ───────────────────────
+    IF global_test.p_value < ALPHA:
+        IF decision_path is ANOVA:
+            pairwise = tukey_hsd(groups, labels)          # FWER controlled internally
+            pairwise_effect = cohen_d(pair_i, pair_j)     # pooled SD
+
+        ELIF decision_path is Welch ANOVA:
+            FOR each pair (i, j):
+                t_stat, p_raw = ttest_ind(group_i, group_j, equal_var=False)
+                cohen_d = pooled_cohen_d(group_i, group_j)
+            _, p_adj = holm(p_raw_values)                 # Holm step-down
+            pairwise_effect = cohen_d
+
+        ELSE:  # Kruskal-Wallis path
+            # Dunn (1964) with tie adjustment:
+            rank all N observations jointly (average ties)
+            FOR each pair (i, j):
+                z_ij = (R̄_i − R̄_j) / σ_ij
+                  where σ_ij = sqrt([N(N+1)/12 − Σ(t³−t)/12(N−1)] × (1/n_i + 1/n_j))
+                p_raw = 2 * norm.sf(|z_ij|)
+                U, _ = mannwhitneyu(group_i, group_j)
+                r_rb = 1 − 2U/(n_i × n_j)              # rank-biserial r
+            _, p_adj = holm(p_raw_values)               # Holm step-down
+            pairwise_effect = r_rb
+    ELSE:
+        pairwise = []  # post-hoc not run when global test not significant
+
+    store diagnostic row for this variable
+
+  END FOR (variables)
+
+  # ── 7. GLOBAL CROSS-VARIABLE CORRECTION ──────────────────────────
+  raw_p_values = [row.global_p_raw for all non-skipped rows in block]
+  global_p_adjusted = benjamini_hochberg(raw_p_values)  # or Holm if --holm flag
+  fill global_p_adjusted column in diagnostic table
+
+END FOR (blocks)
+```
+
+#### Decision Flowchart
+
+```mermaid
+flowchart TD
+    A([Variable: split by EP1 / EP2 / EP3]) --> B{Any n_i < 8\nor zero variance?}
+    B -- Yes --> SKIP([SKIPPED\nrecord reason])
+
+    B -- No --> C[Shapiro-Wilk per group\nα = 0.05\nsubsample if n > 5000]
+    C --> D{all_normal?}
+
+    D -- Yes --> E[Brown-Forsythe Levene\ncenter=median]
+    E --> F{equal_var?}
+
+    F -- Yes --> G[One-way ANOVA\nF-statistic]
+    F -- No  --> H[Welch ANOVA\nF* custom impl.]
+
+    D -- No --> I[Kruskal-Wallis\nH-statistic]
+
+    G --> J{p < 0.05?}
+    H --> J
+    I --> J
+
+    J -- No --> K([Not significant\nno post-hoc\nrecord ω² or ε²])
+
+    J -- Yes --> L{Which path?}
+
+    L -- ANOVA --> M[Tukey HSD\nFWER controlled internally\neffect: Cohen d]
+    L -- Welch ANOVA --> N[Pairwise Welch t-tests\nHolm step-down\neffect: Cohen d]
+    L -- Kruskal-Wallis --> O[Dunn test\nDunn 1964 + tie adj.\nHolm step-down\neffect: rank-biserial r]
+
+    M --> P([Record global effect ω²\npairwise results])
+    N --> P
+    O --> Q([Record global effect ε²\npairwise results])
+
+    P --> R
+    Q --> R
+    K --> R
+
+    R([All variables done?\nApply BH-FDR across\nall global p-values])
+```
+
+#### Outputs per Variable
+
+Step 7b produces two tabular outputs for auditing and downstream use.
+
+**Diagnostic table** (`results/lec_field_dependence/step7b_diagnostic_table.csv`) — one row per variable:
+
+| Column | Content |
+|--------|---------|
+| `variable` | Internal variable name (e.g. `Ca_domain_mean_pv_850_absolute`) |
+| `display_name` | Human-readable label |
+| `var_type` | `lec_term` / `absolute_feature` / `anomaly_feature` |
+| `field_origin` | Source ERA5 field (e.g. `pv_850`) |
+| `field_type` | `absolute` or `anomaly` |
+| `n_EP1`, `n_EP2`, `n_EP3` | Per-group sample sizes after NaN removal |
+| `shapiro_p_EP1/2/3` | Shapiro-Wilk p-value per group |
+| `all_normal` | Boolean: all three groups passed normality test |
+| `levene_stat`, `levene_p` | Brown-Forsythe Levene results |
+| `equal_var` | Boolean: Levene p > 0.05 |
+| `global_test` | Test used: `One-way ANOVA` / `Welch ANOVA` / `Kruskal-Wallis` / `SKIPPED` |
+| `global_stat` | Test statistic (F, F*, or H) |
+| `global_p_raw` | Raw p-value from global test |
+| `global_p_adjusted` | p-value after cross-variable BH-FDR (or Holm) correction |
+| `effect_size_name` | `omega²` or `epsilon²` |
+| `effect_size` | Numerical effect size value |
+| `decision_path` | Text trace of which branch was taken |
+| `decision` | One-line summary including significance and effect |
+| `notes` | Warnings, caveats, or flags (e.g. large-sample advisory) |
+
+**Pairwise table** (`results/lec_field_dependence/step7b_pairwise_table.csv`) — one row per significant contrast per variable:
+
+| Column | Content |
+|--------|---------|
+| `contrast` | e.g. `EP1 vs EP2` |
+| `test_name` | `Tukey HSD` / `Welch t-test (Holm)` / `Dunn` |
+| `statistic` | Test statistic for this pair |
+| `p_value_raw` | Raw pairwise p-value |
+| `p_value_adjusted` | Holm-adjusted pairwise p-value |
+| `effect_size` | Cohen's d (parametric) or rank-biserial r (non-parametric) |
+| `effect_size_name` | `Cohen's d` or `rank-biserial r` |
+| `mean_1`, `mean_2` | Group means |
+| `median_1`, `median_2` | Group medians |
+| `direction` | e.g. `EP3 > EP1` (mean or median ordering) |
+| `n_1`, `n_2` | Per-group sample sizes for this pair |
+
+A plain-text summary report (`step7b_significance_report.txt`) lists counts of significant variables and top-10 by effect size per block.
+
+#### Statistical vs. Physical Significance
+
+A $p$-value below 0.05 is a necessary but not sufficient condition for scientific relevance.  The following hierarchy applies when interpreting step 7b results:
+
+1. **Effect size first.**  Variables with $\omega^2$ or $\varepsilon^2 < 0.01$ are practically negligible regardless of $p$.  A variable may achieve $p < 10^{-10}$ at these sample sizes while explaining less than 1% of intergroup variance.
+
+2. **Global-test significance before pairwise.**  A pairwise contrast is only interpretable if the global test (ANOVA / KW) is also significant.  The post-hoc tests are gatekept by the global test ($p < 0.05$ required).
+
+3. **FDR-adjusted $p$ for discovery claims.**  When claiming that EP groups differ on a variable, use `global_p_adjusted`.  The raw `global_p_raw` is diagnostic only.
+
+4. **Physical mechanism must be plausible.**  A significant difference in $C_a$ between EP1 and EP3 is scientifically meaningful (baroclinic conversion is the dominant LEC process).  A significant difference in a boundary flux residual or a peripheral sector feature of a weakly forced field may reflect noise even if $p_{\text{adj}} < 0.05$.
+
+5. **Consistency with PREDEP.**  Variables that are both statistically significant between EPs (step 7b) and show strong PREDEP associations (step 7) are stronger candidates for physical interpretation.  Variables that show one but not the other deserve additional scrutiny.
 
 ---
 

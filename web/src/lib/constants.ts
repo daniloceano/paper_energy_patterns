@@ -685,10 +685,10 @@ export const LFD_SPATIAL_FEATURES: Record<string, string> = {
   border_west: 'Border W',
   contrast_ew: 'E-W contrast',
   contrast_sn: 'S-N contrast',
-  quadrant_ne: 'Quadrant NE',
-  quadrant_nw: 'Quadrant NW',
-  quadrant_se: 'Quadrant SE',
-  quadrant_sw: 'Quadrant SW',
+  sector_north: 'Sector N',
+  sector_south: 'Sector S',
+  sector_east: 'Sector E',
+  sector_west: 'Sector W',
   domain_abs_mean: 'Domain |mean|',
 }
 

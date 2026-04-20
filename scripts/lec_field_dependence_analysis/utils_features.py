@@ -3,7 +3,7 @@ Feature extraction utilities for LEC–field dependence analysis.
 
 Functions to compute scalar summaries from 2D storm-centred fields.
 The 30°×30° domain is divided into sub-regions for physically
-interpretable features: domain mean, border means, quadrant means,
+interpretable features: domain mean, border means, cardinal-sector means,
 contrasts, and centre value.
 
 All functions expect a 2D numpy array whose axes correspond to the
@@ -86,32 +86,46 @@ def contrast_south_north(field: np.ndarray) -> float:
     return border_south_mean(field) - border_north_mean(field)
 
 
-def quadrant_ne_mean(field: np.ndarray) -> float:
-    """Mean over the NE quadrant of the inner box."""
+# ---------------------------------------------------------------------------
+# Cardinal-sector functions (half of the inner box)
+# ---------------------------------------------------------------------------
+# Each sector covers one full half of the inner 15°×15° box.
+# This is more physically meaningful for LEC diagnostics than the corner
+# quadrants, because the LEC captures zonal (E–W) and meridional (N–S)
+# energy contrasts rather than diagonal ones.
+#
+# Orientation convention (matches NumPy array layout after INNER_SLICE):
+#   inner[0, :]  → northernmost row
+#   inner[-1, :] → southernmost row
+#   inner[:, 0]  → westernmost column
+#   inner[:, -1] → easternmost column
+
+def sector_north_mean(field: np.ndarray) -> float:
+    """Mean over the northern half of the inner box."""
     inner = _inner(field)
     mid = inner.shape[0] // 2
-    return float(np.nanmean(inner[:mid, mid:]))
+    return float(np.nanmean(inner[:mid, :]))
 
 
-def quadrant_nw_mean(field: np.ndarray) -> float:
-    """Mean over the NW quadrant of the inner box."""
+def sector_south_mean(field: np.ndarray) -> float:
+    """Mean over the southern half of the inner box."""
     inner = _inner(field)
     mid = inner.shape[0] // 2
-    return float(np.nanmean(inner[:mid, :mid]))
+    return float(np.nanmean(inner[mid:, :]))
 
 
-def quadrant_se_mean(field: np.ndarray) -> float:
-    """Mean over the SE quadrant of the inner box."""
+def sector_east_mean(field: np.ndarray) -> float:
+    """Mean over the eastern half of the inner box."""
     inner = _inner(field)
-    mid = inner.shape[0] // 2
-    return float(np.nanmean(inner[mid:, mid:]))
+    mid = inner.shape[1] // 2
+    return float(np.nanmean(inner[:, mid:]))
 
 
-def quadrant_sw_mean(field: np.ndarray) -> float:
-    """Mean over the SW quadrant of the inner box."""
+def sector_west_mean(field: np.ndarray) -> float:
+    """Mean over the western half of the inner box."""
     inner = _inner(field)
-    mid = inner.shape[0] // 2
-    return float(np.nanmean(inner[mid:, :mid]))
+    mid = inner.shape[1] // 2
+    return float(np.nanmean(inner[:, :mid]))
 
 
 def domain_abs_mean(field: np.ndarray) -> float:
@@ -133,10 +147,10 @@ FEATURE_REGISTRY: Dict[str, callable] = {
     "border_west":       border_west_mean,
     "contrast_ew":       contrast_east_west,
     "contrast_sn":       contrast_south_north,
-    "quadrant_ne":       quadrant_ne_mean,
-    "quadrant_nw":       quadrant_nw_mean,
-    "quadrant_se":       quadrant_se_mean,
-    "quadrant_sw":       quadrant_sw_mean,
+    "sector_north":      sector_north_mean,
+    "sector_south":      sector_south_mean,
+    "sector_east":       sector_east_mean,
+    "sector_west":       sector_west_mean,
     "domain_abs_mean":   domain_abs_mean,
 }
 

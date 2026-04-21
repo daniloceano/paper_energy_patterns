@@ -130,17 +130,21 @@ SLP_SCALE   = 1e-2     # Pa                  →  hPa
 # ── Row 1: EGR − EPALL contour levels [day⁻¹] ────────────────────────────────
 # Positive: solid black (EP more unstable than EPALL)
 # Negative: dashed gray (EP less unstable than EPALL)
-EGR_EPALL_POS_LEVELS = np.array([0.03, 0.06, 0.09, 0.12])
+EGR_EPALL_POS_LEVELS = np.array([0.06, 0.09, 0.12, 0.15])
 EGR_EPALL_NEG_LEVELS = np.array([-0.12, -0.09, -0.06, -0.03])
 
 # ── Row 2: T-adv − EPALL contour levels [K h⁻¹] ─────────────────────────────
-TADV_EPALL_STEP = 0.050   # contour interval [K h⁻¹]
+TADV_EPALL_STEP = 0.080   # contour interval [K h⁻¹]
 TADV_EPALL_CAP  = 0.20    # maximum level [K h⁻¹]
 
 # ── Row 3: KE-adv − EPALL contour levels [m² s⁻³] ───────────────────────────
 # thin contours: steelblue dashed (neg) / firebrick solid (pos)
 KEADV_EPALL_STEP = 0.005   # contour interval [m² s⁻³]
 KEADV_EPALL_CAP  = 0.010   # maximum level [m² s⁻³]
+
+# -- Alpha for color shading (0 = transparent, 1 = opaque) ───────────────────────────────
+SHADING_ALPHA = 0.75
+CONTOUR_ALPHA = 1.0
 
 # ── SLP contour interval [hPa] ───────────────────────────────────────────────
 SLP_INTERVAL = 2.0
@@ -153,7 +157,7 @@ VECTOR_SCALE_250 = 75
 QUIVER_KEY_U_250 = 5.0    # reference vector [m s⁻¹]
 # 850 hPa anomaly wind
 VECTOR_SCALE_850 = 40
-QUIVER_KEY_U_850 = 5.0    # reference vector [m s⁻¹]
+QUIVER_KEY_U_850 = 2.0    # reference vector [m s⁻¹]
 
 # ── RK meridional sign-reversal hatching ─────────────────────────────────────
 # half_window=1 → 3-point (0.5°) meridional neighbourhood
@@ -409,7 +413,7 @@ def _add_wind_vectors(ax, x_2d, y_2d, u, v, scale, key_u,
         zorder=8,
     )
     if add_key:
-        ax.quiverkey(Q, X=0.97, Y=0.95, U=key_u,
+        ax.quiverkey(Q, X=0.93, Y=0.95, U=key_u,
                      label=f'{key_u:.0f} m s$^{{-1}}$',
                      labelpos='W', fontproperties={'size': 13}, zorder=12)
     return Q
@@ -517,7 +521,8 @@ def create_figure(ep_data, output_png):
         ax = fig.add_subplot(gs[0, col])
 
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_200_mep'],
-                         levels=levels_pv200, cmap=CMAP_PV200_ANOM, extend='both')
+                         levels=levels_pv200, cmap=CMAP_PV200_ANOM, extend='both',
+                         alpha=SHADING_ALPHA)
         if col == 0:
             im_r0 = im
 
@@ -535,14 +540,12 @@ def create_figure(ep_data, output_png):
             cs = ax.contour(d['x_2d'], d['y_2d'], egr_mep,
                             levels=pos_egr,
                             colors='firebrick', linewidths=2.0, linestyles='solid',
-                            alpha=0.90, zorder=5)
-            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
+                            alpha=CONTOUR_ALPHA, zorder=5)
         if len(neg_egr):
             cs = ax.contour(d['x_2d'], d['y_2d'], egr_mep,
                             levels=neg_egr,
-                            colors='steelblue', linewidths=2.0, linestyles='dashed',
-                            alpha=0.90, zorder=5)
-            ax.clabel(cs, inline=True, fontsize=7, fmt='%.2f')
+                            colors='steelblue', linewidths=2.0, linestyles='solid',
+                            alpha=CONTOUR_ALPHA, zorder=5)
 
         _add_slp_contours(ax, d['x_2d'], d['y_2d'], d['msl_hpa'])
         _add_lec_box(ax)
@@ -568,7 +571,8 @@ def create_figure(ep_data, output_png):
         ax = fig.add_subplot(gs[1, col])
 
         im = ax.contourf(d['x_2d'], d['y_2d'], d['pv_850_mep'],
-                         levels=levels_pv850, cmap=CMAP_PV850_ANOM, extend='both')
+                         levels=levels_pv850, cmap=CMAP_PV850_ANOM, extend='both',
+                         alpha=SHADING_ALPHA)
         if col == 0:
             im_r1 = im
 
@@ -578,13 +582,13 @@ def create_figure(ep_data, output_png):
             ax.contour(d['x_2d'], d['y_2d'], tadv,
                        levels=neg_v,
                        colors='steelblue', linewidths=2.0,
-                       linestyles='dashed', alpha=0.9, zorder=5)
+                       linestyles='solid', alpha=CONTOUR_ALPHA, zorder=5)
         pos_v = tadv_pos[tadv_pos <= np.nanmax(tadv)]
         if len(pos_v):
             ax.contour(d['x_2d'], d['y_2d'], tadv,
                        levels=pos_v,
                        colors='firebrick', linewidths=2.0,
-                       linestyles='solid', alpha=0.9, zorder=5)
+                       linestyles='solid', alpha=CONTOUR_ALPHA, zorder=5)
 
         _add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_850_mep'], d['v_850_mep'],
                           scale=VECTOR_SCALE_850, key_u=QUIVER_KEY_U_850,
@@ -611,7 +615,8 @@ def create_figure(ep_data, output_png):
         ax = fig.add_subplot(gs[2, col])
 
         im = ax.contourf(d['x_2d'], d['y_2d'], d['afc_250_mep'],
-                         levels=levels_afc, cmap=CMAP_AFC, extend='both')
+                         levels=levels_afc, cmap=CMAP_AFC, extend='both',
+                         alpha=SHADING_ALPHA)
         if col == 0:
             im_r2 = im
 
@@ -633,11 +638,11 @@ def create_figure(ep_data, output_png):
         if len(neg_ke):
             ax.contour(d['x_2d'], d['y_2d'], ke, levels=neg_ke,
                        colors='steelblue', linewidths=2.0,
-                       linestyles='dashed', alpha=0.9, zorder=5)
+                       linestyles='solid', alpha=CONTOUR_ALPHA, zorder=5)
         if len(pos_ke):
             ax.contour(d['x_2d'], d['y_2d'], ke, levels=pos_ke,
                        colors='firebrick', linewidths=2.0,
-                       linestyles='solid', alpha=0.9, zorder=5)
+                       linestyles='solid', alpha=CONTOUR_ALPHA, zorder=5)
 
         _add_wind_vectors(ax, d['x_2d'], d['y_2d'], d['u_250_mep'], d['v_250_mep'],
                           scale=VECTOR_SCALE_250, key_u=QUIVER_KEY_U_250,

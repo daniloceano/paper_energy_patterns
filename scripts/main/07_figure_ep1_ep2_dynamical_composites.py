@@ -552,7 +552,7 @@ def create_figure(ep_data, output_png):
         _mark_center(ax)
         _ax_setup(ax, d['x'], d['y'], show_ylabels=(col == 0))
         _panel_label(ax, PANEL_LABELS[0][col])
-        ax.set_title(f"{ep} − EPALL  (n={d['n_cases']})",
+        ax.set_title(f"{ep}",
                      fontsize=PANEL_TITLESIZE, fontweight='bold', pad=4)
 
     _add_colorbar(fig, gs[0, 3], im_r0, r"(PV$_{200}$ − EPALL) (PVU)")
@@ -682,7 +682,7 @@ def main():
     for ep in ['EP1', 'EP2', 'EP3']:
         ep_data[ep] = compute_epall_relative(raw, ep)
         d = ep_data[ep]
-        print(f"\n  {ep} (n={d['n_cases']}):")
+        print(f"\n  {ep}:")
         print(f"    (PV@200)−EPALL  [{d['pv_200_mep'].min():.3f}, {d['pv_200_mep'].max():.3f}] PVU")
         print(f"    (PV@850)−EPALL  [{d['pv_850_mep'].min():.4f}, {d['pv_850_mep'].max():.4f}] PVU")
         print(f"    (EGR)−EPALL     [{d['egr_mep'].min():.3f}, {d['egr_mep'].max():.3f}] day⁻¹")

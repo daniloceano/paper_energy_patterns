@@ -24,9 +24,19 @@ The Energy Pattern classification (EP1, EP2, EP3) was derived from PCA-based K-M
 
 However, the composite analysis operates on **group means** — it shows what the "average" EP1, EP2, or EP3 cyclone looks like, but does not capture the **individual-level relationship** between a cyclone's energetics and its atmospheric structure. This analysis bridges that gap.
 
-### PREDEP as the Primary Measure
+### Association Metrics
 
-We adopt the PREDEP measure (Assunção et al. 2025, arXiv:2501.10815) as the primary association metric. PREDEP is a fully non-parametric measure of predictive dependence between continuous random variables.
+#### Spearman Rank Correlation as the Primary Interpretive Metric
+
+Spearman's rank correlation coefficient (ρ) is adopted as the primary metric for identifying and prioritising physically interpretable LEC–field associations in this analysis. Being a monotone rank measure, Spearman ρ is robust to the non-Gaussian distributions typical of LEC diagnostics (conversion terms, boundary fluxes) and dynamic field features (PV, AFC). It directly quantifies the direction and strength of monotonic associations in a way that is immediately interpretable and well-established in the atmospheric sciences literature, enabling straightforward ranking of LEC–feature pairs.
+
+Pearson r is computed alongside Spearman ρ as a complementary linear-association measure. Divergence between Pearson and Spearman for the same pair is itself informative: it indicates non-linear (though still monotonic) structure in the association.
+
+Spearman and Pearson correlation heatmaps for all EP × LEC term × field–feature combinations are produced by `scripts/lec_field_dependence_analysis/diag_correlation_heatmaps.py` and saved to `figures/lec_field_dependence/diagnostics/correlation_heatmaps/`. These are the primary exploratory figures for assessing LEC–field associations.
+
+#### PREDEP as a Complementary Dependence Diagnostic
+
+We retain the PREDEP measure (Assunção et al. 2025, arXiv:2501.10815) as a complementary, non-parametric dependence diagnostic. PREDEP is a fully non-parametric measure of predictive dependence between continuous random variables.
 
 **Formal definition:**
 
@@ -51,14 +61,13 @@ For example, $\alpha_{Ca | \text{domain\_mean(PV\_200)}} = 0.35$ means that know
 
 **PREDEP is asymmetric:** $\alpha_{Y|X} \neq \alpha_{X|Y}$ in general. This is a feature, not a bug — it correctly reflects that predicting Y from X is not the same as predicting X from Y.
 
-### Why Not Pearson or Spearman Alone?
+### Rationale for Spearman-First Framing
 
-Pearson measures linear association; Spearman measures monotonic association. Neither captures:
-- Non-functional dependencies (e.g., cyclones where both very high and very low PV are associated with similar energetics)
-- Complex non-linear relationships common in atmospheric dynamics
-- The prediction-loss interpretation that PREDEP provides
+Spearman ρ is adopted as the primary interpretive metric because it is more discriminative for prioritising physically interpretable associations in this dataset. An initial full-pipeline run revealed that PREDEP values were broadly elevated across most LEC–field variable pairs (α ≈ 0.40–0.70, with a persistent floor near 0.40), limiting PREDEP's usefulness for ranking associations by strength. This is physically plausible: PREDEP captures any form of predictive dependence — including non-functional and non-monotonic relationships. Because LEC terms and dynamic field features both reflect the same underlying cyclone structure, inter-variable independence is inherently constrained across the full matrix, leading to broadly elevated PREDEP values that reduce its discriminative power relative to Spearman ρ.
 
-Pearson and Spearman are computed as **baseline comparisons only**.
+PREDEP was retained as a complementary dependence diagnostic, not discarded. Its particular value lies in detecting associations that have structured dependence but no clear monotonic form — cases where Spearman ρ is near zero but PREDEP remains elevated. A combination of high Spearman ρ and high PREDEP provides the strongest evidence for a physically robust association; variables where only PREDEP is elevated may reflect non-monotonic structure deserving separate investigation.
+
+Regarding Pearson r: it measures strictly linear association and is sensitive to outliers, which are common in LEC boundary flux terms. It is computed as a cross-check rather than a primary ranking metric. Divergence between Pearson r and Spearman ρ for the same pair is informative about distributional features of the data.
 
 ---
 
@@ -196,8 +205,8 @@ For each **EP × LEC term × field × feature** combination:
 2. Extract x = feature values, y = LEC term values
 3. Remove paired NaN
 4. Check minimum sample size (N ≥ 30)
-5. Compute PREDEP α_{Y|X}
-6. Compute Pearson r and Spearman ρ as baselines
+5. Compute Spearman ρ and Pearson r (primary association metrics)
+6. Compute PREDEP α_{Y|X} (complementary non-parametric dependence diagnostic)
 
 Total combinations: 3 EPs × ~24 LEC terms × 5 fields × 13 features × 2 field types = **~9,360 PREDEP estimates**
 
@@ -433,6 +442,16 @@ flowchart TD
     R([All variables done?\nApply BH-FDR across\nall global p-values])
 ```
 
+#### What was Effectively Done in Practice
+
+**Implemented procedure.** For each scalar variable (LEC term or dynamic feature), the analysis applies the following decision tree: normality is assessed per EP group using Shapiro–Wilk (α = 0.05; groups with n > 5000 are subsampled to 5000 before testing). If all three EP groups pass normality, variance homogeneity is tested with the Brown–Forsythe–Levene test (center='median'). Homogeneous normal cases are analysed with one-way ANOVA (post-hoc: Tukey HSD); heterogeneous normal cases with Welch ANOVA (post-hoc: pairwise Welch t-tests with Holm correction). If at least one group fails normality, Kruskal–Wallis is used (post-hoc: Dunn's test with Holm correction). A global Benjamini–Hochberg FDR correction is applied across all tested variables within each analysis block.
+
+**Empirical outcome.** The step 7b pipeline (`step7b_diagnostic_table.csv`) has not yet been executed against the canonical central-timestep outputs; the diagnostic table is not yet available to verify which statistical path was taken for each variable. However, the analytical expectation is unambiguous: with group sizes of EP1 ≈ 330, EP2 ≈ 770, and EP3 ≈ 1600, Shapiro–Wilk is highly powered and will reject normality for the majority of variables, particularly LEC terms and dynamic features that are skewed or heavy-tailed. Accordingly, **Kruskal–Wallis with Dunn post-hoc (Holm) is expected to be the predominant path** for nearly all variables. This section must be updated with actual counts from the diagnostic table after the full pipeline rerun.
+
+> **[Paper-writing note — update after pipeline rerun]** A suggested Methods paragraph, contingent on confirmation from the diagnostic table:
+>
+> *"For each scalar variable (LEC terms and dynamic field features), EP groups were compared using a decision-tree approach. Normality was assessed with the Shapiro–Wilk test (α = 0.05) independently for each EP group. Because the majority of variables departed from normality — as expected given the group sizes (EP1 ≈ 330, EP2 ≈ 770, EP3 ≈ 1600) — inter-EP differences were evaluated using the Kruskal–Wallis test (H-statistic, effect size ε²). Pairwise post-hoc comparisons were conducted using Dunn's test (Dunn 1964) with Holm step-down correction for familywise error rate. For the small subset of variables satisfying normality in all groups, variance homogeneity was assessed with the Brown–Forsythe–Levene test; homogeneous cases used one-way ANOVA with Tukey HSD and heterogeneous cases used Welch ANOVA with pairwise Welch t-tests (Holm correction). A global Benjamini–Hochberg false discovery rate correction was applied across all tested variables (Benjamini & Hochberg 1995). Effect sizes (ε² for Kruskal–Wallis, ω² for parametric tests; rank-biserial r for pairwise non-parametric contrasts, Cohen's d for parametric) are reported alongside p-values to prevent over-reliance on significance at these sample sizes."*
+
 #### Outputs per Variable
 
 Step 7b produces two tabular outputs for auditing and downstream use.
@@ -491,7 +510,7 @@ A $p$-value below 0.05 is a necessary but not sufficient condition for scientifi
 
 4. **Physical mechanism must be plausible.**  A significant difference in $C_a$ between EP1 and EP3 is scientifically meaningful (baroclinic conversion is the dominant LEC process).  A significant difference in a boundary flux residual or a peripheral sector feature of a weakly forced field may reflect noise even if $p_{\text{adj}} < 0.05$.
 
-5. **Consistency with PREDEP.**  Variables that are both statistically significant between EPs (step 7b) and show strong PREDEP associations (step 7) are stronger candidates for physical interpretation.  Variables that show one but not the other deserve additional scrutiny.
+5. **Consistency with Spearman ρ and PREDEP.**  Variables that are both statistically significant between EPs (step 7b) and show strong Spearman ρ associations (step 7 / diag heatmaps) are stronger candidates for physical interpretation.  PREDEP provides additional confirmation when both metrics are elevated.  Variables that show significance but weak correlation deserve additional scrutiny before interpretation.
 
 ---
 
@@ -619,6 +638,24 @@ LEC terms (Ca, Ck, Ce, Ge, BAe, BAz, BKe, BKz, etc.) use just the term name with
 
 ---
 
+### Spearman and Pearson Correlation Heatmaps (diag_correlation_heatmaps.py)
+
+**What it shows**: Two heatmaps — one for Spearman ρ, one for Pearson r — with the same matrix structure as the PREDEP heatmap. Rows = LEC terms, columns = field–feature combinations. Separate panels per EP.
+
+**Colour scale**: Discrete levels based on |correlation|.
+- **Grey** (|r| or |ρ| < 0.10): negligible association.
+- **Light yellow → dark red** (0.10, 0.20, …, 0.90+): increasing association strength.
+
+**How to read**:
+1. Scan for the darkest cells — these are the strongest monotonic (Spearman) or linear (Pearson) LEC–feature associations.
+2. Check whether the Spearman and Pearson heatmaps agree: cells that are dark in both indicate linear-monotonic structure. Cells dark in Spearman but light in Pearson indicate monotonic-but-nonlinear relationships.
+3. Compare across EPs: differences in the heatmap pattern between EP1, EP2, EP3 reveal which energy patterns have distinctly different structural predictors.
+4. These figures are the **primary starting point** for identifying candidate LEC–field associations to investigate further.
+
+**Output location**: `figures/lec_field_dependence/diagnostics/correlation_heatmaps/`
+
+---
+
 ### PREDEP Heatmap (step 8)
 
 **What it shows**: A matrix of PREDEP ($\alpha_{\text{LEC}\,|\,\text{feature}}$) values.  Rows = LEC terms, columns = field–feature combinations.
@@ -729,9 +766,10 @@ LEC terms (Ca, Ck, Ce, Ge, BAe, BAz, BKe, BKz, etc.) use just the term name with
 
 1. **Start with the effect ranking** (step 8b) to identify the variables with the largest magnitude of difference across EPs.
 2. **Check the volcano plot** to see whether those high-effect variables are also statistically significant.
-3. **Consult the PREDEP heatmap** (step 8) to see whether the significant variables are also good predictors of the LEC terms.
-4. **Use the top associations bar chart** (step 8) to get a synthetic view of the strongest LEC–field links.
-5. **Verify physical coherence**: ask whether the identified associations make sense given known cyclone dynamics (e.g., strong PV 200 anomaly predicting upper-level energy conversions is physically plausible; a border feature predicting a boundary flux is mechanistically expected).
+3. **Consult the Spearman and Pearson correlation heatmaps** (`diag_correlation_heatmaps.py`) to identify the strongest monotonic LEC–field associations and their direction. This is the primary exploratory step for association analysis.
+4. **Cross-reference with the PREDEP heatmap** (step 8) as a complementary check: variable pairs that rank highly in both Spearman ρ and PREDEP α are the most robustly associated.
+5. **Use the top associations bar chart** (step 8) to get a synthetic view of the strongest LEC–field links ranked by PREDEP.
+6. **Verify physical coherence**: ask whether the identified associations make sense given known cyclone dynamics (e.g., strong PV 200 anomaly predicting upper-level energy conversions is physically plausible; a border feature predicting a boundary flux is mechanistically expected).
 
 ---
 

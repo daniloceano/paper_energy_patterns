@@ -147,13 +147,13 @@ The first author would like to thank the Laboratory of Applied Meteorology for R
 
 Extratropical cyclones are key components of the midlatitude storm tracks and major drivers of synoptic variability, acting as transient eddies that transport heat, moisture, and momentum poleward. By organizing fronts and modulating the occurrence of precipitation and wind extremes, they exert a strong influence on regional climates and on the large-scale atmospheric energy cycle. Understanding the dynamical processes that control cyclone growth and intensification is therefore essential for interpreting climate variability and for improving numerical models used in weather prediction and climate projections.
 
-Over South America, three cyclogenesis hotspots have been identified in the literature: eastern Argentina (ARG), the La Plata River basin (LA-PLATA), and southeastern Brazil (SE-BR) \citep{gan1991surface,hoskins2005new,gramcianinov2019properties,crespo2021potential}. Cyclones forming in these regions often undergo genesis, intensification, and maturity over or near the continent \citep{couto2024new}, substantially modulating weather across subtropical and extratropical South America and being associated with high-impact hazards such as extreme rainfall \citep[e.g.,][]{de2021ocean,de2024extreme}, intense winds \citep{cardoso2022synoptic,de2021ocean}, high sea waves \citep{da2025classification,gramcianinov2023impact}, and storm surges along coastal areas \citep{leal2023identification,tecchiomean}. These events translate into socioeconomic losses and disruptions to local infrastructure \citep[e.g.][]{da2022climate,marengo2024impactos}, which is particularly critical given the presence of major metropolitan areas (e.g., São Paulo, Rio de Janeiro, and Buenos Aires) and strategic coastal assets such as the Port of Santos, the largest in Latin America.
+Over South America, three cyclogenesis hotspots have been identified in the literature: eastern Argentina (ARG), the La Plata River basin (LA-PLATA), and southeastern Brazil (SE-BR) \citep{gan1991surface,hoskins2005new,gramcianinov2019properties,crespo2021potential}. Cyclones forming in these regions often undergo genesis, intensification, and maturity over or near the continent \citep{couto2024new}, substantially modulating weather across subtropical and extratropical South America and being associated with high-impact hazards such as extreme rainfall \citep[e.g.,][]{de2021ocean,de2024extreme}, intense winds \citep{cardoso2022synoptic,de2021ocean}, high sea waves \citep{da2025classification,gramcianinov2023impact}, and storm surges along coastal areas \citep{leal2023identification,tecchio2024mean}. These events translate into socioeconomic losses and disruptions to local infrastructure \citep[e.g.][]{da2022climate,marengo2024impactos}, which is particularly critical given the presence of major metropolitan areas (e.g., São Paulo, Rio de Janeiro, and Buenos Aires) and strategic coastal assets such as the Port of Santos, the largest in Latin America.
 
 The cyclone phase space (CPS) framework, which diagnoses cyclone thermal-core structure (warm vs. cold) and symmetry \citep{hart2003cyclone}, is among the most widely used objective tools for classifying cyclone types and phase transitions \citep{wood2023phase}. However, CPS is fundamentally a structural diagnostic: it tracks how the storm’s thermal and symmetry signatures evolve, but it does not explicitly diagnose the physical processes and environmental controls driving those changes (e.g., vertical shear, baroclinicity, air–sea fluxes, or PV interactions). Moreover, CPS-based classification can be ambiguous for certain hybrid cyclone types. For instance, warm seclusions can exhibit warm, relatively symmetric cores \citep[e.g.,][]{dekker2018characteristics}, yielding CPS signatures that may overlap those of tropical(-like) cyclones. In addition, some systems follow atypical CPS pathways—for example, extratropical transitions in which the core becomes cold before a marked increase in thermal asymmetry \citep{kitabatake2011climatology}. Finally, because CPS magnitudes and commonly used thresholds depend on storm size, tropospheric depth, and regional atmospheric structure, several studies have proposed adaptations of CPS parameters (e.g., analysis radius and/or pressure layers) for medicanes, Arctic cyclones/polar lows, and South Atlantic subtropical cyclones \citep{gozzo2014subtropical,comellas2021evaluation,croad2023role,saraceni2023mediterranean,miglietta2025defining}.
 
 Some authors proposed objective cyclone classification methods based on environmental parameters \citep[e.g][]{yanase2014parameter,emanuel2025cyclops}. For instance, \citet{corner2025classification} clustered extratropical cyclones cyclone into four intensity types, that differ in terms of not only intensity but on life cycle characteristics (e.g., duration and deepening rate) and on geographical location. Meanwhile, \citet{graf2017objective} attempted to classify cyclogenesis events using over 30 environmental variables. They found that these systems represent a continuum between systems with low/high level forcing with varying importance of diabatic processes. Noteworthy, \citet{han2025system} used a machine learning approach for classifying cyclone types, although, for this method it is required previously classified systems, which can propagate biases. Here, we instead adopt a phase-resolved energetics framework, quantifying the relative contributions of baroclinic, barotropic and diabatic pathways throughout the cyclone life cycle. By focusing on energy conversions rather than solely on environmental proxies or peak intensity, our approach provides a process-based classification that distinguishes cyclones with similar intensity or background conditions but fundamentally different growth mechanisms.
 
-Extratropical cyclone development is traditionally framed in terms of baroclinic instability, and the canonical eddy life cycle is often summarized as a phase of baroclinic growth followed by barotropic decay — i.e., a net transfer of eddy kinetic energy back to the mean flow, ultimately dissipated by friction \citep[e.g.,][]{simmons1978life,randel1985observed,ma2021lorenz,cai2007dynamical}. However, study cases using limited-area energetics and Lorenz Energy Cycle (LEC) diagnostics indicate that barotropic conversions can be positive and contribute to cyclone intensification, implying that the mean-flow kinetic energy may directly feed transient eddies during development \citep[e.g.,][]{bulic2006limited,dias2011energy,black2013universal,cavicchia2018energetics}. This pathway appears to be relatively more relevant in weakly baroclinic environments and/or in hybrid–subtropical systems, where diabatic processes and enhanced barotropic conversions may jointly promote eddy growth \citep[e.g.,][]{veiga2008analysis,pezza2014large,cavicchia2019physically}. More recently, \citet{desouza2025lorenz} presented a large-sample, semi-Lagrangian LEC climatology for South Atlantic cyclones, showing that barotropic conversions are ubiquitous during cyclone evolution and typically peak near maturity, and that they can even exceed baroclinic conversions for some intense clusters.
+Extratropical cyclone development is traditionally framed in terms of baroclinic instability, and the canonical eddy life cycle is often summarized as a phase of baroclinic growth followed by barotropic decay — i.e., a net transfer of eddy kinetic energy back to the mean flow, ultimately dissipated by friction \citep[e.g.,][]{simmons1978life,randel1985observed,ma2021lorenz,cai2007dynamical}. However, study cases using limited-area energetics and Lorenz Energy Cycle (LEC) diagnostics indicate that barotropic conversions can be positive and contribute to cyclone intensification, implying that the mean-flow kinetic energy may directly feed transient eddies during development \citep[e.g.,][]{bulic2006limited,dias2011energy,black2013universal,cavicchia2018energetics}. This pathway appears to be relatively more relevant in weakly baroclinic environments and/or in hybrid–subtropical systems, where diabatic processes and enhanced barotropic conversions may jointly promote eddy growth \citep[e.g.,][]{veiga2008analysis,pezza2014large,cavicchia2019physically}. More recently, \citet{de2025lorenz} presented a large-sample, semi-Lagrangian LEC climatology for South Atlantic cyclones, showing that barotropic conversions are ubiquitous during cyclone evolution and typically peak near maturity, and that they can even exceed baroclinic conversions for some intense clusters.
 
 In this study, we use cyclone energetics to objectively cluster extratropical cyclones forming over the southwestern South Atlantic into distinct groups with contrasting energetic pathways. Building on the semi-Lagrangian framework of \citet{de2025lorenz}, we diagnose the Lorenz Energy Cycle (LEC) for more than 3,800 cyclones with genesis in the main cyclogenesis regions adjacent to South America. To enable a consistent comparison across storms with different lifetimes, we phase-average the energy-cycle terms over objectively defined life-cycle stages \citep{couto2024new}. The resulting multivariate energetic descriptors are then clustered to identify recurrent energy patterns. Finally, we assess the occurrence of baroclinic and barotropic instability during cyclone intensification as an independent dynamical validation of the inferred energetic regimes.
 
@@ -300,20 +300,88 @@ Difference between observed within-cluster dispersion and that expected under a 
 
 We assessed monotonic trends in annual cyclone counts (one value per year; 1979--2020) for each energy-pattern (EP) group using the Mann--Kendall (MK) test \citep{mann1945nonparametric,kendall1948rank}. To evaluate serial dependence, we applied the Ljung--Box portmanteau statistic $Q(h)$ to detrended residuals, using $h=\min(10,\lfloor n/5\rfloor)=8$ for $n=42$ years. Detrending was performed with the Theil--Sen slope estimator \citep{sen1968estimates}, and the residuals were then tested with the Ljung--Box procedure \citep{ljung1978measure}; no EP exhibited significant autocorrelation ($p\ge 0.05$). Accordingly, we report trend significance based on the original MK test. As a robustness check, we also computed and archived MK-based approaches that explicitly address serial correlation, including the Hamed--Rao variance correction, the Yue--Wang effective-sample-size correction, pre-whitening, and trend-free pre-whitening \citep{KulkarniVonStorch1995,hamed1998modified,YueEtAl2002_TFPW,YueWang2004}; all approaches yielded consistent conclusions (not shown). Trend magnitude and the corresponding 95\% confidence interval were estimated using the Theil--Sen slope and are reported in cyclones~yr$^{-1}$.
 
-\subsection{Accessing barotropic and baroclinic instability processes}
+\subsection{Diagnositc fields}
 
-In order to investigate key physical processes driving cyclonic development, here we use a composite analysis centered on cyclonic centers. The analysis is restricted to the intensification phase as a proxy of mechanisms driving the cyclone development. Here we used the Rayleigh--Kuo (RK) criterion as a proxy for barotropic instability occurrence \citep{rayleigh1895stability,kuo1949dynamic}. By this criterion, barotropic instability can occur if there is at least one latitude where the meridional gradient of absolute vorticity vanishes:
+To investigate the key physical processes driving cyclonic development, we performed a composite analysis centered on cyclone centers. The analysis is restricted to the intensification phase as a proxy for the mechanisms governing cyclone development. For each cyclone, the composite was constructed over a $30^{\circ} \times 30^{\circ}$ domain centered on the cyclone center at the central time step of the intensification phase. This domain allows us to examine both the dynamics within the LEC domain ($30^{\circ} \times 30^{\circ}$) and those in the surrounding environment, thereby enabling a distinction between the dynamical processes occurring inside and outside the domain. For cyclones whose intensification phase contained an odd number of time steps, the three central time steps were used, whereas for those with an even number of time steps, the two central time steps were used.
+
+For the composite analysis, we also excluded systems whose intensification phase lasted less than 24 hours. This was done to exclude short-lived systems and to avoid contaminating the analysis with time steps too close to the incipient or mature stages, during which the energetics exhibit distinct behavior \citep{de2025lorenz} and, therefore, likely also the dynamical fields. After this filtering, the number of analyzed cyclones decreased from 3820 to 2733. For each energy pattern, the reduction was as follows: EP1, 332 cyclones (from 444); EP2, 776 cyclones (from 979); and EP3, 1625 cyclones (from 2397).
+
+
+Potential vorticity (PV) is a useful diagnostic of cyclonic development because, for adiabatic and frictionless flow, it is approximately materially conserved and combines the effects of absolute vorticity and stratification in a single quantity \citep{hoskins1985use}. In this study, PV is computed using the hydrostatic Ertel formulation in pressure coordinates \citep{bluestein1993observations}:
 
 \begin{equation}
-    \frac{\partial \eta}{\partial y} \;=\; 0,
-    \quad\text{with}\quad
-    \eta \;=\; f + \zeta,
+\mathrm{PV}
+=
+-g\left(
+\frac{\partial u}{\partial p}\frac{\partial \theta}{\partial y}
+-
+\frac{\partial v}{\partial p}\frac{\partial \theta}{\partial x}
++
+(\zeta + f)\frac{\partial \theta}{\partial p}
+\right),
 \end{equation}
 
-where \(\eta\) is the absolute vorticity, \(f\) is the Coriolis parameter, and \(\zeta\) is the relative vorticity. This condition indicates a sign reversal in the meridional gradient of absolute vorticity, which is a necessary, but not sufficient criterion for barotropic instability. It was originally derived for idealized barotropic shear flows and should therefore be interpreted with caution in complex, real‐atmosphere cyclone environments.
+where \(u\) and \(v\) are the zonal and meridional wind components, respectively, \(\theta\) is the potential temperature, \(p\) is pressure, \(g\) is the gravitational acceleration, and \(f\) is the Coriolis parameter. The relative vorticity is defined as
+
+\begin{equation}
+\zeta = \frac{\partial v}{\partial x} - \frac{\partial u}{\partial y}.
+\end{equation}
+
+All partial derivatives were evaluated using centered finite differences at interior grid points, while forward and backward one-sided finite differences were applied at the domain boundaries. The same numerical scheme was adopted for the computation of temperature advection (AdvT).
+
+As a proxy for baroclinic instability, we used the maximum Eady growth rate (EGR), which estimates the growth rate of the most unstable baroclinic mode in the Eady model \citep{eady1949long,lindzen1980simple}. In its continuous form, EGR is given by
+
+\begin{equation}
+\mathrm{EGR} = 0.31 \frac{|f|}{N} \left| \frac{\partial \mathbf{V}}{\partial z} \right|,
+\end{equation}
+
+where \(f\) is the Coriolis parameter, \(N\) is the Brunt--V\"ais\"al\"a frequency, \(z\) is height, and \(\mathbf{V}=(u,v)\) is the horizontal wind vector. The Brunt--V\"ais\"al\"a frequency is defined as
+
+\begin{equation}
+N = \left( \frac{g}{\theta} \frac{\partial \theta}{\partial z} \right)^{1/2},
+\end{equation}
+
+where \(g\) is the gravitational acceleration and \(\theta\) is potential temperature.
+
+As a compact diagnostic of the horizontal redistribution of upper-level kinetic energy around jet streaks and troughs, upper-level kinetic energy advection at 250 hPa was computed as
+
+\begin{equation}
+\mathrm{KE}_{\mathrm{adv}}
+=
+-\mathbf{V}\cdot\nabla\left(\frac{1}{2}\lvert \mathbf{V}\rvert^2\right),
+\end{equation}
+
+where \(\mathbf{V}=(u,v)\) is the horizontal wind vector at 250 hPa. Positive values of \(\mathrm{KE}_{\mathrm{adv}}\) indicate local import of kinetic energy by horizontal advection, whereas negative values indicate local export.
+
+To assess conditions favorable to barotropic instability, we used a local Rayleigh--Kuo-type diagnostic at 250 hPa \citep{rayleigh1895stability,kuo1949dynamic}:
+
+\begin{equation}
+\mathrm{RK}
+=
+\beta - \frac{\partial^2 u}{\partial y^2},
+\end{equation}
+
+where \(\beta = \partial f/\partial y\), \(u\) is the zonal wind component, and \(y\) is the meridional coordinate. In classical barotropic instability theory, for a parallel basic flow \(U(y)\), a necessary condition for instability is that \(\beta - \partial^2 U/\partial y^2\) changes sign somewhere within the domain. Here, \(\mathrm{RK}\) was evaluated locally from the 250 hPa zonal wind field as a proxy for regions where the meridional gradient of absolute vorticity may reverse sign, indicating an environment favorable to barotropic instability.
 
 
-% To diagnose barotropic and baroclinic instabilities, we computed composites of the Rayleigh--Kuo (RK) criterion and the Eady growth rate (EGR), respectively. We focus on EP1 cyclones, as they exhibit the strongest barotropic and baroclinic conversions. The analysis is restricted to the intensification phase. Although conversion terms tend to peak during maturity, cyclone centers typically cover a larger area during that phase \citep{couto2024new}, which would increase spatial variability and potentially add noise to the composites. Therefore, we use the central time step of the intensification phase and restrict the sample to a $15^\circ \times 15^\circ$ domain bounded by $60^\circ$W--$45^\circ$W and $45^\circ$S--$30^\circ$S (Fig.~\ref{fig:S2_selected_tracks}). This domain was selected to capture a high track density of intensifying systems, including cyclones originating from all three genesis regions \citep{couto2024new}, thereby avoiding an overrepresentation of any single region. 
+Ageostrophic geopotential flux convergence (AFC) was computed at 250 hPa as a diagnostic of downstream development and local energization of the disturbance \citep[e.g.][]{orlanski1991life,orlanski1993ageostrophic}:
+
+\begin{equation}
+\mathrm{AFC}
+=
+-\nabla \cdot \left( \mathbf{v}_{ag}' \, \Phi' \right),
+\end{equation}
+
+where \(\mathbf{v}_{ag}'\) is the anomalous ageostrophic wind and \(\Phi'\) is the geopotential anomaly. The anomalous ageostrophic wind was defined as
+
+\begin{equation}
+\mathbf{v}_{ag}' = \mathbf{v}' - \mathbf{v}_g',
+\end{equation}
+
+where \(\mathbf{v}'\) is the horizontal wind anomaly and \(\mathbf{v}_g'\) is the geostrophic wind anomaly derived from the geopotential anomaly. Positive AFC values indicate local convergence of anomalous ageostrophic geopotential fluxes, which is consistent with downstream development and the local accumulation of
+eddy kinetic energy \citep[e.g.][]{orlanski1995stages,ndarana2021downstream,pinheiro2022contributions}.
+
+In the original downstream-development framework, perturbations are commonly defined relative to a background mean flow or to a low-frequency component of the circulation \citep[e.g.][]{pinheiro2022contributions,pinheiro2024deepening}. Here, as an approximation suitable for the composite analysis, anomalies were defined as deviations from the 30-year monthly climatological mean for the corresponding calendar month. For events spanning two different months, the background state was obtained from a weighted mean of the two monthly climatologies in order to avoid artificial discontinuities.
 
 
 \section{Results}\label{sec:results}
@@ -363,6 +431,7 @@ The relative contribution of each genesis region for each EP is shown in Fig.~\r
     \centering
     \includegraphics[width=1\linewidth]{6_ep_genesis_density_kde.png}
     \caption{Kernel density estimates of cyclone genesis density (cyclones per $10^6$ km$^2$ per year) for all cyclones (a) and relative frequency bias for each energy-pattern group: (b) EP1, (c) EP2, and (d) EP3. Shading and contours on (a) represent genesis density (cyclones per $10^6$ km$^2$ per year). In panels (b--d), the genesis density for each EP was first normalized using min-max normalization and then subtracted from the normalized density for all systems, resulting in the relative anomaly of genesis density for each EP.}
+    \label{fig:6_ep_genesis_density_kde}
 \end{figure}
 
 Overall, these results indicate that EP3 comprises weaker, day-to-day systems, with genesis predominantly in ARG. These cyclones have a less active energy cycle and occur preferentially during the austral warm season. Although they exhibit substantial interannual variability, no statistically significant trend is detected in their occurrence. In contrast, EP2 represents relatively intense systems, with genesis primarily in LA-PLATA and ARG, weak seasonality, and energetics characterized by modest baroclinic conversions and diabatic contributions, together with especially large imports of $A_E$ and $K_E$ during early development. EP2 is the only EP exhibiting a statistically significant trend, with an overall increase.
@@ -370,39 +439,69 @@ Overall, these results indicate that EP3 comprises weaker, day-to-day systems, w
 Finally, EP1, while being the least frequent and most active during the cold season, shows the strongest conversions throughout the life cycle, particularly barotropic conversion, with relevant contributions from diabatic processes. However, these eddy-energy sources are partly offset by energy export, which becomes stronger during the mature and decay phases. EP1 does not show a marked interannual variability or a statistically significant trend.
 
 
-\subsection{Physical mechanisms of cyclonic intensification}
+\subsection{Cyclone structure}\label{sec:composites}
 
-Section~\ref{sec:energy_patterns} shows that the LEC analysis indicates an important contribution from barotropic and baroclinic conversions to cyclone development, with a particularly strong role for the former. Here, we further investigate the physical mechanisms associated with cyclone intensification to assess the occurrence of barotropic and baroclinic instabilities and their consistency with the semi-Lagrangian, limited-area framework that follows the cyclone center.
+Figure \ref{fig:7_dynamical_composites_epall_relative} presents the dynamical composites for EP1, EP2, and EP3. The first row (\ref{fig:7_dynamical_composites_epall_relative}a--c) shows upper-level PV ($PV'_{200}$), lower- to mid-tropospheric baroclinicity (represented by $EGR'_{850-500}$), and sea-level pressure. For PV and EGR, anomalies are shown with respect to the total cyclone composite (EPALL), whereas for SLP the total composite is shown. For all EPs, the SLP field exhibits a clear cyclonic signature, marked by closed isobars.  For both EP2 and EP3 there is a ridge downstream of the surface cyclone. However, for EP1 the ridge seems to be upstream of the surface cyclone, a feature which will be relevant for future analysis. 
 
-To diagnose barotropic and baroclinic instabilities, we computed composites of the Rayleigh--Kuo (RK) criterion and the Eady growth rate (EGR), respectively. We focus on EP1 cyclones, as they exhibit the strongest barotropic and baroclinic conversions. The analysis is restricted to the intensification phase. Although conversion terms tend to peak during maturity, cyclone centers typically cover a larger area during that phase \citep{couto2024new}, which would increase spatial variability and potentially add noise to the composites. Therefore, we use the central time step of the intensification phase and restrict the sample to a $15^\circ \times 15^\circ$ domain bounded by $60^\circ$W--$45^\circ$W and $45^\circ$S--$30^\circ$S (Fig.~\ref{fig:S2_selected_tracks}). This domain was selected to capture a high track density of intensifying systems, including cyclones originating from all three genesis regions \citep{couto2024new}, thereby avoiding an overrepresentation of any single region. 
+The upper-level PV anomaly patterns differ substantially among the EPs, indicating distinct large-scale dynamical configurations. For EP1, the $PV'_{200}$ field exhibits an elongated structure that resembles a PV-streamer-like signature, which is consistent with an equatorward intrusion of high stratospheric PV \citep[e.g.,][]{hoskins1985use,hu2004variations,wernli2007identification}. Because this is an EPALL-relative anomaly field, this pattern should be interpreted as streamer-like rather than as a definitive PV streamer. In this case, there is no equally compact or collocated cyclonic signature in the lower-tropospheric PV anomaly ($PV'_{850}$; \ref{fig:7_dynamical_composites_epall_relative}d), suggesting weaker vertical coupling between the upper- and lower-level anomalies. 
 
-Furthermore, we perform the instability diagnostics at the pressure levels where the corresponding conversion terms exhibit their largest median magnitudes (Fig.~\ref{fig:S3_vertical_levels}): 975,hPa for the EGR analysis and 350,hPa for the RK criterion. To assess the sensitivity of the results to the choice of domain size, we conduct the analysis on three distinct domains: a $5^\circ \times 5^\circ$ domain, a $15^\circ \times 15^\circ$ domain, and a $30^\circ \times 30^\circ$ domain - hereafter referred to as the local, synoptic, and large-scale domains, respectively. This approach allows us to verify the impact of the centered semi-Lagrangian analysis on the detection and magnitude of barotropic and baroclinic instabilities.
-
-Figures~\ref{fig:7_ep1_instability_composite_4x3}a, b, and c show $\partial\eta/\partial y$ for the local, synoptic, and large-scale domains, respectively. In the local domain, there is a distinct and clear inflection point (i.e., a change in the signal of $\partial\eta/\partial y$), located near the cyclone center. As the domain size increases, multiple inflection points appear. This behavior is further supported by the meridional profiles (showing zonal means of $\partial\eta/\partial y$ in Fig.~\ref{fig:7_ep1_instability_composite_4x3}d, e, and f). In the local domain, there is a clear inflection point centered on the composite mean, though some variability is observed in the individual cases. In contrast, for the synoptic and large-scale domains, the variability increases, and the ensemble mean becomes noisier, with multiple "local" inflection points appearing, reinforcing the local aspect of barotropic instability on synoptic scale protuberances, as previously shown by \citet{mak1989local,wernli1998effect,riviere2006role}.
+In contrast, EP2 displays a more compact $PV'_{200}$ structure, with a cutoff-like or strongly wrapped trough--ridge dipole, which appears more clearly coupled to the lower-level PV anomaly ($PV'_{850}$; Fig. \ref{fig:7_dynamical_composites_epall_relative}e). This configuration is consistent with a more favorable vertical coupling between upper- and lower-tropospheric PV anomalies, which may support more efficient cyclone intensification than in the more elongated EP1 configuration \citep{davis1991potential,huo1999interaction,schemm2019efficiency}. EP3 presents a upper and low-level $PV'$ signal inverted than EP2, indicating a weaker  dynamical coupling and thus, weaker development. 
 
 
-
-% Revisitar após olhar os jatos
-%The Rayleigh--Kuo (RK) criterion provides a necessary (but not sufficient) condition for modal barotropic instability in idealized barotropic shear flows, requiring a sign reversal of the meridional gradient of absolute vorticity within the domain \citep{Kuo1949,Simonnet2021}. In the local ($5^\circ\times5^\circ$) cyclone-centered composites, $\partial\eta/\partial y$ exhibits a robust inflection point close to the analysis center, indicating that the upper-tropospheric flow in the immediate vicinity of intensifying EP1 cyclones recurrently satisfies this necessary condition. Such a near-core, jet-related configuration is consistent with barotropic development being favored in localized regions of strong horizontal shear (e.g., near jet-exit environments) \citep{RiviereJoly2006,Wernli1998}. 
-
-% In contrast, the synoptic and large-scale domains display multiple inflection points and noisier meridional profiles. This does not necessarily imply the absence of barotropic instability; rather, it likely reflects case-to-case variability in the relative position and orientation of the upper-level jet and associated shear zones with respect to the cyclone center. Cyclone-centered compositing is known to smooth out sharp gradients and small-scale features when dynamically relevant structures are not perfectly co-located across events \citep{Vessey2022}. Because the RK diagnostic is sign-based, averaging fields with inflection points occurring at different meridional offsets can yield multiple weak zero-crossings (or partially cancel the signal), thereby masking the underlying frequency of RK satisfaction in individual cases.
-
-
-\begin{figure}
+\begin{figure}[ht!]
     \centering
-    \includegraphics[width=1\linewidth]{7_ep1_instability_composite_4x3.png}
-    \caption{Composites characterizing instability-related diagnostics for EP1 cyclones during the central time step of the intensification phase. (a--c) Meridional gradient of absolute vorticity at 350 hPa, $\partial\eta/\partial y$ (s$^{-1}$\,m$^{-1}$). (d--f) Corresponding meridional profiles (zonal means) for individual cases (gray) and the composite mean (blue). (g--i) Ertel potential vorticity at 975 hPa (PV; $10^{-6}$\,K\,m$^2$\,kg$^{-1}$\,s$^{-1}$). (j--l) Eady growth rate at 975 hPa (EGR; day$^{-1}$). The star marks the analysis center.}
-    \label{fig:7_ep1_instability_composite_4x3}
+    \includegraphics[width=1\linewidth]{7_dynamical_composites_epall_relative.png}
+    \caption{Storm-centered composite anomalies relative to the full cyclone population (EPALL) at the central
+    intensification timestep. Each column represents one energy pattern: \textbf{EP1} ($n = 332$),
+    \textbf{EP2} ($n = 775$), and \textbf{EP3} ($n = 1{,}623$). Anomalies are computed as the
+    difference between the energy-pattern composite and the EPALL composite ($n = 3{,}820$ cyclones),
+    which serves as the reference for a generic South Atlantic intensifying extratropical cyclone.
+    All fields are displayed on a storm-centered $30^\circ \times 30^\circ$ grid; the black star marks
+    the cyclone center and the dashed rectangle delimits the $15^\circ \times 15^\circ$ domain used
+    for Lorenz Energy Cycle computations. \textbf{Top row (a--c):} Shading shows the anomaly of potential vorticity at 200~hPa ($\Delta\mathrm{PV}_{200}$; diverging colormap, range $\pm\,0.74$~PVU, 21 levels).
+    Contours show the Eady growth rate anomaly ($\Delta\mathrm{EGR}$; labeled inline): positive
+    contours in solid red at $+0.03$, $+0.06$, $+0.09$, and $+0.12$~day$^{-1}$; negative
+    contours in dashed blue at $-0.12$, $-0.09$, $-0.06$, and $-0.03$~day$^{-1}$
+    (interval $0.03$~day$^{-1}$). Arrows show anomaly wind vectors at 250~hPa
+    ($\Delta\mathbf{V}_{250}$). \textbf{Middle row (d--f):} Shading shows the anomaly of potential vorticity at 850~hPa ($\Delta\mathrm{PV}_{850}$; diverging colormap, range $\pm\,0.09$~PVU, 21 levels).
+    Contours (unlabeled) show the anomaly of 850~hPa temperature advection
+    ($\Delta\mathrm{T\text{-}adv}_{850}$): warm advection in solid red and cold advection in dashed
+    blue, with an interval of $0.05$~K~h$^{-1}$ and a range of $\pm\,0.20$~K~h$^{-1}$.
+    Arrows show anomaly wind vectors at 850~hPa ($\Delta\mathbf{V}_{850}$). Thin
+    semi-transparent black contours show total sea-level pressure (interval $2$~hPa) as a spatial
+    reference. \textbf{Bottom row (g--i):} Shading shows the anomaly of ageostrophic geopotential flux
+    convergence at 250~hPa ($\Delta\mathrm{AFC}_{250} = -\nabla\cdot(\mathbf{v}_\mathrm{ag}'\phi')$;
+    diverging colormap, range $\pm\,0.011$~m$^2$~s$^{-3}$, 21 levels). Contours (unlabeled) show
+    the anomaly of kinetic energy advection at 250~hPa ($\Delta\mathrm{KE\text{-}adv}_{250}$):
+    positive in solid red at $+0.005$ and $+0.010$~m$^2$~s$^{-3}$; negative in dashed blue at
+    $-0.010$ and $-0.005$~m$^2$~s$^{-3}$ (interval $0.005$~m$^2$~s$^{-3}$). Arrows show
+    anomaly wind vectors at 250~hPa ($\Delta\mathbf{V}_{250}$). Hatched regions indicate where the
+    Rossby wave guide criterion $R_K = \beta - \partial^2\bar{u}/\partial y^2$ undergoes a
+    meridional sign reversal in the \emph{total} composite field (not the EPALL-relative anomaly).
+    Thin semi-transparent black contours show total sea-level pressure (interval $2$~hPa).}
+    \label{fig:7_dynamical_composites_epall_relative}
 \end{figure}
 
+The $EGR_{850-500}$ fields are also markedly distinct among the EPs. For EP1, enhanced baroclinicity is found around the cyclone center and extends downstream of it. In contrast, for EP2, the baroclinic zone is elongated in a NW--SE direction, similarly to the configuration described by \citet{crespo2021potential} for cyclones with genesis in the Uruguay (LA-PLATA) region. This suggests that these systems develop within a strongly baroclinic environment embedded in the South Atlantic storm-track region \citep{hoskins1990existence,chang2002storm,hoskins2005new}. The observed pattern further suggests differences in the relative positioning between the cyclone core and the surrounding low-level baroclinic reservoir in EP1 and EP2. In both cases, however, the upper-level PV anomalies appear to interact with a favorable baroclinic environment, supporting ascent and cyclonic intensification \citep{davis1991potential,huo1999interaction,besson2021global,crespo2021potential}. Lastly, EP3 cyclones exhibit a weaker relative baroclinic signature in the same region where EP2 shows its maximum $EGR_{850-500}$ anomaly.
+ 
 
-Figure~\ref{fig:7_ep1_instability_composite_4x3}g, h, and i show the Ertel PV for each domain size. Cyclonic PV (negative values in the Southern Hemisphere) reaches a maximum just northwest of the cyclone center. In the local domain, the cyclonic vorticity occupies most of the domain area, and its relative occupation decreases as the domain size increases, as expected. 
+Figure \ref{fig:7_dynamical_composites_epall_relative}d-f presents low-level PV ($PV'_{850}$), temperature advection ($AdvT'_{850}$) and wind vectors at 850 hPa - all anomalies in respect to EPALL. In respect to $PV'_{850}$, as previously discussed, EP1 presents a less spatially coherent field, while EP2 presents a cyclonic PV anomaly coupled to the upper-level disturbance. EP3 presents a weak anticyclonic anomaly near the cyclonic center, indicative of a weaker cyclonic development.
 
-Meanwhile, Figures~\ref{fig:7_ep1_instability_composite_4x3}j, k, and l display the EGR for each domain, with the mean values across the domain indicated on each panel. The presented values ($> 2 \space day^{-1}$) indicate high baroclinicity and thus rapid deepening rates \citep[e.g.]{crespo2021potential,besson2021global,zhan2023climatology} There is virtually no change in the mean EGR values between the local and synoptic domains. However, for the large-scale domain, there is a ~20\% drop, as the EGR values decrease sharply outside the synoptic domain. The maximum EGR is not located at the cyclone center but rather in a region surrounding it.
+EP2 presents a clear cold--warm dipole embedded in a cyclonic circulation, consistent with the canonical frontal structure of extratropical cyclones \citep[e.g.][]{dacre2012extratropical}. In this sense, the pattern agrees with South Atlantic cyclone composites associated with organized frontal development \citep{gramcianinov2019properties}. Warm advection in the cyclone warm sector is, according to quasigeostrophic theory, associated with ascent along and ahead of the warm front \citep{davies2015quasigeostrophic}. However, the resulting positive low-level PV anomalies are more directly linked to the diabatic processes accompanying this ascent, particularly condensation and latent heating, rather than to thermal advection alone \citep{hoskins1985use,huo1999interaction,attinger2021systematic}.
+
+EP1, in turn, is dominated by relative cold-advection anomalies, together with an anticyclonic circulation southwest of the surface cyclone, suggestive of a post-frontal environment. In combination with the streamer-like upper-level PV structure, this configuration is consistent with a post-frontal or secondary-development setting, although it is not by itself sufficient to diagnose secondary cyclogenesis. A similar South Atlantic configuration was described by \citet{iwabe2009event}, while \citet{gramcianinov2019properties} also suggested that some cyclones forming near southeastern Brazil and the southeastern South Atlantic are associated with secondary development. Lastly, EP3 exhibits an anomaly pattern opposite to EP2, indicating a weaker or displaced canonical frontal thermal-advection dipole relative to the EPALL composite. In this sense, EP3 does not appear to display the same degree of organized frontal thermal contrast found in EP2.
+
+Figure \ref{fig:7_dynamical_composites_epall_relative}g--i presents anomalies of upper-level ageostrophic geopotential flux convergence (AFC$_{250}'$) and kinetic energy advection (KE$_{\mathrm{adv},250}'$), together with hatching indicating regions where the meridional gradient of absolute vorticity changes sign, that is, where the Rayleigh--Kuo (RK) necessary condition for barotropic instability is satisfied. The RK hatching is shown for the total EP composite rather than for the anomalous fields. Since the Rayleigh--Kuo criterion provides only a necessary, not sufficient, condition for barotropic instability, the hatching should be interpreted as background dynamical context rather than as direct evidence of barotropic growth.
+
+The AFC field highlights important distinctions between EP1 and EP2. EP2 presents a dipolar pattern, with relatively intense positive anomalies on the western side of the cyclone and relatively intense negative anomalies on its eastern side. This indicates enhanced local upper-level eddy kinetic energy accumulation to the west of the cyclone core and depletion to the east, relative to EPALL, a configuration consistent with an organized downstream-dispersive upper-level energetics pattern during cyclone intensification \citep{orlanski1993ageostrophic,orlanski1995stages,piva2010energetics,pinheiro2022contributions}. The upper-level wind anomalies are consistent with this interpretation, as EP2 exhibits a more coherent cyclonic-anomalous circulation around the cyclone core, with stronger meridional flow anomalies on the flanks of the system, suggesting a more sharply defined shear and deformation environment. The KE$_{\mathrm{adv},250}'$ anomalies are broadly consistent with this interpretation, since EP2 also exhibits a dipolar structure, suggesting a more organized redistribution of kinetic energy along the upper-level flow, with positive anomalies downstream of the surface cyclone.
+
+In contrast, EP1 exhibits a broader positive AFC$_{250}'$ anomaly over and downstream of the cyclone center, while negative anomalies are found mainly upstream and to the southwest. Relative to EPALL, this suggests a less canonical downstream-dispersive AFC pattern than in EP2, with comparatively greater local upper-level energy accumulation in the vicinity of and downstream of the cyclone core. In this sense, the downstream development signature appears less clearly organized in EP1, suggesting that other energetic pathways may play a relatively larger role in sustaining cyclone growth. For EP1, the surface cyclone appears anomalously closer to the upper-level trough axis, that is, downstream of an upstream ridge and less horizontally displaced from the upper-level PV anomaly than in EP2. This suggests a more trough-controlled upper-level configuration, consistent with upper-level-induced cyclogenesis or with systems developing beneath a pre-existing upper-level trough, rather than with the more canonical downstream-dispersive pattern inferred for EP2 \citep{schultz2019extratropical,sinclair2000classification,graf2017objective}.
+ The negative KE$_{\mathrm{adv},250}'$ anomalies reinforce the interpretation that kinetic energy redistribution in EP1 differs from that of EP2, although this term should be viewed primarily as a redistribution term rather than as a direct source or sink of cyclone intensification.
 
 
+EP3, in turn, is characterized by predominantly negative AFC$_{250}'$ anomalies around the cyclone core, indicating weaker upper-level energetic support relative to EPALL. Its upper-level wind anomalies are weaker and more diffuse than in EP2, which is consistent with the less organized AFC pattern. Finally, all EPs exhibit RK sign reversals close to the cyclone center, suggesting that the necessary condition for barotropic instability is locally satisfied in all of them. This supports the interpretation that barotropic processes may be present in the three EPs, as a more localized phenomenon near the upper-level shear zone \citep[e.g.][]{mak1989local,wernli1998effect,cai2004local,riviere2006role}.
 
-\subsection{Barotropic instability processes}\label{sec:}
+\subsection{Barotropic instability processes}\label{sec:ck_vertical}
 
 - Calcular o LEC para os 50 sistemas mais intensos e 50 menos intensos de cada EP
 - Avaliar os sub-termos do CK (boxplots) para cada EP: qual sub-termo domina para cada EP? Os resultados variam por EP ou são homogêneos? Há mudança entre os sistemas intensos x não intensos?

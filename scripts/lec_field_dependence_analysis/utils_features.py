@@ -29,7 +29,10 @@ INNER_HALF = 30          # Half-width of 15°×15° inner box (in grid points)
 # Inner 15°×15° box indices (centred on cyclone)
 INNER_SLICE = slice(CENTRE_IDX - INNER_HALF, CENTRE_IDX + INNER_HALF + 1)
 
-# Border strip width (in grid points, ~1.25° = 5 grid cells)
+# Border strip THICKNESS in grid points.
+# 5 points = 1.25° by cell-centre convention (5 × 0.25°), or 1.0° point-to-point
+# (4 intervals × 0.25°). The strip spans the FULL 15° (61 pts) along each edge.
+# So border_north = inner[:5, :] → shape (5, 61) = 1.25° thick × 15° wide.
 BORDER_WIDTH = 5
 
 

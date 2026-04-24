@@ -41,11 +41,10 @@ Repository of final publication-ready figure scripts, numbered by figure order (
 | `06_figure_genesis_density_kde.py` | Fig 6: Genesis density (KDE) |
 | `07_figure_ep1_ep2_dynamical_composites.py` | Fig 7: EPALL-relative dynamical composites (3×3, EP1/EP2/EP3) |
 | `S1_figure_pca_clustering_validation.py` | Fig S1: PCA/clustering validation |
-| `S2_figure_selected_tracks.py` | Fig S2: Selected EP1 tracks |
-| `S3_figure_vertical_levels.py` | Fig S3: Vertical energy conversion distribution |
+| `S2_figure_vertical_levels.py` | Fig S2: Vertical Ca/Ck distributions for EP1, EP2, and EP3 |
 | `run_all.py` | Run all figure scripts sequentially |
 
-**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; Fig 7, S2, and S3 additionally require composites from `data/era5_ep_structure/` produced by `ep_structure_analysis`.
+**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; Fig 7 additionally requires composites from `data/era5_ep_structure/`; Fig S2 requires the Zenodo LEC archive in `data/temp_lec_zenodo/`.
 
 **Outputs:** `figures/main/`
 

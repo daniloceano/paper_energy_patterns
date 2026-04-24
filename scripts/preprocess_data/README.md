@@ -82,7 +82,7 @@ N_WORKERS = 50  # Parallel download workers (adjust based on network/CPU)
 
 **Run Time**: ~5-10 minutes (download 634 MB + extract)  
 **Used By**:
-- `scripts/main/S3_figure_vertical_levels.py` (supplementary figure)
+- `scripts/main/S2_figure_vertical_levels.py` (supplementary figure)
 - `scripts/ck_subterms_analysis/` (Ck decomposition)
 - `scripts/ep_structure_analysis/step1_select_ep_tracks.py` (periods extraction)
 
@@ -157,13 +157,13 @@ python scripts/preprocess_data/preprocess_data.py  # Run once (~5 min)
 python scripts/cluster_analysis_energy_patterns/step1_normalize_and_pca.py
 ```
 
-### For Vertical Structure Analysis (S3 Figure)
+### For Vertical Structure Analysis (S2 Figure)
 
 **Required**: LEC vertical data
 
 ```bash
 python scripts/preprocess_data/download_lec_from_zenodo.py  # Run once (~10 min)
-python scripts/main/S3_figure_vertical_levels.py
+python scripts/main/S2_figure_vertical_levels.py
 ```
 
 ### For Everything

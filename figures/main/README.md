@@ -29,5 +29,4 @@ references are in:
 | `6_ep_genesis_density_kde.png` | `06_figure_genesis_density_kde.py` | Genesis density using KDE (Hoskins & Hodges method) |
 | `7_ep1_ep2_dynamical_composites.png` | `07_figure_ep1_ep2_dynamical_composites.py` | EP1 vs EP2 dynamical composites — 3×2 layout |
 | `S1_pca_clustering_validation.png` | `S1_figure_pca_clustering_validation.py` | PCA variance + optimal-*k* cluster validation |
-| `S2_selected_tracks.png` | `S2_figure_selected_tracks.py` | EP1 and EP2 cyclone tracks used in composite analysis |
-| `S3_vertical_levels.png` | `S3_figure_vertical_levels.py` | Vertical Ca/Ck distributions for EP1 cyclones |
+| `S2_vertical_levels.png` | `S2_figure_vertical_levels.py` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones |

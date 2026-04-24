@@ -295,11 +295,10 @@ Repository of final publication-ready figure scripts, numbered by figure order (
 | `06_figure_genesis_density_kde.py` | Fig 6: Genesis density (KDE) |
 | `07_figure_ep1_instability_composite.py` | Fig 7: EP1 instability composite |
 | `S1_figure_pca_clustering_validation.py` | Fig S1: PCA/clustering validation |
-| `S2_figure_selected_tracks.py` | Fig S2: Selected EP1 tracks |
-| `S3_figure_vertical_levels.py` | Fig S3: Vertical energy conversion distribution |
+| `S2_figure_vertical_levels.py` | Fig S2: Vertical Ca/Ck distributions for EP1, EP2, and EP3 |
 | `run_all.py` | Run all figure scripts sequentially |
 
-**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; S2 and S3 additionally require composites from `data/era5_ep_structure/` produced by `ep_structure_analysis`.
+**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; Fig S2 requires the Zenodo LEC archive in `data/temp_lec_zenodo/`.
 
 **Outputs:** `figures/main/`
 
@@ -569,13 +568,9 @@ Scripts are numbered according to the order of figures in the manuscript:
 - **`S1_figure_pca_clustering_validation.py`**  
   Figure S1: PCA and clustering validation
 
-- **`S2_figure_selected_tracks.py`**  
-  Figure S2: Selected EP1 cyclones used in the spatial structure analysis  
-  *Requires: `data/era5_ep_structure/precomputed_composites_ep1.nc` (produced by `scripts/ep_structure_analysis/step3_precompute_composites.py`)*
-
-- **`S3_figure_vertical_levels.py`**  
-  Figure S3: Vertical distribution of energy conversions for EP1 cyclones  
-  *Requires: `data/era5_ep_structure/precomputed_composites_ep1.nc` (produced by `scripts/ep_structure_analysis/step3_precompute_composites.py`)*
+- **`S2_figure_vertical_levels.py`**  
+  Figure S2: Vertical distribution of energy conversions (Ca and Ck) for EP1, EP2, and EP3 cyclones — three side-by-side boxes per pressure level  
+  *Requires: Zenodo LEC archive in `data/temp_lec_zenodo/LEC_Results_energetic-patterns/` (DOI: 10.5281/zenodo.18243447)*
 
 ## Usage
 

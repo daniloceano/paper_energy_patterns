@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+# =============================================================================
+#  sync_from_remote.sh — Pull Ck subterms analysis outputs from remote server
+# =============================================================================
+#
+#  Uses SSH ControlMaster so you are only prompted for your password ONCE,
+#  regardless of how many rsync operations run.
+#
+#  What is transferred:
+#    figures/ck_analysis/            — all generated figures
+#    figures/ck_subterms/            — boxplot / web figures from step3
+#    results/ck_analysis/*.csv       — summary tables
+#    results/ck_analysis/*.txt       — text reports
+#    results/ck_analysis/*.md        — markdown reports
+#    results/ck_analysis/*.json      — JSON summaries
+#    results/ck_analysis/*.parquet   — lightweight columnar tables
+#    results/ck_analysis/*.feather   — lightweight columnar tables
+#    results/ck_subterms/            — audit CSVs and reports (step3 outputs)
+#
+#  What is NOT transferred:
+#    results/ck_analysis/lec_results/   — raw LorenzCycleToolkit outputs (~100s GB)
+#    data/ck_analysis/era5/             — raw ERA5 data
+#    *.nc, *.grib, *.grb, *.zarr        — binary climate data files
+#    *.idx, __pycache__/, *.pyc         — caches and compiled files
+#
+#  Safety:
+#    --update     : local files that are the same age or NEWER than the remote
+#                   version are NEVER overwritten
+#    no --delete  : files that exist only locally are NEVER removed
+#
+#  Usage:
+#    bash scripts/ck_subterms_analysis/sync_from_remote.sh [--dry-run] [--logs]
+#
+#  Options:
+#    --dry-run    Show what would be transferred; don't copy anything
+#    --logs       Also transfer pipeline logs (logs/) — off by default
+#
+#  Prerequisites:
+#    If results/ck_analysis/*.csv files don't yet exist on the remote, run:
+#      python scripts/ck_subterms_analysis/build_ck_subterms_summary.py
+#    on the remote server first, then run this sync script.
+#
+# =============================================================================
+
+set -uo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOCAL_BASE="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# ---------------------------------------------------------------------------
+# Configuration — adjust if your remote setup changes
+# ---------------------------------------------------------------------------
+REMOTE_USER="danilocs"
+REMOTE_HOST="master.iag.usp.br"
+SSH_KEY="$HOME/Documents/Master/id_rsa.danilocs"
+REMOTE_BASE="/discos-varal/swell/p1-swell/danilocs/paper_energy_patterns"
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+SYNC_LOGS=false
+DRY_RUN=false
+
+for arg in "$@"; do
+    case "$arg" in
+        --logs)    SYNC_LOGS=true ;;
+        --dry-run) DRY_RUN=true   ;;
+        -h|--help)
+            sed -n '/^#  Usage/,/^# ====/p' "$0" | grep -v '^# ===='
+            exit 0 ;;
+        *) echo "Unknown argument: $arg" >&2; exit 1 ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------
+# SSH ControlMaster setup — single connection, reused by all rsync calls
+# ---------------------------------------------------------------------------
+SOCKET="/tmp/ssh_ck_sync_$$"
+SSH_E="ssh -S $SOCKET -i $SSH_KEY -o BatchMode=no"
+
+_close_master() {
+    ssh -S "$SOCKET" -O exit "$REMOTE_USER@$REMOTE_HOST" 2>/dev/null || true
+}
+trap _close_master EXIT
+
+echo "Connecting to ${REMOTE_USER}@${REMOTE_HOST}..."
+echo "(You will be prompted for your password or key passphrase at most once.)"
+echo ""
+ssh -M -S "$SOCKET" -i "$SSH_KEY" -fN "$REMOTE_USER@$REMOTE_HOST"
+
+# ---------------------------------------------------------------------------
+# rsync helper (full directory transfer with exclusions)
+# ---------------------------------------------------------------------------
+_rsync() {
+    local label="$1"
+    local remote_path="$2"
+    local local_path="$3"
+    shift 3
+    # remaining args are passed as extra rsync options (e.g., --filter, --exclude)
+
+    mkdir -p "$local_path"
+
+    local rsync_flags="-avz --update --progress"
+    $DRY_RUN && rsync_flags="-avzn --update"
+
+    echo ""
+    echo "  ─── $label ─────────────────────────────────────"
+    $DRY_RUN && echo "  [DRY RUN — no files will be copied]"
+    # shellcheck disable=SC2086
+    rsync $rsync_flags \
+        "$@" \
+        -e "$SSH_E" \
+        "${REMOTE_USER}@${REMOTE_HOST}:${remote_path}/" \
+        "${local_path}/"
+}
+
+# ---------------------------------------------------------------------------
+# rsync helper (results with light-file-only filter)
+# ---------------------------------------------------------------------------
+_rsync_results_light() {
+    local label="$1"
+    local remote_path="$2"
+    local local_path="$3"
+
+    mkdir -p "$local_path"
+
+    local rsync_flags="-avz --update --progress"
+    $DRY_RUN && rsync_flags="-avzn --update"
+
+    echo ""
+    echo "  ─── $label ─────────────────────────────────────"
+    $DRY_RUN && echo "  [DRY RUN — no files will be copied]"
+    # shellcheck disable=SC2086
+    rsync $rsync_flags \
+        --exclude="lec_results/" \
+        --exclude="*.nc" \
+        --exclude="*.grib" \
+        --exclude="*.grb" \
+        --exclude="*.grb2" \
+        --exclude="*.zarr" \
+        --exclude="*.idx" \
+        --exclude="__pycache__/" \
+        --exclude="*.pyc" \
+        --exclude="*.log" \
+        --filter="+ */" \
+        --filter="+ *.csv" \
+        --filter="+ *.txt" \
+        --filter="+ *.md" \
+        --filter="+ *.json" \
+        --filter="+ *.parquet" \
+        --filter="+ *.feather" \
+        --filter="+ *.png" \
+        --filter="+ *.pdf" \
+        --filter="- *" \
+        -e "$SSH_E" \
+        "${REMOTE_USER}@${REMOTE_HOST}:${remote_path}/" \
+        "${local_path}/"
+}
+
+# ---------------------------------------------------------------------------
+# Transfers
+# ---------------------------------------------------------------------------
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo " Ck Subterms Analysis — Sync from Remote"
+echo " Remote : ${REMOTE_USER}@${REMOTE_HOST}"
+echo " Local  : ${LOCAL_BASE}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+# Summary tables and reports (no lec_results/, no binary data)
+_rsync_results_light \
+    "results/ck_analysis  (light files only — excludes lec_results/)" \
+    "${REMOTE_BASE}/results/ck_analysis" \
+    "${LOCAL_BASE}/results/ck_analysis"
+
+# Audit CSVs and reports produced by step3_validate_and_figures.py
+_rsync_results_light \
+    "results/ck_subterms  (audit tables and reports)" \
+    "${REMOTE_BASE}/results/ck_subterms" \
+    "${LOCAL_BASE}/results/ck_subterms"
+
+# Main analysis figures
+_rsync "figures/ck_analysis" \
+    "${REMOTE_BASE}/figures/ck_analysis" \
+    "${LOCAL_BASE}/figures/ck_analysis" \
+    --exclude="*.nc" --exclude="*.grib" --exclude="*.grb"
+
+# Boxplot / web figures (step3 output directory)
+_rsync "figures/ck_subterms" \
+    "${REMOTE_BASE}/figures/ck_subterms" \
+    "${LOCAL_BASE}/figures/ck_subterms" \
+    --exclude="*.nc" --exclude="*.grib" --exclude="*.grb"
+
+if $SYNC_LOGS; then
+    _rsync "logs" \
+        "${REMOTE_BASE}/logs" \
+        "${LOCAL_BASE}/logs" \
+        --exclude="*.nc" --exclude="*.grib" --exclude="*.grb"
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo " Summary of local directories after sync:"
+for d in \
+    "${LOCAL_BASE}/results/ck_analysis" \
+    "${LOCAL_BASE}/results/ck_subterms" \
+    "${LOCAL_BASE}/figures/ck_analysis" \
+    "${LOCAL_BASE}/figures/ck_subterms"; do
+    if [ -d "$d" ]; then
+        n=$(find "$d" -maxdepth 3 -type f | wc -l | tr -d ' ')
+        echo "   ${d#$LOCAL_BASE/}  →  ${n} file(s)"
+    else
+        echo "   ${d#$LOCAL_BASE/}  →  (not present)"
+    fi
+done
+echo ""
+if $DRY_RUN; then
+    echo " Dry run complete. Run without --dry-run to copy files."
+else
+    echo " Sync complete."
+fi
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

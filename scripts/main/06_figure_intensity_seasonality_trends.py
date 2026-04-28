@@ -392,7 +392,7 @@ def create_figure():
     plot_interannual_trends(ax3, df)
     print("\n  ✓ Trend analysis complete.")
 
-    output_file = FIGURES_DIR / '5_ep_intensity_seasonality_trends.png'
+    output_file = FIGURES_DIR / '6_ep_intensity_seasonality_trends.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n{'='*60}")
     print(f"Figure saved: {output_file}")

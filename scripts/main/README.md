@@ -33,9 +33,11 @@ python scripts/main/run_all.py
 | 2 | `02_figure_20070643_publication.py` | `2_20070643_lps_track_publication.png` | Case study — cyclone 20070643 LPS and track | Exploratory images (see §Fig 2) |
 | 3 | `03_make_phase_density_2x2.py` | `3_phase_density_2x2.png` | Phase-space density for all cyclones, by lifecycle phase | Exploratory images (see §Fig 3) |
 | 4 | `04_figure_lps_combined.py` | `4_lps_combined.png` | Lorenz Phase Space (Conversion + Imports) for EP1–EP3 | Cluster figures (see §Fig 4) |
-| 5 | `05_figure_intensity_seasonality_trends.py` | `5_ep_intensity_seasonality_trends.png` | EP intensity, seasonal distribution, and interannual trends | Cluster results |
-| 6 | `06_figure_genesis_density_kde.py` | `6_ep_genesis_density_kde.png` | Genesis density (KDE, Hoskins & Hodges method) | Cluster results |
-| 7 | `07_figure_ep1_ep2_dynamical_composites.py` | `7_dynamical_composites_epall_relative.png` | EPALL-relative dynamical composites — 3×3 layout (EP1−EPALL \| EP2−EPALL \| EP3−EPALL) | ERA5 composites (see §Fig 7) |
+| 5 | `05_figure_ck_subterms_vertical_profiles.py` | `5_ck_subterms_vertical_profiles.png` | C_K vertical profiles (Zenodo) + integrated subterms A–E for EP1, intensification | Zenodo LEC archive + ck_analysis results |
+| 6 | `06_figure_intensity_seasonality_trends.py` | `6_ep_intensity_seasonality_trends.png` | EP intensity, seasonal distribution, and interannual trends | Cluster results |
+| 7 | `07_figure_genesis_density_kde.py` | `7_ep_genesis_density_kde.png` | Genesis density (KDE, Hoskins & Hodges method) | Cluster results |
+| 8 | `08_figure_ep1_ep2_dynamical_composites.py` | `8_dynamical_composites_epall_relative.png` | EPALL-relative dynamical composites — 3×3 layout (EP1−EPALL \| EP2−EPALL \| EP3−EPALL) | ERA5 composites (see §Fig 8) |
+| 9 | `09_figure_pearson_epall_by_field_type.py` | `9_pearson_epall_by_field_type.png` | Pearson \|r\| heatmaps grouped by field type (AdvT, AFC, KE adv, PV200, PV850) — EPALL, anomaly fields, canonical LEC terms | `lec_field_dependence_analysis` step 7 |
 | S1 | `S1_figure_pca_clustering_validation.py` | `S1_pca_clustering_validation.png` | PCA variance explained + optimal-*k* cluster validation | Cluster results |
 | S2 | `S2_figure_vertical_levels.py` | `S2_vertical_levels.png` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones | Zenodo LEC archive (see §Fig S2) |
 
@@ -177,10 +179,40 @@ python scripts/main/04_figure_lps_combined.py
 
 ---
 
-### Figure 5 — EP intensity, seasonality, and trends
+### Figure 5 — C_K vertical profiles and integrated subterms (EP1)
 
-**Script:** `05_figure_intensity_seasonality_trends.py`  
-**Output:** `figures/main/5_ep_intensity_seasonality_trends.png`  
+**Script:** `05_figure_ck_subterms_vertical_profiles.py`  
+**Output:** `figures/main/5_ck_subterms_vertical_profiles.png`
+
+**What it shows:**
+Two-panel figure for EP1 cyclones, intensification phase:
+- **(a) Vertical profile of total C_K:** Horizontal boxplots per pressure level (1000–100 hPa,
+  ~27 levels). Each box summarises the cyclone-mean C_K value across all EP1 cyclones at
+  that level. Blue shading marks negative (K_Z→K_E, barotropic instability) values.
+- **(b) Integrated C_K subterms:** Distribution of vertically integrated phase-mean values for
+  each of the five subterms Ck^(A)–Ck^(E) across EP1 cyclones.
+
+**Data availability note:**
+Per-level files for individual C_K subterms are not available in the local Zenodo archive.
+Panel (a) uses `Ck_level.csv` (total C_K per level) from the Zenodo archive.
+Panel (b) uses `results/ck_analysis/ck_subterms_boxplot_input.csv` (integrated values).
+
+**Required inputs:**
+- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/` (Zenodo DOI: 10.5281/zenodo.18243447)
+- `results/ep_structure/ep1_cases.csv`
+- `results/ck_analysis/ck_subterms_boxplot_input.csv`
+
+**How to run:**
+```bash
+python scripts/main/05_figure_ck_subterms_vertical_profiles.py
+```
+
+---
+
+### Figure 6 — EP intensity, seasonality, and trends
+
+**Script:** `06_figure_intensity_seasonality_trends.py`  
+**Output:** `figures/main/6_ep_intensity_seasonality_trends.png`  
 **Side output:** `results/exploratory/mk_trend_results.csv`
 
 **What it shows:**
@@ -201,7 +233,7 @@ Three-panel figure characterizing the climatic properties of each Energy Pattern
 - Theil–Sen slope with 95% CI documented in the side CSV
 
 For all equations and interpretation guidance, see
-[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 5.
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 6.
 
 **Required inputs:**
 - `data/tracks_SAt_filtered_with_energetics_processed.csv`
@@ -209,15 +241,15 @@ For all equations and interpretation guidance, see
 
 **How to run:**
 ```bash
-python scripts/main/05_figure_intensity_seasonality_trends.py
+python scripts/main/06_figure_intensity_seasonality_trends.py
 ```
 
 ---
 
-### Figure 6 — Genesis density (KDE)
+### Figure 7 — Genesis density (KDE)
 
-**Script:** `06_figure_genesis_density_kde.py`  
-**Output:** `figures/main/6_ep_genesis_density_kde.png`
+**Script:** `07_figure_genesis_density_kde.py`  
+**Output:** `figures/main/7_ep_genesis_density_kde.png`
 
 **What it shows:**
 A 2×2 map figure of cyclone genesis density computed with Kernel Density Estimation
@@ -229,7 +261,7 @@ following Hoskins & Hodges (2005):
 
 KDE parameters: Gaussian kernel, bandwidth ≈ 0.05 radians (~555 km),
 2.5° global grid, haversine metric. See [`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md),
-§Figure 6, for the full methodology and normalization rationale.
+§Figure 7, for the full methodology and normalization rationale.
 
 **Required inputs:**
 - `data/tracks_SAt_filtered_with_energetics_processed.csv`
@@ -237,15 +269,15 @@ KDE parameters: Gaussian kernel, bandwidth ≈ 0.05 radians (~555 km),
 
 **How to run:**
 ```bash
-python scripts/main/06_figure_genesis_density_kde.py
+python scripts/main/07_figure_genesis_density_kde.py
 ```
 
 ---
 
-### Figure 7 — EPALL-relative dynamical composites (EP − EPALL)
+### Figure 8 — EPALL-relative dynamical composites (EP − EPALL)
 
-**Script:** `07_figure_ep1_ep2_dynamical_composites.py`  
-**Output:** `figures/main/7_dynamical_composites_epall_relative.png`
+**Script:** `08_figure_ep1_ep2_dynamical_composites.py`  
+**Output:** `figures/main/8_dynamical_composites_epall_relative.png`
 
 **What it shows:**
 Publication-ready 3×3 figure of EPALL-relative anomaly composites during the
@@ -309,11 +341,55 @@ python scripts/ep_structure_analysis/step3_precompute_composites.py
 
 **How to run (after upstream steps):**
 ```bash
-python scripts/main/07_figure_ep1_ep2_dynamical_composites.py
+python scripts/main/08_figure_ep1_ep2_dynamical_composites.py
 ```
 
 For physical interpretation of each diagnostic and sign conventions, see
-[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 7.
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 8.
+
+---
+
+### Figure 9 — Pearson |r| heatmaps by field type (EPALL, anomaly)
+
+**Script:** `09_figure_pearson_epall_by_field_type.py`  
+**Output:** `figures/main/9_pearson_epall_by_field_type.png`
+
+**What it shows:**
+Five-panel heatmap figure (3×2 grid) showing the absolute Pearson correlation
+between spatial features of each dynamic field and the seven canonical LEC terms,
+for all EP cyclones (EPALL) using EPALL-relative anomaly fields.  One panel per
+field type:
+
+| Panel | Field | Description |
+|-------|-------|-------------|
+| (a) | AdvT 850 | Temperature advection at 850 hPa |
+| (b) | AFC 250 | Ageostrophic Flux Convergence at 250 hPa |
+| (c) | KE adv 250 | Kinetic energy advection at 250 hPa |
+| (d) | PV 200 | Potential vorticity at 200 hPa |
+| (e) | PV 850 | Potential vorticity at 850 hPa |
+
+Y-axis: canonical LEC terms (Ca, Ck, BAe, BKe, Ae, Ke, Ge).  
+X-axis: 13 spatial features (domain mean, centre value, borders, contrasts, quadrant sectors).  
+Color scale: shared global colorbar with `vmax = max(|r|)` rounded up to 0.1;
+values `|r| < 0.2` plotted in grey (below physical significance threshold);
+discrete warm-tone bins at 0.1 steps.
+
+**Data source (identical to diagnostic heatmap):**
+`results/lec_field_dependence/step7_predep_anomaly_epall.csv`  
+No correlations are recomputed — only the visualization is reorganized.
+
+**Required inputs:**
+- `results/lec_field_dependence/step7_predep_anomaly_epall.csv`
+
+**Upstream dependency:**
+```bash
+python scripts/lec_field_dependence_analysis/step7_compute_predep.py
+```
+
+**How to run:**
+```bash
+python scripts/main/09_figure_pearson_epall_by_field_type.py
+```
 
 ---
 
@@ -408,8 +484,8 @@ scripts/preprocess_data/           → data/tracks_SAt_filtered_with_energetics_
   └─ scripts/cluster_analysis_energy_patterns/step1..4   → results/cluster/kmeans_clustered_data.csv
        │
        ├─ 01_figure_tracks_genesis_frequency.py          (Figure 1)
-       ├─ 05_figure_intensity_seasonality_trends.py      (Figure 5)
-       ├─ 06_figure_genesis_density_kde.py               (Figure 6)
+       ├─ 06_figure_intensity_seasonality_trends.py      (Figure 6)
+       ├─ 07_figure_genesis_density_kde.py               (Figure 7)
        ├─ S1_figure_pca_clustering_validation.py         (Figure S1, also needs step3_optimal_k)
        │
        ├─ scripts/cluster_analysis_energy_patterns/step5  → figures/cluster/lps_*_zoom.png
@@ -419,8 +495,13 @@ scripts/preprocess_data/           → data/tracks_SAt_filtered_with_energetics_
             │
             ├─ step2_download_era5 + step3_precompute_composites
             │    └─ data/era5_ep_structure/precomputed_composites_ep{1,2}.nc
-            │         └─ 07_figure_ep1_ep2_dynamical_composites.py  (Figure 7)
+            │         └─ 08_figure_ep1_ep2_dynamical_composites.py  (Figure 8)
             │
+            └─ scripts/ck_subterms_analysis/ + results/ep_structure/ep1_cases.csv
+                 │
+                 └─ results/ck_analysis/ck_subterms_boxplot_input.csv
+                      + data/temp_lec_zenodo/LEC_Results_energetic-patterns/ (Zenodo)
+                           └─ 05_figure_ck_subterms_vertical_profiles.py  (Figure 5)
 scripts/exploratory/figure_three_intense_cyclones_individual_zoom.py
   └─ figures/exploratory/three_most_intense_cyclones_zoom/20070643_*.png
        └─ 02_figure_20070643_publication.py               (Figure 2)

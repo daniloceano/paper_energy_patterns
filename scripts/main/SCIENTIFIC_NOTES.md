@@ -26,26 +26,26 @@ be interpreted*.
     - [3.2 Track panel (panel c)](#32-track-panel-panel-c)
   - [4. Figure 3 — Phase-space density by lifecycle phase](#4-figure-3--phase-space-density-by-lifecycle-phase)
   - [5. Figure 4 — Lorenz Phase Space for EP1–EP3](#5-figure-4--lorenz-phase-space-for-ep1ep3)
-  - [6. Figure 5 — Intensity, seasonality, and interannual trends](#6-figure-5--intensity-seasonality-and-interannual-trends)
-    - [6.1 Intensity distribution (panel a — violin plot)](#61-intensity-distribution-panel-a--violin-plot)
-    - [6.2 Seasonal distribution (panel b — bar chart)](#62-seasonal-distribution-panel-b--bar-chart)
-    - [6.3 Trend analysis (panel c — Mann–Kendall)](#63-trend-analysis-panel-c--mannkendall)
+  - [7. Figure 6 — Intensity, seasonality, and interannual trends](#7-figure-6--intensity-seasonality-and-interannual-trends)
+    - [7.1 Intensity distribution (panel a — violin plot)](#71-intensity-distribution-panel-a--violin-plot)
+    - [7.2 Seasonal distribution (panel b — bar chart)](#72-seasonal-distribution-panel-b--bar-chart)
+    - [7.3 Trend analysis (panel c — Mann–Kendall)](#73-trend-analysis-panel-c--mannkendall)
       - [Motivation](#motivation)
       - [Mann–Kendall S-statistic](#mannkendall-s-statistic)
       - [Theil–Sen slope estimator](#theilsen-slope-estimator)
       - [Autocorrelation detection and correction](#autocorrelation-detection-and-correction)
       - [Interpretation constraints](#interpretation-constraints)
-  - [7. Figure 6 — Genesis density (KDE)](#7-figure-6--genesis-density-kde)
-    - [7.1 KDE methodology](#71-kde-methodology)
-    - [7.2 Min-max normalized relative anomaly (panels b–d)](#72-min-max-normalized-relative-anomaly-panels-bd)
-    - [7.3 Interpretation guidance](#73-interpretation-guidance)
-  - [8. Figure 7 — EP − EPALL dynamical composites (EPALL-relative anomaly)](#8-figure-7--ep--epall-dynamical-composites-epall-relative-anomaly)
-    - [8.1 Rationale for the EPALL-relative approach](#81-rationale-for-the-epall-relative-approach)
-    - [8.2 Composite methodology](#82-composite-methodology)
-    - [8.3 Row 1: Upper-level / baroclinic structure departure](#83-row-1-upper-level--baroclinic-structure-departure)
-    - [8.4 Row 2: Low-level frontal / thermal structure departure](#84-row-2-low-level-frontal--thermal-structure-departure)
-    - [8.5 Row 3: Jet-level energetics departure](#85-row-3-jet-level-energetics-departure)
-    - [8.6 Global colormap design](#86-global-colormap-design)
+  - [8. Figure 7 — Genesis density (KDE)](#8-figure-7--genesis-density-kde)
+    - [8.1 KDE methodology](#81-kde-methodology)
+    - [8.2 Min-max normalized relative anomaly (panels b–d)](#82-min-max-normalized-relative-anomaly-panels-bd)
+    - [8.3 Interpretation guidance](#83-interpretation-guidance)
+  - [9. Figure 8 — EP − EPALL dynamical composites (EPALL-relative anomaly)](#9-figure-8--ep--epall-dynamical-composites-epall-relative-anomaly)
+    - [9.1 Rationale for the EPALL-relative approach](#91-rationale-for-the-epall-relative-approach)
+    - [9.2 Composite methodology](#92-composite-methodology)
+    - [9.3 Row 1: Upper-level / baroclinic structure departure](#93-row-1-upper-level--baroclinic-structure-departure)
+    - [9.4 Row 2: Low-level frontal / thermal structure departure](#94-row-2-low-level-frontal--thermal-structure-departure)
+    - [9.5 Row 3: Jet-level energetics departure](#95-row-3-jet-level-energetics-departure)
+    - [9.6 Global colormap design](#96-global-colormap-design)
   - [9. Figure S1 — PCA and clustering validation](#9-figure-s1--pca-and-clustering-validation)
   - [10. Figure S2 — Selected EP1 and EP2 tracks](#10-figure-s2--selected-ep1-and-ep2-tracks)
   - [11. Figure S3 — Vertical Ca/Ck profiles (EP1)](#11-figure-s3--vertical-cack-profiles-ep1)
@@ -128,7 +128,7 @@ defines three Energy Patterns:
   relative to EP1 and EP3.
 - **EP3:** Distinct $C_a$ and $C_k$ signatures compared with EP1. The full EP3
   characterisation should be read from the LPS trajectories in Figure 4 (cluster
-  centroid positions in the $C_k$–$C_a$ plane) in conjunction with Figure 7
+  centroid positions in the $C_k$–$C_a$ plane) in conjunction with Figure 8
   (EPALL-relative composites), which together capture the distinguishing dynamics.
 
 **Caution:** The EP labels are assigned by k-means, which maximizes within-cluster
@@ -282,9 +282,9 @@ centroid coordinates for the exact placement.
 
 ---
 
-## 6. Figure 5 — Intensity, seasonality, and interannual trends
+## 7. Figure 6 — Intensity, seasonality, and interannual trends
 
-### 6.1 Intensity distribution (panel a — violin plot)
+### 7.1 Intensity distribution (panel a — violin plot)
 
 **Variable:** Maximum relative vorticity per cyclone (`vor42`), units: ×10⁻⁵ s⁻¹.
 The vorticity is taken at the 850 hPa level (standard for relative vorticity tracking)
@@ -296,7 +296,7 @@ Differences in intensity distributions between EPs should be interpreted as
 *statistical tendencies*, not deterministic predictions — there is substantial
 overlap between EPs at the individual-cyclone level.
 
-### 6.2 Seasonal distribution (panel b — bar chart)
+### 7.2 Seasonal distribution (panel b — bar chart)
 
 **Method:** Genesis month is assigned to a season (SH convention); the percentage
 of cyclones per season within each EP is computed as $n_\text{EP,season} / n_\text{EP,total} \times 100$.
@@ -309,7 +309,7 @@ Causal attribution (e.g., "EP1 occurs in winter because stronger baroclinicity f
 $C_a$") is physically reasonable but not directly demonstrated by the frequency
 statistics alone.
 
-### 6.3 Trend analysis (panel c — Mann–Kendall)
+### 7.3 Trend analysis (panel c — Mann–Kendall)
 
 #### Motivation
 
@@ -387,9 +387,9 @@ allows reviewers to inspect all variants.
 
 ---
 
-## 7. Figure 6 — Genesis density (KDE)
+## 8. Figure 7 — Genesis density (KDE)
 
-### 7.1 KDE methodology
+### 8.1 KDE methodology
 
 Genesis density is computed following **Hoskins & Hodges (2005)** using a Gaussian
 kernel with the haversine (great-circle) distance metric:
@@ -424,7 +424,7 @@ distances. A reference Earth radius of 6369 km (at ~40°S) is used in area
 normalization. The exact normalization constants are in the script configuration block
 of `06_figure_genesis_density_kde.py`.
 
-### 7.2 Min-max normalized relative anomaly (panels b–d)
+### 8.2 Min-max normalized relative anomaly (panels b–d)
 
 To compare genesis distributions across EPs of very different size
 (EP1: ~12% of total; EP3: ~63% of total), a normalized relative anomaly is
@@ -453,7 +453,7 @@ Values range approximately $-1$ to $+1$:
 - $\Delta_\text{EP} < 0$ (blue): *relatively less* genesis contribution
 - $\Delta_\text{EP} \approx 0$ (white): proportional contribution matching the climatology
 
-### 7.3 Interpretation guidance
+### 8.3 Interpretation guidance
 
 **What the normalization achieves:** It isolates *spatial preference* (where within
 the genesis region does each EP preferentially occur?) from *frequency effects*
@@ -476,11 +476,11 @@ data pattern, not confirmed physical causal relationships without further analys
 
 ---
 
-## 8. Figure 7 — EP − EPALL dynamical composites (EPALL-relative anomaly)
+## 9. Figure 8 — EP − EPALL dynamical composites (EPALL-relative anomaly)
 
-### 8.1 Rationale for the EPALL-relative approach
+### 9.1 Rationale for the EPALL-relative approach
 
-Figure 7 shows **EP − EPALL composites**: the mean field of each Energy Pattern
+Figure 8 shows **EP − EPALL composites**: the mean field of each Energy Pattern
 minus the mean field of all cyclones combined (EPALL). Subtracting EPALL eliminates
 the dynamical signature that is common to all intensifying South Atlantic extratropical
 cyclones. The residual therefore isolates what is *dynamically distinctive* about
@@ -493,7 +493,7 @@ they resemble a generic cyclone.
 > approach removes those shared-cyclone features, revealing the EP-specific structure
 > at a finer level of detail.
 
-### 8.2 Composite methodology
+### 9.2 Composite methodology
 
 Storm-relative composites for EP1 (n as reported by script), EP2, EP3, and EPALL
 are precomputed by `step3_precompute_composites.py` over each cyclone's
@@ -509,7 +509,7 @@ latitude (121 × 121 grid points at 0.25° ERA5). Figure 7 then computes
 >    direction. Asymmetries may partly reflect preferred propagation directions.
 > 3. Cases with tracking failures or data gaps are excluded.
 
-### 8.3 Row 1: Upper-level / baroclinic structure departure
+### 9.3 Row 1: Upper-level / baroclinic structure departure
 
 **Shading — $(\text{PV}_{200}) - \text{EPALL}$ [PVU]:**
 
@@ -537,7 +537,7 @@ potential *exceeds* that of a generic intensifying cyclone. Dashed steelblue con
 intervals — provides the absolute cyclone position and depth as a spatial reference
 layer. No wind vectors are drawn in Row 1.
 
-### 8.4 Row 2: Low-level frontal / thermal structure departure
+### 9.4 Row 2: Low-level frontal / thermal structure departure
 
 **Shading — $(\text{PV}_{850}) - \text{EPALL}$ [PVU]:**
 
@@ -559,7 +559,7 @@ weaker frontal thermal gradients than the average intensifying cyclone.
 
 **Wind vectors — $(u, v)_{850} - \text{EPALL}$ [m s⁻¹]:** Reference vector: 5 m s⁻¹.
 
-### 8.5 Row 3: Jet-level energetics departure
+### 9.5 Row 3: Jet-level energetics departure
 
 **Shading — $\text{AFC}_{250} - \text{EPALL}$ [W m⁻²]:**
 
@@ -618,7 +618,7 @@ $$
 integration, centred at (0°, 0°). Shows how the dynamical EP-distinctive fields
 relate spatially to the LEC computation window.
 
-### 8.6 Global colormap design
+### 9.6 Global colormap design
 
 Shading fields use the custom diverging colormap `CMAP_PV_ANOM` (rows 1–2: PV
 anomalies) and `CMAP_AFC` (row 3: AFC anomaly), both defined in
@@ -769,7 +769,7 @@ interaction with the background state.
    of different satellite observing systems over time) may introduce artificial low-
    frequency variability that mimics trends.
 
-6. **Composite field causality:** All composite fields in Figure 7 are simultaneous
+6. **Composite field causality:** All composite fields in Figure 8 are simultaneous
    means during the intensification phase — they document co-location and co-occurrence,
    not causal relationships. The association between, e.g., positive AFC and cyclone
    intensification is consistent with downstream development theory but is not proved

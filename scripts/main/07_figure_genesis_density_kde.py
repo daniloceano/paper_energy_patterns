@@ -435,7 +435,7 @@ def create_figure():
     plt.tight_layout()
     
     # Save figure
-    output_file = FIGURES_DIR / '6_ep_genesis_density_kde.png'
+    output_file = FIGURES_DIR / '7_ep_genesis_density_kde.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n{'='*60}")
     print(f"Figure saved: {output_file}")

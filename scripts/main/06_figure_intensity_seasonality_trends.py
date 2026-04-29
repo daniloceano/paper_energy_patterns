@@ -34,7 +34,16 @@ warnings.filterwarnings('ignore')
 import os
 from datetime import datetime
 
-from statsmodels.stats.diagnostic import acorr_ljungbox
+try:
+    from statsmodels.stats.diagnostic import acorr_ljungbox
+except TypeError as e:
+    raise EnvironmentError(
+        f"Failed to import statsmodels: {e}\n"
+        "This usually means you are running with the wrong Python environment.\n"
+        "Please activate the project environment first:\n"
+        "    conda activate paper_energy_patterns\n"
+        "then run the script again."
+    ) from e
 
 # Require pymannkendall for trend analysis
 try:

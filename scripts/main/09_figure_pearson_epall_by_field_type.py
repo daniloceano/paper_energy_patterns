@@ -137,7 +137,11 @@ def load_data() -> pd.DataFrame:
     if not INPUT_CSV.exists():
         raise FileNotFoundError(
             f"Input file not found: {INPUT_CSV}\n"
-            "Run scripts/lec_field_dependence_analysis/step7_compute_predep.py first."
+            "The EPALL run of step 7 has not been executed yet.\n"
+            "Run the following command from the project root:\n"
+            "    python scripts/lec_field_dependence_analysis/step7_compute_predep.py "
+            "--field-type absolute --ep 0\n"
+            "Then rerun this script."
         )
     df = pd.read_csv(INPUT_CSV)
     df = df[df["lec_term"].isin(LEC_ORDER) & df["pearson_r"].notna()].copy()

@@ -49,7 +49,7 @@ sys.path.append(str(BASE_DIR))
 # ---------------------------------------------------------------------------
 # Configurable visual parameters
 # ---------------------------------------------------------------------------
-FIGSIZE              = (10.0, 12.0)   # inches (width × height)
+FIGSIZE              = (10.0, 9.0)   # inches (width × height)
 DPI                  = 300
 FONT_FAMILY          = "DejaVu Sans"
 FONT_SIZE_TITLE      = 14             # panel title
@@ -86,7 +86,6 @@ FIELD_GROUPS = {
     "afc_250":    "AFC 250",
     "ke_adv_250": "KE adv 250",
     "pv_200":     "PV 200",
-    "pv_850":     "PV 850",
 }
 
 # Preferred feature display order and labels (X-axis within each panel)
@@ -112,19 +111,24 @@ FEATURE_DISPLAY = {
     "sector_west":     "sector W",
 }
 
-# Original warm palette from diag_correlation_heatmaps.py — preserved exactly
-# (grey for |r| < GREY_THRESHOLD, then warm tones in 0.1 steps)
+# Colour palette (grey for |r| < GREY_THRESHOLD; warm for r > 0; blue for r < 0)
 GREY_COLOR  = "#b3b3b3"
 WARM_COLORS = [
-    "#ffff99",   # 0.20–0.30
-    "#ffe64d",   # 0.30–0.40
-    "#ffcc00",   # 0.40–0.50
-    "#ffb300",   # 0.50–0.60
-    "#ff9900",   # 0.60–0.70
-    "#ff7300",   # 0.70–0.80
-    "#ff4d00",   # 0.80–0.90
-    "#e62600",   # 0.90–1.00
-    "#cc0000",   # ≥ 1.00
+    "#ffff99",   # +0.20–+0.30
+    "#ffe64d",   # +0.30–+0.40
+    "#ffcc00",   # +0.40–+0.50
+    "#ffb300",   # +0.50–+0.60
+    "#ff9900",   # +0.60–+0.70
+    "#ff7300",   # +0.70–+0.80
+    "#ff4d00",   # +0.80–+0.90
+    "#e62600",   # +0.90–+1.00
+    "#cc0000",   # ≥ +1.00
+]
+BLUE_COLORS = [
+    "#dce4f5",   # -0.20 to -0.30  (lightest, closest to 0)
+    "#b9caeb",   # -0.30 to -0.40
+    "#8aaad7",   # -0.40 to -0.50
+    "#5b84bc",   # ≤ -0.50         (darkest)
 ]
 
 
@@ -151,52 +155,67 @@ def load_data() -> pd.DataFrame:
 
 def make_colormap(vmax: float):
     """
-    Discrete ListedColormap and BoundaryNorm.
+    Discrete diverging ListedColormap and BoundaryNorm for signed Pearson r.
 
-    Bins:  [0, GREY_THRESHOLD)  → grey
-           [GREY_THRESHOLD, vmax] in COLORBAR_STEP increments → warm tones
+    Bins:  (−vmax, −GREY_THRESHOLD)  → blue tones (light→dark going negative)
+           [−GREY_THRESHOLD, +GREY_THRESHOLD) → grey
+           [+GREY_THRESHOLD, +vmax]  → warm tones
+
+    BLUE_COLORS has 4 entries (supports up to 4 negative steps, i.e. vmax ≤ 0.6).
     """
-    n_warm = int(round((vmax - GREY_THRESHOLD) / COLORBAR_STEP))
-    warm_slice = WARM_COLORS[:n_warm]
+    n_steps = int(round((vmax - GREY_THRESHOLD) / COLORBAR_STEP))
+    warm_slice = WARM_COLORS[:n_steps]
+    # BLUE_COLORS is ordered lightest→darkest (closest to 0 → most negative);
+    # reverse so the most-negative bin comes first in the boundary list.
+    blue_slice = list(reversed(BLUE_COLORS[:n_steps]))
+
+    neg_bounds = [-vmax + i * COLORBAR_STEP for i in range(n_steps)]
     boundaries = (
-        [0.0, GREY_THRESHOLD]
-        + [GREY_THRESHOLD + (i + 1) * COLORBAR_STEP for i in range(n_warm)]
+        neg_bounds
+        + [-GREY_THRESHOLD, GREY_THRESHOLD]
+        + [GREY_THRESHOLD + (i + 1) * COLORBAR_STEP for i in range(n_steps)]
     )
-    cmap = mcolors.ListedColormap([GREY_COLOR] + warm_slice, name="pearson_discrete")
+    colors = blue_slice + [GREY_COLOR] + warm_slice
+    cmap = mcolors.ListedColormap(colors, name="pearson_diverging")
     norm = mcolors.BoundaryNorm(boundaries, ncolors=cmap.N)
     return cmap, norm, boundaries
 
 
-def pivot_for_field(df: pd.DataFrame, field_key: str) -> pd.DataFrame:
-    """Build a (LEC_ORDER × features) pivot table for *field_key*."""
+def pivot_for_field(df: pd.DataFrame, field_key: str):
+    """Return (pivot_r, pivot_rho) for *field_key* — both (LEC_ORDER × features)."""
     sub = df[df["field"] == field_key].copy()
-    pivot = sub.pivot_table(index="lec_term", columns="feature", values="abs_r")
 
-    # Guarantee all canonical terms appear (fill missing with NaN)
-    for t in LEC_ORDER:
-        if t not in pivot.index:
-            pivot.loc[t] = np.nan
-    pivot = pivot.loc[LEC_ORDER]
+    def _build(col):
+        piv = sub.pivot_table(index="lec_term", columns="feature", values=col)
+        for t in LEC_ORDER:
+            if t not in piv.index:
+                piv.loc[t] = np.nan
+        piv = piv.loc[LEC_ORDER]
+        feat_ordered = [f for f in FEATURE_ORDER if f in piv.columns]
+        feat_extra   = [f for f in piv.columns  if f not in feat_ordered]
+        return piv[feat_ordered + feat_extra]
 
-    feat_ordered  = [f for f in FEATURE_ORDER if f in pivot.columns]
-    feat_extra    = [f for f in pivot.columns  if f not in feat_ordered]
-    return pivot[feat_ordered + feat_extra]
+    pivot_r   = _build("pearson_r")
+    pivot_rho = _build("spearman_rho").reindex(columns=pivot_r.columns)
+    return pivot_r, pivot_rho
 
 
-def draw_panel(ax, pivot, title, cmap, norm, panel_label):
-    """Draw one field-type heatmap panel."""
-    mat = pivot.values
+def draw_panel(ax, pivot_r, pivot_rho, title, cmap, norm, panel_label):
+    """Draw one field-type heatmap panel with hatching where |r - rho| > 0.1."""
+    import matplotlib.patches as mpatches
+
+    mat = pivot_r.values
     im = ax.imshow(mat, aspect="auto", cmap=cmap, norm=norm,
                    interpolation="nearest")
 
-    xlabels = [FEATURE_DISPLAY.get(c, c) for c in pivot.columns]
+    xlabels = [FEATURE_DISPLAY.get(c, c) for c in pivot_r.columns]
     ax.set_xticks(range(len(xlabels)))
     ax.set_xticklabels(xlabels, rotation=XTICKLABEL_ROTATION,
                        ha="right", fontsize=FONT_SIZE_TICKS,
                        fontfamily=FONT_FAMILY)
 
-    ax.set_yticks(range(len(pivot.index)))
-    ax.set_yticklabels(pivot.index.tolist(),
+    ax.set_yticks(range(len(pivot_r.index)))
+    ax.set_yticklabels(pivot_r.index.tolist(),
                        fontsize=FONT_SIZE_TICKS,
                        fontfamily=FONT_FAMILY)
 
@@ -207,6 +226,23 @@ def draw_panel(ax, pivot, title, cmap, norm, panel_label):
         ax.axvline(x, color="white", linewidth=0.4)
     for y in np.arange(-0.5, mat.shape[0], 1):
         ax.axhline(y, color="white", linewidth=0.4)
+
+    # Hatch cells where |pearson_r - spearman_rho| > 0.1
+    rho_mat = pivot_rho.values
+    nrows_m, ncols_m = mat.shape
+    for yi in range(nrows_m):
+        for xi in range(ncols_m):
+            r_val   = mat[yi, xi]
+            rho_val = rho_mat[yi, xi]
+            if np.isnan(r_val) or np.isnan(rho_val):
+                continue
+            if abs(r_val - rho_val) > 0.1:
+                rect = mpatches.Rectangle(
+                    (xi - 0.5, yi - 0.5), 1.0, 1.0,
+                    linewidth=0, fill=False,
+                    hatch="///", edgecolor="black", alpha=0.55,
+                )
+                ax.add_patch(rect)
 
     ax.tick_params(axis="both", which="both", length=0)
     return im
@@ -248,9 +284,9 @@ def main():
     for idx, (field_key, panel_label) in enumerate(zip(fields_present, panel_labels)):
         row, col = divmod(idx, NCOLS)
         ax = fig.add_subplot(gs[row, col])
-        pivot = pivot_for_field(df, field_key)
+        pivot_r, pivot_rho = pivot_for_field(df, field_key)
         last_im = draw_panel(
-            ax, pivot, FIELD_GROUPS[field_key],
+            ax, pivot_r, pivot_rho, FIELD_GROUPS[field_key],
             cmap, norm, panel_label,
         )
 
@@ -263,10 +299,10 @@ def main():
     cbar_ax = fig.add_subplot(gs[nrows, :])
     cb = fig.colorbar(last_im, cax=cbar_ax, orientation="horizontal",
                       extend="neither")
-    cb.set_label("Pearson |r|", fontsize=FONT_SIZE_CBAR, fontfamily=FONT_FAMILY)
+    cb.set_label("Pearson r", fontsize=FONT_SIZE_CBAR, fontfamily=FONT_FAMILY)
 
-    tick_vals  = boundaries[1:]          # skip 0 (lower bound of grey)
-    tick_labels = ["0.2"] + [f"{v:.1f}" for v in tick_vals[1:]]
+    tick_vals   = boundaries
+    tick_labels = [f"{v:.1f}" for v in tick_vals]
     cb.set_ticks(tick_vals)
     cb.set_ticklabels(tick_labels, fontsize=FONT_SIZE_TICKS,
                       fontfamily=FONT_FAMILY)

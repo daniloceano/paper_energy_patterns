@@ -111,6 +111,20 @@ FEATURE_DISPLAY = {
     "sector_west":     "sector W",
 }
 
+# Conceptual feature groups used for visual separators in the heatmap panels.
+FEATURE_GROUPS = {
+    "central_mean": {
+        "domain_mean", "domain_abs_mean", "centre_value",
+    },
+    "border": {
+        "border_north", "border_south", "border_east", "border_west",
+        "contrast_ew", "contrast_sn",
+    },
+    "sector": {
+        "sector_north", "sector_south", "sector_east", "sector_west",
+    },
+}
+
 # Colour palette (grey for |r| < GREY_THRESHOLD; warm for r > 0; blue for r < 0)
 GREY_COLOR  = "#b3b3b3"
 WARM_COLORS = [
@@ -200,6 +214,34 @@ def pivot_for_field(df: pd.DataFrame, field_key: str):
     return pivot_r, pivot_rho
 
 
+def compute_feature_group_boundaries(columns):
+    """
+    Compute boundary positions between conceptual feature groups.
+
+    Returns:
+        boundaries_x: list of x-positions for axvline (e.g., 2.5)
+        boundaries_after_idx: list of integer column indices after which a
+            boundary is drawn (e.g., 2 means between columns 2 and 3).
+    """
+    feature_to_group = {}
+    for group_name, feats in FEATURE_GROUPS.items():
+        for feat in feats:
+            feature_to_group[feat] = group_name
+
+    groups_by_col = [feature_to_group.get(c) for c in columns]
+    boundaries_after_idx = []
+    for i in range(len(groups_by_col) - 1):
+        g_left = groups_by_col[i]
+        g_right = groups_by_col[i + 1]
+        if g_left is None or g_right is None:
+            continue
+        if g_left != g_right:
+            boundaries_after_idx.append(i)
+
+    boundaries_x = [idx + 0.5 for idx in boundaries_after_idx]
+    return boundaries_x, boundaries_after_idx
+
+
 def draw_panel(ax, pivot_r, pivot_rho, title, cmap, norm, panel_label):
     """Draw one field-type heatmap panel with hatching where |r - rho| > 0.1."""
     import matplotlib.patches as mpatches
@@ -227,6 +269,20 @@ def draw_panel(ax, pivot_r, pivot_rho, title, cmap, norm, panel_label):
     for y in np.arange(-0.5, mat.shape[0], 1):
         ax.axhline(y, color="white", linewidth=0.4)
 
+    # Add subtle dashed separators between conceptual feature groups.
+    boundaries_x, boundaries_after_idx = compute_feature_group_boundaries(
+        list(pivot_r.columns)
+    )
+    for x in boundaries_x:
+        ax.axvline(
+            x=x,
+            linestyle="--",
+            linewidth=0.8,
+            color="black",
+            alpha=0.6,
+            zorder=6,
+        )
+
     # Hatch cells where |pearson_r - spearman_rho| > 0.1
     rho_mat = pivot_rho.values
     nrows_m, ncols_m = mat.shape
@@ -245,7 +301,7 @@ def draw_panel(ax, pivot_r, pivot_rho, title, cmap, norm, panel_label):
                 ax.add_patch(rect)
 
     ax.tick_params(axis="both", which="both", length=0)
-    return im
+    return im, boundaries_after_idx
 
 
 # ===========================================================================
@@ -280,15 +336,17 @@ def main():
 
     panel_labels = [f"({chr(ord('a') + i)})" for i in range(n_panels)]
     last_im = None
+    panel_boundaries = {}
 
     for idx, (field_key, panel_label) in enumerate(zip(fields_present, panel_labels)):
         row, col = divmod(idx, NCOLS)
         ax = fig.add_subplot(gs[row, col])
         pivot_r, pivot_rho = pivot_for_field(df, field_key)
-        last_im = draw_panel(
+        last_im, boundaries_after_idx = draw_panel(
             ax, pivot_r, pivot_rho, FIELD_GROUPS[field_key],
             cmap, norm, panel_label,
         )
+        panel_boundaries[field_key] = boundaries_after_idx
 
     # Hide any spare axes in the last row
     if n_panels % NCOLS:
@@ -310,6 +368,10 @@ def main():
 
     fig.savefig(OUTPUT_PNG, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
+
+    print("\nComputed separator boundaries (column indices after which a dashed line is drawn):")
+    for field_key in fields_present:
+        print(f"  {field_key}: {panel_boundaries.get(field_key, [])}")
 
     import os
     size_kb = os.path.getsize(OUTPUT_PNG) / 1024

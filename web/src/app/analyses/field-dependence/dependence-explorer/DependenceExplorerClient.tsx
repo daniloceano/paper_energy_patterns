@@ -20,8 +20,8 @@ interface Props {
 
 const METRIC_LABELS: Record<Metric, string> = {
   predep: 'PREDEP',
-  pearson: '|Pearson r|',
-  spearman: '|Spearman ρ|',
+  pearson: 'Pearson r',
+  spearman: 'Spearman ρ',
 }
 
 // EP labels including EPALL (ep=0: all cyclones pooled, not a cluster)
@@ -43,13 +43,14 @@ function resolveField(fieldKey: string, fieldType: FieldType): string {
 
 function getMetricValue(row: LfdPredepRow, metric: Metric): number | null {
   if (metric === 'predep') return row.predep
-  if (metric === 'pearson') return row.pearson_r != null ? Math.abs(row.pearson_r) : null
-  if (metric === 'spearman') return row.spearman_rho != null ? Math.abs(row.spearman_rho) : null
+  if (metric === 'pearson') return row.pearson_r ?? null
+  if (metric === 'spearman') return row.spearman_rho ?? null
   return null
 }
 
-// ── Colour helpers (grey → yellow → orange → red, 0.1 steps) ──
-function metricColor(val: number | null): string {
+// ── Colour helpers ────────────────────────────────────────────
+// PREDEP: grey → yellow → orange → red (0–1, threshold at 0.1)
+function predepColor(val: number | null): string {
   if (val == null || val < 0.1) return '#b3b3b3'
   if (val < 0.2) return '#ffff99'
   if (val < 0.3) return '#ffe64d'
@@ -62,7 +63,41 @@ function metricColor(val: number | null): string {
   return '#cc0000'
 }
 
-function metricTextColor(val: number | null): string {
+// Pearson / Spearman: divergent scale matching Figure 09 colour palette.
+// |r| < 0.2 → grey; r > 0 → warm (yellow→red); r < 0 → blue (light→dark).
+function correlationColor(val: number | null): string {
+  if (val == null) return '#b3b3b3'
+  const abs = Math.abs(val)
+  if (abs < 0.2) return '#b3b3b3'
+  if (val > 0) {
+    if (val < 0.3) return '#ffff99'
+    if (val < 0.4) return '#ffe64d'
+    if (val < 0.5) return '#ffcc00'
+    if (val < 0.6) return '#ffb300'
+    if (val < 0.7) return '#ff9900'
+    if (val < 0.8) return '#ff7300'
+    if (val < 0.9) return '#ff4d00'
+    if (val < 1.0) return '#e62600'
+    return '#cc0000'
+  }
+  // Negative: blue tones — lightest closest to 0, darkest most negative
+  if (val > -0.3) return '#dce4f5'
+  if (val > -0.4) return '#b9caeb'
+  if (val > -0.5) return '#8aaad7'
+  return '#5b84bc'
+}
+
+function metricColor(val: number | null, metric: Metric = 'predep'): string {
+  if (metric === 'pearson' || metric === 'spearman') return correlationColor(val)
+  return predepColor(val)
+}
+
+function metricTextColor(val: number | null, metric: Metric = 'predep'): string {
+  if (metric === 'pearson' || metric === 'spearman') {
+    // Blues are light enough for dark text; warm reds/oranges need white above ~0.6
+    if (val == null || val <= 0 || Math.abs(val) < 0.6) return '#1e293b'
+    return '#ffffff'
+  }
   if (val == null || val < 0.5) return '#1e293b'
   return '#ffffff'
 }
@@ -90,6 +125,7 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
   const [scatterLoading, setScatterLoading] = useState(false)
   const [scatterError, setScatterError] = useState<string | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [scatterSelectionActive, setScatterSelectionActive] = useState(false)
 
   // ── Fetch predep data on mount ────────────────────────
   useEffect(() => {
@@ -204,29 +240,24 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
     }
   }, [fieldType])
 
-  // Clear scatter data when field type changes
+  // Clear scatter data and active selection when field type changes
   useEffect(() => {
     setScatterData(null)
     setScatterError(null)
+    setScatterSelectionActive(false)
   }, [fieldType])
 
   // ── Draw scatter on canvas ────────────────────────────
-  // Robust axis ranges: use 1st–99th percentile with a small pad
-  // to avoid outlier-dominated "vertical smear" artefacts.
-  // Extreme points beyond the percentile clip are still drawn;
-  // only the visible window is adjusted (no data is hidden).
-  function robustRange(vals: number[], padFraction = 0.05): [number, number] {
-    const sorted = [...vals].sort((a, b) => a - b)
-    const n = sorted.length
-    if (n < 4) return [sorted[0], sorted[n - 1]]
-    const lo = sorted[Math.max(0, Math.floor(n * 0.01))]
-    const hi = sorted[Math.min(n - 1, Math.ceil(n * 0.99) - 1)]
-    const span = hi - lo || 1
-    return [lo - span * padFraction, hi + span * padFraction]
+  // Axis range: exact data min/max with 2% padding so edge points are not clipped.
+  function exactRange(vals: number[]): [number, number] {
+    const min = Math.min(...vals)
+    const max = Math.max(...vals)
+    const span = max - min || 1
+    return [min - span * 0.02, max + span * 0.02]
   }
 
   useEffect(() => {
-    if (!scatterData) return
+    if (!scatterData || !scatterSelectionActive) return
 
     // Use requestAnimationFrame to ensure canvas has layout dimensions
     const rafId = requestAnimationFrame(() => {
@@ -271,10 +302,8 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
 
       const xVals = points.map((p) => p.x)
       const yVals = points.map((p) => p.y)
-      // Robust axis ranges: 1st–99th percentile + 5% pad
-      // Prevents outliers from compressing the main data cloud into a narrow band.
-      const [xMin, xMax] = robustRange(xVals)
-      const [yMin, yMax] = robustRange(yVals)
+      const [xMin, xMax] = exactRange(xVals)
+      const [yMin, yMax] = exactRange(yVals)
       const xRange = xMax - xMin || 1
       const yRange = yMax - yMin || 1
 
@@ -345,7 +374,7 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
     })
 
     return () => cancelAnimationFrame(rafId)
-  }, [scatterData, selectedEp, selectedField, selectedFeature, selectedLecTerm, fieldType])
+  }, [scatterData, scatterSelectionActive, selectedEp, selectedField, selectedFeature, selectedLecTerm, fieldType])
 
   // ── Heatmap cell click ────────────────────────────────
   function handleCellClick(lecTerm: string, colKey: string) {
@@ -358,6 +387,7 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
     if (ALL_FIELDS.includes(baseField)) setSelectedField(baseField)
     if (ALL_FEATURES.includes(feature)) setSelectedFeature(feature)
     setSelectedLecTerm(lecTerm)
+    setScatterSelectionActive(true)
   }
 
   // ── Scope label ───────────────────────────────────────
@@ -439,8 +469,9 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
           )}
         </h2>
         <p className="mb-4 text-sm text-slate-500">
-          Static pipeline heatmaps for PREDEP, |Pearson|, and |Spearman| — {scopeLabel} terms,
-          {fieldType} values. Click any cell in the interactive heatmap below to drill down.
+          Static pipeline figures ({scopeLabel} terms, {fieldType} values). Note: the static Pearson and Spearman
+          panels show |r| (absolute values). The interactive heatmap below uses signed correlations with a
+          divergent colour scale (blue = negative, warm = positive).
         </p>
         <div className="grid gap-4 md:grid-cols-3">
           <div className="overflow-hidden rounded-lg border border-slate-200">
@@ -551,8 +582,8 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
                             key={col}
                             className={`cursor-pointer border border-slate-100 px-0 py-0 text-center transition-all hover:ring-2 hover:ring-inset hover:ring-indigo-400 ${isSelected ? 'ring-2 ring-inset ring-indigo-600' : ''}`}
                             style={{
-                              backgroundColor: metricColor(val),
-                              color: metricTextColor(val),
+                              backgroundColor: metricColor(val, metric),
+                              color: metricTextColor(val, metric),
                               minWidth: '16px',
                               height: '20px',
                               fontSize: '8px',
@@ -560,7 +591,9 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
                             title={`${lec} × ${col.replace('__', ' — ')}: ${val?.toFixed(3) ?? 'N/A'}`}
                             onClick={() => handleCellClick(lec, col)}
                           >
-                            {val != null && val >= 0.1 ? val.toFixed(2) : ''}
+                            {metric === 'predep'
+                              ? (val != null && val >= 0.1 ? val.toFixed(2) : '')
+                              : (val != null && Math.abs(val) >= 0.2 ? val.toFixed(2) : '')}
                           </td>
                         )
                       })}
@@ -571,15 +604,24 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
             </div>
             {/* Legend */}
             <div className="mt-2 flex items-center gap-1 text-xs text-slate-500">
-              <span>0</span>
-              {[0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95].map((v) => (
-                <div
-                  key={v}
-                  className="h-3 w-6 rounded-sm"
-                  style={{ backgroundColor: metricColor(v) }}
-                />
-              ))}
-              <span>1</span>
+              {metric === 'predep' ? (
+                <>
+                  <span>0</span>
+                  {[0.05, 0.15, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95].map((v) => (
+                    <div key={v} className="h-3 w-6 rounded-sm" style={{ backgroundColor: predepColor(v) }} />
+                  ))}
+                  <span>1</span>
+                </>
+              ) : (
+                <>
+                  <span>−1</span>
+                  {[-0.75, -0.45, -0.35, -0.25, 0, 0.25, 0.35, 0.45, 0.55, 0.65, 0.75, 0.95].map((v) => (
+                    <div key={v} className="h-3 w-6 rounded-sm" style={{ backgroundColor: correlationColor(v) }} />
+                  ))}
+                  <span>+1</span>
+                  <span className="ml-2 text-slate-400">grey = |r| &lt; 0.2</span>
+                </>
+              )}
             </div>
           </>
         )}
@@ -596,7 +638,7 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
               <label className="mb-1 block text-xs font-medium text-slate-500">Dynamic Field</label>
               <select
                 value={selectedField}
-                onChange={(e) => setSelectedField(e.target.value)}
+                onChange={(e) => { setSelectedField(e.target.value); if (scatterData) setScatterSelectionActive(true) }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 {ALL_FIELDS.map((f) => (
@@ -608,7 +650,7 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
               <label className="mb-1 block text-xs font-medium text-slate-500">Spatial Feature</label>
               <select
                 value={selectedFeature}
-                onChange={(e) => setSelectedFeature(e.target.value)}
+                onChange={(e) => { setSelectedFeature(e.target.value); if (scatterData) setScatterSelectionActive(true) }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 {ALL_FEATURES.map((f) => (
@@ -620,7 +662,7 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
               <label className="mb-1 block text-xs font-medium text-slate-500">LEC Term</label>
               <select
                 value={selectedLecTerm}
-                onChange={(e) => setSelectedLecTerm(e.target.value)}
+                onChange={(e) => { setSelectedLecTerm(e.target.value); if (scatterData) setScatterSelectionActive(true) }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 {lecTerms.map((t) => (
@@ -632,7 +674,7 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
               <label className="mb-1 block text-xs font-medium text-slate-500">Energy Pattern</label>
               <select
                 value={selectedEp}
-                onChange={(e) => setSelectedEp(Number(e.target.value))}
+                onChange={(e) => { setSelectedEp(Number(e.target.value)); if (scatterData) setScatterSelectionActive(true) }}
                 className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
               >
                 {ALL_EPS_UI.map((ep) => (
@@ -658,17 +700,19 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
                 </span>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                <MetricCard label="PREDEP" value={drilldownRow.predep} active={metric === 'predep'} />
+                <MetricCard label="PREDEP" value={drilldownRow.predep} active={metric === 'predep'} metricType="predep" />
                 <MetricCard
-                  label="|Pearson r|"
-                  value={drilldownRow.pearson_r != null ? Math.abs(drilldownRow.pearson_r) : null}
+                  label="Pearson r"
+                  value={drilldownRow.pearson_r ?? null}
                   active={metric === 'pearson'}
+                  metricType="pearson"
                   sub={drilldownRow.pearson_p != null ? `p = ${drilldownRow.pearson_p < 0.001 ? drilldownRow.pearson_p.toExponential(1) : drilldownRow.pearson_p.toFixed(4)}` : undefined}
                 />
                 <MetricCard
-                  label="|Spearman ρ|"
-                  value={drilldownRow.spearman_rho != null ? Math.abs(drilldownRow.spearman_rho) : null}
+                  label="Spearman ρ"
+                  value={drilldownRow.spearman_rho ?? null}
                   active={metric === 'spearman'}
+                  metricType="spearman"
                   sub={drilldownRow.spearman_p != null ? `p = ${drilldownRow.spearman_p < 0.001 ? drilldownRow.spearman_p.toExponential(1) : drilldownRow.spearman_p.toFixed(4)}` : undefined}
                 />
               </div>
@@ -726,7 +770,17 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
               <span className="text-sm text-slate-400">Loading scatter data (5–7 MB)…</span>
             )}
             {scatterData && !scatterLoading && (
-              <span className="text-xs text-green-600">✓ Loaded ({fieldType})</span>
+              <div className="flex items-center gap-2">
+                {scatterSelectionActive && (
+                  <button
+                    onClick={() => setScatterSelectionActive(false)}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    Clear
+                  </button>
+                )}
+                <span className="text-xs text-green-600">✓ Loaded ({fieldType})</span>
+              </div>
             )}
           </div>
 
@@ -748,6 +802,11 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
                 <span>Click &quot;Load scatter data&quot; to enable interactive scatterplots</span>
                 <span className="text-xs">~5–7 MB download per field type</span>
               </div>
+            ) : !scatterSelectionActive ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-sm text-slate-400">
+                <span>Click a cell in the heatmap above to view a scatterplot</span>
+                <span className="text-xs">or change a selector in the Detail Explorer</span>
+              </div>
             ) : (
               <canvas
                 ref={canvasRef}
@@ -756,12 +815,12 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
               />
             )}
           </div>
-        {scatterData && drilldownRow && (
+        {scatterData && scatterSelectionActive && drilldownRow && (
           <p className="mt-2 text-xs text-slate-500">
             {LFD_DYNAMIC_FIELDS[selectedField]?.label ?? selectedField} — {LFD_SPATIAL_FEATURES[selectedFeature] ?? selectedFeature} (x)
             vs {selectedLecTerm} (y) for {selectedEp === 0 ? 'all cyclones (EPALL, coloured by EP)' : `${EP_LABELS[selectedEp]} cyclones`}.
             Each dot = one cyclone during intensification.
-            {' '}<span className="text-slate-400">(axis range: 1st–99th percentile)</span>
+            {' '}<span className="text-slate-400">(axis range: exact data min–max)</span>
           </p>
         )}
         </div>
@@ -776,13 +835,15 @@ function MetricCard({
   value,
   active,
   sub,
+  metricType = 'predep',
 }: {
   label: string
   value: number | null
   active: boolean
   sub?: string
+  metricType?: Metric
 }) {
-  const color = metricColor(value)
+  const color = metricColor(value, metricType)
   return (
     <div
       className={`rounded-lg border p-3 text-center ${active ? 'border-indigo-300 bg-indigo-50' : 'border-slate-200'}`}

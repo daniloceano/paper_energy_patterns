@@ -35,6 +35,10 @@ data/era5_ep1/*_metadata.csv
 !data/era5_ep1/precomputed_composites_*.nc
 data/era5_ep_structure*/era5_monthly_raw/era5_*.nc
 
+# era5_explosive_cyclones: exclude per-case MSLP downloads (large, remote-only)
+data/era5_explosive_cyclones/*.nc
+data/era5_explosive_cyclones/*_metadata.csv
+
 # era5_ep_structure: exclude per-case downloaded files (large, remote-only)
 # Covers: *_era5.nc, *_era5_pressure.nc, *_era5_single.nc,
 #         *_patch_*.nc, *_era5_backup.nc, and per-case metadata CSVs

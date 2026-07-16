@@ -17,7 +17,11 @@ export function figureUrl(relativePath: string): string {
   if (storageBase) {
     // Strip leading "figures/" — the bucket root already corresponds to figures/
     const bucketPath = relativePath.replace(/^figures\//, '')
-    return `${storageBase.replace(/\/$/, '')}/${bucketPath}`
+    const url = `${storageBase.replace(/\/$/, '')}/${bucketPath}`
+    // Guard against a misconfigured env var (e.g. trailing slash baked into
+    // NEXT_PUBLIC_SUPABASE_FIGURES_URL) producing "co//storage/..." — collapse
+    // any run of slashes that doesn't follow the "https:" scheme separator.
+    return url.replace(/([^:])\/{2,}/g, '$1/')
   }
   // Default: serve from web/public/figures/ (committed static assets, no API route needed)
   return `/${relativePath}`

@@ -126,3 +126,9 @@ web/public/figures/cyclone_explorer/
 
 # Website secret keys
 data/era5_ep_structure_legacy/19790079_metadata.csv
+
+# cps_analysis: generated inputs/outputs (regenerable from ERA5 + tracks)
+# Keep only the two calculator/plotting scripts under version control.
+scripts/cps_analysis/cyclone_tracks/
+scripts/cps_analysis/csv_output/
+scripts/cps_analysis/cps_output/

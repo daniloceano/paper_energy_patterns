@@ -39,7 +39,16 @@ python scripts/explosive_cyclones_analysis/step4_compute_ndr_classify.py
 ```
 
 `step3` only processes cyclones whose MSLP file already exists, so it can run while `step2`
-finishes the rest. Both `step2` and `step3` are resumable.
+finishes the rest. Both `step2` and `step3` are resumable. `step2` retries CDS job-queue
+rejections with exponential backoff and shuffles the processing order (fixed seed) so a
+saturated queue doesn't silently skew the downloaded sample toward one part of the record.
+
+To check progress while `step2` runs in the background (e.g. under `nohup`):
+
+```bash
+python scripts/explosive_cyclones_analysis/step2_1_monitor.py              # one-shot snapshot
+python scripts/explosive_cyclones_analysis/step2_1_monitor.py --watch      # live refresh
+```
 
 **On the local machine** (after the remote run):
 

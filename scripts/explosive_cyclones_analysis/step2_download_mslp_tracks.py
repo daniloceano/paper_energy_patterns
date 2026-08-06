@@ -22,12 +22,21 @@ Run (remote server):
     # smoke test on a few cyclones:
     python scripts/explosive_cyclones_analysis/step2_download_mslp_tracks.py --sample 5 --jobs 3
 
+Retries: the CDS API occasionally rejects a job outright with "Number queued
+requests for this dataset is temporarily limited" (a per-user queue-depth cap,
+distinct from the connection-level retries `cdsapi` already does internally).
+Each such rejection is retried in-process with exponential backoff + jitter
+(see --max-retries / --retry-base-delay / --retry-max-delay); non-retryable
+errors (bad request, auth, etc.) fail immediately as before. The step remains
+resumable — re-running only (re)attempts cyclones without a valid output file.
+
 Author: Danilo Couto de Souza
 Date: June 2026
 """
 
 import sys
 import time
+import random
 import logging
 import argparse
 import multiprocessing as mp
@@ -57,6 +66,62 @@ DEFAULT_DROP_INVALID_DAYS = True
 
 CDS_DATASET = "reanalysis-era5-single-levels"
 CDS_VARIABLE = "mean_sea_level_pressure"
+
+# Retry policy for CDS job-queue rejections (400 "job has been rejected" /
+# "Number queued requests ... temporarily limited") and other transient
+# server-side hiccups. Matched case-insensitively against str(exception).
+DEFAULT_MAX_RETRIES = 6
+DEFAULT_RETRY_BASE_DELAY = 30.0   # seconds, doubles each attempt
+DEFAULT_RETRY_MAX_DELAY = 600.0   # seconds, cap per-attempt sleep
+RETRYABLE_PATTERNS = (
+    "temporarily limited",
+    "job has been rejected",
+    "429",
+    "too many requests",
+    "connection reset",
+    "connection aborted",
+    "connectionerror",
+    "incompleteread",
+    "timed out",
+    "timeout",
+    "queue",
+    "500 ",
+    "502 ",
+    "503 ",
+    "504 ",
+)
+
+
+def _is_retryable(exc: Exception) -> bool:
+    msg = str(exc).lower()
+    return any(p in msg for p in RETRYABLE_PATTERNS)
+
+
+# Populated from CLI args in main(); read by worker processes (copied via fork()).
+RETRY_MAX_RETRIES = DEFAULT_MAX_RETRIES
+RETRY_BASE_DELAY = DEFAULT_RETRY_BASE_DELAY
+RETRY_MAX_DELAY = DEFAULT_RETRY_MAX_DELAY
+
+
+def _retrieve_with_backoff(client, dataset, params, tmp, track_id,
+                            max_retries, base_delay, max_delay):
+    """Call client.retrieve(), retrying retryable failures with exponential backoff + jitter."""
+    attempt = 0
+    while True:
+        try:
+            client.retrieve(dataset, params, str(tmp))
+            return
+        except Exception as e:
+            attempt += 1
+            if attempt > max_retries or not _is_retryable(e):
+                raise
+            delay = min(base_delay * (2 ** (attempt - 1)), max_delay)
+            delay *= 0.75 + 0.5 * random.random()  # +/-25% jitter to avoid thundering herd
+            logging.warning(
+                f"{track_id}: retryable error (attempt {attempt}/{max_retries}), "
+                f"sleeping {delay:.0f}s — {e}"
+            )
+            time.sleep(delay)
 
 
 def _coord_name(ds, candidates):
@@ -118,8 +183,8 @@ def download_one(args):
     tmp = DATA_DIR / f"{track_id}_mslp_raw.nc"
     try:
         c = cdsapi.Client(quiet=True)
-        c.retrieve(
-            CDS_DATASET,
+        _retrieve_with_backoff(
+            c, CDS_DATASET,
             {
                 "product_type": "reanalysis",
                 "format": "netcdf",
@@ -130,7 +195,10 @@ def download_one(args):
                 "time": times,
                 "area": area,
             },
-            str(tmp),
+            tmp, track_id,
+            max_retries=RETRY_MAX_RETRIES,
+            base_delay=RETRY_BASE_DELAY,
+            max_delay=RETRY_MAX_DELAY,
         )
         # Trim to the exact padded window to drop extra days from month spillover
         ds = xr.open_dataset(tmp)
@@ -159,12 +227,28 @@ def download_one(args):
 
 
 def main():
+    global RETRY_MAX_RETRIES, RETRY_BASE_DELAY, RETRY_MAX_DELAY
+
     ap = argparse.ArgumentParser(description="Download storm-following ERA5 MSLP per cyclone")
     ap.add_argument("--jobs", type=int, default=DEFAULT_JOBS,
                     help=f"Parallel CDS requests — keep light (default {DEFAULT_JOBS})")
     ap.add_argument("--sample", type=int, default=0, help="Only the first N cyclones (smoke test)")
     ap.add_argument("--ep", type=int, choices=[1, 2, 3], default=None, help="Restrict to one EP")
+    ap.add_argument("--max-retries", type=int, default=DEFAULT_MAX_RETRIES,
+                    help=f"Retries per cyclone on queue-rejection/transient errors (default {DEFAULT_MAX_RETRIES})")
+    ap.add_argument("--retry-base-delay", type=float, default=DEFAULT_RETRY_BASE_DELAY,
+                    help=f"Base backoff delay in seconds, doubles each attempt (default {DEFAULT_RETRY_BASE_DELAY})")
+    ap.add_argument("--retry-max-delay", type=float, default=DEFAULT_RETRY_MAX_DELAY,
+                    help=f"Cap on backoff delay in seconds (default {DEFAULT_RETRY_MAX_DELAY})")
+    ap.add_argument("--no-shuffle", action="store_true",
+                    help="Process cyclones in track_id order instead of shuffled "
+                         "(shuffling avoids concentrating CDS queue rejections in later years)")
+    ap.add_argument("--seed", type=int, default=42, help="Shuffle seed (default 42)")
     args = ap.parse_args()
+
+    RETRY_MAX_RETRIES = args.max_retries
+    RETRY_BASE_DELAY = args.retry_base_delay
+    RETRY_MAX_DELAY = args.retry_max_delay
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -185,6 +269,12 @@ def main():
         tracks = tracks[tracks["ep"] == args.ep]
 
     groups = [(int(tid), df) for tid, df in tracks.groupby("track_id")]
+    if not args.no_shuffle:
+        # track_id is roughly chronological; a previous run showed CDS queue
+        # rejections concentrate in whichever cyclones get dispatched last, which
+        # silently biased the downloaded sample toward the 1980s. Shuffle so any
+        # queue-limit failures land randomly across the population instead.
+        random.Random(args.seed).shuffle(groups)
     if args.sample:
         groups = groups[: args.sample]
 
@@ -194,6 +284,8 @@ def main():
     print("=" * 70)
     print("STEP 2: Download storm-following ERA5 MSLP")
     print(f"  Cyclones: {len(groups)}  |  Jobs: {args.jobs}  |  Box buffer: {BOX_BUFFER_DEG}°")
+    print(f"  Shuffled: {not args.no_shuffle} (seed={args.seed})")
+    print(f"  Retries: max={RETRY_MAX_RETRIES}  base_delay={RETRY_BASE_DELAY}s  max_delay={RETRY_MAX_DELAY}s")
     print(f"  Output: {DATA_DIR}")
     print("=" * 70)
 
@@ -208,7 +300,7 @@ def main():
     print(f"\nDone in {(time.time() - t0) / 60:.1f} min  |  "
           f"ok={counts['ok']}  skip={counts['skip']}  fail={counts['fail']}")
     if counts["fail"]:
-        print("  ⚠️  Some downloads failed — re-run to retry (resumable).")
+        print("  ⚠️  Some downloads failed even after retries — re-run to retry again (resumable).")
     print("  Next: python scripts/explosive_cyclones_analysis/step3_assign_central_pressure.py")
     return 0
 

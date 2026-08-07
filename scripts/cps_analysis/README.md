@@ -1,43 +1,350 @@
 # Cyclone Phase Space (CPS) Analysis
 
-Computes the Hart (2003) Cyclone Phase Space diagnostics — thermal wind
-asymmetry (B) and lower/upper thermal wind (VTL, VTU) — for each cyclone
-track using ERA5 geopotential and wind fields, and plots the classic
-CPS diagrams (VTL vs B, VTL vs VTU).
+Computes the Hart (2003) Cyclone Phase Space diagnostics — thermal wind asymmetry (`B`)
+and lower/upper thermal wind (`VTL`, `VTU`) — for every cyclone track in the study, and
+classifies each system into a **pure phase class** or a **phase transition**. The resulting
+classes are cross-referenced against the **Energy Patterns (EP1/EP2/EP3)** from the K-Means
+clustering on Lorenz Energy Cycle diagnostics.
 
-## Scripts
+Science notes are split to match:
+`SCIENTIFIC_NOTES.md` is the canonical record (framework, equations, methodology, canonical
+results, caveats); `sensitivity/SCIENTIFIC_NOTES.md` is the exploratory record.
 
-- `cps_calculator_era5tocsv.py` — reads a per-cyclone ERA5 NetCDF (z, u, v)
-  and its track file, computes B/VTL/VTU/SIZE at each matched time step,
-  and writes a CSV.
-- `cps_plots_csv_gris.py` — reads a CPS CSV and generates the two-panel
-  phase-space diagram (grey markers; no intensity/pressure encoding).
+---
 
-## Usage
+## Canonical analysis vs sensitivity tests
+
+| | Canonical | Sensitivity |
+|---|---|---|
+| Scripts | `step1..step4` in this folder | `sensitivity/` |
+| Thresholds | **one set** (de Souza et al. 2026) | six sets × four identification rules |
+| Outputs | `results/cps_analysis/`, `figures/cps_analysis/` | the `sensitivity/` subfolder of each |
+| Status | **the analysis of record** | reference only; motivates the canonical design |
+
+`sensitivity/README.md` lists the nine findings from those tests and, for each, the specific
+canonical design choice it motivated.
+
+---
+
+## Provenance
+
+The CPS calculator and the per-cyclone diagram script were written by
+**Andres Rodriguez (IAG-USP)**, who also ran the full computation over the 6,789-cyclone
+population — a multi-month job:
+
+| File | Author | Status |
+|---|---|---|
+| `cps_calculator_era5tocsv.py` | A. Rodriguez | preserved, unmodified |
+| `cps_plots_csv_gris.py` | A. Rodriguez | preserved, unmodified |
+| `csv_output/` (6,776 CSVs) | A. Rodriguez | **irreplaceable** — the per-cyclone ERA5 NetCDFs were not retained |
+
+**Do not delete `csv_output/`**: the ERA5 inputs it came from are gone, so regenerating it
+means re-downloading and re-processing the whole archive.
+
+---
+
+## The canonical classification
+
+**Thresholds** (`cps_criteria.CANONICAL`), following de Souza et al. (2026), who take
+extratropical/tropical from Wood et al. (2023) and subtropical from Gozzo et al. (2014):
+
+| Class | `B` [m] | `VTL` | `VTU` |
+|---|---|---|---|
+| extratropical | > 10 | < 0 | < 0 |
+| subtropical | −25 < B < 25 | > −50 | < −10 |
+| tropical | < 10 | > 0 | > 0 |
+
+**Persistence gate.** A class counts as a *state* of the cyclone only when held for
+**≥ 36 consecutive hours** (Guishard et al. 2009; Gozzo et al. 2014). Without this gate the
+raw labels oscillate — 158 distinct sequences, the commonest non-pure one being EC→SC→EC —
+and a "genesis as X, later Y" rule has no defined answer.
+
+**Classes.**
+
+| Code | Meaning |
+|---|---|
+| `EC` / `SC` / `TC` | a single persistent state (**not** "pure" — see below) |
+| `ST` | subtropical transition, EC → SC (Reboita et al. 2022) |
+| `SD` | subtropical decay, SC → EC |
+| `TT` | tropical transition, EC or SC → TC (Davis & Bosart 2003, 2004) |
+| `ET` | extratropical transition, TC → EC (Evans & Hart 2003) |
+| `EC_like` / `SC_like` / `TC_like` | characteristics shown but never sustained 36 h |
+| `undetermined` | no dominant structure |
+
+`ET` is kept to its established meaning — Evans & Hart (2003): *"the storm evolves **from a
+tropical cyclone** to a baroclinic system"* — so SC → EC gets its own name (`SD`) rather
+than being folded in.
+
+**The tropical-transition test.** Every persistent tropical run is tested. It is a genuine
+`TT` if **either**:
+
+the **tropical run itself** must lie **equatorward of 40°S** and be ≥ 50% over ocean.
+Otherwise it is a **warm seclusion** (if preceded by an extratropical state) or an
+**indeterminate warm core**, and is removed from the state sequence. The preceding state is
+recorded as a pathway descriptor but does not bypass the test — the Shapiro–Keyser occlusion
+passes through hybrid structure too, so "preceded by subtropical" is what a seclusion does
+as well. Only the poleward bound is used: Iba formed at ~20°S, on the edge of the
+Guishard/Gozzo band, so an equatorward bound would exclude the most plausibly tropical
+cases.
+
+Two design points, both forced by the sensitivity evidence:
+
+- The geographic test is on the **run**, not on genesis. Six of sixteen persistent tropical
+  runs belong to cyclones that formed *inside* the band, moved ~30° poleward, and only then
+  acquired a warm core at 55–62°S.
+- The **life-cycle phase** of the run is **recorded but never used as a gate**. A phase-only
+  rule admits exactly one case — track 20160337 at −54.7°S — confirmed from satellite
+  imagery to be a classic extratropical cyclone.
+
+---
+
+## Results at a glance
+
+Whole population (6,776 cyclones, genesis 1979–2020):
+
+| Class | n | % |
+|---|---|---|
+| `EC` single-state extratropical | 2,663 | 39.3% |
+| `SC` single-state subtropical | 409 | 6.0% |
+| `TC` single-state tropical | 2 | 0.0% |
+| `ST` subtropical transition | 298 | 4.4% |
+| `SD` subtropical decay | 47 | 0.7% |
+| `TT` / `ET` | 0 | 0.0% |
+| `EC_like` | 2,392 | 35.3% |
+| `SC_like` | 372 | 5.5% |
+| `TC_like` | 2 | 0.0% |
+| `undetermined` | 591 | 8.7% |
+
+Plus **12 warm seclusions** and 2 indeterminate warm cores rejected by the TT test.
+
+The `*_like` classes keep the 36-h literature threshold intact for the named classes while
+still saying what a cyclone showed: `SC_like` means *hybrid characteristics, not sustained*,
+not *subtropical*. Most of them are short-lived — median lifetime 42 h against 99–186 h for
+the named classes.
+
+**Why the single-state classes are not called "pure".** In the South Atlantic literature
+"pure" qualifies the *cyclogenesis*: Silva et al. (2022) call Guará a *"gênese subtropical
+pura"* and Reboita et al. (2021) title their paper *"the first pure tropical
+cyclogenesis"*. Silva et al. also report that Guará — the exemplar — *later became
+extratropical and decayed*. So "pure subtropical" never meant "subtropical all its life",
+and Guará would be `SD` in this scheme, Lexi `ST`, exactly as they describe them.
+
+Two quantities are therefore reported separately instead of being folded into one label:
+
+- **genesis type** — `genesis_state`, `genesis_onset_h`, `pure_genesis` (first persistent
+  state in place within 24 h). SC genesis: 462 cyclones, 209 of them within 24 h.
+- **dominance** — `dominant_class`, `frac_EC`/`frac_SC`/`frac_TC`. The `SC` class spends a
+  median 0.66 of its life subtropical and SC is its dominant class in 95% of cases; the two
+  `TC` cyclones spend a median of only 0.34 tropical, one more reason to treat them as
+  candidates.
+
+Because a pure-`SC` cyclone is still non-subtropical for about a third of its life, the
+pure-SC figure shows the density of the **subtropical-classified timesteps only**, with the
+rest as grey context.
+
+**By Energy Pattern**, the one robust signal is that **EP2 is enriched in subtropical
+transition**: `ST` in 9.4% of EP2 against 5.4% of EP1 and 6.1% of EP3
+(Fisher OR = 1.62, p = 5.5×10⁻⁴), and it survives genesis-region stratification.
+
+---
+
+## How to run
 
 ```bash
-python cps_calculator_era5tocsv.py \
-    --nc cyclone_tracks/<track_id>_era5.nc \
-    --track cyclone_tracks/cyclone_<track_id>.txt \
-    --dt 3 \
-    --output csv_output/CPS_<track_id>.csv
-
-python cps_plots_csv_gris.py \
-    --csv csv_output/CPS_<track_id>.csv \
-    --output cps_output/CPS_<track_id>.png
+python scripts/cps_analysis/run_all.py                       # canonical
+python scripts/cps_analysis/sensitivity/run_sensitivity.py   # sensitivity tests
 ```
 
-Track file format: `AAAAMMDDHH[MM] lat lon ...` (space-separated, one
-record per line).
+Step by step:
 
-## Outputs (not versioned)
+```bash
+python scripts/cps_analysis/make_reference_diagram.py     # schematic, no data
+python scripts/cps_analysis/step1_build_cps_database.py   # shared by both
+python scripts/cps_analysis/step2_classify_phases.py
+python scripts/cps_analysis/step3_ep_phases.py
+python scripts/cps_analysis/step4_phase_figures.py
+python scripts/cps_analysis/step5_phase_space_figures.py
+python scripts/cps_analysis/step6_transition_trajectories.py
+python scripts/cps_analysis/step7_case_diagrams.py
+python scripts/cps_analysis/step8_ep_relative_frequency.py
+```
 
-Per-cyclone inputs and outputs are git-ignored (regenerable, ~6800 files,
-~100 MB total):
+### Region shading
 
-- `cyclone_tracks/` — per-cyclone track files (input)
-- `csv_output/` — per-cyclone CPS CSVs (`time, B_left, B_right, dir, SIZE, VTL, VTU`)
-- `cps_output/` — per-cyclone CPS diagram PNGs
+Every CPS diagram in the analysis shades the **projection of each canonical class** onto the
+plane being drawn, at high transparency: blue extratropical, green subtropical, red
+tropical. (Green rather than yellow: a faint yellow between the blue and the red regions
+blends into both, and the overlap grey stops reading as an overlap.) Because each panel is
+a two-dimensional slice of a three-dimensional
+classification, the shading is what the class can claim with the third parameter left free.
 
-Regenerate by looping the two scripts above over the full track/track-ID
-population (see `scripts/utils/load_data.py` for the canonical track source).
+**Grey marks where more than one class can claim a point** — a real property of the
+definitions, not a drawing artefact. A point with 10 < B < 25 and −50 < −V_T^L < 0 satisfies
+both the extratropical and the subtropical spec; there the timestep precedence
+(tropical > subtropical > extratropical) decides. Blank corners belong to no cyclone type:
+the "warm tilted", "cold shallow" and "warm symmetrical" regions.
+
+The shading logic lives in `cps_plotting.shade_class_regions`, so it is defined once and
+every figure inherits changes to the thresholds automatically.
+`fig0_cps_reference.png` is that schematic on its own, with no data plotted over it — the
+figure to look at first, and the one to check a threshold against.
+
+### The case gallery
+
+`step7` draws one cyclone per **(phase class × year of genesis × genesis region)**,
+sampled at random with a fixed seed — 745 figures spanning every class, every year and
+every region in which that class occurs. Each is a single-cyclone CPS diagram in the
+case-study convention: trajectory line, one marker per 3-hourly timestep coloured by the
+structure it holds, endpoints A and Z, dates labelled.
+
+The class appears in both the directory and the filename, so a figure stays identifiable
+once detached from its folder:
+
+```
+figures/cps_analysis/cases/TC/cps_TC_1998_LA-PLATA_19980144.png
+figures/cps_analysis/cases/ST/cps_ST_1979_SE-BR_19790594.png
+figures/cps_analysis/cases/SC_like/cps_SC_like_1979_ARG_19791045.png
+```
+
+| class | figures | | class | figures |
+|---|---|---|---|---|
+| `EC` | 126 | | `SD` | 40 |
+| `EC_like` | 124 | | `ST` | 105 |
+| `SC` | 120 | | `TC` | 2 |
+| `SC_like` | 105 | | `TC_like` | 2 |
+| `undetermined` | 116 | | | |
+
+Restrict to some classes, or reshuffle the draw:
+
+```bash
+python scripts/cps_analysis/step7_case_diagrams.py --classes TC SC ST
+python scripts/cps_analysis/step7_case_diagrams.py --seed 7
+```
+
+The gallery is ~116 MB and git-ignored like every other figure. Which cyclone was drawn
+for each combination is recorded in `results/cps_analysis/case_diagram_index.csv`.
+
+**On `ET` and `TT` being empty.** Both are zero by construction of the catalogue, which
+contains no tropical cyclone to transition from or to. The two transitions that do occur are
+`ST` (EC → SC, 298) and `SD` (SC → EC, 47) — the latter is what the earlier draft scheme
+called `ET`. `step6` plots both.
+
+To print the threshold sets that will be applied:
+
+```bash
+python scripts/cps_analysis/cps_criteria.py
+```
+
+To regenerate the original per-cyclone diagnostics (needs the ERA5 NetCDFs, which are
+**not** retained):
+
+```bash
+python scripts/cps_analysis/cps_calculator_era5tocsv.py \
+    --nc <track_id>_era5.nc --track cyclone_tracks/cyclone_<track_id>.txt \
+    --dt 3 --output csv_output/CPS_<track_id>.csv
+```
+
+---
+
+## Data
+
+**Population.** 6,776 cyclones with a CPS series, of which **3,812** carry an EP label
+(the clustering covers 3,820; 8 have no CPS file). Genesis years **1979–2020 (42 years)**;
+the last track runs into 7 January 2021.
+
+**Cadence.** CPS is 3-hourly; the underlying tracks are hourly.
+
+**Missing genesis step.** The calculator emits the GrADS sentinel `-999000000` at the first
+timestep of every cyclone — storm motion, hence `B`, is undefined without a previous
+position. The genesis state is therefore never observed directly; everything is evaluated
+from +3 h.
+
+**Sign convention.** `B = B_left - B_right`, which applies Hart's Southern Hemisphere factor
+`h = -1`. `VTL`/`VTU` hold Hart's signed `-V_T^L` / `-V_T^U`, so positive means warm core.
+
+---
+
+## Folder map
+
+```
+cps_analysis/
+├── README.md                       this file
+├── SCIENTIFIC_NOTES.md             methods, provenance, results, caveats
+├── cps_criteria.py                 all thresholds (canonical + sensitivity sets)
+├── cps_plotting.py                 shared region shading for every CPS diagram
+├── make_reference_diagram.py       the schematic of the class regions (no data)
+├── cps_calculator_era5tocsv.py     [A. Rodriguez] ERA5 → CPS parameters
+├── cps_plots_csv_gris.py           [A. Rodriguez] per-cyclone CPS diagram
+├── step1_build_cps_database.py     consolidate + join metadata   (shared)
+├── step2_classify_phases.py        CANONICAL phase classification
+├── step3_ep_phases.py              CANONICAL EP × phase class
+├── step4_phase_figures.py          CANONICAL figures
+├── step5_phase_space_figures.py    2x4 CPS diagrams, EPALL + EP1/EP2/EP3
+├── step6_transition_trajectories.py  transition paths, marker per timestep
+├── step7_case_diagrams.py          individual CPS diagrams, sampled gallery
+├── step8_ep_relative_frequency.py  SC and ST frequency per EP vs EPALL
+├── run_all.py                      run the canonical pipeline
+├── sensitivity/                    the exploratory tests
+│   ├── README.md                   the nine findings and what each decided
+│   └── SCIENTIFIC_NOTES.md         exploratory science record
+├── cyclone_tracks/                 per-cyclone track files (git-ignored)
+├── csv_output/                     per-cyclone CPS CSVs (git-ignored, IRREPLACEABLE)
+└── cps_output/                     per-cyclone CPS diagrams (git-ignored, 1979 only)
+```
+
+```
+results/cps_analysis/
+├── cps_timesteps.csv               consolidated timestep database (step 1, shared)
+├── phase_timesteps.csv             + canonical per-timestep class
+├── phase_states.csv                one row per persistent state, with the TT verdict
+├── phase_classification.csv        one row per cyclone
+├── phase_definitions.txt           thresholds and rules actually applied
+├── ep_phase_crosstab.csv           EP × phase class
+├── ep_phase_summary.csv            tidy long form
+├── ep_phase_statistics.txt         chi-square, Fisher, region control
+├── transition_trajectory_summary.csv  per-timestep structure mix of ST and SD
+├── cyclone_lists_by_class.csv      one row per cyclone: id, EP, region, genesis, sequence
+├── cyclone_lists_by_class.txt      the same grouped by class, track_ids only
+├── case_diagram_index.csv          which cyclone was drawn for each combination
+└── sensitivity/                    outputs of the sensitivity tests
+
+figures/cps_analysis/
+├── fig0_cps_reference.png          the class regions, schematic, no data
+├── fig1_phase_composition.png      phase class by EP
+├── fig2_phase_space.png            CPS occupancy, canonical thresholds
+├── fig3_transitions.png            onset, duration, seasonality
+├── fig4_tropical_runs.png          the TT test, visually
+├── fig5_phase_space_by_ep.png      2x4 CPS diagram, all cyclones
+├── fig6_phase_space_by_ep_single_state_sc.png
+│                                   2x4 CPS diagram, single-state SC only
+├── fig7_transition_trajectories.png  ST and SD paths, structure per timestep
+├── fig8_ep_relative_subtropical.png  candidate manuscript figure: SC and ST
+│                                   frequency per EP against EPALL
+├── cases/                          one sampled case per class × year × region
+│   ├── EC/  EC_like/  SC/  SC_like/  SD/  ST/  TC/  TC_like/  undetermined/
+│   └── e.g. TC/cps_TC_1998_LA-PLATA_19980144.png
+└── sensitivity/                    figures from the sensitivity tests
+```
+
+`cyclone_tracks/`, `csv_output/` and `cps_output/` are git-ignored (~102 MB, ~13,600 files),
+as are all `results/` CSVs and `figures/` PNGs.
+
+---
+
+## Status
+
+- CPS parameters computed for 6,776 / 6,789 cyclones (99.8%); **13 missing**, mostly 2009.
+- Canonical pipeline (reference diagram + steps 1–8) complete and reproducible from
+  `csv_output/` alone.
+- Sensitivity suite complete and preserved under `sensitivity/`.
+- Externally checked against documented named cyclones: **Bapo (2015) and Cari (2015) are
+  both classified subtropical**. Most other named systems form outside the catalogue's
+  genesis boxes; Raoni, Yakecan, Akará and Biguá postdate it.
+- **Open**: the 2 accepted tropical runs (19911137, 19980144) and the 409 pure-SC cyclones
+  have not been inspected case by case.
+
+## Environment
+
+`pandas`, `numpy`, `scipy`, `matplotlib`, `tqdm`, `xarray` (calculator only), and `cartopy`
+for the land/ocean mask. If cartopy's Natural Earth shapefile is unavailable offline, the
+ocean clause of the TT test is skipped and the run reports that it did so.

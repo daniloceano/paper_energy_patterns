@@ -69,20 +69,26 @@ EPALL_ABBREV = "epall"
 # VISUALIZATION DEFAULTS
 # =============================================================================
 
-# Color palette for each EP (consistent across all figures)
+# Color palette for each EP (consistent across all figures).
+#
+# This is the palette the manuscript's main figures already use — figures 6
+# (intensity/seasonality/trends) and 7 (genesis density) hardcoded it as the
+# matplotlib tab10 triple. The module previously carried a different palette
+# (gold / dodgerblue / forestgreen), so an EP was one colour in the paper and
+# another in every supporting analysis. The paper figures win.
 EP_COLORS: Dict[int, str] = {
-    0: "gray",        # EPALL - neutral grey (pooled, not a cluster)
-    1: "gold",        # EP1 - warm gold
-    2: "dodgerblue",  # EP2 - blue
-    3: "forestgreen", # EP3 - green
+    0: "#666666",  # EPALL - neutral grey (pooled, not a cluster)
+    1: "#1f77b4",  # EP1 - blue
+    2: "#ff7f0e",  # EP2 - orange
+    3: "#2ca02c",  # EP3 - green
 }
 
 # Extended colors including EPALL
 EP_COLORS_EXTENDED: Dict[str, str] = {
-    "EPALL": "gray",
-    "EP1": "gold",
-    "EP2": "dodgerblue",
-    "EP3": "forestgreen",
+    "EPALL": "#666666",
+    "EP1": "#1f77b4",
+    "EP2": "#ff7f0e",
+    "EP3": "#2ca02c",
 }
 
 # =============================================================================

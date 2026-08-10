@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import FormulaBlock from '@/components/analysis/FormulaBlock'
 import StatsTable from '@/components/analysis/StatsTable'
 import MethodologyAccordion from '@/components/analysis/MethodologyAccordion'
+import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import { DATASET_STATS } from '@/lib/constants'
 
 export const metadata: Metadata = {
@@ -383,6 +385,262 @@ d\\varphi\\, dp
               },
             ]}
           />
+        </section>
+
+        {/* Statistical Analysis */}
+        <section>
+          <h2 className="mb-4 text-xl font-bold text-slate-900">
+            Statistical Analysis
+          </h2>
+          <p className="mb-4 text-sm text-slate-600">
+            Three questions needed a dedicated statistical treatment beyond the clustering
+            step itself: (1) are EP1, EP2, and EP3 truly distinguishable in their LEC
+            diagnostics and dynamical structure, and not just the nearest-centroid label of
+            an underlying continuum? (2) how strongly does cyclone energetics covary with the
+            dynamical fields shown in the composite pages? and (3) are the interannual
+            fluctuations in EP occurrence ({DATASET_STATS.period}) genuine long-term trends,
+            or consistent with sampling noise? These map onto three tracks below: inter-EP
+            comparison, association analysis, and trend analysis.
+          </p>
+
+          <div className="space-y-4">
+            {/* Inter-EP differences */}
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <h3 className="font-semibold text-slate-900">
+                Testing whether Energy Patterns differ
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                For all 24 LEC terms plus 13 scalar descriptors summarising each
+                storm-centred dynamical field (domain mean, mean absolute value, centre
+                value, N/S/E/W sector and border means, and N–S/E–W contrasts) — 154
+                variables in total — a sequential decision procedure picks the correct
+                global test and post-hoc comparison based on that variable&apos;s own
+                distributional properties, rather than assuming one test fits everything.
+              </p>
+              <div className="mt-3">
+                <StatsTable
+                  title="Decision procedure"
+                  columns={[
+                    { key: 'condition', label: 'Distribution' },
+                    { key: 'global', label: 'Global test' },
+                    { key: 'posthoc', label: 'Post-hoc' },
+                    { key: 'effect', label: 'Effect size' },
+                  ]}
+                  rows={[
+                    { condition: 'Normal, equal variance', global: 'One-way ANOVA', posthoc: 'Tukey HSD', effect: 'ω²' },
+                    { condition: 'Normal, unequal variance', global: "Welch's ANOVA", posthoc: 'Welch t-tests (Holm)', effect: 'ω²' },
+                    { condition: 'Non-normal (≥1 group)', global: 'Kruskal–Wallis', posthoc: 'Dunn (Holm)', effect: 'ε²' },
+                  ]}
+                  caption="Normality: Shapiro–Wilk per EP group. Homogeneity: Brown–Forsythe (median-centred Levene)."
+                />
+              </div>
+              <p className="mt-3 text-sm text-slate-600">
+                Every one of the 154 variables tested in this study departed from normality
+                in at least one EP group, so all inter-EP comparisons reported here follow
+                the third row of the table: Kruskal–Wallis as the global (&quot;is there a
+                difference at all?&quot;) test, and Dunn&apos;s test as the post-hoc
+                (&quot;which pair differs?&quot;) step. Kruskal–Wallis pools and ranks all
+                cyclones from the three EPs jointly; if EP1&apos;s values for a term such as
+                C<sub>K</sub> sit systematically above EP2&apos;s and EP3&apos;s once
+                everyone is sorted together, the test statistic H grows large — regardless
+                of whether the underlying distributions are Gaussian, skewed, or
+                multimodal, which is exactly the robustness LEC terms need.
+              </p>
+              <div className="mt-3">
+                <FormulaBlock
+                  formula="H = \frac{12}{N(N+1)} \sum_{c=1}^{3} \frac{R_c^2}{n_c} - 3(N+1)"
+                  label="Kruskal–Wallis statistic"
+                  terms={{
+                    'R_c': 'Sum of joint ranks in EP c',
+                    'n_c': 'Number of cyclones in EP c',
+                    'N': 'Total sample size (n₁+n₂+n₃)',
+                  }}
+                  notes="A significant H only shows the three EPs are not all identical — it does not say which pair differs. That requires the Dunn post-hoc step."
+                />
+              </div>
+            </div>
+
+            {/* Effect size */}
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <h3 className="font-semibold text-slate-900">
+                Effect size: how large the difference is, not just whether it exists
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                With EP sample sizes from a few hundred to over two thousand cyclones, even
+                physically trivial differences can reach statistical significance. Effect
+                size quantifies the practical magnitude of a difference, independent of
+                sample size, and is reported alongside every global and pairwise comparison.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <FormulaBlock
+                  formula="\varepsilon^2 = \frac{H - k + 1}{N - k}"
+                  label="Epsilon² (global, Kruskal–Wallis)"
+                  terms={{ 'k': 'Number of EPs (3)' }}
+                />
+                <FormulaBlock
+                  formula="r_{rb} = 1 - \frac{2U}{n_i\,n_j}"
+                  label="Rank-biserial r (pairwise, Dunn)"
+                  terms={{ 'U': 'Mann–Whitney U statistic' }}
+                />
+              </div>
+              <p className="mt-3 text-sm text-slate-600">
+                In practice, <em>r<sub>rb</sub></em> is the difference between the
+                probability that a random cyclone from EP <em>i</em> exceeds one from EP{' '}
+                <em>j</em>, and the reverse probability — a genuinely probabilistic effect
+                size, not just a rescaled test statistic. Its sign shows which EP has the
+                larger value; e.g. a positive EP1-vs-EP2 contrast for C<sub>K</sub> means
+                EP1 has systematically larger (more positive) barotropic conversion.
+              </p>
+              <div className="mt-3">
+                <StatsTable
+                  columns={[
+                    { key: 'mag', label: 'Magnitude' },
+                    { key: 'eps', label: 'ε² (Rea & Parker, 1992)' },
+                    { key: 'rrb', label: '|r_rb| (Cohen, 1988)' },
+                  ]}
+                  rows={[
+                    { mag: 'Negligible', eps: '< 0.01', rrb: '< 0.10' },
+                    { mag: 'Small', eps: '0.01 – 0.06', rrb: '0.10 – 0.30' },
+                    { mag: 'Medium', eps: '0.06 – 0.14', rrb: '0.30 – 0.50' },
+                    { mag: 'Large', eps: '≥ 0.14', rrb: '≥ 0.50' },
+                  ]}
+                />
+              </div>
+            </div>
+
+            <ResultSummaryCallout type="warning" title="A significant p-value is not a big difference">
+              <p>
+                A <em>p</em>-value only says how surprising the data would be if there were
+                truly no difference — it says nothing about magnitude. With hundreds to
+                thousands of cyclones per EP, tests here are highly powered: even small,
+                physically marginal differences can register as &quot;significant&quot; at
+                <em> p</em> &lt; 0.05. Throughout this study, adjusted <em>p</em>-values are
+                used as a screening step to flag candidates, while effect size and
+                consistency with the composite dynamical fields determine which results are
+                treated as physically robust rather than exploratory.
+              </p>
+            </ResultSummaryCallout>
+
+            {/* Multiple comparisons */}
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <h3 className="font-semibold text-slate-900">
+                Correcting for multiple comparisons
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Testing 154 variables, each with up to 3 pairwise contrasts, inflates the
+                chance of false positives: at α = 0.05, roughly 8 of 154 independent tests
+                would appear &quot;significant&quot; by chance alone even if no true
+                differences existed. Two corrections are applied, at different levels:
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                <li>
+                  <strong className="text-slate-800">Holm (within a variable):</strong> the
+                  three Dunn pairwise contrasts (EP1–EP2, EP1–EP3, EP2–EP3) are corrected
+                  sequentially, controlling the probability of <em>any</em> false positive
+                  among that variable&apos;s three contrasts.
+                </li>
+                <li>
+                  <strong className="text-slate-800">Benjamini–Hochberg FDR (across variables):</strong>{' '}
+                  the global Kruskal–Wallis <em>p</em>-values are corrected within each
+                  analysis block (LEC terms vs. dynamical descriptors, corrected
+                  separately), controlling the <em>expected proportion</em> of false
+                  discoveries among all variables flagged as significant.
+                </li>
+              </ul>
+              <div className="mt-3">
+                <FormulaBlock
+                  formula="p_{(i^{*})} \le \frac{i^{*}}{m}\,q"
+                  label="Benjamini–Hochberg criterion"
+                  terms={{
+                    'p_{(1)} \\le \\dots \\le p_{(m)}': 'Sorted p-values across the m variables in a block',
+                    'i^{*}': 'Largest rank satisfying the inequality',
+                    'q': 'Target FDR level (0.05)',
+                  }}
+                  notes="All variables with rank ≤ i* are declared significant at FDR level q."
+                />
+              </div>
+            </div>
+
+            {/* Association */}
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <h3 className="font-semibold text-slate-900">
+                Linking cyclone energetics to dynamical structure
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                For each pair of a canonical LEC term and a scalar descriptor of a
+                dynamical field, both Pearson&apos;s <em>r</em> (linear association) and
+                Spearman&apos;s <em>ρ</em> (monotonic association, computed on ranks) are
+                calculated. Spearman&apos;s <em>ρ</em> is the primary interpretive metric
+                because it is more robust to the skewed, heavy-tailed distributions typical
+                of LEC terms.
+              </p>
+              <div className="mt-3">
+                <FormulaBlock
+                  formula="r = \frac{\sum_{i=1}^{n}(x_i-\bar{x})(y_i-\bar{y})}{\sqrt{\sum_{i=1}^{n}(x_i-\bar{x})^2}\sqrt{\sum_{i=1}^{n}(y_i-\bar{y})^2}}"
+                  label="Pearson correlation coefficient"
+                  notes="Spearman's ρ uses the identical formula computed on the within-variable ranks of x and y instead of their raw values."
+                />
+              </div>
+              <p className="mt-3 text-sm text-slate-600">
+                If larger west-sector cold-air advection is systematically associated with
+                larger eddy APE (A<sub>e</sub>), the correlation is positive; if stronger
+                advection instead coincides with weaker A<sub>e</sub>, it is negative. When{' '}
+                <em>r</em> and <em>ρ</em> disagree substantially (|<em>r</em>| − |<em>ρ</em>|
+                &gt; 0.10 in absolute difference), that is treated as a flag for a
+                non-linear-but-monotonic relationship — for example, an association that
+                strengthens sharply only past some threshold, physically plausible for
+                processes such as frontogenesis.
+              </p>
+            </div>
+
+            {/* Trends */}
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              <h3 className="font-semibold text-slate-900">
+                Trends in Energy-Pattern occurrence
+              </h3>
+              <p className="mt-2 text-sm text-slate-600">
+                Annual cyclone counts per EP ({DATASET_STATS.years} years,{' '}
+                {DATASET_STATS.period}) are tested for monotonic trends with the
+                Mann–Kendall test, which only asks whether later years tend to exceed
+                earlier ones across all pairs — no assumption of linearity or normality is
+                required, which suits a short, count-based series.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <FormulaBlock
+                  formula="S = \sum_{i=1}^{n-1}\sum_{j=i+1}^{n} \mathrm{sign}(x_j - x_i)"
+                  label="Mann–Kendall statistic"
+                />
+                <FormulaBlock
+                  formula="\hat{\beta} = \mathrm{median}\left\{\frac{y_j - y_i}{x_j - x_i} : i < j\right\}"
+                  label="Theil–Sen slope"
+                  notes="Median of all pairwise slopes — far less sensitive to a single anomalous year than an ordinary-least-squares fit."
+                />
+              </div>
+              <p className="mt-3 text-sm text-slate-600">
+                Because Mann–Kendall assumes independent observations, residual
+                autocorrelation (after removing the Theil–Sen trend) is checked with a
+                Ljung–Box test at lag h = 10. None of the three EPs showed significant
+                autocorrelation (EP1 <em>p</em> = 0.16; EP2 <em>p</em> = 0.13; EP3{' '}
+                <em>p</em> = 0.05, marginal), so the original Mann–Kendall test is reported
+                for all EPs rather than a variance-corrected variant. As a robustness check,
+                the Hamed–Rao, Yue–Wang, pre-whitening, and trend-free pre-whitening
+                variants were also computed — all yielded the same conclusions about which
+                EPs show a significant trend.
+              </p>
+            </div>
+
+            {/* Cross-link */}
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50/60 p-5">
+              <p className="text-sm text-slate-700">
+                See the interactive significance heatmaps, effect-size heatmaps, volcano
+                plots, and the PREDEP/Pearson/Spearman dependence explorer built on this
+                same framework in{' '}
+                <Link href="/analyses/field-dependence" className="font-medium text-indigo-600 hover:underline">
+                  LEC–Field Dependence
+                </Link>.
+              </p>
+            </div>
+          </div>
         </section>
       </div>
     </div>

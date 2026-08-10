@@ -6,6 +6,10 @@ import FigurePanel from '@/components/analysis/FigurePanel'
 import StatsTable from '@/components/analysis/StatsTable'
 import { figureUrl } from '@/lib/utils'
 import manifestData from '@/content/cps_manifest.json'
+import MethodsPanel from '@/components/analysis/MethodsPanel'
+import FormulaBlock from '@/components/analysis/FormulaBlock'
+import { SimpleTerms, InThisStudy, TestFlow } from '@/components/analysis/Didactic'
+import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Cyclone Phase Space — Thermal Structure of the Energy Patterns',
@@ -48,6 +52,298 @@ export default function CpsPage() {
       />
 
       <div className="space-y-12">
+        {/* ---------------- Methods & Statistics ---------------- */}
+        <MethodsPanel summary="How thermal structure is measured and classified, and how the association between Energy Pattern and phase class is tested.">
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="font-semibold text-slate-900">
+            1 · Measuring thermal structure — the three CPS parameters
+          </h3>
+          <p className="mt-2 text-sm text-slate-600">
+            The Cyclone Phase Space (Hart, 2003) describes a cyclone with three numbers
+            computed at every timestep inside a 500 km radius of the centre: one for
+            frontal asymmetry and two for the thermal structure of the lower and upper
+            troposphere.
+          </p>
+          <div className="mt-3">
+            <FormulaBlock
+              formula="B = h\left[\overline{(Z_{600}-Z_{900})}_{R} - \overline{(Z_{600}-Z_{900})}_{L}\right]"
+              label="B — thermal asymmetry"
+              terms={{
+                'B': 'Storm-motion-relative thickness asymmetry [m]',
+                'Z₆₀₀, Z₉₀₀': 'Geopotential height at 600 and 900 hPa [m]',
+                'R, L': 'Right and left 500 km semicircles relative to the direction of storm motion',
+                'overbar': 'Area average over the semicircle',
+                'h': 'Hemisphere factor: +1 in the Northern Hemisphere, −1 in the Southern Hemisphere',
+              }}
+              notes="B > 0 means the cyclone is thermally asymmetric — a frontal structure, with warm air on one flank and cold on the other. B ≈ 0 means a thermally symmetric core, the signature of tropical and subtropical systems."
+            />
+          </div>
+          <div className="mt-3">
+            <FormulaBlock
+              formula="-V_T = \frac{\partial\,(\Delta Z)}{\partial \ln p}, \qquad \Delta Z = Z_{\max} - Z_{\min}"
+              label="−V_T — thermal wind (lower and upper layers)"
+              terms={{
+                '−V_T': 'Thermal wind parameter for a layer [m per unit ln p]',
+                'ΔZ': 'Geopotential height range within 500 km of the centre at a given level [m]',
+                'Z_max, Z_min': 'Maximum and minimum geopotential height inside that radius',
+                'p': 'Pressure [hPa]',
+                '−V_T^L': 'Lower-tropospheric value, fitted over 900 → 600 hPa',
+                '−V_T^U': 'Upper-tropospheric value, fitted over 600 → 300 hPa',
+              }}
+              notes="Obtained as the slope of an ordinary least-squares fit of ΔZ against ln p across the levels of the layer. −V_T > 0 indicates a warm core in that layer, −V_T < 0 a cold core."
+            />
+          </div>
+          <SimpleTerms>
+            <p>
+              A cyclone whose height gradient weakens with altitude is warm-cored; one
+              whose gradient strengthens with altitude is cold-cored. The two thermal-wind
+              parameters ask that question separately for the bottom and the top half of
+              the troposphere, and <em>B</em> asks a third, independent question: is the
+              storm lopsided in temperature (frontal) or symmetric? A classical
+              extratropical cyclone is asymmetric and cold-cored at both levels; a
+              tropical cyclone is symmetric and warm-cored at both; a subtropical cyclone
+              sits in between — symmetric and warm-cored below, but still cold-cored aloft.
+            </p>
+          </SimpleTerms>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+          <h3 className="font-semibold text-slate-900">
+            2 · From parameters to classes — thresholds and the persistence gate
+          </h3>
+          <p className="mt-2 text-sm text-slate-600">
+            Thresholds on the three parameters classify each timestep. Every threshold is
+            transcribed from a peer-reviewed source; none is tuned to this dataset.
+          </p>
+          <div className="mt-3">
+            <StatsTable
+              title="Canonical thresholds"
+              columns={[
+                { key: 'cls', label: 'Class' },
+                { key: 'b', label: 'B [m]' },
+                { key: 'vtl', label: '−V_T^L' },
+                { key: 'vtu', label: '−V_T^U' },
+              ]}
+              rows={[
+                { cls: 'Tropical', b: '< 10', vtl: '> 0', vtu: '> 0' },
+                { cls: 'Subtropical', b: '−25 to 25', vtl: '> −50', vtu: '< −10' },
+                { cls: 'Extratropical', b: '> 10', vtl: '< 0', vtu: '< 0' },
+              ]}
+              caption="Following de Souza et al. (2026): Wood et al. (2023) for the extratropical and tropical bounds, Gozzo et al. (2014) for the subtropical ones. The class definitions overlap, so a fixed precedence (tropical → subtropical → extratropical) resolves ambiguous timesteps."
+            />
+          </div>
+          <p className="mt-3 text-sm text-slate-600">
+            A class counts as a <strong>state</strong> of the cyclone only if it is held
+            for at least <strong>36 consecutive hours</strong>. This gate is what makes
+            the scheme workable: without it, most cyclones visit two or more classes and
+            the commonest sequence is a brief EC → SC → EC excursion, which is a
+            transient wobble rather than a transition. Cyclones are then labelled by their
+            sequence of persistent states — <strong>EC</strong> (extratropical
+            throughout), <strong>SC</strong> (subtropical throughout),{' '}
+            <strong>ST</strong> (subtropical transition, EC → SC), <strong>SD</strong>{' '}
+            (subtropical decay, SC → EC), and so on.
+          </p>
+          <SimpleTerms>
+            <p>
+              The persistence gate is the difference between saying &quot;this cyclone
+              briefly looked subtropical on one analysis time&quot; and &quot;this cyclone
+              <em> was</em> subtropical&quot;. Structures that appear but never last 36 h
+              are recorded separately as <em>characteristic</em> classes (EC_like,
+              SC_like) — a cyclone there is not being called subtropical, only noted as
+              showing hybrid characteristics.
+            </p>
+          </SimpleTerms>
+          </div>
+
+          {/* CPS contingency statistics */}
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="font-semibold text-slate-900">
+              3 · Testing the association with the Energy Patterns
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              <strong>Scientific purpose.</strong> The Cyclone Phase Space (CPS; Hart,
+              2003) describes a cyclone&apos;s thermal structure through three parameters
+              — <em>B</em>, the 900–600 hPa thickness asymmetry across the storm-motion
+              axis, and the lower- and upper-tropospheric thermal winds{' '}
+              −<em>V</em><sub>T</sub><sup>L</sup> and −<em>V</em><sub>T</sub><sup>U</sup>,
+              which diagnose whether each layer holds a warm or cold core. Applying
+              thresholds to these parameters at each timestep, and requiring a state to
+              persist for at least 36 h, classifies every cyclone as extratropical (EC),
+              subtropical (SC), undergoing subtropical transition (ST), and so on. The
+              statistical question is then categorical rather than continuous:{' '}
+              <em>is a cyclone of a given Energy Pattern more likely than the pooled
+              population to be subtropical, or to become subtropical?</em>
+            </p>
+            <p className="mt-3 text-sm text-slate-600">
+              This changes the statistical machinery. The outcome is no longer a
+              continuous LEC term but a count of cyclones falling into classes, so the
+              rank-based tests above do not apply. The population also differs from
+              the LEC–field dependence analysis: because no ≥ 24 h intensification
+              filter is needed here, all{' '}
+              <strong>3,812 EP-labelled cyclones</strong> are used (EP1 = 441, EP2 = 978,
+              EP3 = 2,393). Note that the pooled reference &quot;EPALL&quot; in this track
+              means the union EP1 + EP2 + EP3, not the full catalogue — only clustered
+              cyclones carry an Energy Pattern, so the reference must be the same
+              population the EPs partition. The logic of the chain, however, is identical
+              to the rank-based chain used for the LEC terms:
+            </p>
+            <TestFlow
+              steps={[
+                'χ² contingency (global)',
+                "Cramér's V (global effect)",
+                'Fisher exact (post-hoc)',
+                'Holm',
+                'Odds ratio (pairwise effect)',
+              ]}
+            />
+
+            <h4 className="mt-5 text-sm font-semibold text-slate-800">
+              Global test — χ² test of independence
+            </h4>
+            <p className="mt-2 text-sm text-slate-600">
+              <strong>H₀:</strong> Energy Pattern and CPS phase class are independent —
+              knowing a cyclone&apos;s EP tells you nothing about which phase class it
+              falls into. <strong>H₁:</strong> the two are associated. The test compares
+              the observed count in every EP × class cell against the count expected if
+              the row and column totals were combined independently.
+            </p>
+            <div className="mt-3">
+              <FormulaBlock
+                formula="\chi^2 = \sum_{i}\sum_{j} \frac{(O_{ij} - E_{ij})^2}{E_{ij}}, \qquad E_{ij} = \frac{R_i\,C_j}{n}"
+                label="Chi-square statistic for a contingency table"
+                terms={{
+                  'χ²': 'Chi-square statistic (dimensionless, ≥ 0)',
+                  'i': 'Row index — the Energy Pattern (EP1, EP2, EP3)',
+                  'j': 'Column index — the CPS phase class (EC, SC, ST, SD, …)',
+                  'O_ij': 'Observed number of cyclones in EP i with phase class j',
+                  'E_ij': 'Expected count in that cell if EP and phase class were independent',
+                  'R_i': 'Row total — all cyclones in EP i',
+                  'C_j': 'Column total — all cyclones of phase class j',
+                  'n': 'Grand total of EP-labelled classified cyclones (n = 3,812)',
+                }}
+                notes="Compared against a χ² distribution with (rows − 1)(columns − 1) degrees of freedom. χ² ≈ 0 means observed counts match the independence expectation; large χ² means at least one cell is over- or under-populated relative to chance."
+              />
+            </div>
+            <p className="mt-3 text-sm text-slate-600">
+              Two diagnostics accompany the test. <strong>Standardised residuals</strong>,
+              <em> z<sub>ij</sub></em> = (<em>O<sub>ij</sub></em> − <em>E<sub>ij</sub></em>)
+              / √<em>E<sub>ij</sub></em>, locate <em>which</em> cells drive a significant
+              result; cells with |<em>z</em>| &gt; 2 are flagged. And{' '}
+              <strong>Cochran&apos;s condition</strong> is checked — the χ² approximation
+              becomes unreliable when more than 20% of cells have an expected count below
+              5. In the full EP × phase-class table, 7 of 27 cells fall below that
+              threshold, so the condition is violated and reported as such; this is
+              precisely why the inferential claims rest on the exact test below rather
+              than on χ² alone.
+            </p>
+            <div className="mt-3">
+              <FormulaBlock
+                formula="V = \sqrt{\frac{\chi^2}{n\,(\min(r,\,c) - 1)}}"
+                label="Cramér's V — global effect size"
+                terms={{
+                  'V': "Cramér's V, the strength of association (dimensionless, 0 to 1)",
+                  'χ²': 'Chi-square statistic from above',
+                  'n': 'Grand total of cyclones in the table',
+                  'r, c': 'Number of rows (3 EPs) and columns (phase classes) in the table',
+                  'min(r, c)': 'The smaller of the two dimensions — this is what bounds V at 1',
+                }}
+                notes="Range 0 to 1, unsigned. V = 0: no association at all. V = 1: phase class is perfectly determined by EP. Conventionally V ≈ 0.1 is a weak association, 0.3 moderate, 0.5 strong. Like ε², it does not inflate with sample size."
+              />
+            </div>
+            <InThisStudy>
+              <p>
+                The full EP × phase-class table gives χ² = 39.69 on 16 degrees of freedom,{' '}
+                <em>p</em> = 8.6 × 10⁻⁴ — highly significant — but Cramér&apos;s{' '}
+                <em>V</em> = 0.072, a weak association. This is the clearest example on
+                this site of why both numbers must be read together: Energy Pattern and
+                thermal phase class are genuinely, non-randomly related, yet EP membership
+                explains only a small part of which phase class a cyclone ends up in. The
+                standardised residuals then point to where that modest association lives —
+                most strongly EP2 × ST (92 observed vs 67.5 expected, <em>z</em> = +3.0).
+              </p>
+            </InThisStudy>
+
+            <h4 className="mt-5 text-sm font-semibold text-slate-800">
+              Post-hoc test — Fisher&apos;s exact test
+            </h4>
+            <p className="mt-2 text-sm text-slate-600">
+              <strong>What it compares:</strong> each EP against the other two pooled, on
+              a single binary outcome (e.g. &quot;did this cyclone undergo a subtropical
+              transition, yes or no?&quot;), giving a 2×2 table.{' '}
+              <strong>Why Fisher rather than χ²:</strong> Fisher&apos;s test computes the{' '}
+              <em>exact</em> probability of the observed table from the hypergeometric
+              distribution instead of relying on a large-sample approximation, so it stays
+              valid precisely where χ² fails — with small cell counts, which is the
+              situation here (only 24 EP1 cyclones undergo subtropical transition).{' '}
+              <strong>Why against the other two pooled:</strong> comparing an EP against
+              EPALL would be invalid, because each EP is nested inside EPALL — the
+              comparison would partly compare the group with itself. Contrasting EP1
+              against EP2+EP3 gives two genuinely independent samples.
+            </p>
+            <div className="mt-3">
+              <FormulaBlock
+                formula="\mathrm{OR} = \frac{a\,/\,(n_A - a)}{b\,/\,(n_B - b)}"
+                label="Odds ratio — pairwise effect size"
+                terms={{
+                  'OR': 'Odds ratio (dimensionless, 0 to ∞; no effect at OR = 1)',
+                  'a': 'Cyclones in the focal EP showing the outcome (e.g. EP2 cyclones that underwent ST)',
+                  'n_A': 'Total cyclones in the focal EP',
+                  'n_A − a': 'Cyclones in the focal EP not showing the outcome',
+                  'b': 'Cyclones in the other two EPs pooled showing the outcome',
+                  'n_B': 'Total cyclones in the other two EPs pooled',
+                }}
+                notes="OR > 1: the outcome is more likely in the focal EP than in the rest. OR = 1: equally likely. OR < 1: less likely. OR = 2 means the odds are doubled — not that the probability doubles, which is a common misreading when the outcome is not rare."
+              />
+            </div>
+            <p className="mt-3 text-sm text-slate-600">
+              Frequencies within each EP are reported with{' '}
+              <strong>Wilson score 95% intervals</strong> rather than the textbook
+              (Wald) interval, because several outcome counts are small and near-zero
+              proportions would otherwise produce intervals extending below zero — an
+              impossible frequency. Nine contrasts are tested in total (3 EPs × 3
+              outcomes: SC, ST, and their union), and{' '}
+              <strong>Holm correction</strong> is applied across all nine.
+            </p>
+            <SimpleTerms>
+              <p>
+                χ² tells you that Energy Pattern and thermal phase class are related
+                somewhere in the table. Fisher&apos;s exact test then asks the specific,
+                answerable question — <em>is EP2 more prone to subtropical transition than
+                EP1 and EP3 combined?</em> — and the odds ratio says by how much. Exactly
+                as with Kruskal–Wallis and Dunn, the global test locates a signal and the
+                post-hoc test names it.
+              </p>
+            </SimpleTerms>
+            <InThisStudy>
+              <p>
+                Of the nine contrasts, only <strong>EP2 × ST</strong> survives Holm
+                correction: 9.41% of EP2 cyclones undergo subtropical transition versus
+                6.03% of the others, OR = 1.62, raw <em>p</em> = 5.5 × 10⁻⁴, Holm-adjusted{' '}
+                <em>p</em> = 5.0 × 10⁻³. The EP3 depletion in ST is nominally significant
+                (raw <em>p</em> = 0.017) but does <em>not</em> survive correction
+                (Holm <em>p</em> = 0.139), and is therefore not reported as an established
+                result — a concrete illustration of what multiple-comparison correction
+              buys.
+                Because EP2 forms further equatorward than EP1 and EP3, and hybrid
+                structure is itself a subtropical-latitude phenomenon, the association is
+                additionally re-tested within each genesis region (ARG, LA-PLATA, SE-BR);
+                an association that persists inside each region is not merely a
+                geographic artefact.
+              </p>
+            </InThisStudy>
+            <p className="mt-4 text-sm text-slate-500">
+              <strong>How to read the CPS figures.</strong> In the relative-frequency
+              figure, panel (a) shows each EP&apos;s absolute frequency with its Wilson
+              interval, and panel (b) the ratio to the EPALL rate. That ratio is a{' '}
+              <em>descriptive</em> effect size only — the numerator is nested in the
+              denominator — so significance is never read from it; it comes from the
+              Fisher contrasts. Filled markers indicate contrasts that survive Holm
+              correction, open markers those that are only nominally significant. The
+              figures and the full contrast table follow below.
+            </p>
+          </div>
+
+        </MethodsPanel>
         {/* ---------------- Headline ---------------- */}
         <ResultSummaryCallout type="result" title="Main result">
           <p>

@@ -44,10 +44,10 @@ export default function HomePage() {
               <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/methods"
+              href="/data-references"
               className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-5 py-2.5 text-sm font-semibold text-white hover:bg-white/20"
             >
-              Methodology
+              Data &amp; References
             </Link>
           </div>
         </div>
@@ -177,8 +177,9 @@ export default function HomePage() {
             Explore the Research
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Three entry points. The analyses index is the single place where every
-            analysis is listed, so nothing goes missing here as the work grows.
+            Two entry points. Each analysis carries its own Methods &amp; Statistics
+            panel, so the methodology sits next to the results it produced; only the
+            material shared by every analysis lives in Data &amp; References.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
@@ -189,15 +190,9 @@ export default function HomePage() {
                 icon: BarChart3,
               },
               {
-                title: 'Methods',
-                desc: 'Dataset, energy terms, anomaly methodology, and boundary flux formulas',
-                href: '/methods',
-                icon: Microscope,
-              },
-              {
-                title: 'References',
-                desc: 'Key bibliographic references and data sources',
-                href: '/references',
+                title: 'Data & References',
+                desc: 'Dataset, the seven Lorenz Energy Cycle term definitions, bibliography and DOIs',
+                href: '/data-references',
                 icon: BookOpen,
               },
             ].map((card) => {

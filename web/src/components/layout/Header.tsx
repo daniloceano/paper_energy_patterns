@@ -6,7 +6,6 @@ import {
   Home,
   BarChart3,
   BookOpen,
-  Microscope,
   Menu,
   X,
 } from 'lucide-react'
@@ -15,8 +14,7 @@ import { useState } from 'react'
 const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: Home },
   { label: 'Analyses', href: '/analyses', icon: BarChart3 },
-  { label: 'Methods', href: '/methods', icon: Microscope },
-  { label: 'References', href: '/references', icon: BookOpen },
+  { label: 'Data & References', href: '/data-references', icon: BookOpen },
 ]
 
 export default function Header() {

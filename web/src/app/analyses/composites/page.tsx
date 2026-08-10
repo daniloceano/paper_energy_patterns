@@ -5,6 +5,10 @@ import AnalysisHero from '@/components/analysis/AnalysisHero'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import { DIAGNOSTIC_LIST, DATASET_STATS, ENERGY_PATTERNS } from '@/lib/constants'
 import Link from 'next/link'
+import MethodsPanel from '@/components/analysis/MethodsPanel'
+import FormulaBlock from '@/components/analysis/FormulaBlock'
+import StatsTable from '@/components/analysis/StatsTable'
+import { SimpleTerms, InThisStudy } from '@/components/analysis/Didactic'
 
 export const metadata: Metadata = {
   title: 'Composite Analysis',
@@ -33,25 +37,158 @@ export default function CompositesPage() {
           </p>
         </ResultSummaryCallout>
 
-        <ResultSummaryCallout type="info" title="Composite Methods">
-          <p>
-            Composites are centred on the intensification midpoint of each cyclone
-            (typically 2–3 timesteps per case), isolating the most active moment of deepening.
-          </p>
-          <p className="mt-2">
-            Each diagnostic page shows two figure panels:
-          </p>
-          <ul className="mt-2 list-inside list-disc text-sm">
-            <li>
-              <strong>Total field (2×2 panel):</strong> EP1 / EP2 / EP3 / EPALL composites side-by-side
-            </li>
-            <li>
-              <strong>EPALL-relative anomaly (1×3 panel):</strong> EP1 − EPALL | EP2 − EPALL | EP3 − EPALL,
-              isolating what distinguishes each pattern from the full cyclone population
-              (available for most diagnostics)
-            </li>
-          </ul>
-        </ResultSummaryCallout>
+        {/* Methods & Statistics */}
+        <MethodsPanel summary="How the storm-centred composites are built, which cyclones enter them, and what the two different anomaly definitions mean.">
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="font-semibold text-slate-900">
+              1 · Building a storm-centred composite
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              For each cyclone, ERA5 fields are extracted on a{' '}
+              {DATASET_STATS.domainSize} grid centred on the cyclone position at the
+              <strong> midpoint of its intensification phase</strong> — the most active
+              moment of deepening. Where the intensification phase has an odd number of
+              timesteps the three central steps are used, and where it is even, the two
+              central ones. The composite for a group is the arithmetic mean of that field
+              across all its cyclones.
+            </p>
+            <p className="mt-3 text-sm text-slate-600">
+              The {DATASET_STATS.domainSize} domain is deliberately wider than the{' '}
+              {DATASET_STATS.innerDomainSize} box used for the Lorenz Energy Cycle
+              computation, so that the environment surrounding the LEC domain — upstream
+              troughs, downstream ridges, the jet — is visible alongside the dynamics
+              inside it.
+            </p>
+            <SimpleTerms>
+              <p>
+                Averaging many cyclones after aligning them on their centres keeps whatever
+                is consistently in the same place relative to the storm (a trough to the
+                west, a warm sector to the east) and averages away whatever is not. The
+                composite is therefore a picture of the <em>typical</em> structure of a
+                group, not of any individual cyclone.
+              </p>
+            </SimpleTerms>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="font-semibold text-slate-900">
+              2 · Which cyclones enter the composites
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Cyclones whose intensification phase lasted less than <strong>24 h</strong>{' '}
+              are excluded. Very short intensification phases place the central timestep
+              uncomfortably close to the incipient or mature stages, whose energetics — and
+              therefore whose dynamical fields — behave differently, so including them
+              would blur the very signal the composite is meant to isolate.
+            </p>
+            <div className="mt-3">
+              <StatsTable
+                title="Sample sizes after the ≥ 24 h filter"
+                columns={[
+                  { key: 'grp', label: 'Group' },
+                  { key: 'before', label: 'Before', align: 'right' },
+                  { key: 'after', label: 'After', align: 'right' },
+                ]}
+                rows={[
+                  { grp: 'EP1', before: '444', after: '332' },
+                  { grp: 'EP2', before: '979', after: '776' },
+                  { grp: 'EP3', before: '2,397', after: '1,625' },
+                  { grp: 'All (EPALL)', before: '3,820', after: '2,733' },
+                ]}
+                caption="This filtered population is also the one used by the LEC–field dependence analysis, so the two are directly comparable."
+              />
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="font-semibold text-slate-900">
+              3 · Two different anomalies — and why the distinction matters
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Two anomaly definitions appear on these pages, and they answer different
+              questions. Reading one as if it were the other is the commonest way to
+              misinterpret a composite figure.
+            </p>
+            <div className="mt-3">
+              <FormulaBlock
+                formula="X'_{\mathrm{clim}}(x,y,p,t) = X(x,y,p,t) - \overline{X}_m(x,y,p)"
+                label="Climatology-relative anomaly"
+                terms={{
+                  "X'_clim": 'Departure from the seasonal background state',
+                  'X': 'Instantaneous ERA5 field for the cyclone (temperature, wind, PV, …)',
+                  'X̄_m': `Monthly mean climatology for calendar month m, over ${DATASET_STATS.climatologyPeriod}`,
+                  'x, y, p': 'Storm-centred horizontal coordinates and pressure level',
+                  't': 'Time of the composite timestep; m is its calendar month',
+                }}
+                notes="Answers: how unusual is this cyclone relative to the season it formed in? For events spanning two months, the background is a weighted mean of the two monthly climatologies to avoid an artificial jump at the month boundary."
+              />
+            </div>
+            <div className="mt-3">
+              <FormulaBlock
+                formula="X'_{\mathrm{EPALL}} = \overline{X}_{\mathrm{EP}i} - \overline{X}_{\mathrm{EPALL}}"
+                label="EPALL-relative anomaly"
+                terms={{
+                  "X'_EPALL": 'Departure of one Energy Pattern from the full cyclone population',
+                  'X̄_EPi': 'Composite mean of field X over the cyclones of EP i',
+                  'X̄_EPALL': 'Composite mean of the same field over all 2,733 cyclones',
+                }}
+                notes="Answers: what makes this Energy Pattern different from a typical cyclone? Because the reference is itself a cyclone composite, a zero anomaly does not mean 'no cyclone signal' — it means 'the same signal every cyclone has'."
+              />
+            </div>
+            <SimpleTerms>
+              <p>
+                Climatology-relative asks <em>&quot;how does this differ from a quiet day in
+                the same month?&quot;</em>; EPALL-relative asks <em>&quot;how does this
+                differ from an ordinary cyclone?&quot;</em>. A strong closed low is
+                dramatic in the first and can vanish in the second, because every cyclone
+                has one.
+              </p>
+            </SimpleTerms>
+            <InThisStudy>
+              <p>
+                This is why the EP1 upper-level PV signature is described as{' '}
+                <em>streamer-like</em> rather than as a PV streamer: it is an
+                EPALL-relative anomaly, so it shows that EP1 has more elongated upper-level
+                PV structure <em>than other cyclones do</em>, not that an absolute PV
+                streamer is present. Likewise the EP3 fields, which look like a weak mirror
+                image of EP2, indicate a weaker-than-average version of the canonical
+                pattern — not a reversed circulation.
+              </p>
+            </InThisStudy>
+          </div>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="font-semibold text-slate-900">
+              4 · Statistical treatment of the composite fields
+            </h3>
+            <p className="mt-2 text-sm text-slate-600">
+              The composites themselves are presented as fields, not as significance maps.
+              Rather than testing every grid point — which would raise a severe
+              multiple-comparison problem and produce maps whose stippling is dominated by
+              spatial autocorrelation — each field is reduced to 13 physically
+              interpretable scalar descriptors (domain mean, mean absolute value, centre
+              value, cardinal sector and border means, and the N–S and E–W contrasts).
+              Those scalars are what get tested for EP differences and correlated against
+              the LEC terms.
+            </p>
+            <InThisStudy>
+              <p>
+                The full inferential treatment of those descriptors — the Kruskal–Wallis and
+                Dunn tests, effect sizes, multiple-comparison corrections, and the
+                correlation and PREDEP metrics — is documented in{' '}
+                <Link href="/analyses/field-dependence" className="text-indigo-600 hover:underline">
+                  LEC–Field Dependence
+                </Link>
+                . The one statistical marking that does appear on these figures is the
+                Rayleigh–Kuo hatching, which flags where the meridional gradient of absolute
+                vorticity reverses sign in the <em>total</em> composite field. It is a
+                necessary — not sufficient — condition for barotropic instability, so it
+                should be read as background dynamical context rather than as evidence of
+                barotropic growth.
+              </p>
+            </InThisStudy>
+          </div>
+        </MethodsPanel>
 
         <section>
           <h2 className="mb-3 text-lg font-bold text-slate-900">

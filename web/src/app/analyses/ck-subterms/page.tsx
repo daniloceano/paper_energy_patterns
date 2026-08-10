@@ -9,6 +9,8 @@ import { ENERGY_PATTERNS } from '@/lib/constants'
 import { readManifest } from '@/lib/server-utils'
 import { figureUrl } from '@/lib/utils'
 import InlineMath from '@/components/analysis/InlineMath'
+import MethodsPanel from '@/components/analysis/MethodsPanel'
+import { SimpleTerms, InThisStudy } from '@/components/analysis/Didactic'
 
 /**
  * Resolve a figure URL from the manifest (or fall back to a default path).
@@ -169,104 +171,149 @@ export default function CkSubtermsPage() {
           </div>
         </section>
 
-        {/* Methodology */}
-        <section>
-          <h2 className="mb-3 text-lg font-bold text-slate-900">Methodology</h2>
-          <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm leading-relaxed text-slate-600 space-y-3">
-            <p>
-              <strong>Sign convention (paper.tex):</strong>{' '}
-              C<sub>K</sub> &lt; 0 → K<sub>Z</sub> → K<sub>E</sub> (mean flow transfers energy
-              to the eddies; barotropic instability). C<sub>K</sub> &gt; 0 → K<sub>E</sub> → K<sub>Z</sub>{' '}
-              (eddies transfer energy to mean flow). EP1 cyclones have large negative C<sub>K</sub>
-              — they are strongly driven by barotropic instability (mean flow feeds eddies).
-            </p>
-            <p>
-              <strong>Subterm definition (paper.tex Eq. C<sub>K</sub>):</strong> C<sub>K</sub> is
-              vertically integrated and decomposed into five terms (a–e) arising from horizontal
-              and vertical gradients of the background zonal and meridional wind (see the{' '}
-              <em>C<sub>K</sub> Decomposition</em> section below for the full formula).
-              Each term is vertically integrated over pressure levels using{' '}
-              <InlineMath expr="\int_{p_b}^{p_t}\!\frac{1}{g}\,[\cdot]_{\lambda\phi}\,dp" />,
-              where <InlineMath expr="g = 9.8\,\mathrm{m\,s^{-2}}" />.
-            </p>
-            <p>
-              <strong>Phase:</strong> The <em>intensification</em> phase is used for all
-              dominance classification. Intensification windows are taken from{' '}
-              <code className="rounded bg-slate-100 px-1">results/ep_structure/ep1_cases.csv</code>.
-            </p>
-            <p>
-              <strong>LEC audit:</strong> Cases are audited from the directories in{' '}
-              <code className="rounded bg-slate-100 px-1">results/ck_analysis/lec_results/</code>.
-              Eligibility depends on the presence and integrity of{' '}
-              <code className="rounded bg-slate-100 px-1">Ck_pressure_level.csv</code> and{' '}
-              <code className="rounded bg-slate-100 px-1">Ck_1…Ck_5_pressure_level.csv</code>.
-              Dominance is only computed when all required files exist, are non-empty, and
-              contain valid data within the intensification window.
-            </p>
-            <p>
-              <strong>Sample sizes:</strong>{' '}
-              Total EP1 population = <strong>N={n_ep1}</strong> (from{' '}
-              <code className="rounded bg-slate-100 px-1">ep_structure/ep1_cases.csv</code>).
-              Cyclones with complete, valid LEC output = <strong>N={n_lec}</strong>.
-              Boxplots and dominance classification use N={n_lec}.
-              The &#34;All EP1&#34; genesis density and track panels use the full N={n_ep1} population.
-            </p>
+        {/* Methods & Statistics */}
+        <MethodsPanel summary="How the barotropic conversion is decomposed, how a dominant subterm is assigned to each cyclone, and how the genesis-density anomalies are normalised.">
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="mb-3 font-semibold text-slate-900">Sign convention and subterm definition</h3>
+            <SimpleTerms>
+              <p>
+                The sign of C<sub>K</sub> is the single most error-prone part of reading these
+                figures. C<sub>K</sub> is defined as the conversion <em>from</em> eddy
+                <em> to</em> mean-flow kinetic energy, so a <strong>negative</strong> value means
+                energy flows the other way — the mean flow is feeding the eddy, which is
+                barotropic instability and is what makes a cyclone grow. EP1 cyclones have
+                large negative C<sub>K</sub>: the jet is doing work on the storm.
+              </p>
+            </SimpleTerms>
           </div>
-        </section>
+          {/* Methodology */}
+          <section>
+            <h2 className="mb-3 text-lg font-bold text-slate-900">Methodology</h2>
+            <div className="rounded-xl border border-slate-200 bg-white p-5 text-sm leading-relaxed text-slate-600 space-y-3">
+              <p>
+                <strong>Sign convention (paper.tex):</strong>{' '}
+                C<sub>K</sub> &lt; 0 → K<sub>Z</sub> → K<sub>E</sub> (mean flow transfers energy
+                to the eddies; barotropic instability). C<sub>K</sub> &gt; 0 → K<sub>E</sub> → K<sub>Z</sub>{' '}
+                (eddies transfer energy to mean flow). EP1 cyclones have large negative C<sub>K</sub>
+                — they are strongly driven by barotropic instability (mean flow feeds eddies).
+              </p>
+              <p>
+                <strong>Subterm definition (paper.tex Eq. C<sub>K</sub>):</strong> C<sub>K</sub> is
+                vertically integrated and decomposed into five terms (a–e) arising from horizontal
+                and vertical gradients of the background zonal and meridional wind (see the{' '}
+                <em>C<sub>K</sub> Decomposition</em> section below for the full formula).
+                Each term is vertically integrated over pressure levels using{' '}
+                <InlineMath expr="\int_{p_b}^{p_t}\!\frac{1}{g}\,[\cdot]_{\lambda\phi}\,dp" />,
+                where <InlineMath expr="g = 9.8\,\mathrm{m\,s^{-2}}" />.
+              </p>
+              <p>
+                <strong>Phase:</strong> The <em>intensification</em> phase is used for all
+                dominance classification. Intensification windows are taken from{' '}
+                <code className="rounded bg-slate-100 px-1">results/ep_structure/ep1_cases.csv</code>.
+              </p>
+              <p>
+                <strong>LEC audit:</strong> Cases are audited from the directories in{' '}
+                <code className="rounded bg-slate-100 px-1">results/ck_analysis/lec_results/</code>.
+                Eligibility depends on the presence and integrity of{' '}
+                <code className="rounded bg-slate-100 px-1">Ck_pressure_level.csv</code> and{' '}
+                <code className="rounded bg-slate-100 px-1">Ck_1…Ck_5_pressure_level.csv</code>.
+                Dominance is only computed when all required files exist, are non-empty, and
+                contain valid data within the intensification window.
+              </p>
+              <p>
+                <strong>Sample sizes:</strong>{' '}
+                Total EP1 population = <strong>N={n_ep1}</strong> (from{' '}
+                <code className="rounded bg-slate-100 px-1">ep_structure/ep1_cases.csv</code>).
+                Cyclones with complete, valid LEC output = <strong>N={n_lec}</strong>.
+                Boxplots and dominance classification use N={n_lec}.
+                The &#34;All EP1&#34; genesis density and track panels use the full N={n_ep1} population.
+              </p>
+            </div>
+          </section>
 
-        {/* Normalization methodology — mathematical formulation */}
-        <section>
-          <h2 className="mb-3 text-lg font-bold text-slate-900">
-            Normalization Methodology — Genesis Density Anomaly (Figure 3)
-          </h2>
+          {/* Normalization methodology — mathematical formulation */}
+          <section>
+            <h2 className="mb-3 text-lg font-bold text-slate-900">
+              Normalization Methodology — Genesis Density Anomaly (Figure 3)
+            </h2>
 
-          {/* Step 1: KDE genesis density field */}
-          <div className="mb-4">
-            <p className="mb-2 text-sm font-semibold text-slate-700">
-              Step 1 — Kernel Density Estimation (Hoskins &amp; Hodges 2005)
+            {/* Step 1: KDE genesis density field */}
+            <div className="mb-4">
+              <p className="mb-2 text-sm font-semibold text-slate-700">
+                Step 1 — Kernel Density Estimation (Hoskins &amp; Hodges 2005)
+              </p>
+              <FormulaBlock
+                formula={String.raw`\rho(\varphi,\lambda) = \sum_{i=1}^{N} K_\sigma\!\left(d(\varphi,\lambda;\,\varphi_i,\lambda_i)\right)`}
+                terms={{
+                  'd': 'haversine (great-circle) distance between grid point (φ,λ) and genesis point i',
+                  'K_σ': 'Gaussian kernel with bandwidth σ = 0.05 rad',
+                  'N': `number of cyclones in the set (N = ${n_ep1} for all-EP1; N = N_k for subterm-k subset)`,
+                }}
+                notes={`Two density fields are computed: ρ_all(φ,λ) from all N=${n_ep1} EP1 genesis points, and ρ_k(φ,λ) from the N_k genesis points of cyclones where subterm k is dominant.`}
+              />
+            </div>
+
+            {/* Step 2: Min-Max normalization */}
+            <div className="mb-4">
+              <p className="mb-2 text-sm font-semibold text-slate-700">
+                Step 2 — Min-Max Normalization (positive values only)
+              </p>
+              <FormulaBlock
+                formula={String.raw`\hat{\rho}(\varphi,\lambda) = \begin{cases} \dfrac{\rho(\varphi,\lambda) - \rho_{\min}^{+}}{\rho_{\max}^{+} - \rho_{\min}^{+}} & \text{if } \rho(\varphi,\lambda) > 0 \\ 0 & \text{otherwise} \end{cases}`}
+                terms={{
+                  'ρ_min⁺': 'minimum density over all grid points where ρ > 0',
+                  'ρ_max⁺': 'maximum density over all grid points where ρ > 0',
+                }}
+                notes="Applied independently to ρ_all → ρ̂_all and to each ρ_k → ρ̂_k. Zero and negative density values are clamped to 0."
+              />
+            </div>
+
+            {/* Step 3: Relative anomaly */}
+            <div className="mb-4">
+              <p className="mb-2 text-sm font-semibold text-slate-700">
+                Step 3 — Relative Genesis Density Anomaly
+              </p>
+              <FormulaBlock
+                formula={String.raw`\Delta\hat{\rho}_k(\varphi,\lambda) = \hat{\rho}_k(\varphi,\lambda) - \hat{\rho}_{\mathrm{all}}(\varphi,\lambda)`}
+                notes="Positive (red): cyclones dominated by subterm k show preferential genesis relative to all EP1. Negative (blue): suppressed genesis. A shared diverging colorbar spans [−Δmax, +Δmax] where Δmax = max|Δρ̂_k| across all subterm panels."
+              />
+            </div>
+
+            {/* Interpretation note */}
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-xs text-slate-600 leading-relaxed">
+              <strong>Interpretation note:</strong> The normalization removes differences in subset size (N<sub>k</sub> varies from 0 to {n_lec} depending on the dominant subterm) and differences in absolute genesis density amplitude, allowing direct spatial comparison of preferred genesis regions across subterms. A value of +1 indicates that the subterm subset&apos;s genesis density is at maximum relative to its own spatial range; a value of 0 indicates the background EP1 level; a value of −1 indicates complete suppression relative to the all-EP1 baseline.
+            </div>
+          </section>
+
+          <div className="rounded-xl border border-slate-200 bg-white p-5">
+            <h3 className="font-semibold text-slate-900">Statistical treatment — descriptive, not inferential</h3>
+            <p className="mt-2 text-sm text-slate-600">
+              Each cyclone is assigned a <strong>dominant subterm</strong>: the subterm with
+              the most negative intensification-phase mean, i.e. the one contributing most
+              strongly to eddy growth. A <strong>dominance margin</strong> — the gap between
+              the leading subterm and the runner-up — records how clear-cut that assignment
+              was. The reported percentages are then simple frequencies of the dominant
+              subterm across the population.
             </p>
-            <FormulaBlock
-              formula={String.raw`\rho(\varphi,\lambda) = \sum_{i=1}^{N} K_\sigma\!\left(d(\varphi,\lambda;\,\varphi_i,\lambda_i)\right)`}
-              terms={{
-                'd': 'haversine (great-circle) distance between grid point (φ,λ) and genesis point i',
-                'K_σ': 'Gaussian kernel with bandwidth σ = 0.05 rad',
-                'N': `number of cyclones in the set (N = ${n_ep1} for all-EP1; N = N_k for subterm-k subset)`,
-              }}
-              notes={`Two density fields are computed: ρ_all(φ,λ) from all N=${n_ep1} EP1 genesis points, and ρ_k(φ,λ) from the N_k genesis points of cyclones where subterm k is dominant.`}
-            />
-          </div>
-
-          {/* Step 2: Min-Max normalization */}
-          <div className="mb-4">
-            <p className="mb-2 text-sm font-semibold text-slate-700">
-              Step 2 — Min-Max Normalization (positive values only)
+            <p className="mt-3 text-sm text-slate-600">
+              No hypothesis test is applied in this analysis, and none of the percentages
+              carries a <em>p</em>-value. The boxplots show the full distribution of each
+              subterm rather than a mean with an error bar, precisely so that the spread and
+              the overlap between subterms remain visible without implying a formal test.
             </p>
-            <FormulaBlock
-              formula={String.raw`\hat{\rho}(\varphi,\lambda) = \begin{cases} \dfrac{\rho(\varphi,\lambda) - \rho_{\min}^{+}}{\rho_{\max}^{+} - \rho_{\min}^{+}} & \text{if } \rho(\varphi,\lambda) > 0 \\ 0 & \text{otherwise} \end{cases}`}
-              terms={{
-                'ρ_min⁺': 'minimum density over all grid points where ρ > 0',
-                'ρ_max⁺': 'maximum density over all grid points where ρ > 0',
-              }}
-              notes="Applied independently to ρ_all → ρ̂_all and to each ρ_k → ρ̂_k. Zero and negative density values are clamped to 0."
-            />
+            <InThisStudy>
+              <p>
+                This matters for how the dominance percentages should be read. That term E
+                leads in a plurality of EP1 cyclones, followed by term B and then term A,
+                describes <em>this</em> population; it is not a claim that term E is
+                significantly more often dominant than term B. Where a cyclone&apos;s
+                dominance margin is small, the leading subterm is close to arbitrary, and
+                the physically meaningful statement is that several subterms contribute
+                comparably.
+              </p>
+            </InThisStudy>
           </div>
-
-          {/* Step 3: Relative anomaly */}
-          <div className="mb-4">
-            <p className="mb-2 text-sm font-semibold text-slate-700">
-              Step 3 — Relative Genesis Density Anomaly
-            </p>
-            <FormulaBlock
-              formula={String.raw`\Delta\hat{\rho}_k(\varphi,\lambda) = \hat{\rho}_k(\varphi,\lambda) - \hat{\rho}_{\mathrm{all}}(\varphi,\lambda)`}
-              notes="Positive (red): cyclones dominated by subterm k show preferential genesis relative to all EP1. Negative (blue): suppressed genesis. A shared diverging colorbar spans [−Δmax, +Δmax] where Δmax = max|Δρ̂_k| across all subterm panels."
-            />
-          </div>
-
-          {/* Interpretation note */}
-          <div className="rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-xs text-slate-600 leading-relaxed">
-            <strong>Interpretation note:</strong> The normalization removes differences in subset size (N<sub>k</sub> varies from 0 to {n_lec} depending on the dominant subterm) and differences in absolute genesis density amplitude, allowing direct spatial comparison of preferred genesis regions across subterms. A value of +1 indicates that the subterm subset&apos;s genesis density is at maximum relative to its own spatial range; a value of 0 indicates the background EP1 level; a value of −1 indicates complete suppression relative to the all-EP1 baseline.
-          </div>
-        </section>
+        </MethodsPanel>
 
         {/* Full C_K formula + subterm definitions */}
         <section>

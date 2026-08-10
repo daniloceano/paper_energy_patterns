@@ -19,7 +19,16 @@ export const metadata: Metadata = {
 type Manifest = typeof manifestData
 const manifest = manifestData as Manifest
 
-const fig = (key: keyof Manifest['figures']) => figureUrl(manifest.figures[key])
+// The nine CPS figures are committed to web/public/figures/cps/ (5 MB total).
+// Serve them with an absolute path so they always come from the static public/
+// directory, regardless of whether NEXT_PUBLIC_SUPABASE_FIGURES_URL is set on
+// Vercel — the same approach used by the EP Differences page. The manifest
+// stores relative paths ("figures/cps/..."), so a leading slash is added when
+// one is missing; figureUrl() passes absolute paths through untouched.
+const fig = (key: keyof Manifest['figures']) => {
+  const p = manifest.figures[key]
+  return figureUrl(p.startsWith('figures/') ? `/${p}` : p)
+}
 
 /** Rows of the EP-relative table for one outcome. */
 function relFor(outcome: string) {

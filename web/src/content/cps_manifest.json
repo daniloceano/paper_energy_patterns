@@ -1,0 +1,315 @@
+{
+  "title": "Cyclone Phase Space \u2014 thermal structure of the Energy Patterns",
+  "generated_from": "scripts/cps_analysis/ (canonical pipeline, steps 1\u20138)",
+  "provenance": {
+    "cps_computed_by": "Andres Rodriguez (IAG-USP)",
+    "note": "The per-cyclone CPS parameters were computed by a collaborator over several months from ERA5 fields that are no longer held. The CSV series are the irreplaceable input to this analysis; the calculator is preserved unmodified in the repository.",
+    "calculator": "scripts/cps_analysis/cps_calculator_era5tocsv.py"
+  },
+  "population": {
+    "catalogue": 6776,
+    "with_cps": 6776,
+    "ep_labelled": 3812,
+    "by_ep": {
+      "EP1": 441,
+      "EP2": 978,
+      "EP3": 2393
+    },
+    "genesis_year_min": 1979,
+    "genesis_year_max": 2020,
+    "genesis_first": "1979-01-01",
+    "genesis_last": "2020-12-30",
+    "timestep_hours": 3
+  },
+  "criteria": {
+    "source": "de Souza et al. (2026), following Wood et al. (2023) for extratropical/tropical and Gozzo et al. (2014) for subtropical",
+    "classes": [
+      {
+        "name": "tropical",
+        "code": "TC",
+        "color": "#c0392b",
+        "terms": [
+          "B < 10",
+          "VTL > 0",
+          "VTU > 0"
+        ]
+      },
+      {
+        "name": "subtropical",
+        "code": "SC",
+        "color": "#1b9e77",
+        "terms": [
+          "-25 < B < 25",
+          "VTL > -50",
+          "VTU < -10"
+        ]
+      },
+      {
+        "name": "extratropical",
+        "code": "EC",
+        "color": "#1f4e9c",
+        "terms": [
+          "B > 10",
+          "VTL < 0",
+          "VTU < 0"
+        ]
+      }
+    ],
+    "precedence": [
+      "tropical",
+      "subtropical",
+      "extratropical"
+    ],
+    "persistence_hours": 36.0,
+    "pure_genesis_max_onset_hours": 24.0,
+    "min_dominance": 0.5,
+    "tt_max_poleward_lat": -40.0,
+    "tt_min_ocean_fraction": 0.5
+  },
+  "classes": [
+    {
+      "code": "EC",
+      "label": "extratropical throughout (no other persistent state)",
+      "color": "#1f4e9c",
+      "n": 2663,
+      "pct": 39.3,
+      "kind": "single_state"
+    },
+    {
+      "code": "SC",
+      "label": "subtropical throughout (no other persistent state)",
+      "color": "#1b9e77",
+      "n": 409,
+      "pct": 6.0,
+      "kind": "single_state"
+    },
+    {
+      "code": "TC",
+      "label": "tropical throughout (no other persistent state)",
+      "color": "#c0392b",
+      "n": 2,
+      "pct": 0.0,
+      "kind": "single_state"
+    },
+    {
+      "code": "TT",
+      "label": "tropical transition (EC or SC -> TC)",
+      "color": "#e74c3c",
+      "n": 0,
+      "pct": 0.0,
+      "kind": "transition"
+    },
+    {
+      "code": "ET",
+      "label": "extratropical transition (TC -> EC)",
+      "color": "#2980b9",
+      "n": 0,
+      "pct": 0.0,
+      "kind": "transition"
+    },
+    {
+      "code": "ST",
+      "label": "subtropical transition (EC -> SC)",
+      "color": "#66c2a4",
+      "n": 298,
+      "pct": 4.4,
+      "kind": "transition"
+    },
+    {
+      "code": "SD",
+      "label": "subtropical decay (SC -> EC)",
+      "color": "#7fb3d5",
+      "n": 47,
+      "pct": 0.7,
+      "kind": "transition"
+    },
+    {
+      "code": "EC_like",
+      "label": "extratropical characteristics, not sustained for 36 h",
+      "color": "#9db8e0",
+      "n": 2392,
+      "pct": 35.3,
+      "kind": "characteristic"
+    },
+    {
+      "code": "SC_like",
+      "label": "hybrid characteristics, not sustained for 36 h",
+      "color": "#a8ddcb",
+      "n": 372,
+      "pct": 5.5,
+      "kind": "characteristic"
+    },
+    {
+      "code": "TC_like",
+      "label": "warm-core characteristics, not sustained for 36 h",
+      "color": "#e8a49c",
+      "n": 2,
+      "pct": 0.0,
+      "kind": "characteristic"
+    },
+    {
+      "code": "undetermined",
+      "label": "no structure held for the persistence gate, none dominant",
+      "color": "#cfcfcf",
+      "n": 591,
+      "pct": 8.7,
+      "kind": "undetermined"
+    }
+  ],
+  "rejected_by_tt_test": {
+    "warm_seclusion": 12,
+    "indeterminate_warm_core": 2
+  },
+  "ep_relative": [
+    {
+      "outcome": "SC",
+      "ep": "EP1",
+      "k": 33,
+      "n": 441,
+      "rate_pct": 7.48,
+      "rate_lo_pct": 5.38,
+      "rate_hi_pct": 10.32,
+      "epall_rate_pct": 7.9,
+      "ratio": 0.95,
+      "odds_ratio": 0.94,
+      "p": 0.7789359992362399,
+      "p_holm": 1.0,
+      "significant_holm": false
+    },
+    {
+      "outcome": "SC",
+      "ep": "EP2",
+      "k": 72,
+      "n": 978,
+      "rate_pct": 7.36,
+      "rate_lo_pct": 5.89,
+      "rate_hi_pct": 9.17,
+      "epall_rate_pct": 7.9,
+      "ratio": 0.93,
+      "odds_ratio": 0.9,
+      "p": 0.4924706952983748,
+      "p_holm": 1.0,
+      "significant_holm": false
+    },
+    {
+      "outcome": "SC",
+      "ep": "EP3",
+      "k": 196,
+      "n": 2393,
+      "rate_pct": 8.19,
+      "rate_lo_pct": 7.16,
+      "rate_hi_pct": 9.36,
+      "epall_rate_pct": 7.9,
+      "ratio": 1.04,
+      "odds_ratio": 1.12,
+      "p": 0.4193510202168498,
+      "p_holm": 1.0,
+      "significant_holm": false
+    },
+    {
+      "outcome": "ST",
+      "ep": "EP1",
+      "k": 24,
+      "n": 441,
+      "rate_pct": 5.44,
+      "rate_lo_pct": 3.68,
+      "rate_hi_pct": 7.97,
+      "epall_rate_pct": 6.9,
+      "ratio": 0.79,
+      "odds_ratio": 0.75,
+      "p": 0.2302468922329464,
+      "p_holm": 1.0,
+      "significant_holm": false
+    },
+    {
+      "outcome": "ST",
+      "ep": "EP2",
+      "k": 92,
+      "n": 978,
+      "rate_pct": 9.41,
+      "rate_lo_pct": 7.73,
+      "rate_hi_pct": 11.4,
+      "epall_rate_pct": 6.9,
+      "ratio": 1.36,
+      "odds_ratio": 1.62,
+      "p": 0.000554109671984,
+      "p_holm": 0.0049869870478562,
+      "significant_holm": true
+    },
+    {
+      "outcome": "ST",
+      "ep": "EP3",
+      "k": 147,
+      "n": 2393,
+      "rate_pct": 6.14,
+      "rate_lo_pct": 5.25,
+      "rate_hi_pct": 7.18,
+      "epall_rate_pct": 6.9,
+      "ratio": 0.89,
+      "odds_ratio": 0.74,
+      "p": 0.0174114146959646,
+      "p_holm": 0.1392913175677171,
+      "significant_holm": false
+    },
+    {
+      "outcome": "SC or ST",
+      "ep": "EP1",
+      "k": 57,
+      "n": 441,
+      "rate_pct": 12.93,
+      "rate_lo_pct": 10.11,
+      "rate_hi_pct": 16.38,
+      "epall_rate_pct": 14.8,
+      "ratio": 0.87,
+      "odds_ratio": 0.84,
+      "p": 0.2543606535407838,
+      "p_holm": 1.0,
+      "significant_holm": false
+    },
+    {
+      "outcome": "SC or ST",
+      "ep": "EP2",
+      "k": 164,
+      "n": 978,
+      "rate_pct": 16.77,
+      "rate_lo_pct": 14.56,
+      "rate_hi_pct": 19.24,
+      "epall_rate_pct": 14.8,
+      "ratio": 1.13,
+      "odds_ratio": 1.23,
+      "p": 0.047142438532456,
+      "p_holm": 0.3299970697271926,
+      "significant_holm": false
+    },
+    {
+      "outcome": "SC or ST",
+      "ep": "EP3",
+      "k": 343,
+      "n": 2393,
+      "rate_pct": 14.33,
+      "rate_lo_pct": 12.99,
+      "rate_hi_pct": 15.79,
+      "epall_rate_pct": 14.8,
+      "ratio": 0.97,
+      "odds_ratio": 0.91,
+      "p": 0.2995611315641969,
+      "p_holm": 1.0,
+      "significant_holm": false
+    }
+  ],
+  "gallery": {
+    "n_figures": 745,
+    "n_classes": 9
+  },
+  "figures": {
+    "reference": "figures/cps/fig0_cps_reference.png",
+    "composition": "figures/cps/fig1_phase_composition.png",
+    "phase_space": "figures/cps/fig2_phase_space.png",
+    "transitions": "figures/cps/fig3_transitions.png",
+    "tropical_runs": "figures/cps/fig4_tropical_runs.png",
+    "phase_space_by_ep": "figures/cps/fig5_phase_space_by_ep.png",
+    "single_state_sc": "figures/cps/fig6_phase_space_by_ep_single_state_sc.png",
+    "trajectories": "figures/cps/fig7_transition_trajectories.png",
+    "ep_relative": "figures/cps/fig8_ep_relative_subtropical.png"
+  }
+}

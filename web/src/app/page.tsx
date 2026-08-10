@@ -2,7 +2,6 @@ import Link from 'next/link'
 import {
   BarChart3,
   Layers,
-  TrendingDown,
   Database,
   BookOpen,
   Microscope,
@@ -178,30 +177,19 @@ export default function HomePage() {
             Explore the Research
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Navigate through the analyses and methodology.
+            Three entry points. The analyses index is the single place where every
+            analysis is listed, so nothing goes missing here as the work grows.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                title: 'Cluster Analysis',
-                desc: 'PCA, optimal k, K-Means clustering, and Lorenz Phase Space diagrams',
-                href: '/analyses/cluster',
+                title: 'Analyses',
+                desc: 'Clustering, ERA5 composites, Ck subterms, LEC–field dependence, and the cyclone phase space',
+                href: '/analyses',
                 icon: BarChart3,
               },
               {
-                title: 'Composite Analysis',
-                desc: 'ERA5 composite maps comparing EP1 vs EP2 atmospheric structure',
-                href: '/analyses/composites',
-                icon: Layers,
-              },
-              {
-                title: 'Ck Subterms Analysis',
-                desc: 'Decomposition of barotropic conversion into five subterms and dominance classification',
-                href: '/analyses/ck-subterms',
-                icon: TrendingDown,
-              },
-              {
-                title: 'Data & Methods',
+                title: 'Methods',
                 desc: 'Dataset, energy terms, anomaly methodology, and boundary flux formulas',
                 href: '/methods',
                 icon: Microscope,

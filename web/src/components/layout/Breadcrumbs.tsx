@@ -22,6 +22,8 @@ const ROUTE_LABELS: Record<string, string> = {
   'ep-differences': 'EP Differences',
   'dependence-explorer': 'Dependence Explorer',
   'ck-subterms': 'Ck Subterms',
+  // Without this the fallback title-cases the segment into "Cps".
+  cps: 'Cyclone Phase Space',
 }
 
 export default function Breadcrumbs() {

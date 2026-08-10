@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { BarChart3, Layers, TrendingDown, GitCompareArrows } from 'lucide-react'
+import { BarChart3, Layers, TrendingDown, GitCompareArrows, Tornado } from 'lucide-react'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import AnalysisCardGrid from '@/components/analysis/AnalysisCardGrid'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
@@ -16,7 +16,7 @@ export default function AnalysesPage() {
       <AnalysisHero
         title="Analyses"
         badge="Research Pipeline"
-        description="Two complementary analyses characterise the energetic patterns of South Atlantic cyclones: (1) PCA-based clustering identifies three Energy Patterns from Lorenz Energy Cycle diagnostics, and (2) ERA5 composite analysis reveals the atmospheric structure differences between EP1 and EP2 during intensification."
+        description="Complementary analyses characterise the energetic patterns of South Atlantic cyclones. PCA-based clustering identifies three Energy Patterns from Lorenz Energy Cycle diagnostics; ERA5 composites reveal the atmospheric structure behind them; the barotropic conversion is decomposed into its subterms; the statistical dependence between dynamical fields and energy terms is quantified; and the cyclone phase space places each system's thermal structure against its energetics."
       />
 
       <AnalysisCardGrid
@@ -49,6 +49,13 @@ export default function AnalysesPage() {
               'Statistical dependence between ERA5 dynamical fields and Lorenz Energy Cycle terms. EP-level differences (Kruskal–Wallis, effect sizes, volcano plots) and per-cyclone dependence metrics (PREDEP, Pearson, Spearman) with interactive exploration.',
             href: '/analyses/field-dependence',
             icon: GitCompareArrows,
+          },
+          {
+            title: 'Cyclone Phase Space — Thermal Structure',
+            description:
+              'Hart (2003) phase space for 6,776 cyclones: extratropical, subtropical and tropical structure under a 36 h persistence gate and a warm-seclusion filter, cross-referenced against the Energy Patterns. EP2 shows 1.36× the pooled rate of subtropical transition.',
+            href: '/analyses/cps',
+            icon: Tornado,
           },
         ]}
       />

@@ -65,6 +65,19 @@ FIGURES_MANIFEST = {
     "main/2_20070643_lps_track_publication.png":   "main/2_20070643_lps_track_publication.png",
     "main/3_phase_density_2x2.png":                "main/3_phase_density_2x2.png",
 
+    # --- CPS analysis (cyclone phase space) ---
+    # The 745-figure case gallery under figures/cps_analysis/cases/ is NOT copied:
+    # it is a validation aid for the authors, not site content.
+    "cps/fig0_cps_reference.png":                       "cps_analysis/fig0_cps_reference.png",
+    "cps/fig1_phase_composition.png":                   "cps_analysis/fig1_phase_composition.png",
+    "cps/fig2_phase_space.png":                         "cps_analysis/fig2_phase_space.png",
+    "cps/fig3_transitions.png":                         "cps_analysis/fig3_transitions.png",
+    "cps/fig4_tropical_runs.png":                       "cps_analysis/fig4_tropical_runs.png",
+    "cps/fig5_phase_space_by_ep.png":                   "cps_analysis/fig5_phase_space_by_ep.png",
+    "cps/fig6_phase_space_by_ep_single_state_sc.png":   "cps_analysis/fig6_phase_space_by_ep_single_state_sc.png",
+    "cps/fig7_transition_trajectories.png":             "cps_analysis/fig7_transition_trajectories.png",
+    "cps/fig8_ep_relative_subtropical.png":             "cps_analysis/fig8_ep_relative_subtropical.png",
+
     # NOTE: EP Structure composite figures are copied via copy_ep_structure_tree()
     # (canonical figures now have clean naming without mode suffixes)
 }

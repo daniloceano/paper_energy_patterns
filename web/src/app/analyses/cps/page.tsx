@@ -9,7 +9,6 @@ import manifestData from '@/content/cps_manifest.json'
 import MethodsPanel from '@/components/analysis/MethodsPanel'
 import FormulaBlock from '@/components/analysis/FormulaBlock'
 import { SimpleTerms, InThisStudy, TestFlow } from '@/components/analysis/Didactic'
-import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Cyclone Phase Space — Thermal Structure of the Energy Patterns',

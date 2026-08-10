@@ -177,7 +177,7 @@ export default function FieldDependencePage() {
           </div>
           <SimpleTerms>
             <p>
-              Line up all {DATASET_STATS.filteredCyclones.toLocaleString()} cyclones
+              Line up all 2,733 cyclones
               from weakest to strongest on the variable of interest, and number them
               1, 2, 3, … That number is the rank. Now look at where each EP&apos;s
               cyclones landed. If EP1, EP2, and EP3 are scattered evenly through the

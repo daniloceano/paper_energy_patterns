@@ -68,7 +68,15 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 FIGURES_DIR = REPO_ROOT / "figures"
 BUCKET_NAME = "figures"
 
-# Directories to upload by default (all that the web site uses)
+# Directories to upload by default (all that the web site uses).
+#
+# These names are read from figures/ (the pipeline output), so they are pipeline
+# directory names. The CPS analysis is deliberately NOT here: its pipeline
+# directory is figures/cps_analysis/, the site serves it at figures/cps/, and the
+# pipeline directory also holds a 745-figure case gallery that must not reach the
+# bucket. Upload it from the curated web tree instead:
+#
+#     bash scripts/web/upload_with_env.sh --from-public --dirs cps
 DEFAULT_DIRS = [
     "cluster",
     "main",
@@ -106,23 +114,26 @@ def get_supabase_client():
     return create_client(url, key)
 
 
-def collect_files(dirs: list[str]) -> list[tuple[Path, str]]:
+def collect_files(dirs: list[str], root: Path = FIGURES_DIR) -> list[tuple[Path, str]]:
     """Collect (local_path, bucket_object_key) pairs for all figure files.
 
     Returns pairs where:
       local_path       = absolute path to the file on disk
       bucket_object_key = path within the 'figures' bucket (no leading slash)
+
+    `root` is either the pipeline output tree (figures/) or the curated web tree
+    (web/public/figures/) — see --from-public.
     """
     pairs = []
     for dir_name in dirs:
-        dir_path = FIGURES_DIR / dir_name
+        dir_path = root / dir_name
         if not dir_path.exists():
             print(f"  ⚠  {dir_path.relative_to(REPO_ROOT)} — directory not found, skipping")
             continue
         for file_path in sorted(dir_path.rglob("*")):
             if file_path.is_file() and file_path.suffix.lower() in SUPPORTED_EXTENSIONS:
-                # Object key = path relative to figures/ (no leading slash)
-                object_key = str(file_path.relative_to(FIGURES_DIR))
+                # Object key = path relative to the source root (no leading slash)
+                object_key = str(file_path.relative_to(root))
                 pairs.append((file_path, object_key))
     return pairs
 
@@ -209,6 +220,19 @@ def main():
         help=f"Which figure subdirectories to upload (default: {DEFAULT_DIRS})",
     )
     parser.add_argument(
+        "--from-public",
+        action="store_true",
+        help=(
+            "Read from web/public/figures/ instead of figures/. That tree is the "
+            "curated set the site actually serves, built by copy_figures_to_web.py, "
+            "so the bucket key is guaranteed to equal the path the page requests. "
+            "Use this for any analysis whose pipeline directory name differs from "
+            "its web path, or whose pipeline directory holds files the site does "
+            "not serve (e.g. cps_analysis/, which also contains a 745-figure case "
+            "gallery that must NOT be uploaded)."
+        ),
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing files in the bucket (default: skip existing)",
@@ -220,17 +244,20 @@ def main():
     )
     args = parser.parse_args()
 
+    root = (REPO_ROOT / "web" / "public" / "figures") if args.from_public else FIGURES_DIR
+
     print("=" * 60)
     print("UPLOAD FIGURES TO SUPABASE STORAGE")
     print("=" * 60)
     print(f"  Bucket : {BUCKET_NAME}")
+    print(f"  Source : {root.relative_to(REPO_ROOT)}")
     print(f"  Dirs   : {args.dirs}")
     print(f"  Mode   : {'dry-run' if args.dry_run else ('overwrite' if args.overwrite else 'skip existing')}")
     print()
 
     # Collect files
     print("Collecting files...")
-    pairs = collect_files(args.dirs)
+    pairs = collect_files(args.dirs, root=root)
     print(f"  Found {len(pairs)} figure files to process")
 
     if not pairs:

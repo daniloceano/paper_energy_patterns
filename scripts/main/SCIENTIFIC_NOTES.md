@@ -47,11 +47,11 @@ be interpreted*.
     - [9.5 Row 3: Jet-level energetics departure](#95-row-3-jet-level-energetics-departure)
     - [9.6 Global colormap design](#96-global-colormap-design)
   - [9. Figure S1 — PCA and clustering validation](#9-figure-s1--pca-and-clustering-validation)
-  - [10. Figure S2 — Selected EP1 and EP2 tracks](#10-figure-s2--selected-ep1-and-ep2-tracks)
-  - [11. Figure S3 — Vertical Ca/Ck profiles (EP1)](#11-figure-s3--vertical-cack-profiles-ep1)
-    - [11.1 Vertical profiles](#111-vertical-profiles)
-    - [11.2 Data corrections](#112-data-corrections)
-    - [11.3 Interpretation](#113-interpretation)
+  - [10. Figure 5 — Vertical Ca/Ck profiles (EP1, EP2, EP3)](#10-figure-5--vertical-cack-profiles-ep1-ep2-ep3)
+    - [10.1 Vertical profiles](#101-vertical-profiles)
+    - [10.2 Data corrections](#102-data-corrections)
+    - [10.3 Interpretation](#103-interpretation)
+  - [Figure S3 — C_K vertical profile and integrated subterms (EP1)](#figure-s3--c_k-vertical-profile-and-integrated-subterms-ep1)
   - [12. Global caveats and interpretation boundaries](#12-global-caveats-and-interpretation-boundaries)
   - [13. References](#13-references)
     - [TODO / unresolved uncertainties](#todo--unresolved-uncertainties)
@@ -657,7 +657,7 @@ Their agreement at $k = 3$ constitutes convergent evidence for three clusters.
 
 ---
 
-## 10. Figure S2 — Vertical Ca/Ck profiles (EP1, EP2, EP3)
+## 10. Figure 5 — Vertical Ca/Ck profiles (EP1, EP2, EP3)
 
 **Scientific purpose:** To determine which pressure level(s) carry the strongest
 baroclinic ($C_a$) and barotropic ($C_k$) energy conversion signals across all three
@@ -734,6 +734,51 @@ interaction with the background state.
   legend and at runtime.
 - Cyclones with missing or incomplete LEC data from the Zenodo archive are excluded
   from each EP independently.
+
+---
+
+## Figure S3 — C_K vertical profile and integrated subterms (EP1)
+
+**Scientific purpose:** To identify the pressure level at which barotropic
+kinetic-energy conversion is strongest for EP1 cyclones, and to decompose the
+vertically integrated $C_K$ into its five physical subterms.
+
+$C_K$ decomposes barotropic kinetic-energy conversion into five subterms (A–E):
+
+$$
+C_K = \int \frac{1}{g} \left[ C_K^{(A)} + C_K^{(B)} + C_K^{(C)} + C_K^{(D)} + C_K^{(E)} \right] dp
+$$
+
+Sign convention (authoritative: `paper.tex`):
+- $C_K < 0 \Rightarrow K_Z \to K_E$ (barotropic instability feeds the eddies)
+- $C_K > 0 \Rightarrow K_E \to K_Z$ (eddies export energy to the mean flow)
+
+EP1 cyclones show mean $C_K \approx -16.5$ W m⁻² — the strongest barotropic-instability
+pattern among the three EPs — with the dominant level at ~350 hPa.
+
+**Subterm mapping** (LorenzCycleToolkit `Ck_1`…`Ck_5` → paper labels A–E):
+
+| Toolkit term | Paper label | Physical meaning |
+|---|---|---|
+| `Ck_1` | $C_K^{(A)}$ | Meridional gradient of zonal wind |
+| `Ck_2` | $C_K^{(B)}$ | Meridional flux of eddy KE |
+| `Ck_3` | $C_K^{(C)}$ | Curvature (tan φ) term |
+| `Ck_4` | $C_K^{(D)}$ | Vertical shear of zonal wind |
+| `Ck_5` | $C_K^{(E)}$ | Vertical shear of meridional wind |
+
+**Data availability note:** Per-pressure-level files for the individual $C_K$
+subterms are not part of the local Zenodo archive. Panel (a) therefore shows the
+vertical profile of the *total* $C_K$ (from `Ck_level.csv`, EP1 cyclones,
+intensification phase, gravity-corrected). Panel (b) shows the vertically
+integrated subterms from `results/ck_analysis/ck_subterms_boxplot_input.csv`
+(EP1 cyclones, phase-mean).
+
+**Caveats:**
+- Panel (a) and panel (b) come from different processing pipelines (Zenodo
+  per-level archive vs. locally computed integrated subterms) — they are
+  complementary, not directly reconcilable term-by-term.
+- Results are restricted to EP1; the same subterm decomposition has not been
+  run for EP2/EP3.
 
 ---
 
@@ -871,8 +916,8 @@ to detect trend in serially correlated hydrological series. *Water Resources Man
 
 ### TODO / unresolved uncertainties
 
-- **S2 figure corrections re-validation:** The Ca sign inversion and Ck / $g$
-  normalization applied in `S2_figure_vertical_levels.py` were validated against the
+- **Figure 5 corrections re-validation:** The Ca sign inversion and Ck / $g$
+  normalization applied in `05_figure_vertical_levels.py` were validated against the
   current Zenodo archive. If the archive is regenerated, re-run the validation script
   before interpreting the figure.
 

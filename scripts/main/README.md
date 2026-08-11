@@ -20,7 +20,7 @@ python scripts/main/01_figure_tracks_genesis_frequency.py
 python scripts/main/run_all.py
 ```
 
-> **Note:** Figures 2, 3, 4, and S2 require upstream pre-processing steps
+> **Note:** Figures 2, 3, 4, and S3 require upstream pre-processing steps
 > that must be completed first. See the per-figure sections below.
 
 ---
@@ -33,13 +33,15 @@ python scripts/main/run_all.py
 | 2 | `02_figure_20070643_publication.py` | `2_20070643_lps_track_publication.png` | Case study — cyclone 20070643 LPS and track | Exploratory images (see §Fig 2) |
 | 3 | `03_make_phase_density_2x2.py` | `3_phase_density_2x2.png` | Phase-space density for all cyclones, by lifecycle phase | Exploratory images (see §Fig 3) |
 | 4 | `04_figure_lps_combined.py` | `4_lps_combined.png` | Lorenz Phase Space (Conversion + Imports) for EP1–EP3 | Cluster figures (see §Fig 4) |
-| 5 | `05_figure_ck_subterms_vertical_profiles.py` | `5_ck_subterms_vertical_profiles.png` | C_K vertical profiles (Zenodo) + integrated subterms A–E for EP1, intensification | Zenodo LEC archive + ck_analysis results |
+| 5 | `05_figure_vertical_levels.py` | `5_vertical_levels.png` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones | Zenodo LEC archive (see §Fig 5) |
 | 6 | `06_figure_intensity_seasonality_trends.py` | `6_ep_intensity_seasonality_trends.png` | EP intensity, seasonal distribution, and interannual trends | Cluster results |
 | 7 | `07_figure_genesis_density_kde.py` | `7_ep_genesis_density_kde.png` | Genesis density (KDE, Hoskins & Hodges method) | Cluster results |
 | 8 | `08_figure_ep1_ep2_dynamical_composites.py` | `8_dynamical_composites_epall_relative.png` | EPALL-relative dynamical composites — 3×3 layout (EP1−EPALL \| EP2−EPALL \| EP3−EPALL) | ERA5 composites (see §Fig 8) |
 | 9 | `09_figure_pearson_epall_by_field_type.py` | `9_pearson_epall_by_field_type.png` | Pearson \|r\| heatmaps grouped by field type (AdvT, AFC, KE adv, PV200, PV850) — EPALL, anomaly fields, canonical LEC terms | `lec_field_dependence_analysis` step 7 |
 | S1 | `S1_figure_pca_clustering_validation.py` | `S1_pca_clustering_validation.png` | PCA variance explained + optimal-*k* cluster validation | Cluster results |
-| S2 | `S2_figure_vertical_levels.py` | `S2_vertical_levels.png` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones | Zenodo LEC archive (see §Fig S2) |
+| S2 | `S2_figure_pairwise_effectsize_lec_terms.py` | `S2_pairwise_effectsize_lec_terms.png` | Pairwise effect size (\|rank-biserial r\|) for canonical LEC terms, EP1 vs EP2 vs EP3 | `lec_field_dependence_analysis` step7b |
+| S3 | `S3_figure_ck_subterms_vertical_profiles.py` | `S3_ck_subterms_vertical_profiles.png` | C_K vertical profiles (Zenodo) + integrated subterms A–E for EP1, intensification | Zenodo LEC archive + ck_analysis results |
+| S4 | `S4_figure_pairwise_effectsize_composite_scalars.py` | `S4_pairwise_effectsize_composite_scalars.png` | Pairwise effect size (\|rank-biserial r\|) for EPALL-relative composite scalar features, EP1 vs EP2 vs EP3 | `lec_field_dependence_analysis` step7b |
 
 ---
 
@@ -179,33 +181,52 @@ python scripts/main/04_figure_lps_combined.py
 
 ---
 
-### Figure 5 — C_K vertical profiles and integrated subterms (EP1)
+### Figure 5 — Vertical distribution of Ca and Ck (EP1, EP2, EP3)
 
-**Script:** `05_figure_ck_subterms_vertical_profiles.py`  
-**Output:** `figures/main/5_ck_subterms_vertical_profiles.png`
+**Script:** `05_figure_vertical_levels.py`  
+**Output:** `figures/main/5_vertical_levels.png`
 
 **What it shows:**
-Two-panel figure for EP1 cyclones, intensification phase:
-- **(a) Vertical profile of total C_K:** Horizontal boxplots per pressure level (1000–100 hPa,
-  ~27 levels). Each box summarises the cyclone-mean C_K value across all EP1 cyclones at
-  that level. Blue shading marks negative (K_Z→K_E, barotropic instability) values.
-- **(b) Integrated C_K subterms:** Distribution of vertically integrated phase-mean values for
-  each of the five subterms Ck^(A)–Ck^(E) across EP1 cyclones.
+Two-panel boxplot showing the pressure-level distribution of energy conversions
+for **all three Energy Patterns** (EP1, EP2, EP3) during the intensification phase,
+across 32 levels (1000–100 hPa). Each pressure level displays three side-by-side
+boxes, one per EP:
+- **(a)** Baroclinic conversion **Ca** [W m⁻²]: EP1 = red, EP2 = blue, EP3 = green.
+- **(b)** Barotropic conversion **Ck** [W m⁻²]: same color coding.
 
-**Data availability note:**
-Per-level files for individual C_K subterms are not available in the local Zenodo archive.
-Panel (a) uses `Ck_level.csv` (total C_K per level) from the Zenodo archive.
-Panel (b) uses `results/ck_analysis/ck_subterms_boxplot_input.csv` (integrated values).
+Box elements: IQR (box), median (line), 1.5×IQR whiskers (outliers not shown);
+colored star (★) marks the pressure level of maximum median Ca / minimum median Ck
+for each EP. X-axis values are displayed in scientific notation.
+
+**Data source:** Zenodo archive (DOI: `10.5281/zenodo.18243447`).
+Vertical-resolution LEC output at 32 pressure levels (3-hourly); Ca and Ck
+values per level in files `<track_id>_ERA5_track/Ca_level.csv` and `Ck_level.csv`.
+Phase timing is read from `<track_id>_ERA5_track/periods.csv`.
+
+**Data corrections applied in this script:**
+1. **Ca:** sign inversion (`Ca_corrected = −Ca_raw`) — old LorenzCycleToolkit version
+   stored Ca_level with opposite sign.
+2. **Ck:** division by gravity (`Ck_corrected = Ck_raw / 9.8 m s⁻²`) — old version
+   stored Ck_level without gravity normalization.
 
 **Required inputs:**
-- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/` (Zenodo DOI: 10.5281/zenodo.18243447)
-- `results/ep_structure/ep1_cases.csv`
-- `results/ck_analysis/ck_subterms_boxplot_input.csv`
+- `results/cluster/kmeans_clustered_data.csv` (EP filtering for all three patterns)
+- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/Ca_level.csv`
+- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/Ck_level.csv`
+- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/periods.csv`
+
+**Upstream dependency (data download):**
+The Zenodo archive must be downloaded and unpacked into `data/temp_lec_zenodo/`.
+No intermediate Python preprocessing step is required beyond that download.
 
 **How to run:**
 ```bash
-python scripts/main/05_figure_ck_subterms_vertical_profiles.py
+python scripts/main/05_figure_vertical_levels.py
 ```
+
+For the scientific interpretation of the vertical Ca/Ck profiles and the
+rationale for the pressure-level corrections, see
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 5.
 
 ---
 
@@ -425,55 +446,33 @@ python scripts/main/S1_figure_pca_clustering_validation.py
 
 ---
 
-### Figure S2 — Vertical distribution of Ca and Ck (EP1, EP2, EP3)
+### Figure S3 — C_K vertical profiles and integrated subterms (EP1)
 
-**Script:** `S2_figure_vertical_levels.py`  
-**Output:** `figures/main/S2_vertical_levels.png`
+**Script:** `S3_figure_ck_subterms_vertical_profiles.py`  
+**Output:** `figures/main/S3_ck_subterms_vertical_profiles.png`
 
 **What it shows:**
-Two-panel boxplot showing the pressure-level distribution of energy conversions
-for **all three Energy Patterns** (EP1, EP2, EP3) during the intensification phase,
-across 32 levels (1000–100 hPa). Each pressure level displays three side-by-side
-boxes, one per EP:
-- **(a)** Baroclinic conversion **Ca** [W m⁻²]: EP1 = red, EP2 = blue, EP3 = green.
-- **(b)** Barotropic conversion **Ck** [W m⁻²]: same color coding.
+Two-panel figure for EP1 cyclones, intensification phase:
+- **(a) Vertical profile of total C_K:** Horizontal boxplots per pressure level (1000–100 hPa,
+  ~27 levels). Each box summarises the cyclone-mean C_K value across all EP1 cyclones at
+  that level. Blue shading marks negative (K_Z→K_E, barotropic instability) values.
+- **(b) Integrated C_K subterms:** Distribution of vertically integrated phase-mean values for
+  each of the five subterms Ck^(A)–Ck^(E) across EP1 cyclones.
 
-Box elements: IQR (box), median (line), 1.5×IQR whiskers (outliers not shown);
-colored star (★) marks the pressure level of maximum median Ca / minimum median Ck
-for each EP.
-
-**Data source:** Zenodo archive (DOI: `10.5281/zenodo.18243447`).
-Vertical-resolution LEC output at 32 pressure levels (3-hourly); Ca and Ck
-values per level in files `<track_id>_ERA5_track/Ca_level.csv` and `Ck_level.csv`.
-Phase timing is read from `<track_id>_ERA5_track/periods.csv`.
-
-**Data corrections applied in this script:**
-1. **Ca:** sign inversion (`Ca_corrected = −Ca_raw`) — old LorenzCycleToolkit version
-   stored Ca_level with opposite sign.
-2. **Ck:** division by gravity (`Ck_corrected = Ck_raw / 9.8 m s⁻²`) — old version
-   stored Ck_level without gravity normalization.
-
-These corrections are validated in
-`scripts/ep_structure_analysis/` (`validate_step2.py` or equivalent).
+**Data availability note:**
+Per-level files for individual C_K subterms are not available in the local Zenodo archive.
+Panel (a) uses `Ck_level.csv` (total C_K per level) from the Zenodo archive.
+Panel (b) uses `results/ck_analysis/ck_subterms_boxplot_input.csv` (integrated values).
 
 **Required inputs:**
-- `results/cluster/kmeans_clustered_data.csv` (EP filtering for all three patterns)
-- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/Ca_level.csv`
-- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/Ck_level.csv`
-- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/<id>_ERA5_track/periods.csv`
-
-**Upstream dependency (data download):**
-The Zenodo archive must be downloaded and unpacked into `data/temp_lec_zenodo/`.
-No intermediate Python preprocessing step is required beyond that download.
+- `data/temp_lec_zenodo/LEC_Results_energetic-patterns/` (Zenodo DOI: 10.5281/zenodo.18243447)
+- `results/ep_structure/ep1_cases.csv`
+- `results/ck_analysis/ck_subterms_boxplot_input.csv`
 
 **How to run:**
 ```bash
-python scripts/main/S2_figure_vertical_levels.py
+python scripts/main/S3_figure_ck_subterms_vertical_profiles.py
 ```
-
-For the scientific interpretation of the vertical Ca/Ck profiles and the
-rationale for the pressure-level corrections, see
-[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure S2.
 
 ---
 
@@ -491,6 +490,9 @@ scripts/preprocess_data/           → data/tracks_SAt_filtered_with_energetics_
        ├─ scripts/cluster_analysis_energy_patterns/step5  → figures/cluster/lps_*_zoom.png
        │    └─ 04_figure_lps_combined.py                 (Figure 4)
        │
+       ├─ data/temp_lec_zenodo/LEC_Results_energetic-patterns/ (Zenodo)
+       │    └─ 05_figure_vertical_levels.py               (Figure 5)
+       │
        └─ scripts/ep_structure_analysis/step1_select_ep_tracks
             │
             ├─ step2_download_era5 + step3_precompute_composites
@@ -501,7 +503,7 @@ scripts/preprocess_data/           → data/tracks_SAt_filtered_with_energetics_
                  │
                  └─ results/ck_analysis/ck_subterms_boxplot_input.csv
                       + data/temp_lec_zenodo/LEC_Results_energetic-patterns/ (Zenodo)
-                           └─ 05_figure_ck_subterms_vertical_profiles.py  (Figure 5)
+                           └─ S3_figure_ck_subterms_vertical_profiles.py  (Figure S3)
 scripts/exploratory/figure_three_intense_cyclones_individual_zoom.py
   └─ figures/exploratory/three_most_intense_cyclones_zoom/20070643_*.png
        └─ 02_figure_20070643_publication.py               (Figure 2)
@@ -509,10 +511,6 @@ scripts/exploratory/figure_three_intense_cyclones_individual_zoom.py
 scripts/exploratory/density_diagrams_with_ge.py
   └─ figures/exploratory/density_ge/by_phase/{inc,int,mat,dec}.png
        └─ 03_make_phase_density_2x2.py                   (Figure 3)
-
-Zenodo DOI 10.5281/zenodo.18243447 (manual download)
-  └─ data/temp_lec_zenodo/LEC_Results_energetic-patterns/
-       └─ S2_figure_vertical_levels.py                   (Figure S2)
 ```
 
 ---

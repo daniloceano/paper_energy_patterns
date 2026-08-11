@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure S3: Vertical Distribution of Energy Conversions for EP1, EP2, and EP3 Cyclones
+Figure 5: Vertical Distribution of Energy Conversions for EP1, EP2, and EP3 Cyclones
 
 This script creates a two-panel boxplot showing the vertical distribution of:
   • (a) Baroclinic conversion (Ca) across 32 pressure levels (1000–100 hPa)
@@ -9,7 +9,8 @@ This script creates a two-panel boxplot showing the vertical distribution of:
 
 Each panel shows three side-by-side boxes per pressure level, one for each
 Energy Pattern (EP1, EP2, EP3). Analysis is restricted to the intensification
-phase of each cyclone.
+phase of each cyclone. A star marks, for each EP, the pressure level where its
+median Ca is largest (panel a) / its median Ck is smallest (panel b).
 
 Key findings:
   • Maximum Ca typically occurs in the mid-troposphere (~350–400 hPa) for all EPs
@@ -26,7 +27,7 @@ IMPORTANT: This script requires the cluster results and Zenodo LEC archive:
   • LEC data: data/temp_lec_zenodo/LEC_Results_energetic-patterns/
 
 Outputs:
-  • Figure: figures/main/S2_vertical_levels.png (300 DPI)
+  • Figure: figures/main/5_vertical_levels.png (300 DPI)
 
 Author: Danilo Couto de Souza
 Date: January 2026
@@ -41,6 +42,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import warnings
 warnings.filterwarnings('ignore')
 from tqdm import tqdm
@@ -62,8 +64,8 @@ LEC_DATA_DIR = BASE_DIR / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-pa
 GRAVITY = 9.8  # m/s² — used for Ck correction
 
 # Figure settings
-FIG_WIDTH = 18
-FIG_HEIGHT = 10
+FIG_WIDTH = 14
+FIG_HEIGHT = 16
 DPI = 300
 
 # Zenodo data source
@@ -98,12 +100,12 @@ EP_CONFIG = {
 BOX_WIDTH = 0.25
 
 plt.rcParams.update({
-    'font.size': 11,
-    'axes.labelsize': 14,
-    'axes.titlesize': 14,
-    'xtick.labelsize': 11,
-    'ytick.labelsize': 12,
-    'legend.fontsize': 12,
+    'font.size': 14,
+    'axes.labelsize': 16,
+    'axes.titlesize': 16,
+    'xtick.labelsize': 14,
+    'ytick.labelsize': 14,
+    'legend.fontsize': 15,
     'font.family': 'sans-serif',
     'font.sans-serif': ['Arial', 'DejaVu Sans']
 })
@@ -147,7 +149,7 @@ def load_lec_level_data(track_id, variable='Ca'):
     1. Ca: Sign inversion (-Ca_raw)
     2. Ck: Division by gravity (Ck_raw / 9.8)
 
-    See SCIENTIFIC_NOTES.md §Figure S2 for validation details.
+    See SCIENTIFIC_NOTES.md §Figure 5 for validation details.
     """
     lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
     file_path = lec_dir / f"{variable}_level.csv"
@@ -281,7 +283,7 @@ def create_boxplots(results_by_ep):
         Keys are EP names ('EP1', 'EP2', 'EP3'); values are results dicts from
         analyze_vertical_profiles().
     """
-    print("\n3. Creating Figure S2: Vertical Distribution of Energy Conversions...")
+    print("\n3. Creating Figure 5: Vertical Distribution of Energy Conversions...")
 
     # Collect all pressure levels present across all EPs
     all_levels = set()
@@ -291,7 +293,9 @@ def create_boxplots(results_by_ep):
 
     group_positions = np.arange(len(pressure_levels))
 
-    fig, axes = plt.subplots(2, 1, figsize=(FIG_WIDTH, FIG_HEIGHT))
+    fig, axes = plt.subplots(1, 2, figsize=(FIG_WIDTH, FIG_HEIGHT), sharey=True)
+
+    from matplotlib.patches import Patch
 
     # ---- Panel (a): Ca ----
     ax1 = axes[0]
@@ -302,10 +306,12 @@ def create_boxplots(results_by_ep):
         offsets = group_positions + cfg['offset']
         ca_data = [ep_results['ca_by_level'].get(p, [np.nan]) for p in pressure_levels]
 
-        bp = ax1.boxplot(
+        ax1.boxplot(
             ca_data,
             positions=offsets,
             widths=BOX_WIDTH,
+            vert=False,
+            manage_ticks=False,
             patch_artist=True,
             showfliers=False,
             medianprops=dict(color=cfg['median_color'], linewidth=2),
@@ -319,28 +325,27 @@ def create_boxplots(results_by_ep):
                       for p in pressure_levels]
         max_idx = int(np.nanargmax(ca_medians))
         ax1.plot(
-            offsets[max_idx], ca_medians[max_idx],
+            ca_medians[max_idx], offsets[max_idx],
             '*', color=cfg['edge_color'], markersize=12,
             markeredgecolor='white', markeredgewidth=0.8, zorder=5,
         )
 
         n_sys = len(ep_results['ca_profiles'])
-        from matplotlib.patches import Patch
         legend_patches_a.append(
             Patch(facecolor=cfg['box_color'], edgecolor=cfg['edge_color'],
-                  label=f"{ep_name} (n={n_sys})")
+                  label=ep_name)
         )
 
-    ax1.axhline(y=0, color='gray', linestyle='--', linewidth=1, alpha=0.5)
-    ax1.set_ylabel('Ca (W m$^{-2}$)', fontsize=12, fontweight='bold')
-    ax1.set_title('(a) Baroclinic Conversion (Ca) by Pressure Level',
+    ax1.axvline(x=0, color='gray', linestyle='--', linewidth=1, alpha=0.5)
+    ax1.set_title('(a) Baroclinic Conversion (Ca)',
                   fontweight='bold', loc='left')
     ax1.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax1.set_xticks(group_positions)
-    ax1.set_xticklabels([str(int(p)) for p in pressure_levels], rotation=45, ha='right')
-    ax1.set_xlim([group_positions[0] - 0.6, group_positions[-1] + 0.6])
     ax1.legend(handles=legend_patches_a, loc='best', frameon=True,
                fancybox=True, shadow=True)
+    ax1_fmt = mticker.ScalarFormatter(useMathText=True)
+    ax1_fmt.set_scientific(True)
+    ax1_fmt.set_powerlimits((0, 0))
+    ax1.xaxis.set_major_formatter(ax1_fmt)
 
     # ---- Panel (b): Ck ----
     ax2 = axes[1]
@@ -355,6 +360,8 @@ def create_boxplots(results_by_ep):
             ck_data,
             positions=offsets,
             widths=BOX_WIDTH,
+            vert=False,
+            manage_ticks=False,
             patch_artist=True,
             showfliers=False,
             medianprops=dict(color=cfg['median_color'], linewidth=2),
@@ -368,33 +375,37 @@ def create_boxplots(results_by_ep):
                       for p in pressure_levels]
         min_idx = int(np.nanargmin(ck_medians))
         ax2.plot(
-            offsets[min_idx], ck_medians[min_idx],
+            ck_medians[min_idx], offsets[min_idx],
             '*', color=cfg['edge_color'], markersize=12,
             markeredgecolor='white', markeredgewidth=0.8, zorder=5,
         )
 
         n_sys = len(ep_results['ck_profiles'])
-        from matplotlib.patches import Patch
         legend_patches_b.append(
             Patch(facecolor=cfg['box_color'], edgecolor=cfg['edge_color'],
-                  label=f"{ep_name} (n={n_sys})")
+                  label=ep_name)
         )
 
-    ax2.axhline(y=0, color='gray', linestyle='--', linewidth=1, alpha=0.5)
-    ax2.set_xlabel('Pressure Level (hPa)', fontsize=12, fontweight='bold')
-    ax2.set_ylabel('Ck (W m$^{-2}$)', fontsize=12, fontweight='bold')
-    ax2.set_title('(b) Barotropic Conversion (Ck) by Pressure Level',
+    ax2.axvline(x=0, color='gray', linestyle='--', linewidth=1, alpha=0.5)
+    ax2.set_title('(b) Barotropic Conversion (Ck)',
                   fontweight='bold', loc='left')
     ax2.grid(True, alpha=0.3, linestyle=':', linewidth=0.5)
-    ax2.set_xticks(group_positions)
-    ax2.set_xticklabels([str(int(p)) for p in pressure_levels], rotation=45, ha='right')
-    ax2.set_xlim([group_positions[0] - 0.6, group_positions[-1] + 0.6])
     ax2.legend(handles=legend_patches_b, loc='best', frameon=True,
                fancybox=True, shadow=True)
+    ax2_fmt = mticker.ScalarFormatter(useMathText=True)
+    ax2_fmt.set_scientific(True)
+    ax2_fmt.set_powerlimits((0, 0))
+    ax2.xaxis.set_major_formatter(ax2_fmt)
+
+    # Set pressure-level y-axis ticks after all boxplots are drawn
+    pressure_labels = [str(int(p)) for p in pressure_levels]
+    ax1.set_yticks(group_positions)
+    ax1.set_yticklabels(pressure_labels)
+    ax1.set_ylim([group_positions[0] - 0.6, group_positions[-1] + 0.6])
 
     plt.tight_layout()
 
-    output_file = FIGURES_DIR / "S3_vertical_levels.png"
+    output_file = FIGURES_DIR / "5_vertical_levels.png"
     plt.savefig(output_file, dpi=DPI, bbox_inches='tight')
     plt.close()
 
@@ -422,10 +433,10 @@ def create_boxplots(results_by_ep):
 # ============================================================================
 
 def main():
-    """Generate Figure S2: Vertical Distribution of Energy Conversions for EP1–EP3."""
+    """Generate Figure 5: Vertical Distribution of Energy Conversions for EP1–EP3."""
 
     print("=" * 80)
-    print("Figure S2: Vertical Distribution of Energy Conversions (EP1, EP2, EP3)")
+    print("Figure 5: Vertical Distribution of Energy Conversions (EP1, EP2, EP3)")
     print("=" * 80)
 
     if not LEC_DATA_DIR.exists():
@@ -449,7 +460,7 @@ def main():
     output_file = create_boxplots(results_by_ep)
 
     print("\n" + "=" * 80)
-    print("✅ Figure S2 generation complete")
+    print("✅ Figure 5 generation complete")
     print("=" * 80)
 
 

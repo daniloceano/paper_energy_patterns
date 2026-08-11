@@ -25,10 +25,12 @@ references are in:
 | `2_20070643_lps_track_publication.png` | `02_figure_20070643_publication.py` | Case study — cyclone 20070643 LPS and track |
 | `3_phase_density_2x2.png` | `03_make_phase_density_2x2.py` | Phase-space density by lifecycle phase (2×2) |
 | `4_lps_combined.png` | `04_figure_lps_combined.py` | Lorenz Phase Space for EP1–EP3 (Conversion + Imports) |
-| `5_ck_subterms_vertical_profiles.png` | `05_figure_ck_subterms_vertical_profiles.py` | C_K vertical profiles + integrated subterms for EP1 (barotropic instability) |
+| `5_vertical_levels.png` | `05_figure_vertical_levels.py` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones |
 | `6_ep_intensity_seasonality_trends.png` | `06_figure_intensity_seasonality_trends.py` | EP intensity, seasonal distribution, and interannual trends |
 | `7_ep_genesis_density_kde.png` | `07_figure_genesis_density_kde.py` | Genesis density using KDE (Hoskins & Hodges method) |
 | `8_dynamical_composites_epall_relative.png` | `08_figure_ep1_ep2_dynamical_composites.py` | EPALL-relative dynamical composites — 3×3 layout |
 | `9_pearson_epall_by_field_type.png` | `09_figure_pearson_epall_by_field_type.py` | Pearson \|r\| heatmaps by field type (AdvT, AFC, KE adv, PV200, PV850) — EPALL anomaly, canonical LEC terms |
 | `S1_pca_clustering_validation.png` | `S1_figure_pca_clustering_validation.py` | PCA variance + optimal-*k* cluster validation |
-| `S2_vertical_levels.png` | `S2_figure_vertical_levels.py` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones |
+| `S2_pairwise_effectsize_lec_terms.png` | `S2_figure_pairwise_effectsize_lec_terms.py` | Pairwise effect size (\|rank-biserial r\|) for canonical LEC terms, EP1 vs EP2 vs EP3 |
+| `S3_ck_subterms_vertical_profiles.png` | `S3_figure_ck_subterms_vertical_profiles.py` | C_K vertical profiles + integrated subterms for EP1 (barotropic instability) |
+| `S4_pairwise_effectsize_composite_scalars.png` | `S4_figure_pairwise_effectsize_composite_scalars.py` | Pairwise effect size (\|rank-biserial r\|) for EPALL-relative composite scalar features, EP1 vs EP2 vs EP3 |

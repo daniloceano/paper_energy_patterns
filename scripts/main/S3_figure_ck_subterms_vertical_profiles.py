@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure 5: Vertical Profile of C_K (All Cyclones) and Integrated Subterms for EP1
+Figure S3: Vertical Profile of C_K (All Cyclones) and Integrated Subterms for EP1
          (Intensification Phase)
 
 Scientific context
@@ -43,12 +43,12 @@ and are NOT part of the local Zenodo archive.  Therefore this script uses:
 
 Outputs
 -------
-  figures/main/5_ck_subterms_vertical_profiles.png  (300 DPI)
+  figures/main/S3_ck_subterms_vertical_profiles.png  (300 DPI)
 
 Usage
 -----
     # from repository root:
-    python scripts/main/05_figure_ck_subterms_vertical_profiles.py
+    python scripts/main/S3_figure_ck_subterms_vertical_profiles.py
 
 Author: Danilo Couto de Souza / GitHub Copilot
 Date:   April 2026
@@ -96,7 +96,7 @@ SUBTERMS_CSV    = BASE_DIR / "results" / "ck_analysis" / "ck_subterms_boxplot_in
 LEC_DIR         = BASE_DIR / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 FIGURES_DIR     = BASE_DIR / "figures" / "main"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_PNG      = FIGURES_DIR / "5_ck_subterms_vertical_profiles.png"
+OUTPUT_PNG      = FIGURES_DIR / "S3_ck_subterms_vertical_profiles.png"
 
 # ============================================================================
 # CONSTANTS
@@ -323,7 +323,7 @@ def _pressure_pa_to_hpa(p_pa: float) -> float:
 
 def make_figure(level_data: dict[float, list[float]],
                 subterm_df: pd.DataFrame) -> None:
-    """Build and save Figure 5."""
+    """Build and save Figure S3."""
 
     # ── Convert pressure keys to hPa and sort ─────────────────────────────
     level_hpa: dict[float, list[float]] = {
@@ -413,14 +413,6 @@ def make_figure(level_data: dict[float, list[float]],
     xlim = ax_vert.get_xlim()
     ax_vert.axvspan(xlim[0], 0, color="#D6EAF8", alpha=0.25, zorder=0)
 
-    # Annotation
-    ax_vert.text(0.97, 0.02,
-                 "Blue: $K_Z\\rightarrow K_E$\n(barotropic instability)",
-                 transform=ax_vert.transAxes, fontsize=FONT_SIZE_TICKS - 1,
-                 ha="right", va="bottom", color="#1a5276",
-                 bbox=dict(boxstyle="round,pad=0.3", fc="white",
-                           ec="#AED6F1", alpha=0.85))
-
     ax_vert.xaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
     ax_vert.tick_params(axis="both", which="major", labelsize=FONT_SIZE_TICKS)
     ax_vert.grid(axis="x", linestyle=":", linewidth=0.6, alpha=0.6)
@@ -484,7 +476,7 @@ def make_figure(level_data: dict[float, list[float]],
 # ============================================================================
 
 def main() -> None:
-    print("\n=== Figure 5: C_K Vertical Profiles & Subterms (EP1, Intensification) ===\n")
+    print("\n=== Figure S3: C_K Vertical Profiles & Subterms (EP1, Intensification) ===\n")
 
     # 1. EP1 cases
     if not EP1_CASES_CSV.exists():

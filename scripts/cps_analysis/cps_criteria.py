@@ -354,6 +354,57 @@ SECLUSION = "warm_seclusion"
 INDETERMINATE_WARM = "indeterminate_warm_core"
 INDETERMINATE = "indeterminate"
 
+# Outcome for a persistent subtropical run rejected by the guards below.
+OUT_OF_BAND = "genesis_out_of_band"
+
+
+# =============================================================================
+# SUBTROPICAL IDENTIFICATION GUARDS
+# =============================================================================
+# Until these existed the warm-seclusion filter guarded only the TROPICAL class,
+# and a persistent SUBTROPICAL run was accepted with nothing but the 36 h gate.
+# That gate is exactly what a Shapiro-Keyser warm seclusion satisfies without
+# difficulty: the occlusion sequence passes cold core -> hybrid and stays there.
+#
+# (A) GENESIS LATITUDE BAND. Gozzo et al. (2014), criterion 1, verbatim:
+#     "The SC forms between 20 and 40 S."
+#     Guishard et al. (2009) use the same band in the North Atlantic, to "reduce
+#     the possibility of tropical and extratropical systems being introduced into
+#     the dataset". Applied to the CYCLONE, since it is a statement about
+#     cyclogenesis. Uses GENESIS_LAT_BAND above.
+SC_REQUIRE_GENESIS_BAND: bool = True
+
+# (B) OCEAN. Gozzo et al. (2014), criterion 3: the thresholds are attained over
+#     the ocean. Same clause the tropical-transition test already applies.
+SC_MIN_OCEAN_FRACTION: float = 0.5
+
+# (C) WARM-SECLUSION GUARD, on the timing of the run against the cyclone's own
+#     intensity peak. This is the discriminator the CPS itself cannot provide,
+#     and it is physical rather than geographic:
+#
+#       * in a genuine subtropical/tropical transition the warm core is built
+#         DIABATICALLY, by organised convection; the system is re-energised and
+#         typically reaches peak intensity AFTER acquiring the structure
+#         (Davis and Bosart 2003, 2004, on tropical transition);
+#       * in a warm seclusion the warm core is pre-existing warm air secluded
+#         MECHANICALLY by the bent-back front during occlusion. It is the
+#         terminal stage of a baroclinic life cycle, so the peak has already
+#         passed (Shapiro and Keyser 1990).
+#
+#     A persistent hybrid run that begins well after the cyclone has peaked is
+#     therefore rejected. The tolerance is not zero because the vorticity peak
+#     from the tracking is itself noisy; 12 h is four timesteps at the 3-hourly
+#     cadence, and half a diurnal cycle.
+#
+#     NOTE ON WHAT IS *NOT* USED HERE. Guishard et al.'s "become subtropical
+#     within 24 h of genesis" (MAX_ONSET_HOURS) is deliberately NOT applied as a
+#     gate. It selects systems that were BORN hybrid, and so excludes transitions
+#     by design - a cyclone reaching a persistent subtropical state after a
+#     persistent extratropical one cannot satisfy it under any circumstances.
+#     Using it to judge the ST class would be a category error. It is retained as
+#     the descriptive flag `pure_genesis`.
+SC_MAX_HOURS_PAST_PEAK: float = 12.0
+
 # --- Tropical-transition test ------------------------------------------------
 # A persistent tropical run is a genuine TT only if EITHER:
 #
@@ -431,6 +482,7 @@ PHASE_COLORS: Dict[str, str] = {
     SECLUSION: "#8e44ad",
     INDETERMINATE_WARM: "#b39ddb",
     INDETERMINATE: "#9e9e9e",
+    OUT_OF_BAND: "#bdaeb8",
     # Characteristic classes: same hue as the class they resemble, lightened,
     # so a reader sees the kinship and the lower confidence at once.
     "EC_like": "#9db8e0",

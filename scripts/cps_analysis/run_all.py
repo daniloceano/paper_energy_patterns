@@ -18,6 +18,9 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
+# Steps that accept --jobs (parallel over cyclones / over figures).
+PARALLEL = {"step2_classify_phases.py", "step7_case_diagrams.py"}
+
 STEPS = [
     ("make_reference_diagram.py", "Reference diagram of the class regions"),
     ("step1_build_cps_database.py", "Consolidate per-cyclone CPS CSVs"),
@@ -31,12 +34,15 @@ STEPS = [
 ]
 
 
-def main():
+def main(jobs: int = 1):
     for script, description in STEPS:
         print("\n" + "#" * 70)
         print(f"# {script} — {description}")
         print("#" * 70)
-        result = subprocess.run([sys.executable, str(SCRIPT_DIR / script)])
+        cmd = [sys.executable, str(SCRIPT_DIR / script)]
+        if jobs > 1 and script in PARALLEL:
+            cmd += ["--jobs", str(jobs)]
+        result = subprocess.run(cmd)
         if result.returncode != 0:
             print(f"\n{script} failed (exit {result.returncode}). Stopping.")
             return result.returncode
@@ -48,4 +54,9 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    import argparse
+    ap = argparse.ArgumentParser(description="Run the canonical CPS pipeline.")
+    ap.add_argument("--jobs", "-j", type=int, default=1,
+                    help="workers for the parallelisable steps (2 and 7). "
+                         "Results are identical regardless of this value.")
+    sys.exit(main(jobs=ap.parse_args().jobs))

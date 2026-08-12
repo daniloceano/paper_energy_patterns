@@ -46,8 +46,9 @@ export default function CpsPage() {
   const pop = manifest.population
   const crit = manifest.criteria
   const named = manifest.classes.filter((c) => c.kind === 'single_state' || c.kind === 'transition')
-  const stRows = relFor('ST')
-  const headline = stRows.find((r) => r.significant_holm)
+  const scRows = relFor('SC')
+  const ep3 = scRows.find((r) => r.ep === 'EP3')
+  const ep1 = scRows.find((r) => r.ep === 'EP1')
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -355,17 +356,24 @@ export default function CpsPage() {
         {/* ---------------- Headline ---------------- */}
         <ResultSummaryCallout type="result" title="Main result">
           <p>
-            The Energy Patterns differ in whether a cyclone <em>becomes</em> subtropical,
-            not in whether it <em>is</em> subtropical. EP2 shows{' '}
-            <strong>{headline ? headline.ratio.toFixed(2) : '1.36'}×</strong> the pooled
-            rate of subtropical transition (
-            {headline ? `${headline.rate_pct}% against ${headline.epall_rate_pct}%` : ''},
-            Fisher OR {headline?.odds_ratio}, p = {headline ? pFormat(headline.p) : ''}),
-            the only one of nine contrasts that survives Holm correction. The
-            single-state subtropical class shows no EP dependence at all — its three
-            ratios span {Math.min(...relFor('SC').map((r) => r.ratio)).toFixed(2)}–
-            {Math.max(...relFor('SC').map((r) => r.ratio)).toFixed(2)}, well inside each
-            other&apos;s confidence intervals.
+            <strong>The weaker a cyclone&apos;s baroclinic energetics, the more likely it is
+            to be subtropical.</strong> The subtropical rate rises monotonically from{' '}
+            {ep1?.rate_pct}% in EP1 (high conversions, exports energy) to{' '}
+            {ep3?.rate_pct}% in EP3 (weak, background energetics) — a factor of{' '}
+            {ep1 && ep3 ? (ep3.rate_pct / ep1.rate_pct).toFixed(0) : '7'}, or{' '}
+            <strong>{ep1?.ratio.toFixed(2)}×</strong> and{' '}
+            <strong>{ep3?.ratio.toFixed(2)}×</strong> the pooled rate. All three contrasts
+            survive Holm correction over the nine tested, the only place in this analysis
+            where that happens. That is what a diabatically driven, convectively maintained
+            system should look like in an energy-cycle framework: it does not run on
+            baroclinic conversion, so it appears in the cluster that has little of it.
+          </p>
+          <p className="mt-2">
+            The transition class <code>ST</code> carries no significant signal. Before the
+            subtropical guards described below, the result was the opposite — flat{' '}
+            <code>SC</code>, and an EP2 enrichment in <code>ST</code>. Same data, same
+            thresholds; the difference is the guards, and the reading is that the earlier
+            signal was warm-seclusion contamination.
           </p>
         </ResultSummaryCallout>
 
@@ -462,8 +470,28 @@ export default function CpsPage() {
               {Math.abs(crit.tt_max_poleward_lat)}°S and spends at least{' '}
               {Math.round(crit.tt_min_ocean_fraction * 100)}% of its time over ocean. In this
               population the filter rejected{' '}
-              <strong>{manifest.rejected_by_tt_test.warm_seclusion} warm seclusions</strong> and{' '}
-              {manifest.rejected_by_tt_test.indeterminate_warm_core} indeterminate warm cores.
+              <strong>{manifest.runs.tropical_seclusion} warm seclusions</strong> and{' '}
+              {manifest.runs.tropical_indeterminate} indeterminate warm cores.
+            </p>
+            <p>
+              <strong>The same guard, for the subtropical class.</strong> Until 2026-08-10 the
+              seclusion filter ran only on tropical runs, and a persistent hybrid run was
+              accepted on the persistence gate alone — the one criterion a Shapiro–Keyser
+              occlusion satisfies without difficulty. Every hybrid run is now tested on three
+              clauses: genesis between{' '}
+              {Math.abs(manifest.guards.genesis_band[1])}°S and{' '}
+              {Math.abs(manifest.guards.genesis_band[0])}°S (Gozzo criterion 1),{' '}
+              {Math.round(manifest.guards.min_ocean_fraction * 100)}% of the run over ocean,
+              and the run beginning no more than {manifest.guards.max_hours_past_peak} h after
+              the cyclone&apos;s own intensity peak. The last is the physical discriminator:
+              a diabatically built warm core re-energises the system, so peak intensity
+              follows the structure, whereas a secluded warm core is the terminal stage and
+              the peak has already passed. Of{' '}
+              {manifest.runs.subtropical_accepted + manifest.runs.subtropical_out_of_band + manifest.runs.subtropical_seclusion}{' '}
+              persistent hybrid runs, <strong>{manifest.runs.subtropical_accepted} were
+              accepted</strong>; {manifest.runs.subtropical_out_of_band} failed the genesis
+              or ocean clause and {manifest.runs.subtropical_seclusion} were rejected as warm
+              seclusions.
             </p>
             <p>
               <strong>Characteristic classes.</strong> A cyclone that never sustains a structure
@@ -543,7 +571,7 @@ export default function CpsPage() {
 
           <div className="mt-5">
             <StatsTable
-              title="Subtropical transition (ST) — each EP against the other two pooled"
+              title="Single-state subtropical (SC) — each EP against the other two pooled"
               columns={[
                 { key: 'ep', label: 'EP' },
                 { key: 'rate', label: 'rate', align: 'right' },
@@ -553,7 +581,7 @@ export default function CpsPage() {
                 { key: 'p', label: 'p', align: 'right' },
                 { key: 'holm', label: 'Holm', align: 'center' },
               ]}
-              rows={stRows.map((r) => ({
+              rows={scRows.map((r) => ({
                 ep: r.ep,
                 rate: `${r.rate_pct}% (${r.k}/${r.n})`,
                 ci: `${r.rate_lo_pct}–${r.rate_hi_pct}%`,
@@ -562,7 +590,7 @@ export default function CpsPage() {
                 p: pFormat(r.p),
                 holm: r.significant_holm ? '✓ survives' : '—',
               }))}
-              caption={`EPALL rate ${stRows[0]?.epall_rate_pct}%. Only EP2 survives Holm correction over the nine contrasts tested; the EP3 depletion is nominally significant only and must not be reported as established.`}
+              caption={`EPALL rate ${scRows[0]?.epall_rate_pct}%. All three contrasts survive Holm correction over the nine tested — the only place in this analysis where that happens. The ordering is monotonic in the Energy Patterns' baroclinic conversion.`}
             />
           </div>
         </section>

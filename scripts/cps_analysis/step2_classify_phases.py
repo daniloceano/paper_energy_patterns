@@ -71,6 +71,9 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
+import argparse
+from concurrent.futures import ProcessPoolExecutor
+
 import numpy as np
 import pandas as pd
 
@@ -90,6 +93,11 @@ from scripts.cps_analysis.cps_criteria import (
     UNDETERMINED,
     MIN_PERSISTENCE_HOURS,
     PURE_GENESIS_MAX_ONSET_HOURS,
+    GENESIS_LAT_BAND,
+    OUT_OF_BAND,
+    SC_REQUIRE_GENESIS_BAND,
+    SC_MIN_OCEAN_FRACTION,
+    SC_MAX_HOURS_PAST_PEAK,
     TT_MAX_POLEWARD_LAT,
     TT_MIN_OCEAN_FRACTION,
     UNCLASSIFIED,
@@ -206,10 +214,54 @@ def transitions_in(sequence: list) -> list:
             if (a, b) in names]
 
 
+def subtropical_identification_test(window: pd.DataFrame, genesis_lat: float,
+                                    peak_time, run_start) -> tuple:
+    """Gozzo criteria 1 and 3, plus the warm-seclusion guard, on a hybrid run.
+
+    Returns (verdict, reason) where verdict is "SC", OUT_OF_BAND or SECLUSION.
+    See the SUBTROPICAL IDENTIFICATION GUARDS block in cps_criteria for why each
+    clause is here and why the 24 h onset criterion deliberately is not.
+    """
+    lo, hi = GENESIS_LAT_BAND
+    in_band = pd.notna(genesis_lat) and lo < float(genesis_lat) < hi
+
+    ocean = pd.to_numeric(window["over_ocean"], errors="coerce")
+    ocean_frac = float(ocean.mean()) if ocean.notna().any() else 1.0
+
+    past_peak = (float((run_start - peak_time) / np.timedelta64(1, "h"))
+                 if peak_time is not None else 0.0)
+
+    where = (f"genesis {float(genesis_lat):.1f} deg, {ocean_frac:.0%} over ocean, "
+             f"run starts {past_peak:+.0f} h from intensity peak")
+
+    if SC_REQUIRE_GENESIS_BAND and not in_band:
+        return OUT_OF_BAND, where
+    if ocean_frac < SC_MIN_OCEAN_FRACTION:
+        return OUT_OF_BAND, where
+    if past_peak > SC_MAX_HOURS_PAST_PEAK:
+        return SECLUSION, where
+    return "SC", where
+
+
+def _classify_one(item):
+    """Worker wrapper: takes (track_id, group), returns the classify_cyclone triple.
+
+    Top-level so it is picklable by ProcessPoolExecutor.
+    """
+    _, g = item
+    return classify_cyclone(g)
+
+
 def classify_cyclone(g: pd.DataFrame) -> dict:
     """Full canonical classification of one cyclone."""
     g = g.sort_values("datetime")
     times = g["datetime"].values
+
+    # Time of peak intensity, for the warm-seclusion guard. vor42 is a magnitude,
+    # so the peak is its MAXIMUM.
+    vor = pd.to_numeric(g["vor42"], errors="coerce")
+    peak_time = g["datetime"].values[int(vor.values.argmax())] if vor.notna().any() else None
+    genesis_lat = g["genesis_lat"].iloc[0]
 
     # --- persistent runs of every class ---
     runs = []
@@ -226,20 +278,31 @@ def classify_cyclone(g: pd.DataFrame) -> dict:
         at = g.loc[g["datetime"] == r["start"], "period"]
         r["phase_at_onset"] = str(at.iloc[0]) if len(at) else ""
 
-    # --- tropical-transition test, in chronological order ---
+    # --- identification tests, in chronological order ---
+    # Both the tropical and the subtropical classes are guarded. Extratropical
+    # runs need no guard: nothing masquerades as a cold-core frontal cyclone.
     kept, rejected = [], []
     for r in runs:
-        if r["code"] != "TC":
+        if r["code"] == "EC":
             kept.append(r)
             continue
         prev = kept[-1]["code"] if kept else "none"
         window = g[(g["datetime"] >= r["start"]) & (g["datetime"] <= r["end"])]
-        verdict, reason = tropical_transition_test(window, prev)
+        if r["code"] == "TC":
+            verdict, reason = tropical_transition_test(window, prev)
+            accepted = verdict == "TC"
+        else:
+            verdict, reason = subtropical_identification_test(
+                window, genesis_lat, peak_time, r["start"])
+            accepted = verdict == "SC"
         r = {**r, "previous_state": prev, "tt_verdict": verdict, "tt_reason": reason,
              "lat_median": round(float(window["lat"].median()), 2),
              "vtu_median": round(float(window["VTU"].median()), 1),
+             "hours_past_peak": (round(float((r["start"] - peak_time)
+                                             / np.timedelta64(1, "h")), 1)
+                                 if peak_time is not None else np.nan),
              "phase_at_onset": str(window["period"].iloc[0])}
-        if verdict == "TC":
+        if accepted:
             kept.append(r)
         else:
             rejected.append(r)
@@ -331,6 +394,8 @@ def classify_cyclone(g: pd.DataFrame) -> dict:
         has_ST="ST" in trans, has_SD="SD" in trans,
         n_warm_seclusions=sum(r["tt_verdict"] == SECLUSION for r in rejected),
         n_indeterminate_warm=sum(r["tt_verdict"] == INDETERMINATE_WARM for r in rejected),
+        n_out_of_band=sum(r["tt_verdict"] == OUT_OF_BAND for r in rejected),
+        n_rejected_SC=sum(r["code"] == "SC" for r in rejected),
         hours_EC=sum(r["hours"] for r in kept if r["code"] == "EC"),
         hours_SC=sum(r["hours"] for r in kept if r["code"] == "SC"),
         hours_TC=sum(r["hours"] for r in kept if r["code"] == "TC"),
@@ -338,7 +403,7 @@ def classify_cyclone(g: pd.DataFrame) -> dict:
     return out, kept, rejected
 
 
-def main():
+def main(jobs: int = 1):
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)
@@ -386,10 +451,19 @@ def main():
     print(f"\nWrote {OUT_TIMESTEPS.relative_to(PROJECT_ROOT)}")
 
     # --- per-cyclone classification ---
-    print("\nClassifying cyclones ...")
+    # Parallel over cyclones: each is independent, and the ordering is restored
+    # by sorting on track_id afterwards, so the output is identical to a serial
+    # run regardless of --jobs.
+    print(f"\nClassifying cyclones (jobs = {jobs}) ...")
+    groups = [(tid, g) for tid, g in df.groupby("track_id", sort=True)]
+    if jobs > 1:
+        with ProcessPoolExecutor(max_workers=jobs) as ex:
+            results = list(ex.map(_classify_one, groups, chunksize=32))
+    else:
+        results = [_classify_one(item) for item in groups]
+
     rows, state_rows = [], []
-    for tid, g in df.groupby("track_id", sort=True):
-        out, kept, rejected = classify_cyclone(g)
+    for (tid, g), (out, kept, rejected) in zip(groups, results):
         rows.append({"track_id": tid, "ep": g["ep"].iloc[0],
                      "region": g["region"].iloc[0],
                      "genesis_lat": g["genesis_lat"].iloc[0],
@@ -399,6 +473,10 @@ def main():
             state_rows.append({
                 "track_id": tid, "ep": g["ep"].iloc[0],
                 "state": r["code"] if r in kept else r["tt_verdict"],
+                # Which class the run WAS before any verdict. Without this a
+                # rejected run labelled `warm_seclusion` is ambiguous: both the
+                # tropical and the subtropical guard can emit that verdict.
+                "run_code": r["code"],
                 "start": pd.Timestamp(r["start"]), "end": pd.Timestamp(r["end"]),
                 "duration_h": r["hours"],
                 "onset_h_from_genesis": round(
@@ -408,6 +486,7 @@ def main():
                 "tt_reason": r.get("tt_reason", ""),
                 "lat_median": r.get("lat_median", ""),
                 "vtu_median": r.get("vtu_median", ""),
+                "hours_past_peak": r.get("hours_past_peak", ""),
                 "phase_at_onset": r.get("phase_at_onset", ""),
             })
 
@@ -551,4 +630,8 @@ def main():
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--jobs", "-j", type=int, default=1,
+                    help="parallel workers over cyclones (default 1). Output is "
+                         "independent of this value.")
+    sys.exit(main(jobs=ap.parse_args().jobs))

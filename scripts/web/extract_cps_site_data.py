@@ -48,6 +48,11 @@ from scripts.cps_analysis.cps_criteria import (
     SECLUSION,
     INDETERMINATE_WARM,
     MIN_PERSISTENCE_HOURS,
+    GENESIS_LAT_BAND,
+    OUT_OF_BAND,
+    SC_REQUIRE_GENESIS_BAND,
+    SC_MIN_OCEAN_FRACTION,
+    SC_MAX_HOURS_PAST_PEAK,
     MIN_DOMINANCE,
     PURE_GENESIS_MAX_ONSET_HOURS,
     TT_MAX_POLEWARD_LAT,
@@ -140,7 +145,13 @@ def main() -> int:
         for code in CLASS_ORDER
     ]
 
-    verdicts = states["tt_verdict"].value_counts() if "tt_verdict" in states else {}
+    verdicts = states["state"].value_counts()
+    # Rejected runs keep their original class in `run_code`, so a `warm_seclusion`
+    # verdict can be attributed to the tropical or the subtropical guard.
+    rej = states[states["state"].isin(["warm_seclusion", "genesis_out_of_band",
+                                       "indeterminate_warm_core"])]
+    by_guard = (rej.groupby(["run_code", "state"]).size().to_dict()
+                if "run_code" in rej else {})
     gallery_n = 0
     gallery_classes = 0
     idx_file = RESULTS / "case_diagram_index.csv"
@@ -181,9 +192,19 @@ def main() -> int:
         },
         "criteria": criteria_block(),
         "classes": classes,
-        "rejected_by_tt_test": {
-            "warm_seclusion": int(verdicts.get(SECLUSION, 0)),
-            "indeterminate_warm_core": int(verdicts.get(INDETERMINATE_WARM, 0)),
+        "runs": {
+            "subtropical_accepted": int(verdicts.get("SC", 0)),
+            "subtropical_out_of_band": int(by_guard.get(("SC", OUT_OF_BAND), 0)),
+            "subtropical_seclusion": int(by_guard.get(("SC", SECLUSION), 0)),
+            "tropical_accepted": int(verdicts.get("TC", 0)),
+            "tropical_seclusion": int(by_guard.get(("TC", SECLUSION), 0)),
+            "tropical_indeterminate": int(by_guard.get(("TC", INDETERMINATE_WARM), 0)),
+        },
+        "guards": {
+            "genesis_band": list(GENESIS_LAT_BAND),
+            "require_genesis_band": SC_REQUIRE_GENESIS_BAND,
+            "min_ocean_fraction": SC_MIN_OCEAN_FRACTION,
+            "max_hours_past_peak": SC_MAX_HOURS_PAST_PEAK,
         },
         "ep_relative": [
             {

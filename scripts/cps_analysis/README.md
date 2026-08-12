@@ -2,7 +2,7 @@
 
 Computes the Hart (2003) Cyclone Phase Space diagnostics — thermal wind asymmetry (`B`)
 and lower/upper thermal wind (`VTL`, `VTU`) — for every cyclone track in the study, and
-classifies each system into a **pure phase class** or a **phase transition**. The resulting
+classifies each system into a **single persistent state** or a **phase transition**. The resulting
 classes are cross-referenced against the **Energy Patterns (EP1/EP2/EP3)** from the K-Means
 clustering on Lorenz Energy Cycle diagnostics.
 
@@ -16,7 +16,7 @@ results, caveats); `sensitivity/SCIENTIFIC_NOTES.md` is the exploratory record.
 
 | | Canonical | Sensitivity |
 |---|---|---|
-| Scripts | `step1..step4` in this folder | `sensitivity/` |
+| Scripts | `step1..step8` in this folder | `sensitivity/` |
 | Thresholds | **one set** (de Souza et al. 2026) | six sets × four identification rules |
 | Outputs | `results/cps_analysis/`, `figures/cps_analysis/` | the `sensitivity/` subfolder of each |
 | Status | **the analysis of record** | reference only; motivates the canonical design |
@@ -87,6 +87,24 @@ as well. Only the poleward bound is used: Iba formed at ~20°S, on the edge of t
 Guishard/Gozzo band, so an equatorward bound would exclude the most plausibly tropical
 cases.
 
+**The subtropical identification test.** Every persistent hybrid run is tested too — it
+was not, until 2026-08-10, and caveat C-xi in the science notes records what that cost. A
+run is accepted as `SC` only if all three hold:
+
+1. **genesis between 20°S and 40°S** — Gozzo et al. (2014), criterion 1;
+2. **≥ 50% of the run over ocean** — Gozzo criterion 3;
+3. **the run begins no more than 12 h after the cyclone's intensity peak.**
+
+(3) is the warm-seclusion guard, and it is physical rather than geographic: a diabatically
+built warm core re-energises the system, so peak intensity *follows* the structure, whereas
+a Shapiro–Keyser seclusion is the terminal stage and the peak has already passed. Rejected
+runs are recorded as `genesis_out_of_band` or `warm_seclusion` with their original
+`run_code`, so nothing is silently discarded.
+
+Guishard et al.'s **24 h onset criterion is deliberately not a gate**: it selects systems
+*born* hybrid and so excludes transitions by construction, which would be a category error
+applied to `ST`. It is kept as the descriptive flag `pure_genesis`.
+
 Two design points, both forced by the sensitivity evidence:
 
 - The geographic test is on the **run**, not on genesis. Six of sixteen persistent tropical
@@ -104,18 +122,20 @@ Whole population (6,776 cyclones, genesis 1979–2020):
 
 | Class | n | % |
 |---|---|---|
-| `EC` single-state extratropical | 2,663 | 39.3% |
-| `SC` single-state subtropical | 409 | 6.0% |
+| `EC` single-state extratropical | 2,926 | 43.2% |
+| `SC` single-state subtropical | 182 | 2.7% |
 | `TC` single-state tropical | 2 | 0.0% |
-| `ST` subtropical transition | 298 | 4.4% |
-| `SD` subtropical decay | 47 | 0.7% |
+| `ST` subtropical transition | 60 | 0.9% |
+| `SD` subtropical decay | 22 | 0.3% |
+| `EC_like`  | 2,398 | 35.4% |
+| `SC_like`  | 548 | 8.1% |
+| `TC_like`  | 2 | 0.0% |
+| `undetermined`  | 636 | 9.4% |
 | `TT` / `ET` | 0 | 0.0% |
-| `EC_like` | 2,392 | 35.3% |
-| `SC_like` | 372 | 5.5% |
-| `TC_like` | 2 | 0.0% |
-| `undetermined` | 591 | 8.7% |
 
-Plus **12 warm seclusions** and 2 indeterminate warm cores rejected by the TT test.
+Of the 804 persistent hybrid runs, **271 were accepted**; **395** were rejected as `genesis_out_of_band` (Gozzo criterion 1 / ocean) and **138** as `warm_seclusion` (intensity-peak guard). The tropical guard additionally rejected 12 warm seclusions and 2 indeterminate warm cores. Every rejection keeps its `run_code` and verdict in `phase_states.csv`.
+
+**Validation.** 264 cyclones reach an accepted subtropical state over 42 years = **6.3 per year**, against Gozzo et al. (2014) **7.2 per year**. Without the guards the same quantity is 18.0 per year.
 
 The `*_like` classes keep the 36-h literature threshold intact for the named classes while
 still saying what a cyclone showed: `SC_like` means *hybrid characteristics, not sustained*,
@@ -132,9 +152,9 @@ and Guará would be `SD` in this scheme, Lexi `ST`, exactly as they describe the
 Two quantities are therefore reported separately instead of being folded into one label:
 
 - **genesis type** — `genesis_state`, `genesis_onset_h`, `pure_genesis` (first persistent
-  state in place within 24 h). SC genesis: 462 cyclones, 209 of them within 24 h.
+  state in place within 24 h). SC genesis: 206 cyclones, 118 of them within 24 h.
 - **dominance** — `dominant_class`, `frac_EC`/`frac_SC`/`frac_TC`. The `SC` class spends a
-  median 0.66 of its life subtropical and SC is its dominant class in 95% of cases; the two
+  median 0.74 of its life subtropical and SC is its dominant class in 96% of cases; the two
   `TC` cyclones spend a median of only 0.34 tropical, one more reason to treat them as
   candidates.
 
@@ -142,9 +162,22 @@ Because a pure-`SC` cyclone is still non-subtropical for about a third of its li
 pure-SC figure shows the density of the **subtropical-classified timesteps only**, with the
 rest as grey context.
 
-**By Energy Pattern**, the one robust signal is that **EP2 is enriched in subtropical
-transition**: `ST` in 9.4% of EP2 against 5.4% of EP1 and 6.1% of EP3
-(Fisher OR = 1.62, p = 5.5×10⁻⁴), and it survives genesis-region stratification.
+**By Energy Pattern**, the signal is in `SC` and it is monotonic in the energetics:
+**the weaker a cyclone's baroclinic conversion, the more likely it is to be subtropical.**
+
+| | `SC` rate | ×EPALL | OR vs rest | p | survives Holm |
+|---|---|---|---|---|---|
+| EP1 (high conversions, exports) | 0.68% | 0.19 | 0.18 | 1.1×10⁻⁴ | ✓ |
+| EP2 (moderate, imports) | 1.94% | 0.55 | 0.48 | 1.7×10⁻³ | ✓ |
+| EP3 (weak / background) | 4.68% | 1.33 | 3.62 | <10⁻⁵ | ✓ |
+
+A factor of **7** between EP3 and EP1, and all three contrasts survive Holm correction over
+the nine tested. `ST` carries **no** significant signal after the guards (largest contrast
+EP2, p = 0.11).
+
+Before the subtropical guards this result was the opposite — `SC` flat, `ST` carrying an
+EP2 enrichment. Same data, same thresholds; the difference is the guards, and the reading is
+that the old `ST` signal was warm-seclusion contamination. See C4 and C-xi.
 
 ---
 
@@ -192,7 +225,7 @@ figure to look at first, and the one to check a threshold against.
 ### The case gallery
 
 `step7` draws one cyclone per **(phase class × year of genesis × genesis region)**,
-sampled at random with a fixed seed — 745 figures spanning every class, every year and
+sampled at random with a fixed seed — 628 figures spanning every class, every year and
 every region in which that class occurs. Each is a single-cyclone CPS diagram in the
 case-study convention: trajectory line, one marker per 3-hourly timestep coloured by the
 structure it holds, endpoints A and Z, dates labelled.
@@ -226,7 +259,7 @@ for each combination is recorded in `results/cps_analysis/case_diagram_index.csv
 
 **On `ET` and `TT` being empty.** Both are zero by construction of the catalogue, which
 contains no tropical cyclone to transition from or to. The two transitions that do occur are
-`ST` (EC → SC, 298) and `SD` (SC → EC, 47) — the latter is what the earlier draft scheme
+`ST` (EC → SC, 60) and `SD` (SC → EC, 22) — the latter is what the earlier draft scheme
 called `ET`. `step6` plots both.
 
 To print the threshold sets that will be applied:
@@ -340,7 +373,7 @@ as are all `results/` CSVs and `figures/` PNGs.
 - Externally checked against documented named cyclones: **Bapo (2015) and Cari (2015) are
   both classified subtropical**. Most other named systems form outside the catalogue's
   genesis boxes; Raoni, Yakecan, Akará and Biguá postdate it.
-- **Open**: the 2 accepted tropical runs (19911137, 19980144) and the 409 pure-SC cyclones
+- **Open**: the 2 accepted tropical runs (19911137, 19980144) and the 182 single-state SC cyclones
   have not been inspected case by case.
 
 ## Environment

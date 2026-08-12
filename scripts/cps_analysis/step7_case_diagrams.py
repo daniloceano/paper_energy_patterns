@@ -49,6 +49,7 @@ Date: August 2026
 """
 
 import argparse
+from concurrent.futures import ProcessPoolExecutor
 import shutil
 import sys
 import zlib
@@ -106,6 +107,13 @@ def zoom(values, keep):
         lo, hi = min(lo, k), max(hi, k)
     pad = max((hi - lo) * 0.15, 12.0)
     return lo - pad, hi + pad
+
+
+def _draw_one(task):
+    """Worker: (group, meta, path) -> draws one figure. Top-level so it pickles."""
+    g, meta, path = task
+    draw_case(g, meta, path)
+    return path
 
 
 def draw_case(g: pd.DataFrame, meta: pd.Series, path: Path):
@@ -215,6 +223,9 @@ def main():
     ap = argparse.ArgumentParser(description="Individual CPS case diagrams")
     ap.add_argument("--classes", nargs="*", default=None,
                     help="restrict to these phase classes (default: all)")
+    ap.add_argument("--jobs", "-j", type=int, default=1,
+                    help="parallel workers over figures (default 1). Output is "
+                         "independent of this value.")
     ap.add_argument("--seed", type=int, default=42,
                     help="random seed for the per-combination draw")
     args = ap.parse_args()
@@ -264,21 +275,33 @@ def main():
     ts["cps_class_filled"] = ts["cps_class"].fillna(UNCLASSIFIED)
     by_track = dict(tuple(ts.groupby("track_id")))
 
-    rows = []
-    for _, meta in tqdm(picks.iterrows(), total=len(picks), unit="fig"):
+    # Each figure is independent, so the drawing is parallel over cases. The
+    # index is rebuilt from `tasks` order afterwards, so --jobs does not change
+    # the output.
+    tasks = []
+    for _, meta in picks.iterrows():
         g = by_track.get(meta["track_id"])
         if g is None or len(g) < 3:
             continue
         cls = meta["phase_class"]
         name = (f"cps_{cls}_{int(meta['year'])}_{meta['region']}_"
                 f"{meta['track_id']}.png")
-        path = FIG_DIR / cls / name
-        draw_case(g, meta, path)
-        rows.append({"phase_class": cls, "year": int(meta["year"]),
-                     "region": meta["region"], "track_id": meta["track_id"],
-                     "ep": meta["ep"], "state_sequence": meta["state_sequence"],
-                     "n_timesteps": len(g),
-                     "figure": str(path.relative_to(PROJECT_ROOT))})
+        tasks.append((g, meta, FIG_DIR / cls / name))
+
+    if args.jobs > 1:
+        with ProcessPoolExecutor(max_workers=args.jobs) as ex:
+            list(tqdm(ex.map(_draw_one, tasks, chunksize=4),
+                      total=len(tasks), unit="fig"))
+    else:
+        for t in tqdm(tasks, unit="fig"):
+            _draw_one(t)
+
+    rows = [{"phase_class": meta["phase_class"], "year": int(meta["year"]),
+             "region": meta["region"], "track_id": meta["track_id"],
+             "ep": meta["ep"], "state_sequence": meta["state_sequence"],
+             "n_timesteps": len(g),
+             "figure": str(path.relative_to(PROJECT_ROOT))}
+            for g, meta, path in tasks]
 
     index = pd.DataFrame(rows)
 

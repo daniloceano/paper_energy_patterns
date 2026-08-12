@@ -213,11 +213,16 @@ def make_figure(t: pd.DataFrame, path: Path):
                         color=EP_COLORS[ep])
 
     ax.set_yscale("log")
-    ticks = [0.5, 0.7, 1.0, 1.4, 2.0]
+    # Limits follow the data. They were fixed at (0.45, 2.1), which silently
+    # clipped both whiskers once the subtropical guards widened the spread.
+    lo = min(t["ratio_lo"].min(), 1 / 1.6)
+    hi = max(t["ratio_hi"].min() if False else t["ratio_hi"].max(), 1.6)
+    ax.set_ylim(lo / 1.35, hi * 1.25)
+    ticks = [x for x in (0.05, 0.1, 0.2, 0.3, 0.5, 0.7, 1.0, 1.4, 2.0, 3.0)
+             if lo / 1.3 <= x <= hi * 1.2]
     ax.set_yticks(ticks)
     ax.set_yticklabels([f"{v:g}×" for v in ticks], fontsize=10)
     ax.minorticks_off()
-    ax.set_ylim(0.45, 2.1)
     ax.set_xticks(xs)
     ax.set_xticklabels(labels, fontsize=10)
     ax.set_xlim(-0.55, len(OUTCOMES) - 0.45)

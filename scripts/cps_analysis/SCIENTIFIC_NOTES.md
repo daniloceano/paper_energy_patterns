@@ -156,18 +156,33 @@ Provenance of the individual numbers:
 
 A threshold set alone does not identify a cyclone type. Guishard et al. (2009) list five
 **required characteristics** of an Atlantic subtropical storm, and Gozzo et al. (2014)
-carry the same structure into the South Atlantic. Three are implemented here.
+carry the same structure into the South Atlantic. Three are transcribed below.
 
-**(i) Persistence — 36 consecutive hours.** Guishard et al. (2009): the cyclone must
-*"persist in its hybrid form for at least 36 h (i.e., more than one diurnal cycle)"*.
+> **Which of them the CANONICAL pipeline enforces.** (i) and (ii), plus the ocean clause
+> and a warm-seclusion guard on the timing of each hybrid run. (iii) is deliberately NOT a
+> gate — it selects systems *born* hybrid and so excludes transitions by construction, which
+> would be a category error applied to the `ST` class; it is kept as the descriptive flag
+> `pure_genesis`. See caveat C-xi for the history: (ii) was absent until it was added, and
+> the counts in this document are post-guard.
+
+**(i) Persistence — 36 consecutive hours.** *Enforced.* Guishard et al. (2009): the cyclone
+must *"persist in its hybrid form for at least 36 h (i.e., more than one diurnal cycle)"*.
 Gozzo et al. (2014): *"for more than 36 consecutive hours"*.
 
-**(ii) Genesis latitude band — 20°–40°.** Guishard et al. (2009): *"attain gales in the
+**(ii) Genesis latitude band — 20°–40°.** *Enforced (`SC_REQUIRE_GENESIS_BAND`).*
+Guishard et al. (2009): *"attain gales in the
 20°–40°N latitude band to reduce the possibility of tropical and extratropical systems
 being introduced into the dataset"*. Gozzo et al. (2014), criterion 1: *"The SC forms
-between 20° and 40°S."*
+between 20° and 40°S."* Applied to the cyclone, since it is a statement about
+cyclogenesis. It rejects 395 of the 804 persistent hybrid runs in this catalogue.
 
 **(iii) Onset within 24 h of genesis — the anti-warm-seclusion criterion.**
+*Recorded as `pure_genesis`, deliberately not a gate.* It is a filter on the TYPE OF
+GENESIS: it selects cyclones that were **born** hybrid, and therefore excludes transitions
+by design. A cyclone reaching a persistent subtropical state after a persistent
+extratropical one cannot satisfy it under any circumstances, so using it to judge `ST`
+would be a category error. The warm-seclusion problem it was meant to solve is handled
+instead by the intensity-peak guard (iv).
 Guishard et al. (2009): the cyclone must *"become subtropical (i.e., attain hybrid
 structure) within 24 h if identified first as a purely cold- or warm-cored system"*, with
 the rationale stated verbatim:
@@ -497,16 +512,16 @@ Energy Pattern label.
 
 | Class | n | % | |
 |---|---|---|---|
-| `EC` | 2,663 | 39.3% | extratropical throughout |
-| `SC` | 409 | 6.0% | subtropical throughout |
+| `EC` | 2,926 | 43.2% | extratropical throughout |
+| `SC` | 182 | 2.7% | subtropical throughout |
 | `TC` | 2 | 0.0% | tropical throughout |
-| `ST` | 298 | 4.4% | subtropical transition (EC → SC) |
-| `SD` | 47 | 0.7% | subtropical decay (SC → EC) |
+| `ST` | 60 | 0.9% | subtropical transition (EC → SC) |
+| `SD` | 22 | 0.3% | subtropical decay (SC → EC) |
 | `TT` / `ET` | 0 | 0.0% | — |
-| `EC_like` | 2,392 | 35.3% | extratropical characteristics, not sustained 36 h |
-| `SC_like` | 372 | 5.5% | **hybrid characteristics, not sustained 36 h** |
+| `EC_like` | 2,398 | 35.4% | extratropical characteristics, not sustained 36 h |
+| `SC_like` | 548 | 8.1% | **hybrid characteristics, not sustained 36 h** |
 | `TC_like` | 2 | 0.0% | warm-core characteristics, not sustained 36 h |
-| `undetermined` | 591 | 8.7% | no dominant structure |
+| `undetermined` | 636 | 9.4% | no dominant structure |
 
 Separately, the tropical-transition test rejected **12 warm seclusions** and 2
 indeterminate warm cores.
@@ -578,8 +593,8 @@ own class:
 
 | class | median share | ≥50% | ≥70% | ≥90% | class is dominant |
 |---|---|---|---|---|---|
-| `EC` (2,663) | 0.88 | 2,485 | 1,944 | 1,196 | 2,623 (98%) |
-| `SC` (409) | 0.66 | 342 | 171 | 60 | 389 (95%) |
+| `EC` (2,926) | 0.84 | 2,612 | 1,965 | 1,196 | 2,786 (95%) |
+| `SC` (182) | 0.74 | 166 | 103 | 45 | 175 (96%) |
 | `TC` (2) | 0.34 | 0 | 0 | 0 | 1 (50%) |
 
 The intuition that a "subtropical cyclone" should spend most of its life subtropical is
@@ -609,40 +624,57 @@ of them. Step 3 reports the split into *too short* and *structurally ambiguous*.
 
 ### C4. Energy Pattern × phase class
 
-| | `EC` | `SC` | `TC` | `ST` | `SD` | indet. |
-|---|---|---|---|---|---|---|
-| **EP1** (441) | 54.9% | 7.5% | 0.0% | **5.4%** | 0.2% | 32.0% |
-| **EP2** (978) | 47.6% | 7.4% | 0.0% | **9.4%** | 1.1% | 34.5% |
-| **EP3** (2,393) | 50.4% | 8.2% | 0.0% | **6.1%** | 0.8% | 34.5% |
+All counts below are **post-guard** (caveat C-xi). The unguarded numbers, and the reversal
+between them, are recorded at the end of this section.
 
-$\chi^2 = 20.7$, dof = 10, $p = 0.023$, Cramér's V = 0.052 (Cochran's condition violated —
-4 of 18 expected counts below 5; the table-wide test is indicative only). The single cell
-with $|z| > 2$ is `EP2 × ST` at $z = +3.0$.
+| | `EC` | `SC` | `TC` | `ST` | `SD` | `EC_like` | `SC_like` | undet. |
+|---|---|---|---|---|---|---|---|---|
+| **EP1** (441) | 59.4% | **0.7%** | 0.0% | 1.1% | 0.0% | 21.3% | 8.8% | 8.6% |
+| **EP2** (978) | 55.9% | **1.9%** | 0.0% | 1.9% | 0.3% | 19.3% | 7.4% | 13.1% |
+| **EP3** (2,393) | 55.6% | **4.7%** | 0.0% | 1.2% | 0.5% | 21.1% | 7.6% | 9.3% |
 
-**The robust signal is that EP2 is enriched in subtropical *transition*.** Fisher exact,
-each EP against the other two pooled:
+$\chi^2 = 48.96$, dof = 16, $p = 3.4\times10^{-5}$, Cramér's V = 0.080 (Cochran's condition
+violated — 8 of 27 expected counts below 5; the table-wide test is indicative only). Cells
+with $|z| > 2$: **EP3 × `SC` at $z = +3.0$**, **EP1 × `SC` at $z = -3.2$**, EP2 × `SC` at
+$z = -2.6$, EP2 × undetermined at $z = +2.9$.
 
-| | `ST` rate | vs rest | OR | p |
-|---|---|---|---|---|
-| EP1 | 24/441 (5.44%) | 7.09% | 0.75 | 0.230 |
-| **EP2** | **92/978 (9.41%)** | 6.03% | **1.62** | **5.5×10⁻⁴** |
-| EP3 | 147/2,393 (6.14%) | 8.17% | 0.74 | 0.017 |
+**The signal is in `SC`, and it is monotonic in the energetics.** Fisher exact, each EP
+against the other two pooled, Holm-corrected over the nine contrasts of C4/fig8:
 
-A broader "was subtropical at some persistent stage" contrast (pure `SC` or any `ST`) gives
-EP2 16.77% vs 14.11%, OR = 1.23, $p = 0.047$ — the same direction, weaker.
+| | `SC` rate | ×EPALL | OR | p | Holm |
+|---|---|---|---|---|---|
+| **EP1** | **3/441 (0.68%)** | **0.19** | 0.18 | $1.1\times10^{-4}$ | ✓ |
+| **EP2** | **19/978 (1.94%)** | **0.55** | 0.48 | $1.7\times10^{-3}$ | ✓ |
+| **EP3** | **112/2,393 (4.68%)** | **1.33** | 3.62 | $<10^{-5}$ | ✓ |
 
-**Interpretation [PRELIMINARY].** The canonical scheme sharpens what the sensitivity work
-suggested. EP2's enrichment is specifically in *acquiring* subtropical structure after an
-extratropical start, not in *being* subtropical: its pure-`SC` share (7.4%) is the lowest of
-the three, while its `ST` share is the highest. EP3 carries the largest pure-`SC` share
-(8.2%), and in the LA-PLATA region the ordering is unambiguous (EP3 12.3%, EP2 7.9%,
-EP1 5.1%). Read together: **EP3 hosts the systems born hybrid; EP2 hosts the systems that
-become hybrid.** That is consistent with the LEC signatures — EP3's weak baroclinic
-conversion is what a diabatically driven subtropical cyclone has from the outset, whereas
-EP2's moderate conversions describe a baroclinic system that later acquires a warm core.
+All three survive correction — the only place in this analysis where that happens.
 
-The effect size is small (V ≈ 0.05 table-wide, OR 1.6 on the specific contrast) and the
-`TC`/`SD` cells are too sparse for the table-wide chi-square to be trusted.
+**`ST` carries no significant signal.** EP1 0.82×, EP2 1.40×, EP3 0.87×; the largest
+contrast is EP2 at $p = 0.11$, nowhere near significance after correction.
+
+**Interpretation.** The ordering follows the LEC signature directly: **the weaker a
+cyclone's baroclinic energetics, the more likely it is to be subtropical.** EP3, the
+weak/background pattern, holds 4.7% subtropical against 0.7% for EP1, the high-conversion
+exporting pattern — a factor of **7**. That is what a diabatically driven, convectively
+maintained system should look like in an energy-cycle framework: it does not run on
+baroclinic conversion, so it appears in the cluster that has little of it.
+
+`SC or ST` reproduces the same ordering (EP1 0.37×, EP3 1.20×, both surviving Holm).
+
+**The reversal, and why it is the guards.** Before the subtropical guards the headline was
+the opposite: `SC` was flat (ratios 0.93–1.04, nothing significant) and `ST` carried the
+result (EP2 1.36×, $p = 5.5\times10^{-4}$, the only Holm survivor). Both statements came
+from the same data and the same thresholds; only the guards differ.
+
+The reading is that the unguarded `ST` signal was **warm-seclusion contamination**. EP2 is
+the moderate-conversion, energy-importing pattern — the one whose cyclones are most likely
+to run a full baroclinic life cycle and occlude into a warm seclusion. Removing seclusions
+removed the signal. What survives is a statement about *being* subtropical, not about
+*becoming* one, and it is stronger and cleaner than the result it replaced.
+
+The earlier note in this section — *"EP3 hosts the systems born hybrid; EP2 hosts the
+systems that become hybrid"* — survives only in its first half. The second half is
+withdrawn.
 
 **Expressed against the pooled population** (`fig8_ep_relative_subtropical.png`), with
 EPALL = EP1 + EP2 + EP3 = 3,812 — not the 6,776 of the catalogue, since only the clustered
@@ -650,22 +682,18 @@ cyclones carry an Energy Pattern:
 
 | | `SC` rate | ×EPALL | `ST` rate | ×EPALL | `SC` or `ST` | ×EPALL |
 |---|---|---|---|---|---|---|
-| EPALL | 7.90% | 1.00 | 6.90% | 1.00 | 14.80% | 1.00 |
-| EP1 | 7.48% | 0.95 | 5.44% | 0.79 | 12.93% | 0.87 |
-| EP2 | 7.36% | 0.93 | **9.41%** | **1.36** | 16.77% | 1.13 |
-| EP3 | 8.19% | 1.04 | 6.14% | 0.89 | 14.33% | 0.97 |
+| EPALL | 3.52% | 1.00 | 1.39% | 1.00 | 4.91% | 1.00 |
+| EP1 | 0.68% | **0.19** | 1.13% | 0.82 | 1.81% | **0.37** |
+| EP2 | 1.94% | **0.55** | 1.94% | 1.40 | 3.89% | 0.79 |
+| EP3 | 4.68% | **1.33** | 1.21% | 0.87 | 5.89% | **1.20** |
 
 The ratio is a **descriptive effect size only**: each EP is nested in EPALL, so it is not
 an independent comparison. Inference stays with the EP-versus-other-two Fisher contrast.
 
-**Multiple comparisons [added here, not in the earlier reporting].** Nine contrasts are
-tested (3 outcomes × 3 EPs). Under Holm correction only **EP2 × `ST` survives**
-($p_{\text{Holm}} = 5.0×10^{-3}$). The EP3 `ST` depletion ($p = 0.017$) and the EP2
-"subtropical at some persistent stage" contrast ($p = 0.047$) are **nominally significant
-only** and must not be reported as established. This strengthens rather than weakens the
-reading above: the one result that survives correction is precisely the *transition*
-signal, and `SC` shows no EP dependence at all — its three ratios (0.93–1.04) sit within
-each other's intervals.
+**Multiple comparisons.** Nine contrasts are tested (3 outcomes × 3 EPs), Holm-corrected.
+Five survive: all three `SC` contrasts, and `SC or ST` for EP1 and EP3. Figures encode the
+raw $p$ in the star level and Holm survival in the marker fill, so the two are never
+conflated.
 
 ### C5. What the transitions look like in the phase space
 
@@ -674,8 +702,8 @@ holds no tropical cyclone to transition from or to. The two transitions that occ
 
 | | n | cold core / tilted | hybrid | symmetric warm core | unclassified |
 |---|---|---|---|---|---|
-| `ST` (EC → SC) | 298 | 49.7% | 39.2% | 2.0% | 9.2% |
-| `SD` (SC → EC) | 47 | 49.7% | 39.3% | 0.9% | 10.2% |
+| `ST` (EC → SC) | 60 | 52.5% | 39.4% | 0.73% | 7.37% |
+| `SD` (SC → EC) | 22 | 47.88% | 42.52% | 0.3% | 9.31% |
 
 (percentages of each class's timesteps by per-timestep structure)
 
@@ -743,6 +771,53 @@ caveat Conrado et al. (2024) raise about their own work — and **13 cyclones (0
 CPS series**, mostly 2009, so the EP populations here are 441/978/2,393 rather than the
 canonical 444/979/2,397.
 
+C-xi. **The subtropical classes are guarded; before 2026-08-10 they were not.** The
+warm-seclusion filter originally ran only inside `if r["code"] != "TC": continue`, so a
+persistent SUBTROPICAL run was accepted on the 36 h gate alone — the one criterion a
+Shapiro–Keyser occlusion satisfies without difficulty. `GENESIS_LAT_BAND` (Gozzo criterion
+1) existed in `cps_criteria.py` and was read by no canonical script. The diagnosis, from
+the unguarded output:
+
+| | n | median lat of run | onset | onset phase | peak already passed |
+|---|---|---|---|---|---|
+| rejected warm seclusions (tropical) | 12 | −61.5° | 112 h | end of cycle | — |
+| unguarded `ST` | 298 | −57.9° | 102 h | 78% mature/decay | **67%** |
+| unguarded `SC` | 409 | −39.1° | 33 h | 58% incipient/intensif. | 30% |
+| unguarded `SD` | 47 | −37.4° | 18 h | 73% incipient/intensif. | 11% |
+
+`ST` was indistinguishable from the rejected seclusions on every axis, and travelled 16.6°
+poleward between genesis and the hybrid run (4.9° for `SC`, 2.7° for `SD`).
+
+**Three guards were added** (`cps_criteria.SC_*`), applied to every persistent hybrid run:
+the Gozzo genesis band, the ocean clause, and an intensity-peak test. The peak test is the
+physical discriminator the CPS itself cannot supply: a diabatically built warm core
+re-energises the system, so peak intensity follows the structure, whereas a mechanically
+secluded warm core is the terminal stage and the peak has already passed. Runs beginning
+more than `SC_MAX_HOURS_PAST_PEAK` = 12 h after the vorticity peak are rejected.
+
+Of the 804 persistent hybrid runs: **271 accepted, 395 rejected as `genesis_out_of_band`,
+138 rejected as `warm_seclusion`.** Per-run verdicts and `run_code` are in
+`phase_states.csv`, so every rejection remains inspectable.
+
+| class | unguarded | guarded |
+|---|---|---|
+| `SC` | 409 | **182** |
+| `ST` | 298 | **60** |
+| `SD` | 47 | **22** |
+| `SC_like` | 372 | 548 |
+
+**This is the change that made the analysis agree with the literature.** Cyclones with an
+accepted subtropical state: 264 over 42 years = **6.3 per year**, against Gozzo et al.'s
+**7.2 per year**. Unguarded the same quantity was 18.0 per year — two and a half times the
+published rate.
+
+**The 24 h onset criterion is still not a gate, and deliberately so** (see Methodology
+(iii)): it filters on type of genesis and excludes transitions by construction.
+
+*Historical note.* An earlier version of this caveat argued against `ST` from the onset
+criterion. That argument was wrong — a category error — and has been replaced by the peak
+test above.
+
 C-x. **The CPS parameters are classified unsmoothed, and the literature is split on this.**
 Hart (2003) applies a temporal filter to his own diagrams: *"For each of the three phase
 parameters, a 24-h running mean smoother is applied to remove short-term noise in the
@@ -768,10 +843,11 @@ running mean changes the class counts.
 ## Next Steps
 
 1. **Visually validate the canonical classes case by case.** Step 7 draws a sampled
-   gallery — one cyclone per class × year × region, 745 individual CPS diagrams under
+   gallery — one cyclone per class × year × region, 628 individual CPS diagrams under
    `figures/cps_analysis/cases/<CLASS>/` — and the full track_id lists are in
    `results/cps_analysis/cyclone_lists_by_class.{csv,txt}`. Priority order: the 2 `TC`
-   cyclones, the 12 warm seclusions, the 47 `SD`, then a sample of the 409 `SC`. This is
+   cyclones, the 138 subtropical runs rejected as warm seclusions, the 22 `SD`, then a
+   sample of the 182 `SC`. This is
    the step Gozzo et al. performed manually and we have not.
 
 2. **Add the gale criterion.** `SIZE` (equivalent radius of 925-hPa winds >= 17 m/s) is

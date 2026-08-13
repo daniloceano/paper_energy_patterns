@@ -31,6 +31,7 @@ STEPS = [
     ("step6_transition_trajectories.py", "Transition trajectories in the phase space"),
     ("step7_case_diagrams.py", "Individual CPS case diagrams (sampled gallery)"),
     ("step8_ep_relative_frequency.py", "Subtropical frequency by EP, relative to EPALL"),
+    ("step9_density_maps.py", "Genesis and track density by cyclone type and EP"),
 ]
 
 

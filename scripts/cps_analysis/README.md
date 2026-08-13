@@ -200,6 +200,7 @@ python scripts/cps_analysis/step5_phase_space_figures.py
 python scripts/cps_analysis/step6_transition_trajectories.py
 python scripts/cps_analysis/step7_case_diagrams.py
 python scripts/cps_analysis/step8_ep_relative_frequency.py
+python scripts/cps_analysis/step9_density_maps.py
 ```
 
 ### Region shading
@@ -221,6 +222,65 @@ The shading logic lives in `cps_plotting.shade_class_regions`, so it is defined 
 every figure inherits changes to the thresholds automatically.
 `fig0_cps_reference.png` is that schematic on its own, with no data plotted over it — the
 figure to look at first, and the one to check a threshold against.
+
+### Where each type forms and where it lives
+
+`step9` maps the population: **rows are cyclone types, columns are EPALL / EP1 / EP2 / EP3**,
+and the same layout is drawn twice —
+
+| kind | positions used | unit |
+|---|---|---|
+| **genesis** (`fig9`) | the cyclogenesis point only, one per cyclone | cyclogenesis events / 10⁶ km² / year |
+| **whole life** (`fig10`) | every 3-hourly position of the track | cyclone days / 10⁶ km² / year |
+
+The estimator is the spherical KDE already used for the manuscript's genesis-density figure
+(`scripts/main/07_figure_genesis_density_kde.py`, after Hoskins & Hodges 2005): Gaussian
+kernel, haversine metric, bandwidth 0.05 rad (~318 km), 2.5° grid. It lives in
+`cps_density.py` so the two figure families cannot drift apart. Whole-life density is
+expressed in **cyclone days** — each 3-hourly position counts as 1/8 of a day — so the number
+does not depend on the sampling cadence.
+
+Each kind is drawn in two modes, because they answer different questions:
+
+- **anomaly** (the manuscript convention) — column 1 is the absolute density of that type over
+  EPALL; columns 2–4 are the min-max normalised anomaly of the type *within that EP* against
+  the same type over EPALL. This compares **shape**, which is what is wanted when the EPs are
+  very unequal in number.
+- **absolute** — all four columns on one colour scale per row, peak value annotated. Sample
+  size is then part of what the reader sees: the EP1 subtropical panel is nearly blank because
+  EP1 barely produces subtropical cyclones, i.e. the C4 result stated as a map.
+
+Two figure sets, to keep the panel count readable:
+
+```
+fig9_genesis_density_identified_{anomaly,absolute}.png        ALL, EC, SC, ST, SD
+fig9_genesis_density_characteristics_{anomaly,absolute}.png   ALL, EC_like, SC_like, undetermined
+fig10_track_density_identified_{anomaly,absolute}.png
+fig10_track_density_characteristics_{anomaly,absolute}.png
+```
+
+Three things to keep in mind when reading them:
+
+- **EPALL here is EP1 ∪ EP2 ∪ EP3 = 3,812 cyclones**, not the 6,776 of the catalogue — the same
+  denominator as `step8`, and required because the EP columns are read against it. `--epall
+  catalogue` switches to the full catalogue at the cost of that consistency.
+- **Whole life means whole life.** The `fig10` maps use every position of a cyclone of that
+  class, not only the positions holding that structure; a single-state `SC` cyclone spends a
+  median 0.74 of its life subtropical, so the rest of its track is in the map. That is the right
+  denominator for a residence-time map — the structure-resolved question is what `fig6` answers.
+- **A panel with fewer than 10 cyclones gets its raw positions as points and no density field.**
+  The gate is on cyclone count, not position count: the 3-hourly positions of one cyclone are
+  not independent samples. `SC`/EP1 (3 cyclones), `ST`/EP1 (5) and `SD`/EP2 (3) are drawn this
+  way, and `SD`/EP1 is empty.
+
+Domains differ by kind: genesis uses the manuscript frame (75°W–20°W, 55°S–20°S); the tracks
+run far east and south of the genesis boxes, so `fig10` uses 80°W–60°E, 70°S–15°S, which holds
+96.1% of all 3-hourly positions. `TC` and `TC_like` are off both figures by default (two
+cyclones each); `--classes TC TC_like SC` puts them on.
+
+`results/cps_analysis/density_map_samples.csv` records, for every panel drawn, the cyclone and
+position counts, the fraction of positions inside the domain, the peak density and whether a
+KDE was estimated at all.
 
 ### The case gallery
 
@@ -261,6 +321,24 @@ for each combination is recorded in `results/cps_analysis/case_diagram_index.csv
 contains no tropical cyclone to transition from or to. The two transitions that do occur are
 `ST` (EC → SC, 60) and `SD` (SC → EC, 22) — the latter is what the earlier draft scheme
 called `ET`. `step6` plots both.
+
+### Bringing the outputs home
+
+The pipeline runs on the server; `sync_from_remote.sh` pulls the outputs to a local machine
+over a single SSH connection (one password prompt), never overwriting a local file that is
+newer and never deleting anything:
+
+```bash
+bash scripts/cps_analysis/sync_from_remote.sh --dry-run   # see what would come
+bash scripts/cps_analysis/sync_from_remote.sh             # ~20 MB: tables + fig0–fig10
+bash scripts/cps_analysis/sync_from_remote.sh --cases     # + the 628-figure gallery
+bash scripts/cps_analysis/sync_from_remote.sh --inputs    # + csv_output/, as a backup
+```
+
+The default skips the two heavy things: the per-timestep databases (`*timesteps*.csv`,
+~155 MB with the sensitivity ones) and `cases/` (106 MB). `--timesteps`, `--cases`,
+`--inputs`, `--logs` add them back; `--all` takes everything. `--inputs` is worth running
+once for its own sake — `csv_output/` is irreplaceable and lives on one server.
 
 To print the threshold sets that will be applied:
 
@@ -305,6 +383,7 @@ cps_analysis/
 ├── SCIENTIFIC_NOTES.md             methods, provenance, results, caveats
 ├── cps_criteria.py                 all thresholds (canonical + sensitivity sets)
 ├── cps_plotting.py                 shared region shading for every CPS diagram
+├── cps_density.py                  shared spherical KDE + map panels (step 9)
 ├── make_reference_diagram.py       the schematic of the class regions (no data)
 ├── cps_calculator_era5tocsv.py     [A. Rodriguez] ERA5 → CPS parameters
 ├── cps_plots_csv_gris.py           [A. Rodriguez] per-cyclone CPS diagram
@@ -316,7 +395,9 @@ cps_analysis/
 ├── step6_transition_trajectories.py  transition paths, marker per timestep
 ├── step7_case_diagrams.py          individual CPS diagrams, sampled gallery
 ├── step8_ep_relative_frequency.py  SC and ST frequency per EP vs EPALL
+├── step9_density_maps.py           genesis and track density, type x EP
 ├── run_all.py                      run the canonical pipeline
+├── sync_from_remote.sh             pull results + figures to a local machine
 ├── sensitivity/                    the exploratory tests
 │   ├── README.md                   the nine findings and what each decided
 │   └── SCIENTIFIC_NOTES.md         exploratory science record
@@ -339,6 +420,7 @@ results/cps_analysis/
 ├── cyclone_lists_by_class.csv      one row per cyclone: id, EP, region, genesis, sequence
 ├── cyclone_lists_by_class.txt      the same grouped by class, track_ids only
 ├── case_diagram_index.csv          which cyclone was drawn for each combination
+├── density_map_samples.csv         per-panel counts and peak density (step 9)
 └── sensitivity/                    outputs of the sensitivity tests
 
 figures/cps_analysis/
@@ -353,6 +435,10 @@ figures/cps_analysis/
 ├── fig7_transition_trajectories.png  ST and SD paths, structure per timestep
 ├── fig8_ep_relative_subtropical.png  candidate manuscript figure: SC and ST
 │                                   frequency per EP against EPALL
+├── fig9_genesis_density_<set>_<mode>.png   cyclogenesis density, type × EP
+├── fig10_track_density_<set>_<mode>.png    whole-life density, type × EP
+│                                   set  = identified | characteristics
+│                                   mode = anomaly | absolute
 ├── cases/                          one sampled case per class × year × region
 │   ├── EC/  EC_like/  SC/  SC_like/  SD/  ST/  TC/  TC_like/  undetermined/
 │   └── e.g. TC/cps_TC_1998_LA-PLATA_19980144.png
@@ -367,7 +453,7 @@ as are all `results/` CSVs and `figures/` PNGs.
 ## Status
 
 - CPS parameters computed for 6,776 / 6,789 cyclones (99.8%); **13 missing**, mostly 2009.
-- Canonical pipeline (reference diagram + steps 1–8) complete and reproducible from
+- Canonical pipeline (reference diagram + steps 1–9) complete and reproducible from
   `csv_output/` alone.
 - Sensitivity suite complete and preserved under `sensitivity/`.
 - Externally checked against documented named cyclones: **Bapo (2015) and Cari (2015) are
@@ -378,6 +464,7 @@ as are all `results/` CSVs and `figures/` PNGs.
 
 ## Environment
 
-`pandas`, `numpy`, `scipy`, `matplotlib`, `tqdm`, `xarray` (calculator only), and `cartopy`
-for the land/ocean mask. If cartopy's Natural Earth shapefile is unavailable offline, the
+`pandas`, `numpy`, `scipy`, `matplotlib`, `tqdm`, `scikit-learn` (the KDE in step 9),
+`statsmodels` (step 8), `xarray` (calculator only), and `cartopy` for the land/ocean mask and
+the step-9 maps. If cartopy's Natural Earth shapefile is unavailable offline, the
 ocean clause of the TT test is skipped and the run reports that it did so.

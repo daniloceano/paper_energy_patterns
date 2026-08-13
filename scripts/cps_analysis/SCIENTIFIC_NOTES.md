@@ -458,6 +458,53 @@ Two implementation points, each forced by evidence rather than chosen:
 
 ---
 
+### Step 9 — Genesis and whole-life density
+
+The classification answers *what* a cyclone is; step 9 asks *where*. Two position sets are
+mapped for every phase class, separately for EPALL and each Energy Pattern:
+
+| map | positions | quantity |
+|---|---|---|
+| genesis | the cyclogenesis point, one per cyclone | cyclogenesis events per $10^6$ km² per year |
+| whole life | every 3-hourly position of the track | cyclone **days** per $10^6$ km² per year |
+
+**Estimator.** Spherical kernel density estimation after Hoskins and Hodges (2005): Gaussian
+kernel with a haversine metric, bandwidth $h = 0.05$ rad ($\approx 318$ km), evaluated on
+their regular 2.5° grid. The KDE integrates to unity over the sphere, so
+
+$$\rho(\lambda,\phi) \;=\; \hat{f}(\lambda,\phi)\; N \; \frac{10^6}{R^2} \; \frac{w}{n_{\text{years}}},
+\qquad R = 6369.345\ \text{km},$$
+
+with $N$ the number of positions and $w$ a weight that fixes the unit: $w = 1$ for genesis
+events, and $w = \Delta t/24\ \text{h} = 1/8$ for the whole-life maps, which converts a count
+of 3-hourly positions into **cyclone days** and so makes the number independent of the
+sampling cadence. This is the same estimator, bandwidth and grid as the manuscript's genesis
+figure, shared through `cps_density.py` so the two cannot drift apart.
+
+**Two readings of the same field.** Absolute density carries the sample size — with EP1 at
+441 cyclones and EP3 at 2,393, an EP1 panel is faint because EP1 is rare, not because its
+cyclones form somewhere else. To separate the two, the EP panels are also drawn as the
+min-max normalised anomaly $\tilde{\rho}_{\text{EP}} - \tilde{\rho}_{\text{EPALL}}$, where
+$\tilde{\rho}$ scales the positive values of each field onto $[0,1]$. That comparison is of
+**shape** only and says nothing about how many cyclones produced it; the absolute mode is
+kept alongside precisely so the two questions are never conflated.
+
+**Denominator.** EPALL is the union EP1 ∪ EP2 ∪ EP3 = **3,812** cyclones, not the 6,776 of
+the catalogue — the same choice as step 8, and required here because the EP panels are read
+against EPALL. The class counts in this section are therefore smaller than those in C1
+(e.g. `SC` 134 rather than 182).
+
+**Whole life means whole life.** The track maps use every position of a cyclone of the given
+class, not only the positions holding that structure. A single-state `SC` cyclone is
+subtropical for a median 0.74 of its life (C2), so the remainder is in the map. For a
+residence-time field that is the correct denominator — the question "where is the structure
+held" is a different one, and it is what the phase-space figures answer.
+
+**Minimum sample.** A panel with fewer than **10 cyclones** is drawn as raw positions with no
+density field. The gate is on cyclones rather than positions because the 3-hourly positions of
+one cyclone are not independent samples: `SC`/EP1 has 3 cyclones but 119 positions, and a KDE
+over those 119 would draw a smooth field out of a single trajectory.
+
 ---
 
 ## Assumptions
@@ -723,6 +770,47 @@ The `ST` association survives genesis-region stratification (step 3 output), so 
 an artefact of EP2's more equatorward genesis distribution (median −37.9° vs −42.1° for EP1
 and −44.0° for EP3).
 
+### C7. Where each type forms and where it lives
+
+**[PRELIMINARY]** — read off the step-9 maps; no test has been applied to any of the
+contrasts below. Counts are over the 3,812-cyclone clustered population (see Step 9).
+
+**The classes separate geographically, and by more than the guards impose.** Median genesis
+position, with peak density from the EPALL panels:
+
+| class | n | median genesis | genesis peak <br> [events/10⁶ km²/yr] | whole-life peak <br> [cyclone days/10⁶ km²/yr] | genesis region |
+|---|---|---|---|---|---|
+| `EC` | 2,140 | 42.8°S, 61.1°W | 20.0 | 16.3 | 60% ARG |
+| `SC` | 134 | 28.5°S, 48.0°W | 1.26 | 4.56 | 63% SE-BR, 34% LA-PLATA |
+| `ST` | 53 | 31.5°S, 54.1°W | 0.41 | 0.63 | 49% SE-BR, 45% LA-PLATA |
+| `SD` | 14 | 26.1°S, 48.3°W | 0.25 | 0.58 | 86% SE-BR |
+| `SC_like` | 294 | **45.8°S, 62.5°W** | 3.49 | 4.04 | mid-latitude |
+
+The `SC` genesis band at 20–40°S is imposed by the guards, so its position is not an
+independent result; **its longitude and its narrowness are**. The subtropical genesis maximum
+sits offshore of southeastern Brazil, and `ST` — which is *not* subject to a genesis-band
+guard — lands in the same sector, ~3° poleward and ~6° west, i.e. on the extratropical side
+of the same corridor. That is the geography the transition name already implies.
+
+**`SC` is confined; `ST` is not.** 99.8% of `SC` positions fall inside the map frame
+(80°W–60°E, 70°S–15°S) against 90.8% for `ST` and 94.2% for `EC` — and `SC` is the only class
+whose whole-life peak (4.56) is **larger** than its genesis peak (1.26). A subtropical cyclone
+stays in the box it was born in and spends its life there; an `ST` cyclone is a mid-latitude
+system that keeps travelling after acquiring the structure, and its residence-time field is
+smeared along the storm track to beyond 60°E.
+
+**`SC_like` is a different population, not a weaker `SC`.** Its median genesis is at
+**45.8°S**, 17° poleward of `SC`, and its density fields are those of the `EC` population.
+Whatever the hybrid characteristics of those 294 cyclones represent, it is not an unresolved
+subtropical class — which is the geographic form of the argument for keeping the `*_like`
+names distinct (C1, C-xi).
+
+**By Energy Pattern, the anomalies are of shape, not of rate.** Within `EC` the EP2 panel is
+enhanced over the LA-PLATA/SE-BR sector and EP3 is enhanced poleward of 40°S, the same
+contrast the medians give (C6). Within `SC` only EP2 and EP3 have enough cyclones to draw at
+all (19 and 112); EP1 has **three**, which is the C4 result — EP1 barely produces subtropical
+cyclones — arriving as an empty panel rather than as a statistic.
+
 ---
 
 ## Caveats and Limitations
@@ -838,6 +926,16 @@ but briefly interrupted hybrid episodes — which is what the `*_like` character
 were introduced to record. **Not tested here**: whether a 9-point (24 h at 3-hourly)
 running mean changes the class counts.
 
+C-xii. **The density maps of the rare classes rest on very few cyclones, and a KDE hides
+that.** A Gaussian kernel of ~318 km draws a smooth, confident-looking field from any sample
+whatever. `SD`/EPALL is 14 cyclones, `ST`/EP2 and `SC`/EP2 are 19 each; the fields are drawn
+because they clear the 10-cyclone floor, not because they are stable. Two consequences: read
+the anomaly panels of the rare classes as suggestive only — no confidence interval is
+attached to any of them — and remember that the whole-life maps count 3-hourly positions of
+the same trajectory, so their effective sample is the cyclone count in the panel corner and
+not the position count. The `SC`/EP1, `ST`/EP1 and `SD`/EP2 panels are shown as raw points
+for exactly this reason; the difference between 3 cyclones and 19 is one of degree.
+
 ---
 
 ## Next Steps
@@ -924,6 +1022,10 @@ doi:[10.1175/1520-0493(2003)131<0585:ACPSDF>2.0.CO;2](https://doi.org/10.1175/15
 Hart, R. E., & Evans, J. L. (2001). A climatology of the extratropical transition of
 Atlantic tropical cyclones. *J. Climate*, **14**(4), 546-564.
 [cited via Guishard et al. 2009]
+
+Hoskins, B. J., & Hodges, K. I. (2005). A new perspective on Southern Hemisphere storm
+tracks. *J. Climate*, **18**(20), 4108-4129.
+doi:[10.1175/JCLI3570.1](https://doi.org/10.1175/JCLI3570.1)
 
 Marrafon, V. H., Reboita, M. S., da Rocha, R. P., & de Jesus, E. M. (2022). Classificacao
 dos tipos de ciclones sobre o Oceano Atlantico Sul em projecoes com o RegCM4 e MCGs.

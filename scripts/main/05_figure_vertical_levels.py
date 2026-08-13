@@ -72,7 +72,8 @@ DPI = 300
 ZENODO_DOI = "10.5281/zenodo.18243447"
 
 # Energy Pattern configuration
-# cluster index follows kmeans_clustered_data.csv convention: EP1=0, EP2=1, EP3=2
+# cluster index follows the canonical mapping in scripts/utils/ep_mapping.py:
+# cluster 0 -> EP1 (high conversions), cluster 2 -> EP2 (moderate), cluster 1 -> EP3 (weak/background)
 EP_CONFIG = {
     'EP1': {
         'cluster': 0,
@@ -82,14 +83,14 @@ EP_CONFIG = {
         'offset': -0.30,
     },
     'EP2': {
-        'cluster': 1,
+        'cluster': 2,
         'box_color': 'lightblue',
         'edge_color': 'darkblue',
         'median_color': 'darkblue',
         'offset': 0.00,
     },
     'EP3': {
-        'cluster': 2,
+        'cluster': 1,
         'box_color': 'lightgreen',
         'edge_color': 'darkgreen',
         'median_color': 'darkgreen',

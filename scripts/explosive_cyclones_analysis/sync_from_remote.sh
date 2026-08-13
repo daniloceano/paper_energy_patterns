@@ -111,6 +111,7 @@ done
 if $DRY_RUN; then
     echo " Dry run complete. Run without --dry-run to copy files."
 else
-    echo " Sync complete. Next: python scripts/explosive_cyclones_analysis/step5_figures_tables.py"
+    echo " Sync complete. Next: python scripts/explosive_cyclones_analysis/run_all.py"
+    echo "                       (steps 4-7: NDR, validation figures, relative frequency, density maps)"
 fi
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

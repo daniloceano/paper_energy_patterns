@@ -77,14 +77,33 @@ TRACKS = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.
 DEFAULT_DEST = Path("/p1-swell/danilocs/cyclone_monitor_south_atlantic/data/raw")
 
 NO_CPS = "no_cps_data"
+
+# Whether a class is an IDENTIFICATION or merely a description. This distinction
+# is the whole point of the `*_like` naming and it must survive the export: a
+# consumer that groups `SC_like` under "Subtropical" is asserting something the
+# classification explicitly refuses to assert. The columns `class_kind` and
+# `is_identified` exist so that grouping cannot be got wrong by accident.
+#
+#   identified     passed the 36 h persistence gate AND the identification
+#                  guards (genesis band, ocean, warm-seclusion test)
+#   characteristic showed a dominant structure that never lasted 36 h; NOT
+#                  guarded, and NOT a claim that the cyclone is of that type
+#   undetermined   no dominant structure
+#   no_data        no CPS series
+CLASS_KIND = {
+    **{c: "identified" for c in list(SINGLE_STATE_CLASSES) + list(TRANSITIONS)},
+    **{c: "characteristic" for c in CHARACTERISTIC_CLASSES},
+    UNDETERMINED: "undetermined",
+}
 CLASS_LABELS = {**SINGLE_STATE_CLASSES, **TRANSITIONS, **CHARACTERISTIC_CLASSES,
                 UNDETERMINED: "no structure held for the persistence gate, none dominant",
                 NO_CPS: "no CPS series computed for this cyclone"}
 
 TS_COLUMNS = ["track_id", "date", "B", "VTL", "VTU", "SIZE", "dir",
-              "lat", "lon", "over_ocean", "cps_class"]
+              "lat", "lon", "over_ocean", "cps_class", "cps_state"]
 CY_COLUMNS = ["track_id", "year", "region", "genesis_lat", "genesis_lon", "ep",
               "has_cps", "phase_class", "phase_class_label",
+              "class_kind", "is_identified",
               "genesis_state", "genesis_onset_h", "pure_genesis",
               "state_sequence", "transitions", "n_persistent_states",
               "dominant_class", "dominance", "frac_EC", "frac_SC", "frac_TC",
@@ -94,9 +113,34 @@ CY_COLUMNS = ["track_id", "year", "region", "genesis_lat", "genesis_lon", "ep",
 
 
 def build_timesteps() -> pd.DataFrame:
+    """Per-timestep CPS parameters, with BOTH views of the classification.
+
+    `cps_class` is the raw threshold label of that single timestep: no
+    persistence, no guards. It is the right thing to colour a phase diagram by,
+    and the wrong thing to count cyclone types with.
+
+    `cps_state` is the guarded view: the accepted persistent state covering that
+    timestep, or empty. A timestep inside a run that the guards REJECTED (warm
+    seclusion, genesis out of band) is empty here even though `cps_class` may
+    read "subtropical" — which is exactly the distinction that gets lost when
+    only the raw label is shipped.
+    """
     ts = pd.read_csv(RESULTS / "phase_timesteps.csv", parse_dates=["datetime"])
     ts = ts.rename(columns={"datetime": "date"})
     ts["cps_class"] = ts["cps_class"].fillna("unclassified")
+
+    states = pd.read_csv(RESULTS / "phase_states.csv", parse_dates=["start", "end"])
+    accepted = states[states["state"].isin(["EC", "SC", "TC"])]
+    ts["cps_state"] = ""
+    idx = {t: g for t, g in accepted.groupby("track_id")}
+    col = ts.columns.get_loc("cps_state")
+    for tid, g in ts.groupby("track_id"):
+        runs = idx.get(tid)
+        if runs is None:
+            continue
+        for r in runs.itertuples():
+            m = (g["date"] >= r.start) & (g["date"] <= r.end)
+            ts.iloc[g.index[m.to_numpy()], col] = r.state
     return ts[TS_COLUMNS].sort_values(["track_id", "date"]).reset_index(drop=True)
 
 
@@ -120,6 +164,8 @@ def build_classification() -> pd.DataFrame:
             })
             cy = pd.concat([cy, extra], ignore_index=True)
 
+    cy["class_kind"] = cy["phase_class"].map(CLASS_KIND).fillna("no_data")
+    cy["is_identified"] = cy["class_kind"] == "identified"
     cy["phase_class_label"] = cy["phase_class"].map(CLASS_LABELS)
     for c in CY_COLUMNS:
         if c not in cy:
@@ -167,10 +213,19 @@ def write_report(path: Path, ts: pd.DataFrame, cy: pd.DataFrame, join: dict,
               f"  STATUS: {'PASS' if pct == 100 else 'INCOMPLETE — investigate'}"]
     else:
         L.append("  SKIPPED — reference track file not available locally")
-    L += ["", sub, "Per-timestep class distribution", sub]
-    vc = ts.cps_class.value_counts()
-    for k, v in vc.items():
-        L.append(f"  {k:<16s} {v:9,d}  ({100 * v / len(ts):5.1f}%)")
+    L += ["", sub, "Per-timestep labels — raw vs guarded", sub,
+          "  cps_class = raw threshold label of that timestep (no persistence, no guards)"]
+    for k, v in ts.cps_class.value_counts().items():
+        L.append(f"    {k:<16s} {v:9,d}  ({100 * v / len(ts):5.1f}%)")
+    L.append("  cps_state = accepted persistent state covering that timestep")
+    sv = ts.cps_state.replace("", "(none)").value_counts()
+    for k, v in sv.items():
+        L.append(f"    {k:<16s} {v:9,d}  ({100 * v / len(ts):5.1f}%)")
+    L += ["", sub, "Identification vs description", sub,
+          "  Grouping a `*_like` class under Subtropical or Tropical asserts what the",
+          "  classification refuses to assert. Use `is_identified` / `class_kind`."]
+    for k, v in cy.class_kind.value_counts().items():
+        L.append(f"    {k:<16s} {v:6,d}  ({100 * v / len(cy):5.2f}%)")
     L += ["", sub, "Dataset 2 — per-cyclone classification", sub,
           f"  Rows:            {len(cy):,}",
           f"  With CPS series: {int(cy.has_cps.sum()):,}",

@@ -44,28 +44,15 @@ def test_population_reproduces_complete_order_and_finite_terms(tmp_path: Path):
     assert ids == {"good"}
 
 
-def test_pilot_long_case_uses_upper_tail_not_absolute_outlier(tmp_path: Path):
+def test_pilot_long_case_uses_smallest_envelope_in_upper_tail(tmp_path: Path):
     manifest = pd.DataFrame({
         "track_id": [str(value) for value in range(101)],
         "lifecycle_hours": [float(value) for value in range(100)] + [10000.0],
+        "download_envelope_degrees2": [1000] * 96 + [5, 4, 3, 1, 10000],
     })
     pilots = choose_pilots(manifest, tmp_path / "missing_ep1.csv")
     assert "99" in pilots
     assert "100" not in pilots
-
-
-def test_pilot_long_tie_prefers_smaller_download_envelope(tmp_path: Path):
-    manifest = pd.DataFrame({
-        "track_id": ["short", "median", "large_box", "small_box", "outlier"],
-        "lifecycle_hours": [10.0, 20.0, 30.0, 30.0, 1000.0],
-        "download_envelope_degrees2": [1, 1, 100, 25, 1000],
-    })
-    # For this deliberately small sample, the upper-tail target is closest to
-    # the outlier. Override the duration pattern so the tied candidates occupy
-    # the 99th-percentile target while a larger absolute maximum remains apart.
-    manifest.loc[manifest.track_id == "outlier", "lifecycle_hours"] = 30.0
-    pilots = choose_pilots(manifest, tmp_path / "missing_ep1.csv")
-    assert pilots[2] == "small_box"
 
 
 def test_sqlite_state_machine_and_active_runtime(tmp_path: Path):

@@ -133,10 +133,10 @@ conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipel
   pilot --run-root "$RUN"
 ```
 
-Preparation chooses minimum-duration, median-duration, 99th-percentile long,
-and EP1 cases. The upper-tail case avoids using the globe-spanning absolute
-maximum as an unrepresentative CDS/storage benchmark; duration ties prefer the
-smallest CDS envelope. Production remains
+Preparation chooses minimum-duration, median-duration, upper-5%-duration long,
+and EP1 cases. The long case has the smallest CDS envelope within that upper
+tail, isolating lifecycle length from globe-spanning spatial-footprint cost.
+Production remains
 locked until every pilot is `COMPLETE`:
 
 ```bash

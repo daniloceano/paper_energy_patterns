@@ -61,8 +61,9 @@ applies backpressure, and resumes from SQLite.
   only the LEC energetics, which is the stated scientific intervention.
 - The absolute longest lifecycle (453 h) spans almost 244 degrees of longitude;
   its fixed CDS envelope is 17,080 square degrees and is an outlier rather than
-  a useful pilot. The long pilot is therefore the duration 99th percentile
-  (288 h, 97 timesteps), while the outlier remains in the production population.
+  a useful pilot. The long pilot is therefore the smallest CDS envelope among
+  the longest 5% (`20110172`: 237 h, 80 timesteps, 1,961 square degrees), while
+  every spatial/lifecycle outlier remains in the production population.
 
 The manuscript says 100-1000 hPa and one caption says 6-hourly, while code and
 archived results use 10-1000 hPa and 3-hourly data. These method/documentation

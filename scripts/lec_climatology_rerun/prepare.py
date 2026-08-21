@@ -86,8 +86,7 @@ def load_tracks(path: Path) -> pd.DataFrame:
 def choose_pilots(manifest: pd.DataFrame, ep1_file: Path) -> list[str]:
     ordered = manifest.set_index("track_id")
     durations = ordered["lifecycle_hours"]
-    long_distance = (durations - durations.quantile(0.99)).abs()
-    long_candidates = ordered.loc[long_distance.eq(long_distance.min())]
+    long_candidates = ordered.loc[durations.ge(durations.quantile(0.95))]
     if "download_envelope_degrees2" in long_candidates:
         long_id = str(long_candidates["download_envelope_degrees2"].idxmin())
     else:
@@ -95,9 +94,9 @@ def choose_pilots(manifest: pd.DataFrame, ep1_file: Path) -> list[str]:
     selected = [
         str(durations.idxmin()),
         str((durations - durations.median()).abs().idxmin()),
-        # Exercise the upper tail without letting one globe-spanning maximum
-        # dominate pilot wall time and CDS volume. The 99th percentile remains
-        # a genuinely long, representative lifecycle.
+        # Exercise a genuinely long lifecycle while isolating duration from
+        # spatial-footprint cost: within the longest 5%, use the smallest CDS
+        # envelope rather than a globe-spanning outlier.
         long_id,
     ]
     if ep1_file.exists():
@@ -261,7 +260,7 @@ def prepare(
             "compute": config.max_compute_workers,
         },
         "pilots": pilots,
-        "pilot_selection": "minimum, median, 99th-percentile duration (smallest CDS envelope on ties), and median-duration EP1",
+        "pilot_selection": "minimum, median, smallest CDS envelope among the longest 5%, and median-duration EP1",
     }
     provenance_path = config.root / "provenance.json"
     provenance_path.write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")

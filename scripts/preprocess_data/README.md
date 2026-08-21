@@ -1,5 +1,10 @@
 # Preprocess Data
 
+> For the corrected 2026 Lorenz Energy Cycle climatology, use
+> `scripts/lec_climatology_rerun/`. It preserves the legacy cache, pins
+> toolkit/data provenance, and refuses to build a corrected cache until all
+> 3,820 selected cyclones validate as complete.
+
 Scripts for downloading and preprocessing cyclone data from remote sources (GitHub, Zenodo) into optimized local caches.
 
 ---
@@ -44,7 +49,7 @@ REMOTE SOURCES                PREPROCESSING              LOCAL CACHE
 **Input**: GitHub energy data (via `scripts/utils/load_data.load_all_energy_data()`)  
 **Output**: `data/energy_cache.parquet` (~6 MB compressed, <1 sec load time)  
 **Process**:
-1. Downloads ~1,500 individual cyclone energy CSVs from GitHub (parallel, 50 workers)
+1. Downloads up to 6,789 individual cyclone energy CSVs from GitHub (parallel, 50 workers)
 2. Filters for complete lifecycle cyclones (4-phase sequence: incipient→intensification→mature→decay)
 3. Standardizes column names and data types
 4. Saves as compressed Parquet (Snappy compression, ~10:1 ratio)
@@ -75,7 +80,7 @@ N_WORKERS = 50  # Parallel download workers (adjust based on network/CPU)
 **Source**: Zenodo DOI [10.5281/zenodo.18243447](https://doi.org/10.5281/zenodo.18243447)  
 **Output**: `data/temp_lec_zenodo/LEC_Results_energetic-patterns/` (~1.2 GB extracted)  
 **Contents**:
-- ~1,500 cyclone directories (`{track_id}_ERA5_track/`)
+- Up to 6,789 cyclone directories (`{track_id}_ERA5_track/`)
 - Each with 20+ CSV files (energy terms by pressure level)
 - 32 pressure levels (1000-100 hPa)
 - 3-hourly temporal resolution

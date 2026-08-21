@@ -19,6 +19,7 @@ Prerequisites:
 from __future__ import annotations
 
 import sys
+import os
 from pathlib import Path
 from typing import List
 import warnings
@@ -34,7 +35,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.analysis.preprocess_data import load_cache, filter_complete_lifecycle_cyclones
+from scripts.preprocess_data.preprocess_data import load_cache, filter_complete_lifecycle_cyclones
 
 warnings.filterwarnings('ignore')
 
@@ -43,7 +44,9 @@ warnings.filterwarnings('ignore')
 # ============================================================================
 
 # Cache file location
-CACHE_FILE = PROJECT_ROOT / "data" / "energy_cache.parquet"
+CACHE_FILE = Path(
+    os.environ.get("PAPER_ENERGY_CACHE", PROJECT_ROOT / "data" / "energy_cache.parquet")
+)
 
 # Energy variables to use (7 terms, excluding Ce and RKe)
 ENERGY_VARS = [
@@ -86,7 +89,7 @@ def load_and_prepare_data(energy_vars: List[str]) -> pd.DataFrame:
     
     # Load cache
     try:
-        df = load_cache()
+        df = load_cache(CACHE_FILE)
     except (FileNotFoundError, OSError, Exception) as e:
         print(f"\n❌ Error loading energy cache: {e}")
         print("\n" + "=" * 70)

@@ -6,6 +6,13 @@ This repository organises all scripts, data, and results for the paper on energe
 
 ## Quick Start
 
+### Corrected LEC climatology rerun (2026)
+
+The resumable production workflow for recomputing all 3,820 article cyclones
+with the pinned LorenzCycleToolKit 2.0.0 corrections is documented in
+`scripts/lec_climatology_rerun/README.md`. It preserves legacy results and
+locks mass production behind validated short/median/long pilot cases.
+
 ### 1. Setup Environment
 
 ```bash
@@ -114,7 +121,7 @@ See `scripts/README.md` for detailed information on each subdirectory.
 
 **Cyclone Tracks**: `https://github.com/daniloceano/energetic_patterns_cyclones_south_atlantic`
 - **Access**: `load_tracks()` from `scripts/utils/load_data.py`
-- **Contents**: ~1,500 cyclones (1979-2020), track positions, lifecycle phases
+- **Contents**: 6,789 cyclones (1979-2020), track positions, lifecycle phases
 - **Used By**: Main figures (01, 05, 06, S2)
 - **No download needed**: Scripts fetch directly from GitHub
 

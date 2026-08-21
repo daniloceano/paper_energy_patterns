@@ -6,6 +6,11 @@ This document describes the data structure and sources for cyclone tracking and 
 
 ## Overview: Data Sources Hierarchy
 
+For the corrected climatology rerun, the authoritative population is the
+3,820 complete-lifecycle set reproducibly selected from tracked
+`energy_cache.parquet`; `ep1_cases.csv` and `epall_cases.csv` are downstream
+subsets. See `scripts/lec_climatology_rerun/README.md`.
+
 ```
 PRIMARY SOURCES (Remote):
 ├── GitHub: Tracks + Energy averages (Used by most scripts)
@@ -37,8 +42,8 @@ LOCAL CACHE (Generated):
 
 ### Dataset Characteristics:
 - **Period**: 1979-2020 (42 years)
-- **Cyclones**: ~1,500 unique systems
-- **Records**: ~30,000+ track points
+- **Cyclones**: 6,789 unique systems
+- **Records**: 631,009 hourly track points
 - **Tracking Method**: TRACK algorithm using 850 hPa relative vorticity
 - **Temporal Resolution**: 1-hourly
 - **Load Time**: ~10 seconds
@@ -132,7 +137,7 @@ print(genesis[['track_id', 'lat vor', 'lon vor', 'region']])
 
 ### Dataset Characteristics:
 - **Structure**: One CSV file per cyclone (`{track_id}_averages.csv`)
-- **Total Files**: ~1,500+ individual cyclone files
+- **Total Files**: up to 6,789 individual cyclone files
 - **Variables**: 18+ energy terms (see Section 1 for variable list)
 - **Format**: Phase-averaged values (one row per lifecycle phase)
 - **Load Time**: ~4-5 minutes for all cyclones (50 parallel workers)
@@ -243,7 +248,7 @@ Downloads all energy data from GitHub → filters complete lifecycles → saves 
 ### Dataset Characteristics:
 - **Size**: 634 MB compressed, ~1.2 GB extracted
 - **Period**: 1979-2020 (42 years)
-- **Cyclones**: ~1,500+ systems
+- **Cyclones**: 6,789 systems before complete-lifecycle filtering
 - **Analysis**: Full Lorenz Energy Cycle with vertical resolution
 - **Pressure Levels**: 32 levels from 1000 hPa to 100 hPa
 - **Temporal Resolution**: 3-hourly during each life cycle phase

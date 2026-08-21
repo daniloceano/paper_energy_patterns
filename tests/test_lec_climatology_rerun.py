@@ -1,0 +1,122 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import pytest
+import xarray as xr
+
+from scripts.lec_climatology_rerun.common import (
+    PRESSURE_LEVELS,
+    REQUIRED_RESULT_COLUMNS,
+    REQUIRED_VERTICAL_TERMS,
+    RunConfig,
+    StateDB,
+    isolated_cds_home,
+    validate_lec_output,
+    validate_netcdf,
+)
+from scripts.lec_climatology_rerun.prepare import population_from_cache
+from scripts.lec_climatology_rerun.pipeline import recover
+
+
+def test_population_reproduces_complete_order_and_finite_terms(tmp_path: Path):
+    terms = ["Ca", "Ck", "BAe", "BKe", "Ae", "Ke", "Ge"]
+    rows = []
+    for track_id, phases in {
+        "good": ["incipient", "intensification", "mature", "decay"],
+        "wrong": ["incipient", "mature", "intensification", "decay"],
+        "missing": ["incipient", "intensification", "decay"],
+    }.items():
+        for phase in phases:
+            rows.append({"track_id": track_id, "phase": phase, "period": phase, **{term: 1.0 for term in terms}})
+    rows[1]["Ca"] = np.nan
+    # A second finite intensification record means the cyclone remains eligible,
+    # matching the real aggregation-before-wide behavior.
+    rows.append({"track_id": "good", "phase": "intensification", "period": "intensification 2", **{term: 2.0 for term in terms}})
+    cache = tmp_path / "cache.parquet"
+    pd.DataFrame(rows).to_parquet(cache)
+    _, ids = population_from_cache(cache)
+    assert ids == {"good"}
+
+
+def test_sqlite_state_machine_and_active_runtime(tmp_path: Path):
+    db = StateDB(tmp_path / "state.sqlite3")
+    db.add_cyclones([{"track_id": "1", "n_timesteps": 8, "lifecycle_hours": 21}], {"1"})
+    db.transition("1", "DOWNLOADING", download_attempts=1)
+    db.advance_active_runtime(12.5)
+    row = db.rows("track_id='1'")[0]
+    assert row["state"] == "DOWNLOADING"
+    assert float(db.get_meta("cumulative_active_runtime")) == pytest.approx(12.5)
+    db.close()
+
+
+def test_credentials_are_isolated_and_removed(tmp_path: Path):
+    config = RunConfig(
+        run_root=str(tmp_path), paper_repo=str(tmp_path), toolkit_source=str(tmp_path / "source"),
+        toolkit_worktree=str(tmp_path / "worktree"), keys_file=str(tmp_path / "keys"),
+    )
+    config.create_directories()
+    with isolated_cds_home(config, "secret-value-that-must-not-be-logged", "key-001") as home:
+        rc = home / ".cdsapirc"
+        assert rc.exists()
+        assert oct(rc.stat().st_mode & 0o777) == "0o600"
+        assert oct(home.stat().st_mode & 0o777) == "0o700"
+    assert not home.exists()
+
+
+def make_era5(path: Path, times: pd.DatetimeIndex):
+    levels = np.array([int(value) for value in PRESSURE_LEVELS])
+    shape = (len(times), len(levels), 2, 2)
+    dataset = xr.Dataset(
+        {name: (("valid_time", "pressure_level", "latitude", "longitude"), np.ones(shape))
+         for name in ("u", "v", "t", "w", "z")},
+        coords={"valid_time": times, "pressure_level": levels, "latitude": [-1, 0], "longitude": [0, 1]},
+    )
+    dataset.to_netcdf(path)
+
+
+def test_netcdf_validation_rejects_missing_timestamp(tmp_path: Path):
+    path = tmp_path / "era5.nc"
+    times = pd.date_range("2000-01-01", periods=3, freq="3h")
+    make_era5(path, times)
+    info = validate_netcdf(path, [str(value) for value in times])
+    assert info["n_levels"] == len(PRESSURE_LEVELS)
+    with pytest.raises(ValueError, match="missing 1 expected timestamps"):
+        validate_netcdf(path, [str(times[0] - pd.Timedelta(hours=3))])
+
+
+def test_lec_output_validation(tmp_path: Path):
+    track_id = "20000001"
+    directory = tmp_path / f"{track_id}_ERA5_track"
+    vertical = directory / "results_vertical_levels"
+    vertical.mkdir(parents=True)
+    times = pd.date_range("2000-01-01", periods=3, freq="3h")
+    frame = pd.DataFrame({"time": times, **{term: np.ones(3) for term in REQUIRED_RESULT_COLUMNS}})
+    frame.to_csv(directory / f"{track_id}_ERA5_track_results.csv", index=False)
+    pd.DataFrame({"phase": ["incipient"], "start": [times[0]], "end": [times[-1]]}).to_csv(directory / "periods.csv", index=False)
+    pd.DataFrame({"time": times}).to_csv(directory / f"{track_id}_ERA5_track_trackfile", sep=";", index=False)
+    for term in REQUIRED_VERTICAL_TERMS:
+        pd.DataFrame(np.ones((3, 2)), index=times, columns=[10000, 100000]).to_csv(vertical / f"{term}_pressure_level.csv")
+    (directory / f"log.{track_id}_ERA5").write_text("Analysis complete\n")
+    info = validate_lec_output(directory, track_id, [str(value) for value in times])
+    assert info["rows"] == 3
+
+
+def test_restart_recovery_uses_validated_netcdf(tmp_path: Path):
+    config = RunConfig(
+        run_root=str(tmp_path), paper_repo=str(tmp_path), toolkit_source=str(tmp_path / "source"),
+        toolkit_worktree=str(tmp_path / "worktree"), keys_file=str(tmp_path / "keys"),
+    )
+    config.create_directories()
+    times = pd.date_range("2000-01-01", periods=3, freq="3h")
+    track = config.tracks_dir / "track_1.txt"
+    track.write_text("time;Lat;Lon\n" + "\n".join(f"{value:%Y-%m-%d-%H%M};-40;-50" for value in times) + "\n")
+    make_era5(config.downloads_dir / "1_ERA5.nc", times)
+    db = StateDB(config.db)
+    db.add_cyclones([{"track_id": "1", "n_timesteps": 3, "lifecycle_hours": 6}], set())
+    db.transition("1", "DOWNLOADING")
+    recover(config, db)
+    assert db.rows("track_id='1'")[0]["state"] == "DOWNLOADED"
+    db.close()

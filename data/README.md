@@ -6,13 +6,18 @@ This directory contains cached/processed data files. Input data is accessed remo
 
 ## 📡 Remote Data Sources (Primary)
 
+> **Corrected LEC rerun (2026):** Production freezes the 3,820 IDs selected
+> from tracked `energy_cache.parquet`, uses the complete Zenodo track extract,
+> and records hashes/commits. EP1/EPALL structure files are downstream subsets.
+> See `scripts/lec_climatology_rerun/README.md`.
+
 ### 1. GitHub - Cyclone Tracks (Used by Main Scripts)
 
 **URL**: `https://raw.githubusercontent.com/daniloceano/energetic_patterns_cyclones_south_atlantic/refs/heads/master/tracks_SAt_filtered/tracks_SAt_filtered_with_periods.csv`
 
 - **Access Function**: `load_tracks()` from `scripts/utils/load_data.py`
-- **Records**: ~30,000 track points
-- **Unique Cyclones**: ~1,500 (1979-2020)
+- **Records**: 631,009 hourly track points
+- **Unique Cyclones**: 6,789 before complete-lifecycle filtering (1979-2020)
 - **Load Time**: ~10 seconds
 - **Used By**: All main figure scripts (01, 05, 06, S2)
 
@@ -88,7 +93,7 @@ This directory contains cached/processed data files. Input data is accessed remo
 **Used By**: All clustering pipeline scripts
 
 **Content**: Phase-averaged energy data for all cyclones
-- **Records**: ~30,000+ (one per cyclone-phase combination)
+- **Records**: 25,000 phase rows before complete-lifecycle filtering
 - **Columns**: track_id, period, phase, + all 18 energy terms
 - **Format**: Parquet with Snappy compression (10:1 ratio)
 - **Filtering**: Complete lifecycle cyclones only (4-phase sequence)

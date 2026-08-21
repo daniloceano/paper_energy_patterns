@@ -40,6 +40,10 @@ applies backpressure, and resumes from SQLite.
 - Resources: 112 logical CPUs, 1 TiB RAM, 130 TiB available on `/p1-swell`.
 - Credentials: 39 token lines. Permission was tightened from `0644` to `0600`;
   no value was printed or copied.
+- Sequential minimal-request preflight: 2 authorized accounts, 36 requiring
+  ERA5 licence acceptance, and 1 authentication failure. Production starts
+  with two download workers; hard-disabled accounts remain excluded until an
+  explicit later preflight marks them healthy.
 
 ## Configuration and discrepancies
 
@@ -51,4 +55,3 @@ applies backpressure, and resumes from SQLite.
 The manuscript says 100-1000 hPa and one caption says 6-hourly, while code and
 archived results use 10-1000 hPa and 3-hourly data. These method/documentation
 discrepancies require author review after the corrected database completes.
-

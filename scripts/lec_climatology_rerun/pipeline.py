@@ -122,7 +122,14 @@ def choose_key(
     for offset in range(len(keys)):
         index = (cursor + offset) % len(keys)
         key_id = f"key-{index + 1:03d}"
-        if key_id not in busy_key_ids and float(health[key_id]["cooldown_until"]) <= now:
+        permanently_disabled = health[key_id]["last_status"] in {
+            "licence_required", "authentication_failed"
+        }
+        if (
+            key_id not in busy_key_ids
+            and not permanently_disabled
+            and float(health[key_id]["cooldown_until"]) <= now
+        ):
             return (index + 1, key_id, keys[index])
     return None
 

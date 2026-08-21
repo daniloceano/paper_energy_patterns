@@ -14,11 +14,12 @@ from pathlib import Path
 from .common import RunConfig
 
 
-def duration(seconds: float | None) -> str:
+def duration(seconds: float | None, *, active: bool = True) -> str:
     if seconds is None or not math.isfinite(seconds):
         return "n/a"
     if seconds >= 86400:
-        return f"{seconds / 86400:.1f} active server-days"
+        qualifier = " active server-days" if active else " days"
+        return f"{seconds / 86400:.1f}{qualifier}"
     if seconds >= 3600:
         return f"{seconds / 3600:.1f} h"
     if seconds >= 60:
@@ -46,6 +47,7 @@ def snapshot(config: RunConfig) -> str:
     meta = {row["key"]: row["value"] for row in conn.execute("SELECT key,value FROM meta")}
     keys = list(conn.execute("SELECT * FROM key_health ORDER BY key_id"))
     now = datetime.now(timezone.utc)
+    now_epoch = time.time()
     total = len(rows)
     complete = counts.get("COMPLETE", 0)
     downloaded = sum(counts.get(state, 0) for state in ("DOWNLOADED", "COMPUTE_QUEUED", "COMPUTING", "VALIDATING", "COMPLETE"))
@@ -57,20 +59,38 @@ def snapshot(config: RunConfig) -> str:
     active_downloads = [item for item in active_downloads if item.get("status") == "requesting"]
 
     completed_rows = [row for row in rows if row["state"] == "COMPLETE"]
-    per_step = [
-        (float(row["download_seconds"] or 0) + float(row["compute_seconds"] or 0)) / int(row["n_timesteps"])
-        for row in completed_rows if int(row["n_timesteps"]) > 0
-    ]
-    per_step.sort()
+    download_per_step = sorted(
+        float(row["download_seconds"]) / int(row["n_timesteps"])
+        for row in completed_rows
+        if int(row["n_timesteps"]) > 0 and row["download_seconds"] is not None
+    )
+    compute_per_step = sorted(
+        float(row["compute_seconds"]) / int(row["n_timesteps"])
+        for row in completed_rows
+        if int(row["n_timesteps"]) > 0 and row["compute_seconds"] is not None
+    )
     remaining_steps = sum(int(row["n_timesteps"]) for row in rows if row["state"] not in ("COMPLETE", "FAILED_FINAL"))
+    usable_keys = sum(
+        row["last_status"] not in ("licence_required", "authentication_failed")
+        and float(row["cooldown_until"]) <= now_epoch
+        for row in keys
+    )
+    download_workers = max(1, min(config.max_download_workers, usable_keys))
     compute_workers = max(1, config.max_compute_workers)
-    if per_step:
-        median = per_step[len(per_step) // 2]
-        low = per_step[max(0, int(len(per_step) * 0.25) - 1)]
-        high = per_step[min(len(per_step) - 1, int(len(per_step) * 0.75))]
-        eta = remaining_steps * median / compute_workers
-        eta_low = remaining_steps * low / compute_workers
-        eta_high = remaining_steps * high / compute_workers
+
+    def stage_estimates(samples: list[float], workers: int) -> tuple[float, float, float]:
+        median = samples[len(samples) // 2]
+        low = samples[max(0, int(len(samples) * 0.25) - 1)]
+        high = samples[min(len(samples) - 1, int(len(samples) * 0.75))]
+        return tuple(remaining_steps * value / workers for value in (median, low, high))
+
+    if download_per_step and compute_per_step:
+        download_eta = stage_estimates(download_per_step, download_workers)
+        compute_eta = stage_estimates(compute_per_step, compute_workers)
+        # Both stages overlap; the slower one bounds steady-state completion.
+        eta, eta_low, eta_high = (
+            max(download_eta[index], compute_eta[index]) for index in range(3)
+        )
     elif complete and active_seconds:
         rate = complete / active_seconds
         eta = (total - complete) / rate
@@ -79,6 +99,15 @@ def snapshot(config: RunConfig) -> str:
         eta = eta_low = eta_high = None
 
     recent = []
+    recent_downloads = []
+    for row in rows:
+        if row["downloaded_at"]:
+            try:
+                when = datetime.fromisoformat(row["downloaded_at"])
+                if (now - when).total_seconds() <= 3600:
+                    recent_downloads.append(row)
+            except ValueError:
+                pass
     for row in completed_rows:
         if row["completed_at"]:
             try:
@@ -88,6 +117,7 @@ def snapshot(config: RunConfig) -> str:
             except ValueError:
                 pass
     recent_rate = len(recent)
+    download_rate = downloaded / (active_seconds / 3600) if active_seconds > 0 else 0
     all_rate = complete / (active_seconds / 3600) if active_seconds > 0 else 0
 
     output = [
@@ -100,6 +130,7 @@ def snapshot(config: RunConfig) -> str:
         "DOWNLOAD PROGRESS",
         f"  {downloaded}/{total} downloaded or beyond | {bytes_downloaded / 1024**3:.2f} GiB observed",
         f"  active workers: {counts.get('DOWNLOADING', 0)} | CDS requests visibly running: {len(active_downloads)}",
+        f"  throughput: {download_rate:.2f} downloads/active h overall; {len(recent_downloads)}/last wall-clock h",
         "",
         "COMPUTE PROGRESS",
         f"  {complete}/{total} validated complete | active workers: {counts.get('COMPUTING', 0)}",
@@ -109,6 +140,7 @@ def snapshot(config: RunConfig) -> str:
         f"  cumulative active runtime: {duration(active_seconds)}",
         f"  estimated remaining ACTIVE runtime: {duration(eta)}",
         f"  robust uncertainty interval: {duration(eta_low)} to {duration(eta_high)}",
+        f"  ETA stage capacity: {download_workers} usable download workers; {compute_workers} compute workers",
         "  (calendar completion requires continuous server operation and is intentionally not asserted)",
         "",
         "FAILURES",
@@ -120,12 +152,11 @@ def snapshot(config: RunConfig) -> str:
     for row in failures:
         output.append(f"  {row['track_id']} {row['state']}: {row['last_error'] or 'unspecified'}")
     output.extend(["", "KEY HEALTH (values are never displayed)", "  worker   status     successes retries failures cooldown"])
-    now_epoch = time.time()
     for row in keys:
         cooldown = max(0, float(row["cooldown_until"]) - now_epoch)
         output.append(
             f"  {row['key_id']:9s} {(row['last_status'] or 'unused'):10s} "
-            f"{row['successes']:9d} {row['retries']:7d} {row['failures']:8d} {duration(cooldown):>8s}"
+            f"{row['successes']:9d} {row['retries']:7d} {row['failures']:8d} {duration(cooldown, active=False):>8s}"
         )
     conn.close()
     return "\n".join(output)
@@ -149,4 +180,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

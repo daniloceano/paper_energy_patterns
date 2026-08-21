@@ -140,3 +140,16 @@ def test_key_selection_never_reuses_an_active_key(tmp_path: Path):
     assert selected is not None and selected[1] == "key-002"
     assert choose_key(db, keys, selected[0], {"key-001", "key-002"}) is None
     db.close()
+
+
+def test_key_selection_excludes_preflight_disabled_accounts(tmp_path: Path):
+    db = StateDB(tmp_path / "state.sqlite3")
+    db.init_keys(2)
+    db.conn.execute(
+        "UPDATE key_health SET last_status='licence_required',cooldown_until=0 WHERE key_id='key-001'"
+    )
+    db.conn.commit()
+    keys = ["a" * 36, "b" * 36]
+    selected = choose_key(db, keys, 0)
+    assert selected is not None and selected[1] == "key-002"
+    db.close()

@@ -89,7 +89,7 @@ Values never enter the repository, database, logs, commands, or monitor. Each
 download subprocess gets a unique temporary mode-`0700` `HOME` with one
 mode-`0600` `.cdsapirc`, removed on exit. Labels are only `key-001`, etc.
 
-Downloads start at 3 and may rise to 8 after clean completion windows. HTTP
+Downloads start at 2 and may rise to 8 after clean completion windows. HTTP
 429/5xx, timeouts, and network degradation lower the limit and cool down keys;
 authentication failures quarantine a key for six hours. Retries use capped
 exponential backoff plus jitter (7 download/3 compute attempts). This is
@@ -108,6 +108,10 @@ conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.prefl
   --run-root "$RUN"
 ```
 
+The 2026-08-21 server preflight found 2 authorized accounts out of 39; 36
+required licence acceptance and 1 failed authentication. Accounts in either
+hard-disabled state remain excluded until the preflight is explicitly rerun.
+
 ## Initialize and validate pilots
 
 Run in the `paper_energy_patterns` conda environment:
@@ -118,7 +122,7 @@ conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.prepa
   --run-root "$RUN" \
   --track-source /p1-swell/danilocs/paper_energy_patterns/data/tracks_SAt_filtered_with_energetics_processed.csv \
   --ep1-cases /p1-swell/danilocs/paper_energy_patterns/results/ep_structure/ep1_cases.csv \
-  --download-workers 3 --max-download-workers 8 --compute-workers 8
+  --download-workers 2 --max-download-workers 8 --compute-workers 8
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline \
   provision --run-root "$RUN"
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline \

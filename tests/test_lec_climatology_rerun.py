@@ -94,7 +94,7 @@ def test_netcdf_validation_rejects_missing_timestamp(tmp_path: Path):
     make_era5(path, times)
     info = validate_netcdf(path, [str(value) for value in times])
     assert info["n_levels"] == len(PRESSURE_LEVELS)
-    with pytest.raises(ValueError, match="missing 1 expected timestamps"):
+    with pytest.raises(ValueError, match="timestamp mismatch: missing 1, extra 3"):
         validate_netcdf(path, [str(times[0] - pd.Timedelta(hours=3))])
 
 
@@ -112,8 +112,11 @@ def test_lec_output_validation(tmp_path: Path):
         "end": [times[0], times[1], times[1], times[2]],
     }).to_csv(directory / "periods.csv", index=False)
     pd.DataFrame({"time": times}).to_csv(directory / f"{track_id}_ERA5_track_trackfile", sep=";", index=False)
+    vertical_levels = [int(value) * 100 for value in PRESSURE_LEVELS[5:]]
     for term in REQUIRED_VERTICAL_TERMS:
-        pd.DataFrame(np.ones((3, 2)), index=times, columns=[10000, 100000]).to_csv(vertical / f"{term}_pressure_level.csv")
+        pd.DataFrame(np.ones((3, len(vertical_levels))), index=times, columns=vertical_levels).to_csv(
+            vertical / f"{term}_pressure_level.csv"
+        )
     (directory / f"log.{track_id}_ERA5").write_text("Analysis complete\n")
     info = validate_lec_output(directory, track_id, [str(value) for value in times])
     assert info["rows"] == 3

@@ -96,7 +96,9 @@ def recover(config: RunConfig, db: StateDB) -> None:
         result = config.results_dir / f"{track_id}_ERA5_track"
         data = config.downloads_dir / f"{track_id}_ERA5.nc"
         try:
-            validate_lec_output(result, track_id, times)
+            validate_lec_output(
+                result, track_id, times, config.phase_windows_dir / f"{track_id}.csv"
+            )
             db.transition(track_id, "COMPLETE", completed_at=utc_now())
             continue
         except Exception:
@@ -250,7 +252,12 @@ def run(config: RunConfig, mode: str) -> int:
                     try:
                         db.transition(track_id, "VALIDATING")
                         times = read_track_times(config.tracks_dir / f"track_{track_id}.txt")
-                        validate_lec_output(config.results_dir / f"{track_id}_ERA5_track", track_id, times)
+                        validate_lec_output(
+                            config.results_dir / f"{track_id}_ERA5_track",
+                            track_id,
+                            times,
+                            config.phase_windows_dir / f"{track_id}.csv",
+                        )
                         db.transition(
                             track_id, "COMPLETE", completed_at=utc_now(),
                             compute_seconds=time.monotonic() - started, last_error=None,

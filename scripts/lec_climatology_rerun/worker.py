@@ -145,7 +145,12 @@ def compute_one(config: RunConfig, track_id: str) -> int:
     expected_times = read_track_times(track)
     if result.exists():
         try:
-            info = validate_lec_output(result, track_id, expected_times)
+            info = validate_lec_output(
+                result,
+                track_id,
+                expected_times,
+                config.phase_windows_dir / f"{track_id}.csv",
+            )
             atomic_json(progress, {"status": "complete", **info, "updated_at": utc_now()})
             return 0
         except Exception:
@@ -210,7 +215,7 @@ def compute_one(config: RunConfig, track_id: str) -> int:
         shutil.rmtree(temp_result)
     toolkit_result.replace(temp_result)
     try:
-        info = validate_lec_output(temp_result, track_id, expected_times)
+        info = validate_lec_output(temp_result, track_id, expected_times, frozen_periods)
     except Exception as exc:
         quarantine = config.root / "invalid_outputs" / f"{track_id}_{int(time.time())}"
         quarantine.parent.mkdir(parents=True, exist_ok=True)

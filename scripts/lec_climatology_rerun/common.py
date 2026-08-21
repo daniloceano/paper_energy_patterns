@@ -384,8 +384,11 @@ def validate_netcdf(path: Path, expected_times: list[str] | None = None) -> dict
         if expected_times:
             wanted = pd.DatetimeIndex(pd.to_datetime(expected_times))
             missing_times = wanted.difference(times)
-            if len(missing_times):
-                raise ValueError(f"missing {len(missing_times)} expected timestamps")
+            extra_times = times.difference(wanted)
+            if len(missing_times) or len(extra_times):
+                raise ValueError(
+                    f"timestamp mismatch: missing {len(missing_times)}, extra {len(extra_times)}"
+                )
         for dim in (time_name, level_name):
             if ds.sizes.get(dim, 0) == 0:
                 raise ValueError(f"empty dimension: {dim}")
@@ -410,7 +413,12 @@ def _find_vertical_file(vertical: Path, stem: str) -> Path | None:
     return matches[0] if matches else None
 
 
-def validate_lec_output(result_dir: Path, track_id: str, expected_times: list[str]) -> dict[str, Any]:
+def validate_lec_output(
+    result_dir: Path,
+    track_id: str,
+    expected_times: list[str],
+    expected_periods: Path | None = None,
+) -> dict[str, Any]:
     import numpy as np
     import pandas as pd
 
@@ -432,8 +440,21 @@ def validate_lec_output(result_dir: Path, track_id: str, expected_times: list[st
         raise ValueError("main results contain NaN or infinite required values")
     expected = pd.DatetimeIndex(pd.to_datetime(expected_times))
     main_times = pd.DatetimeIndex(pd.to_datetime(frame.iloc[:, 0], errors="coerce"))
-    if main_times.isna().any() or len(expected.difference(main_times)):
+    if main_times.isna().any() or not main_times.equals(expected):
         raise ValueError("timestamp mismatch in main integrated results")
+    output_track = pd.read_csv(trackfile, sep=";")
+    track_values = output_track["time"].astype(str)
+    parsed_track = pd.to_datetime(track_values, format="%Y-%m-%d-%H%M", errors="coerce")
+    missing_track = parsed_track.isna()
+    if missing_track.any():
+        parsed_track.loc[missing_track] = pd.to_datetime(
+            track_values.loc[missing_track], errors="coerce"
+        )
+    track_times = pd.DatetimeIndex(parsed_track)
+    if track_times.isna().any() or not track_times.equals(expected):
+        raise ValueError("timestamp mismatch in toolkit output track")
+    if expected_periods is not None and sha256_file(periods) != sha256_file(expected_periods):
+        raise ValueError("periods.csv differs from the frozen article lifecycle windows")
     period_frame = pd.read_csv(periods, index_col=0)
     if not {"start", "end"}.issubset(period_frame.columns):
         raise ValueError("periods.csv lacks start/end columns")
@@ -459,8 +480,12 @@ def validate_lec_output(result_dir: Path, track_id: str, expected_times: list[st
         if data.empty:
             raise ValueError(f"empty vertical output for {stem}")
         data.index = pd.to_datetime(data.index, errors="coerce")
-        if data.index.isna().any() or len(expected.difference(data.index)):
+        if data.index.isna().any() or not pd.DatetimeIndex(data.index).equals(expected):
             raise ValueError(f"timestamp mismatch in vertical output for {stem}")
+        observed_levels = {int(float(column)) for column in data.columns}
+        expected_levels = {int(level) * 100 for level in ANALYSIS_LEVELS}
+        if observed_levels != expected_levels:
+            raise ValueError(f"pressure-level mismatch in vertical output for {stem}")
         values = data.apply(pd.to_numeric, errors="coerce").to_numpy()
         if not np.isfinite(values).all():
             raise ValueError(f"NaN or infinite values in vertical output for {stem}")

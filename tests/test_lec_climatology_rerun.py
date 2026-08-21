@@ -18,7 +18,7 @@ from scripts.lec_climatology_rerun.common import (
     validate_lec_output,
     validate_netcdf,
 )
-from scripts.lec_climatology_rerun.prepare import population_from_cache
+from scripts.lec_climatology_rerun.prepare import choose_pilots, population_from_cache
 from scripts.lec_climatology_rerun.pipeline import recover
 from scripts.lec_climatology_rerun.pipeline import choose_key
 from scripts.lec_climatology_rerun.build_corrected_cache import parse_periods
@@ -42,6 +42,16 @@ def test_population_reproduces_complete_order_and_finite_terms(tmp_path: Path):
     pd.DataFrame(rows).to_parquet(cache)
     _, ids = population_from_cache(cache)
     assert ids == {"good"}
+
+
+def test_pilot_long_case_uses_upper_tail_not_absolute_outlier(tmp_path: Path):
+    manifest = pd.DataFrame({
+        "track_id": [str(value) for value in range(101)],
+        "lifecycle_hours": [float(value) for value in range(100)] + [10000.0],
+    })
+    pilots = choose_pilots(manifest, tmp_path / "missing_ep1.csv")
+    assert "99" in pilots
+    assert "100" not in pilots
 
 
 def test_sqlite_state_machine_and_active_runtime(tmp_path: Path):

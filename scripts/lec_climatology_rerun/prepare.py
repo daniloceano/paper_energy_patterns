@@ -88,7 +88,10 @@ def choose_pilots(manifest: pd.DataFrame, ep1_file: Path) -> list[str]:
     selected = [
         str(durations.idxmin()),
         str((durations - durations.median()).abs().idxmin()),
-        str(durations.idxmax()),
+        # Exercise the upper tail without letting one globe-spanning maximum
+        # dominate pilot wall time and CDS volume. The 99th percentile remains
+        # a genuinely long, representative lifecycle.
+        str((durations - durations.quantile(0.99)).abs().idxmin()),
     ]
     if ep1_file.exists():
         ep1 = pd.read_csv(ep1_file, dtype={"track_id": str})
@@ -246,6 +249,7 @@ def prepare(
             "compute": config.max_compute_workers,
         },
         "pilots": pilots,
+        "pilot_selection": "minimum, median, 99th-percentile duration, and median-duration EP1",
     }
     provenance_path = config.root / "provenance.json"
     provenance_path.write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")

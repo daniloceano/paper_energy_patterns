@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -85,13 +86,19 @@ def load_tracks(path: Path) -> pd.DataFrame:
 def choose_pilots(manifest: pd.DataFrame, ep1_file: Path) -> list[str]:
     ordered = manifest.set_index("track_id")
     durations = ordered["lifecycle_hours"]
+    long_distance = (durations - durations.quantile(0.99)).abs()
+    long_candidates = ordered.loc[long_distance.eq(long_distance.min())]
+    if "download_envelope_degrees2" in long_candidates:
+        long_id = str(long_candidates["download_envelope_degrees2"].idxmin())
+    else:
+        long_id = str(long_candidates.index[0])
     selected = [
         str(durations.idxmin()),
         str((durations - durations.median()).abs().idxmin()),
         # Exercise the upper tail without letting one globe-spanning maximum
         # dominate pilot wall time and CDS volume. The 99th percentile remains
         # a genuinely long, representative lifecycle.
-        str((durations - durations.quantile(0.99)).abs().idxmin()),
+        long_id,
     ]
     if ep1_file.exists():
         ep1 = pd.read_csv(ep1_file, dtype={"track_id": str})
@@ -167,6 +174,10 @@ def prepare(
         period_frame.to_csv(temp_periods)
         temp_periods.replace(frozen_periods)
         start, end = cyclone["date"].iloc[[0, -1]]
+        north = min(90, math.ceil(float(cyclone["lat vor"].max()) + 15))
+        south = max(-90, math.floor(float(cyclone["lat vor"].min()) - 15))
+        west = max(-180, math.floor(float(cyclone["lon vor"].min()) - 15))
+        east = min(180, math.ceil(float(cyclone["lon vor"].max()) + 15))
         rows.append({
             "track_id": track_id,
             "start": start.isoformat(),
@@ -175,6 +186,7 @@ def prepare(
             "lifecycle_hours": (end - start).total_seconds() / 3600,
             "track_sha256": sha256_file(track_path),
             "phase_windows_sha256": sha256_file(frozen_periods),
+            "download_envelope_degrees2": (north - south) * (east - west),
         })
 
     manifest = pd.DataFrame(rows)
@@ -249,7 +261,7 @@ def prepare(
             "compute": config.max_compute_workers,
         },
         "pilots": pilots,
-        "pilot_selection": "minimum, median, 99th-percentile duration, and median-duration EP1",
+        "pilot_selection": "minimum, median, 99th-percentile duration (smallest CDS envelope on ties), and median-duration EP1",
     }
     provenance_path = config.root / "provenance.json"
     provenance_path.write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")

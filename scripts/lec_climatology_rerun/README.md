@@ -135,7 +135,8 @@ conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipel
 
 Preparation chooses minimum-duration, median-duration, 99th-percentile long,
 and EP1 cases. The upper-tail case avoids using the globe-spanning absolute
-maximum as an unrepresentative CDS/storage benchmark. Production remains
+maximum as an unrepresentative CDS/storage benchmark; duration ties prefer the
+smallest CDS envelope. Production remains
 locked until every pilot is `COMPLETE`:
 
 ```bash

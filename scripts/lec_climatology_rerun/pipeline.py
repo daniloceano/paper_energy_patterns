@@ -199,7 +199,15 @@ def run(config: RunConfig, mode: str) -> int:
                         info = validate_netcdf(data, read_track_times(config.tracks_dir / f"track_{track_id}.txt"))
                         db.transition(
                             track_id, "DOWNLOADED", downloaded_at=utc_now(),
-                            bytes_downloaded=info["bytes"], download_seconds=time.monotonic() - started,
+                            bytes_downloaded=info["bytes"],
+                            # A restart may validate an already complete ERA5
+                            # file in seconds. Preserve the original transfer
+                            # duration so throughput/ETA remains meaningful.
+                            download_seconds=(
+                                float(row["download_seconds"])
+                                if row["download_seconds"] is not None
+                                else time.monotonic() - started
+                            ),
                         )
                         db.update_key(key_id, True, False)
                         download_window.append("OK")

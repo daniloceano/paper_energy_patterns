@@ -17,6 +17,10 @@ Audit date: 2026-08-21.
 Complete positions come from the 631,009-row, 6,789-cyclone processed extract
 of Zenodo DOI 10.5281/zenodo.18133432. Preparation records its hash. The old
 mutable GitHub raw URL is insufficient provenance and is not a production pin.
+Lifecycle windows are frozen from the archived LEC `periods.csv` collection,
+Zenodo DOI 10.5281/zenodo.18243447. Among the selected population, 183 systems
+have a second intensification/mature/decay sequence, so the downstream cache
+must preserve 15,829 main-phase period rows before PCA's cyclone-phase mean.
 
 ## Why the EP1 workflow was not generalized
 
@@ -51,6 +55,10 @@ applies backpressure, and resumes from SQLite.
 - Moving 15 x 15 degree domain; ERA5 `u`, `v`, `t`, `w`, `z`; residuals on.
 - 37 requested levels (1-1000 hPa); 32 analysis levels (10-1000 hPa).
 - Integrated and pressure-level outputs are mandatory.
+- The short pilot exposed a CycloPhaser-version drift: a new diagnosis returned
+  only two phases where the article archive has all four. The rerun therefore
+  preserves the article's independently archived lifecycle windows and changes
+  only the LEC energetics, which is the stated scientific intervention.
 
 The manuscript says 100-1000 hPa and one caption says 6-hourly, while code and
 archived results use 10-1000 hPa and 3-hourly data. These method/documentation

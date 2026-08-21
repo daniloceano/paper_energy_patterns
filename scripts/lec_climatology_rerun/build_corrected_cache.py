@@ -14,19 +14,20 @@ from .common import RunConfig
 PHASES = ["incipient", "intensification", "mature", "decay"]
 
 
-def parse_periods(path: Path) -> dict[str, tuple[pd.Timestamp, pd.Timestamp]]:
+def parse_periods(path: Path) -> list[tuple[str, str, pd.Timestamp, pd.Timestamp]]:
     frame = pd.read_csv(path)
     if not {"start", "end"}.issubset(frame.columns):
         frame = pd.read_csv(path, index_col=0).reset_index()
     phase_col = next((column for column in frame.columns if column not in {"start", "end"}), frame.columns[0])
-    result = {}
+    result = []
     for _, values in frame.iterrows():
         raw = str(values[phase_col]).strip().lower()
         phase = next((item for item in PHASES if raw.startswith(item)), None)
-        if phase and phase not in result:
-            result[phase] = (pd.to_datetime(values["start"]), pd.to_datetime(values["end"]))
-    if set(result) != set(PHASES):
-        raise ValueError(f"incomplete lifecycle periods in {path}: {sorted(result)}")
+        if phase:
+            result.append((raw, phase, pd.to_datetime(values["start"]), pd.to_datetime(values["end"])))
+    observed = {phase for _, phase, _, _ in result}
+    if observed != set(PHASES):
+        raise ValueError(f"incomplete lifecycle periods in {path}: {sorted(observed)}")
     return result
 
 
@@ -57,20 +58,23 @@ def build(config: RunConfig, output: Path, force: bool = False) -> Path:
         results = load_results(directory / f"{track_id}_ERA5_track_results.csv")
         periods = parse_periods(directory / "periods.csv")
         numeric = results.select_dtypes(include="number")
-        for phase in PHASES:
-            start, end = periods[phase]
+        for period, phase, start, end in periods:
             selected = numeric.loc[(numeric.index >= start) & (numeric.index <= end)]
             if selected.empty:
-                raise ValueError(f"no {phase} rows for {track_id}")
+                raise ValueError(f"no {period} rows for {track_id}")
             record = selected.mean().to_dict()
-            record.update({"track_id": track_id, "period": phase, "phase": phase})
+            record.update({"track_id": track_id, "period": period, "phase": phase})
             records.append(record)
     frame = pd.DataFrame(records)
     output.parent.mkdir(parents=True, exist_ok=True)
     temporary = output.with_suffix(output.suffix + ".part")
     frame.to_parquet(temporary, index=False, compression="snappy")
     check = pd.read_parquet(temporary)
-    if check["track_id"].nunique() != len(ids) or len(check) != 4 * len(ids):
+    expected_rows = sum(
+        len(parse_periods(config.results_dir / f"{track_id}_ERA5_track" / "periods.csv"))
+        for track_id in ids
+    )
+    if check["track_id"].nunique() != len(ids) or len(check) != expected_rows:
         raise RuntimeError("corrected cache failed population/row-count validation")
     temporary.replace(output)
     return output

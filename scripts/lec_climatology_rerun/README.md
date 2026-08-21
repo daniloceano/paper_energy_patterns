@@ -18,6 +18,7 @@ Atlantic Extratropical Cyclone Tracks Database (1979-2020)
   -> ARG, LA-PLATA, and SE-BR genesis selection: 6,789 cyclones
   -> CycloPhaser phase averages in tracked data/energy_cache.parquet
   -> complete ordered lifecycle + finite Ca,Ck,BAe,BKe,Ae,Ke,Ge: 3,820 cyclones
+  -> frozen article lifecycle windows from Zenodo 10.5281/zenodo.18243447
   -> complete 1-hourly positions from Zenodo 10.5281/zenodo.18133432
   -> exact 3-hour UTC positions (hours divisible by 3; no floor/round shift)
   -> ERA5 pressure-level data (u,v,t,w,z)
@@ -50,9 +51,11 @@ frozen manifest, hashes cache/source/tracks, and records both repository commits
 - Variables: geopotential, temperature, vertical velocity, and both winds.
 - Flags: moving framework (`-t`), residuals (`-r`), verbose logs (`-v`), ERA5
   namelist (`--cdsapi`), and 3-hour data.
-- Lifecycle windows are generated from the toolkit's diagnosed 850-hPa
-  vorticity using the same high-resolution Cyclophaser options as its plotting
-  path, but without generating unused diagnostic figures.
+- Lifecycle windows are frozen from the article's archived per-cyclone
+  `periods.csv` files (Zenodo DOI 10.5281/zenodo.18243447). Re-running a newer
+  CycloPhaser would silently change the population/aggregation independently
+  of the LEC equation correction. Secondary cycles are retained: the corrected
+  cache will contain 15,829 main-phase period rows, not just 3,820 x 4 rows.
 
 ## Storage, state, and validation
 
@@ -61,7 +64,7 @@ Recommended run root:
 ```text
 /p1-swell/danilocs/lec_climatology_corrected_v2/
   config.json  provenance.json  population_manifest.csv  state.sqlite3
-  tracks/  era5/  lec_results/  logs/  worker_progress/  invalid_outputs/
+  tracks/  phase_windows/  era5/  lec_results/  logs/  worker_progress/  invalid_outputs/
   LorenzCycleToolkit-pinned/
 ```
 
@@ -121,6 +124,7 @@ RUN=/p1-swell/danilocs/lec_climatology_corrected_v2
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.prepare \
   --run-root "$RUN" \
   --track-source /p1-swell/danilocs/paper_energy_patterns/data/tracks_SAt_filtered_with_energetics_processed.csv \
+  --periods-source /p1-swell/danilocs/paper_energy_patterns/data/temp_lec_zenodo/LEC_Results_energetic-patterns \
   --ep1-cases /p1-swell/danilocs/paper_energy_patterns/results/ep_structure/ep1_cases.csv \
   --download-workers 2 --max-download-workers 8 --compute-workers 8
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline \

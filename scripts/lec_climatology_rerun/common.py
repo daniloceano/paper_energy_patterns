@@ -24,6 +24,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_TOOLKIT_COMMIT = "d38cda7e37d8e8a3a937a5919640a94bef19e34a"
 CORRECTION_COMMIT = "d07707767c2962fed0475ff4573e7d15a97f8c69"
 TRACK_SOURCE_DOI = "10.5281/zenodo.18133432"
+PHASE_SOURCE_DOI = "10.5281/zenodo.18243447"
 TRACK_SOURCE_URL = (
     "https://zenodo.org/records/18133432/files/"
     "tracks_SAt_filtered_with_energetics.csv"
@@ -124,6 +125,10 @@ class RunConfig:
         return self.root / "tracks"
 
     @property
+    def phase_windows_dir(self) -> Path:
+        return self.root / "phase_windows"
+
+    @property
     def downloads_dir(self) -> Path:
         return self.root / "era5"
 
@@ -153,7 +158,7 @@ class RunConfig:
 
     def create_directories(self) -> None:
         for path in (
-            self.root, self.tracks_dir, self.downloads_dir, self.results_dir,
+            self.root, self.tracks_dir, self.phase_windows_dir, self.downloads_dir, self.results_dir,
             self.logs_dir, self.credentials_dir, self.progress_dir,
         ):
             path.mkdir(parents=True, exist_ok=True)
@@ -426,6 +431,25 @@ def validate_lec_output(result_dir: Path, track_id: str, expected_times: list[st
     if numeric.empty or not np.isfinite(numeric.to_numpy()).all():
         raise ValueError("main results contain NaN or infinite required values")
     expected = pd.DatetimeIndex(pd.to_datetime(expected_times))
+    main_times = pd.DatetimeIndex(pd.to_datetime(frame.iloc[:, 0], errors="coerce"))
+    if main_times.isna().any() or len(expected.difference(main_times)):
+        raise ValueError("timestamp mismatch in main integrated results")
+    period_frame = pd.read_csv(periods, index_col=0)
+    if not {"start", "end"}.issubset(period_frame.columns):
+        raise ValueError("periods.csv lacks start/end columns")
+    canonical = {"incipient", "intensification", "mature", "decay"}
+    observed = {
+        phase for label in period_frame.index.astype(str).str.lower()
+        for phase in canonical if label.startswith(phase)
+    }
+    if observed != canonical:
+        raise ValueError(f"periods.csv lacks canonical phases: {sorted(canonical - observed)}")
+    for _, period in period_frame.iterrows():
+        start, end = pd.to_datetime(period["start"]), pd.to_datetime(period["end"])
+        if start > end:
+            raise ValueError("periods.csv contains a reversed interval")
+        if not ((expected >= start) & (expected <= end)).any():
+            raise ValueError("periods.csv interval does not overlap an expected timestamp")
     vertical_shapes: dict[str, tuple[int, int]] = {}
     for stem in sorted(REQUIRED_VERTICAL_TERMS):
         path = _find_vertical_file(vertical, stem)

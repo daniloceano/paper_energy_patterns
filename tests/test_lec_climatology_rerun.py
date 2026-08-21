@@ -21,6 +21,7 @@ from scripts.lec_climatology_rerun.common import (
 from scripts.lec_climatology_rerun.prepare import population_from_cache
 from scripts.lec_climatology_rerun.pipeline import recover
 from scripts.lec_climatology_rerun.pipeline import choose_key
+from scripts.lec_climatology_rerun.build_corrected_cache import parse_periods
 
 
 def test_population_reproduces_complete_order_and_finite_terms(tmp_path: Path):
@@ -105,13 +106,30 @@ def test_lec_output_validation(tmp_path: Path):
     times = pd.date_range("2000-01-01", periods=3, freq="3h")
     frame = pd.DataFrame({"time": times, **{term: np.ones(3) for term in REQUIRED_RESULT_COLUMNS}})
     frame.to_csv(directory / f"{track_id}_ERA5_track_results.csv", index=False)
-    pd.DataFrame({"phase": ["incipient"], "start": [times[0]], "end": [times[-1]]}).to_csv(directory / "periods.csv", index=False)
+    pd.DataFrame({
+        "phase": ["incipient", "intensification", "mature", "decay"],
+        "start": [times[0], times[0], times[1], times[2]],
+        "end": [times[0], times[1], times[1], times[2]],
+    }).to_csv(directory / "periods.csv", index=False)
     pd.DataFrame({"time": times}).to_csv(directory / f"{track_id}_ERA5_track_trackfile", sep=";", index=False)
     for term in REQUIRED_VERTICAL_TERMS:
         pd.DataFrame(np.ones((3, 2)), index=times, columns=[10000, 100000]).to_csv(vertical / f"{term}_pressure_level.csv")
     (directory / f"log.{track_id}_ERA5").write_text("Analysis complete\n")
     info = validate_lec_output(directory, track_id, [str(value) for value in times])
     assert info["rows"] == 3
+
+
+def test_period_parser_preserves_secondary_cycles(tmp_path: Path):
+    path = tmp_path / "periods.csv"
+    phases = ["incipient", "intensification", "mature", "decay", "intensification 2"]
+    pd.DataFrame({
+        "phase": phases,
+        "start": pd.date_range("2000-01-01", periods=len(phases), freq="3h"),
+        "end": pd.date_range("2000-01-01", periods=len(phases), freq="3h"),
+    }).to_csv(path, index=False)
+    parsed = parse_periods(path)
+    assert [period for period, _, _, _ in parsed] == phases
+    assert parsed[-1][1] == "intensification"
 
 
 def test_restart_recovery_uses_validated_netcdf(tmp_path: Path):

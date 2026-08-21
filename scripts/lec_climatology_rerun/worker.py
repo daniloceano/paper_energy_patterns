@@ -50,38 +50,6 @@ def classify_error(exc: Exception) -> tuple[str, bool]:
     return type(exc).__name__.upper(), False
 
 
-def generate_periods(config: RunConfig, track_id: str) -> int:
-    """Run CycloPhaser inside the pinned toolkit's conda environment."""
-    import pandas as pd
-    from cyclophaser import determine_periods
-
-    toolkit_result = Path(config.toolkit_worktree) / "LEC_Results" / f"{track_id}_ERA5_track"
-    output_track = pd.read_csv(
-        toolkit_result / f"{track_id}_ERA5_track_trackfile", sep=";"
-    )
-    period_times = pd.to_datetime(output_track["time"], format="%Y-%m-%d-%H%M")
-    vorticity = output_track["min_max_zeta_850"].astype(float).tolist()
-    if output_track["Lat"].astype(float).mean() > 0:
-        vorticity = [-value for value in vorticity]
-    determine_periods(
-        vorticity,
-        x=period_times,
-        plot=False,
-        plot_steps=False,
-        export_dict=str(toolkit_result / "periods"),
-        process_vorticity_args={
-            "use_filter": "auto",
-            "replace_endpoints_with_lowpass": 24,
-            "use_smoothing": "auto",
-            "use_smoothing_twice": False,
-            "savgol_polynomial": 3,
-            "cutoff_low": 168,
-            "cutoff_high": 48,
-        },
-    )
-    return 0
-
-
 def download_one(config: RunConfig, track_id: str) -> int:
     import cdsapi
     import pandas as pd
@@ -225,25 +193,18 @@ def compute_one(config: RunConfig, track_id: str) -> int:
             "updated_at": utc_now(),
         })
         return 75
-    # The toolkit only invokes CycloPhaser when all diagnostic plots are
-    # requested. Generate the required periods in the same pinned `lorenz`
-    # environment, avoiding thousands of unused plots.
-    phase_command = [
-        "conda", "run", "-n", config.conda_env, "python", "-m",
-        "scripts.lec_climatology_rerun.worker", "periods",
-        "--run-root", config.run_root, "--track-id", track_id,
-    ]
-    with stdout.open("a") as out, stderr.open("a") as err:
-        phase_completed = subprocess.run(
-            phase_command, cwd=config.paper_repo, stdout=out, stderr=err
-        )
-    if phase_completed.returncode != 0:
+    # The scientific target is the same population and phase aggregation used
+    # by the article. Freeze those independently archived phase windows rather
+    # than silently reclassifying lifecycles with a newer CycloPhaser release.
+    frozen_periods = config.phase_windows_dir / f"{track_id}.csv"
+    if not frozen_periods.is_file():
         atomic_json(progress, {
-            "status": "failed", "category": "CYCLOPHASER", "retryable": True,
-            "error": "CycloPhaser subprocess failed; see per-cyclone logs",
+            "status": "failed", "category": "PHASE_WINDOWS", "retryable": False,
+            "error": "frozen article lifecycle windows are missing",
             "updated_at": utc_now(),
         })
-        return 75
+        return 65
+    shutil.copyfile(frozen_periods, toolkit_result / "periods.csv")
     temp_result = config.results_dir / f".{track_id}_ERA5_track.part"
     if temp_result.exists():
         shutil.rmtree(temp_result)
@@ -266,7 +227,7 @@ def compute_one(config: RunConfig, track_id: str) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("stage", choices=["download", "compute", "periods"])
+    parser.add_argument("stage", choices=["download", "compute"])
     parser.add_argument("--run-root", type=Path, required=True)
     parser.add_argument("--track-id", required=True)
     args = parser.parse_args()
@@ -274,8 +235,6 @@ def main() -> int:
     try:
         if args.stage == "download":
             return download_one(config, args.track_id)
-        if args.stage == "periods":
-            return generate_periods(config, args.track_id)
         return compute_one(config, args.track_id)
     except Exception as exc:
         progress = config.progress_dir / f"{args.stage}_{args.track_id}.json"

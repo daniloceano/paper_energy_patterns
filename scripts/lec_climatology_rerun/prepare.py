@@ -12,6 +12,7 @@ import pandas as pd
 
 from .common import (
     PROJECT_ROOT,
+    PHASE_SOURCE_DOI,
     TRACK_SOURCE_DOI,
     TRACK_SOURCE_URL,
     RunConfig,
@@ -56,6 +57,24 @@ def select_track_source(explicit: Path | None) -> Path:
     )
 
 
+def select_periods_source(explicit: Path | None) -> Path:
+    if explicit is not None:
+        return explicit.resolve()
+    preferred = PROJECT_ROOT / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
+    if preferred.exists():
+        return preferred
+    raise FileNotFoundError(
+        f"legacy lifecycle-window source not found: {preferred}. Recreate it from "
+        f"Zenodo DOI {PHASE_SOURCE_DOI} with scripts/preprocess_data/download_lec_from_zenodo.py"
+    )
+
+
+def period_file(source: Path, track_id: str) -> Path:
+    base = source / f"{track_id}_ERA5_track" / "periods.csv"
+    candidates = [base / "periods.csv", base]
+    return next((path for path in candidates if path.is_file()), candidates[0])
+
+
 def load_tracks(path: Path) -> pd.DataFrame:
     columns = ["track_id", "date", "lat vor", "lon vor"]
     frame = pd.read_csv(path, usecols=columns, dtype={"track_id": str})
@@ -85,12 +104,14 @@ def prepare(
     config: RunConfig,
     track_source: Path | None = None,
     ep1_cases: Path | None = None,
+    periods_source: Path | None = None,
 ) -> dict:
     config.create_directories()
     config.save()
     cache = PROJECT_ROOT / "data" / "energy_cache.parquet"
     raw_cache, population = population_from_cache(cache)
     tracks_path = select_track_source(track_source)
+    periods_root = select_periods_source(periods_source)
     tracks = load_tracks(tracks_path)
     available = set(tracks["track_id"])
     missing = sorted(population - available)
@@ -121,6 +142,27 @@ def prepare(
                     f"{record['lon vor']:.6f}",
                 ])
         temp.replace(track_path)
+        source_periods = period_file(periods_root, track_id)
+        if not source_periods.is_file():
+            raise FileNotFoundError(f"missing lifecycle windows for {track_id}: {source_periods}")
+        period_frame = pd.read_csv(source_periods, index_col=0)
+        if not {"start", "end"}.issubset(period_frame.columns):
+            raise ValueError(f"invalid lifecycle windows for {track_id}")
+        canonical = {
+            phase for label in period_frame.index.astype(str).str.lower()
+            for phase in PHASES if label.startswith(phase)
+        }
+        if canonical != set(PHASES):
+            raise ValueError(f"incomplete lifecycle windows for {track_id}: {sorted(canonical)}")
+        expected = pd.DatetimeIndex(cyclone["date"])
+        for _, period in period_frame.iterrows():
+            start, end = pd.to_datetime(period["start"]), pd.to_datetime(period["end"])
+            if start > end or not ((expected >= start) & (expected <= end)).any():
+                raise ValueError(f"non-overlapping lifecycle window for {track_id}: {start}--{end}")
+        frozen_periods = config.phase_windows_dir / f"{track_id}.csv"
+        temp_periods = frozen_periods.with_suffix(".csv.part")
+        period_frame.to_csv(temp_periods)
+        temp_periods.replace(frozen_periods)
         start, end = cyclone["date"].iloc[[0, -1]]
         rows.append({
             "track_id": track_id,
@@ -129,6 +171,7 @@ def prepare(
             "n_timesteps": len(cyclone),
             "lifecycle_hours": (end - start).total_seconds() / 3600,
             "track_sha256": sha256_file(track_path),
+            "phase_windows_sha256": sha256_file(frozen_periods),
         })
 
     manifest = pd.DataFrame(rows)
@@ -153,6 +196,9 @@ def prepare(
     db.set_meta("track_source", str(tracks_path))
     db.set_meta("track_source_sha256", sha256_file(tracks_path))
     db.set_meta("track_source_doi", TRACK_SOURCE_DOI)
+    db.set_meta("phase_windows_source", str(periods_root))
+    db.set_meta("phase_windows_source_doi", PHASE_SOURCE_DOI)
+    db.set_meta("phase_windows_manifest_sha256", sha256_file(config.manifest))
     db.set_meta("pilot_ids", ",".join(pilots))
     db.set_meta("ep1_pilot_source", str(ep1_source) if ep1_source.exists() else "unavailable")
     # Preparation is intentionally restartable.  Preserve elapsed active time
@@ -181,6 +227,12 @@ def prepare(
             "time_resolution_hours": config.time_resolution_hours,
             "selection": "exact UTC hours divisible by 3 (no coordinate time shifting)",
         },
+        "phase_windows": {
+            "source": str(periods_root),
+            "doi": PHASE_SOURCE_DOI,
+            "policy": "freeze legacy period windows to preserve the article population and phase aggregation",
+            "manifest_sha256": sha256_file(config.manifest),
+        },
         "era5": {
             "moving_domain_degrees": [15, 15],
             "download_buffer_degrees": 15,
@@ -208,6 +260,7 @@ def main() -> int:
     parser.add_argument("--toolkit-worktree", type=Path)
     parser.add_argument("--track-source", type=Path)
     parser.add_argument("--ep1-cases", type=Path)
+    parser.add_argument("--periods-source", type=Path)
     parser.add_argument("--keys-file", type=Path, default=Path("/p1-swell/danilocs/cds-keys"))
     parser.add_argument("--download-workers", type=int, default=3)
     parser.add_argument("--max-download-workers", type=int, default=8)
@@ -224,7 +277,7 @@ def main() -> int:
         max_download_workers=args.max_download_workers,
         max_compute_workers=args.compute_workers,
     )
-    result = prepare(config, args.track_source, args.ep1_cases)
+    result = prepare(config, args.track_source, args.ep1_cases, args.periods_source)
     print(json.dumps({"population": result["population"], "pilots": result["pilots"]}, indent=2))
     return 0
 

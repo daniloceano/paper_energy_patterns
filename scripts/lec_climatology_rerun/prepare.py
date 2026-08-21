@@ -155,7 +155,10 @@ def prepare(
     db.set_meta("track_source_doi", TRACK_SOURCE_DOI)
     db.set_meta("pilot_ids", ",".join(pilots))
     db.set_meta("ep1_pilot_source", str(ep1_source) if ep1_source.exists() else "unavailable")
-    db.set_meta("cumulative_active_runtime", 0)
+    # Preparation is intentionally restartable.  Preserve elapsed active time
+    # when it is rerun to refresh manifests/provenance on an existing run.
+    if db.get_meta("cumulative_active_runtime") is None:
+        db.set_meta("cumulative_active_runtime", 0)
     db.event("prepare", "POPULATION_FROZEN", f"{len(population)} cyclones; pilots={pilots}")
     db.close()
 

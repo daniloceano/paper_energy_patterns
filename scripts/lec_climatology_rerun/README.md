@@ -105,7 +105,10 @@ Run in the `paper_energy_patterns` conda environment:
 ```bash
 RUN=/p1-swell/danilocs/lec_climatology_corrected_v2
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.prepare \
-  --run-root "$RUN" --download-workers 3 --max-download-workers 8 --compute-workers 8
+  --run-root "$RUN" \
+  --track-source /p1-swell/danilocs/paper_energy_patterns/data/tracks_SAt_filtered_with_energetics_processed.csv \
+  --ep1-cases /p1-swell/danilocs/paper_energy_patterns/results/ep_structure/ep1_cases.csv \
+  --download-workers 3 --max-download-workers 8 --compute-workers 8
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline \
   provision --run-root "$RUN"
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline \

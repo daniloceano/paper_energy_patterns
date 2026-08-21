@@ -81,7 +81,11 @@ def choose_pilots(manifest: pd.DataFrame, ep1_file: Path) -> list[str]:
     return list(dict.fromkeys(selected))
 
 
-def prepare(config: RunConfig, track_source: Path | None = None) -> dict:
+def prepare(
+    config: RunConfig,
+    track_source: Path | None = None,
+    ep1_cases: Path | None = None,
+) -> dict:
     config.create_directories()
     config.save()
     cache = PROJECT_ROOT / "data" / "energy_cache.parquet"
@@ -128,9 +132,8 @@ def prepare(config: RunConfig, track_source: Path | None = None) -> dict:
         })
 
     manifest = pd.DataFrame(rows)
-    pilots = choose_pilots(
-        manifest, PROJECT_ROOT / "results" / "ep_structure" / "ep1_cases.csv"
-    )
+    ep1_source = ep1_cases or PROJECT_ROOT / "results" / "ep_structure" / "ep1_cases.csv"
+    pilots = choose_pilots(manifest, ep1_source)
     manifest["is_pilot"] = manifest["track_id"].isin(pilots)
     temp_manifest = config.manifest.with_suffix(".csv.part")
     manifest.to_csv(temp_manifest, index=False)
@@ -151,6 +154,7 @@ def prepare(config: RunConfig, track_source: Path | None = None) -> dict:
     db.set_meta("track_source_sha256", sha256_file(tracks_path))
     db.set_meta("track_source_doi", TRACK_SOURCE_DOI)
     db.set_meta("pilot_ids", ",".join(pilots))
+    db.set_meta("ep1_pilot_source", str(ep1_source) if ep1_source.exists() else "unavailable")
     db.set_meta("cumulative_active_runtime", 0)
     db.event("prepare", "POPULATION_FROZEN", f"{len(population)} cyclones; pilots={pilots}")
     db.close()
@@ -200,6 +204,7 @@ def main() -> int:
     parser.add_argument("--toolkit-source", type=Path, default=Path("/p1-swell/danilocs/LorenzCycleToolkit"))
     parser.add_argument("--toolkit-worktree", type=Path)
     parser.add_argument("--track-source", type=Path)
+    parser.add_argument("--ep1-cases", type=Path)
     parser.add_argument("--keys-file", type=Path, default=Path("/p1-swell/danilocs/cds-keys"))
     parser.add_argument("--download-workers", type=int, default=3)
     parser.add_argument("--max-download-workers", type=int, default=8)
@@ -216,7 +221,7 @@ def main() -> int:
         max_download_workers=args.max_download_workers,
         max_compute_workers=args.compute_workers,
     )
-    result = prepare(config, args.track_source)
+    result = prepare(config, args.track_source, args.ep1_cases)
     print(json.dumps({"population": result["population"], "pilots": result["pilots"]}, indent=2))
     return 0
 

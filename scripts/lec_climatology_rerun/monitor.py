@@ -54,9 +54,20 @@ def snapshot(config: RunConfig) -> str:
     failed_retry = counts.get("FAILED_RETRYABLE", 0)
     failed_final = counts.get("FAILED_FINAL", 0)
     bytes_downloaded = sum(int(row["bytes_downloaded"] or 0) for row in rows)
+    staged_bytes = sum(
+        path.stat().st_size for path in config.downloads_dir.rglob("*") if path.is_file()
+    )
     active_seconds = float(meta.get("cumulative_active_runtime", 0))
     active_downloads = progress_records(config, "download")
     active_downloads = [item for item in active_downloads if item.get("status") == "requesting"]
+    transferring = sum(
+        any(path.is_file() and path.stat().st_size > 0 for path in [
+            *(config.downloads_dir / "daily" / item["track_id"]).glob("*.part"),
+            config.downloads_dir / f"{item['track_id']}_ERA5.nc.part",
+        ])
+        for item in active_downloads
+    )
+    waiting = max(0, len(active_downloads) - transferring)
 
     completed_rows = [row for row in rows if row["state"] == "COMPLETE"]
     download_per_step = sorted(
@@ -128,8 +139,9 @@ def snapshot(config: RunConfig) -> str:
         f"PENDING {counts.get('PENDING', 0)} | FAILED/RETRYING {failed_final}/{failed_retry}",
         "",
         "DOWNLOAD PROGRESS",
-        f"  {downloaded}/{total} downloaded or beyond | {bytes_downloaded / 1024**3:.2f} GiB observed",
-        f"  active workers: {counts.get('DOWNLOADING', 0)} | CDS requests visibly running: {len(active_downloads)}",
+        f"  {downloaded}/{total} downloaded or beyond | {bytes_downloaded / 1024**3:.2f} GiB validated",
+        f"  ERA5 currently staged (daily/final/.part): {staged_bytes / 1024**3:.2f} GiB",
+        f"  active workers: {counts.get('DOWNLOADING', 0)} | CDS submitted/waiting: {waiting} | transferring: {transferring}",
         f"  throughput: {download_rate:.2f} downloads/active h overall; {len(recent_downloads)}/last wall-clock h",
         "",
         "COMPUTE PROGRESS",

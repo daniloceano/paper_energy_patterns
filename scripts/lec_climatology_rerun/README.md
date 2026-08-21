@@ -83,7 +83,8 @@ hashes, and commits remain reproducible. Set `cleanup_era5_after_complete` to
 
 ## CDS keys and parallelism
 
-The server has 39 token lines in `/p1-swell/danilocs/cds-keys`, mode `0600`.
+The server has 39 token-plus-label lines in `/p1-swell/danilocs/cds-keys`, mode `0600`.
+Only the first whitespace-delimited token is used; the human label is ignored.
 Values never enter the repository, database, logs, commands, or monitor. Each
 download subprocess gets a unique temporary mode-`0700` `HOME` with one
 mode-`0600` `.cdsapirc`, removed on exit. Labels are only `key-001`, etc.

@@ -14,6 +14,7 @@ from scripts.lec_climatology_rerun.common import (
     RunConfig,
     StateDB,
     isolated_cds_home,
+    load_keys,
     validate_lec_output,
     validate_netcdf,
 )
@@ -64,6 +65,14 @@ def test_credentials_are_isolated_and_removed(tmp_path: Path):
         assert oct(rc.stat().st_mode & 0o777) == "0o600"
         assert oct(home.stat().st_mode & 0o777) == "0o700"
     assert not home.exists()
+
+
+def test_key_inventory_uses_token_field_not_human_label(tmp_path: Path):
+    inventory = tmp_path / "keys"
+    token_a = "a" * 36
+    token_b = "b" * 36
+    inventory.write_text(f"{token_a} - account one\n{token_b} - account two\n")
+    assert load_keys(inventory) == [token_a, token_b]
 
 
 def make_era5(path: Path, times: pd.DatetimeIndex):

@@ -325,9 +325,16 @@ class StateDB:
 
 def load_keys(path: Path) -> list[str]:
     lines = [line.strip() for line in path.read_text().splitlines()]
-    keys = [line for line in lines if line and not line.startswith("#")]
+    # Server inventory format is "<token> - <human label>". Only the first
+    # whitespace-delimited field is a CDS token; labels must never enter the
+    # generated .cdsapirc or logs.
+    keys = [line.split(maxsplit=1)[0] for line in lines if line and not line.startswith("#")]
     if not keys:
         raise RuntimeError(f"no credentials found in {path}")
+    if len(keys) != len(set(keys)):
+        raise RuntimeError("duplicate CDS credential tokens in inventory")
+    if any(not re.fullmatch(r"[A-Za-z0-9_-]{32,}", key) for key in keys):
+        raise RuntimeError("unexpected CDS credential inventory format")
     return keys
 
 

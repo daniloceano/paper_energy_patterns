@@ -20,6 +20,7 @@ from scripts.lec_climatology_rerun.common import (
 )
 from scripts.lec_climatology_rerun.prepare import population_from_cache
 from scripts.lec_climatology_rerun.pipeline import recover
+from scripts.lec_climatology_rerun.pipeline import choose_key
 
 
 def test_population_reproduces_complete_order_and_finite_terms(tmp_path: Path):
@@ -128,4 +129,14 @@ def test_restart_recovery_uses_validated_netcdf(tmp_path: Path):
     db.transition("1", "DOWNLOADING")
     recover(config, db)
     assert db.rows("track_id='1'")[0]["state"] == "DOWNLOADED"
+    db.close()
+
+
+def test_key_selection_never_reuses_an_active_key(tmp_path: Path):
+    db = StateDB(tmp_path / "state.sqlite3")
+    db.init_keys(2)
+    keys = ["a" * 36, "b" * 36]
+    selected = choose_key(db, keys, 0, {"key-001"})
+    assert selected is not None and selected[1] == "key-002"
+    assert choose_key(db, keys, selected[0], {"key-001", "key-002"}) is None
     db.close()

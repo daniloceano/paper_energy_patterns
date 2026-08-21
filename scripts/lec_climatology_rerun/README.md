@@ -99,6 +99,15 @@ Compute has an independent initial limit of 8. With 112 logical CPUs, 1 TiB
 RAM, and 130 TiB free, this is conservative for the real pilot. Adjust only
 after measured RAM/I/O/runtime. Backpressure caps buffered cases at 16.
 
+Before the pilot, discover accounts whose owners accepted the official ERA5
+licence. The preflight submits only one tiny request per account, records no
+credential value, and disables unlicensed accounts for 30 days:
+
+```bash
+conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.preflight_keys \
+  --run-root "$RUN"
+```
+
 ## Initialize and validate pilots
 
 Run in the `paper_energy_patterns` conda environment:

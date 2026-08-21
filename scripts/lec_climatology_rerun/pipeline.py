@@ -110,13 +110,19 @@ def recover(config: RunConfig, db: StateDB) -> None:
     db.event("scheduler", "RECOVERY_COMPLETE", "interrupted states reconciled")
 
 
-def choose_key(db: StateDB, keys: list[str], cursor: int) -> tuple[int, str, str] | None:
+def choose_key(
+    db: StateDB,
+    keys: list[str],
+    cursor: int,
+    busy_key_ids: set[str] | None = None,
+) -> tuple[int, str, str] | None:
     now = time.time()
+    busy_key_ids = busy_key_ids or set()
     health = {row["key_id"]: row for row in db.conn.execute("SELECT * FROM key_health")}
     for offset in range(len(keys)):
         index = (cursor + offset) % len(keys)
         key_id = f"key-{index + 1:03d}"
-        if float(health[key_id]["cooldown_until"]) <= now:
+        if key_id not in busy_key_ids and float(health[key_id]["cooldown_until"]) <= now:
             return (index + 1, key_id, keys[index])
     return None
 
@@ -288,7 +294,8 @@ def run(config: RunConfig, mode: str) -> int:
                 if slots > 0:
                     candidates = db.rows(f"{clause} AND state='PENDING' ORDER BY lifecycle_hours LIMIT ?", (*params, slots))
                     for row in candidates:
-                        chosen = choose_key(db, keys, key_cursor)
+                        busy_keys = {value[1] for value in downloads.values()}
+                        chosen = choose_key(db, keys, key_cursor, busy_keys)
                         if chosen is None:
                             break
                         key_cursor, key_id, key_value = chosen

@@ -58,8 +58,12 @@ def snapshot(config: RunConfig) -> str:
         path.stat().st_size for path in config.downloads_dir.rglob("*") if path.is_file()
     )
     active_seconds = float(meta.get("cumulative_active_runtime", 0))
+    active_download_ids = {row["track_id"] for row in rows if row["state"] == "DOWNLOADING"}
     active_downloads = progress_records(config, "download")
-    active_downloads = [item for item in active_downloads if item.get("status") == "requesting"]
+    active_downloads = [
+        item for item in active_downloads
+        if item.get("status") == "requesting" and item["track_id"] in active_download_ids
+    ]
     transferring = sum(
         any(path.is_file() and path.stat().st_size > 0 for path in [
             *(config.downloads_dir / "daily" / item["track_id"]).glob("*.part"),

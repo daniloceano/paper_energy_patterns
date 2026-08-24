@@ -47,6 +47,12 @@ def classify_error(exc: Exception) -> tuple[str, bool]:
         return "AUTH", True
     if any(word in text for word in ("connection", "network", "temporar")):
         return "NETWORK", True
+    # CDS reports a server-side job failure as 400 on the job's results
+    # endpoint. Submission already validated the request, so this is a
+    # transient queue failure rather than a malformed request, and it arrives
+    # in bursts whenever the CDS workers are degraded.
+    if "job has failed" in text:
+        return "CDS_JOB_FAILED", True
     return type(exc).__name__.upper(), False
 
 

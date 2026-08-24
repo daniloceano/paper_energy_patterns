@@ -92,28 +92,38 @@ Values never enter the repository, database, logs, commands, or monitor. Each
 download subprocess gets a unique temporary mode-`0700` `HOME` with one
 mode-`0600` `.cdsapirc`, removed on exit. Labels are only `key-001`, etc.
 
-Downloads start at 2 and may rise to 8 after clean completion windows. HTTP
+Downloads start at 8 and may rise to 16 after clean completion windows. HTTP
 429/5xx, timeouts, and network degradation lower the limit and cool down keys;
 authentication failures quarantine a key for six hours. Retries use capped
 exponential backoff plus jitter (7 download/3 compute attempts). This is
 resilience, not quota bypass.
 
-Compute has an independent initial limit of 8. With 112 logical CPUs, 1 TiB
-RAM, and 130 TiB free, this is conservative for the real pilot. Adjust only
-after measured RAM/I/O/runtime. Backpressure caps buffered cases at 16.
+The two stages are sized from measurement, not symmetry. On 2026-08-24 a
+cyclone took a median 496 s to download and 28 s to compute, so a download
+worker feeds roughly seventeen compute workers and CDS is the only real
+constraint: the server sat at load 4.6 of 112 CPUs and 22 GiB of 1007 GiB.
+Downloads are therefore capped at 16 with 21 authorized accounts, leaving five
+spare for cooldown rotation, while compute stays at 8 and is still oversized.
+Backpressure caps buffered cases at 32, about 5 GiB at 170 MiB per cyclone.
+Raise the download ceiling only alongside the authorized-account count.
 
 Before the pilot, discover accounts whose owners accepted the official ERA5
-licence. The preflight submits only one tiny request per account, records no
-credential value, and disables unlicensed accounts for 30 days:
+licence. The preflight submits one tiny request per account and records no
+credential value. Licence and authentication verdicts arrive with the
+submission response, so it neither waits for the job nor downloads a result,
+and it releases the queued job; a full 39-account sweep costs seconds per
+account. Anything that is not a licence or authentication verdict is retried,
+so a flaky CDS cannot demote a good account. Unlicensed accounts are disabled
+for 30 days:
 
 ```bash
-conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.preflight_keys \
-  --run-root "$RUN"
+python scripts/lec_climatology_rerun/preflight_keys.py --run-root "$RUN"
 ```
 
-The 2026-08-21 server preflight found 2 authorized accounts out of 39; 36
-required licence acceptance and 1 failed authentication. Accounts in either
-hard-disabled state remain excluded until the preflight is explicitly rerun.
+Re-run it whenever account owners report accepting the licence. The 2026-08-21
+sweep found 2 authorized accounts of 39; by 2026-08-24 that had reached 21,
+with 17 awaiting licence acceptance and 1 failing authentication. Accounts in
+either hard-disabled state stay excluded until the preflight is rerun.
 
 ## Initialize and validate pilots
 
@@ -126,7 +136,7 @@ conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.prepa
   --track-source /p1-swell/danilocs/paper_energy_patterns/data/tracks_SAt_filtered_with_energetics_processed.csv \
   --periods-source /p1-swell/danilocs/paper_energy_patterns/data/temp_lec_zenodo/LEC_Results_energetic-patterns \
   --ep1-cases /p1-swell/danilocs/paper_energy_patterns/results/ep_structure/ep1_cases.csv \
-  --download-workers 2 --max-download-workers 8 --compute-workers 8
+  --download-workers 8 --max-download-workers 16 --compute-workers 8
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline \
   provision --run-root "$RUN"
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline \

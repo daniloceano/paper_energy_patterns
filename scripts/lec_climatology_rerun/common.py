@@ -98,12 +98,15 @@ class RunConfig:
     correction_commit: str = CORRECTION_COMMIT
     conda_env: str = "lorenz"
     keys_file: str = "/p1-swell/danilocs/cds-keys"
-    max_download_workers: int = 8
-    initial_download_workers: int = 3
+    # Download dominates: a cyclone takes ~496 s to fetch and ~28 s to compute,
+    # so CDS capacity, not the server, sets the pace. Keep the download ceiling
+    # at or below the number of authorized accounts.
+    max_download_workers: int = 16
+    initial_download_workers: int = 8
     max_compute_workers: int = 8
     max_download_retries: int = 7
     max_compute_retries: int = 3
-    backpressure_downloaded: int = 16
+    backpressure_downloaded: int = 32
     time_resolution_hours: int = 3
     cleanup_era5_after_complete: bool = True
     poll_seconds: int = 5

@@ -4,9 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import sys
-import tempfile
 import time
 from pathlib import Path
 
@@ -46,6 +46,41 @@ def set_health(db: StateDB, key_id: str, status: str, cooldown_until: float) -> 
     db.conn.commit()
 
 
+def probe_key(
+    config: RunConfig, key: str, key_id: str, attempts: int = 3
+) -> tuple[str, float]:
+    """Classify one account. Licence and authentication verdicts are decided on
+    the first answer; anything else is retried, because a flaky CDS would
+    otherwise demote a perfectly good account."""
+    for attempt in range(1, attempts + 1):
+        try:
+            with isolated_cds_home(config, key, key_id) as home:
+                os.environ["HOME"] = str(home)
+                # Both verdicts arrive with the submission response, so neither
+                # wait for the job nor pass a target: waiting for real data made
+                # one sweep take hours and competed with production for CDS
+                # capacity. Release the queued job rather than leaving it for
+                # the CDS workers to run.
+                client = cdsapi.Client(
+                    timeout=60, retry_max=0, quiet=True, wait_until_complete=False
+                )
+                submitted = client.retrieve("reanalysis-era5-pressure-levels", REQUEST)
+                with contextlib.suppress(Exception):
+                    submitted.delete()
+            return "healthy", 0
+        except Exception as exc:
+            text = str(exc).lower()
+            if "licence" in text or "license" in text:
+                # Do not retry every scheduler restart. Re-run this preflight
+                # after account owners accept the official CDS licence.
+                return "licence_required", time.time() + 30 * 86400
+            if any(value in text for value in ("401", "403", "unauthorized", "forbidden")):
+                return "authentication_failed", time.time() + 30 * 86400
+            if attempt < attempts:
+                time.sleep(2 * attempt)
+    return "preflight_transient_failure", time.time() + 1800
+
+
 def run(config: RunConfig) -> list[str]:
     keys = load_keys(Path(config.keys_file))
     db = StateDB(config.db)
@@ -55,34 +90,11 @@ def run(config: RunConfig) -> list[str]:
     try:
         for index, key in enumerate(keys, 1):
             key_id = f"key-{index:03d}"
-            target = Path(tempfile.gettempdir()) / f"cds_licence_preflight_{index}.nc"
-            target.unlink(missing_ok=True)
-            try:
-                with isolated_cds_home(config, key, key_id) as home:
-                    os.environ["HOME"] = str(home)
-                    cdsapi.Client(timeout=60, retry_max=0, quiet=True).retrieve(
-                        "reanalysis-era5-pressure-levels", REQUEST, str(target)
-                    )
+            status, cooldown = probe_key(config, key, key_id)
+            if status == "healthy":
                 authorized.append(key_id)
-                set_health(db, key_id, "healthy", 0)
-                print(f"{key_id} authorized", flush=True)
-            except Exception as exc:
-                text = str(exc).lower()
-                if "licence" in text or "license" in text:
-                    status = "licence_required"
-                    # Do not retry every scheduler restart. Re-run this preflight
-                    # after account owners accept the official CDS licence.
-                    cooldown = time.time() + 30 * 86400
-                elif any(value in text for value in ("401", "403", "unauthorized", "forbidden")):
-                    status = "authentication_failed"
-                    cooldown = time.time() + 30 * 86400
-                else:
-                    status = "preflight_transient_failure"
-                    cooldown = time.time() + 1800
-                set_health(db, key_id, status, cooldown)
-                print(f"{key_id} {status}", flush=True)
-            finally:
-                target.unlink(missing_ok=True)
+            set_health(db, key_id, status, cooldown)
+            print(f"{key_id} {'authorized' if status == 'healthy' else status}", flush=True)
     finally:
         if old_home is None:
             os.environ.pop("HOME", None)

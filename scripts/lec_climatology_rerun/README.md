@@ -146,12 +146,17 @@ conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipel
 
 ## Persistent operations
 
+Production runs from the ordinary server checkout at
+`/p1-swell/danilocs/paper_energy_patterns`, on this branch. The run root is a
+separate directory, so the checkout carries code only: switching branches or
+pulling never touches downloaded ERA5, state, or results.
+
 Start/resume (same command after a shutdown):
 
 ```bash
 RUN=/p1-swell/danilocs/lec_climatology_corrected_v2
 tmux new-session -d -s lec-climatology \
-  "cd /p1-swell/danilocs/paper_energy_patterns_corrected && exec conda run --no-capture-output -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline production --run-root '$RUN' >>'$RUN/logs/scheduler.log' 2>&1"
+  "cd /p1-swell/danilocs/paper_energy_patterns && exec conda run --no-capture-output -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline production --run-root '$RUN' >>'$RUN/logs/scheduler.log' 2>&1"
 ```
 
 Status/monitor, graceful stop, logs, and retry:

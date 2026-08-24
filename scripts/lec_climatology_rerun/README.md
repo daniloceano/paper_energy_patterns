@@ -171,6 +171,19 @@ tail -f "$RUN/logs/"*_compute.stderr.log
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.pipeline retry-failures --run-root "$RUN"
 ```
 
+Every command above runs on the server: the run root, its SQLite state, and
+the ERA5 files exist only there, so a workstation copy of the repository has
+nothing to read and fails on the missing `config.json`. To check progress from
+a workstation, go through ssh:
+
+```bash
+alias lecmon='ssh swell "cd /p1-swell/danilocs/paper_energy_patterns && conda run -n paper_energy_patterns python scripts/lec_climatology_rerun/monitor.py --run-root /p1-swell/danilocs/lec_climatology_corrected_v2"'
+```
+
+Scripts run either as `python -m scripts.lec_climatology_rerun.<name>` from the
+repository root or as `python scripts/lec_climatology_rerun/<name>.py` from any
+directory.
+
 The ETA uses `cumulative_active_runtime`, advanced only by the running
 scheduler. Shutdown days do not count. Once pilots exist, robust per-timestep
 costs drive the estimate and uncertainty interval.

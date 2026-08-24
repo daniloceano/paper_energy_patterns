@@ -7,11 +7,15 @@ import argparse
 import json
 import math
 import sqlite3
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-from .common import RunConfig
+# Allow running this file directly, not only as `python -m`.
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from scripts.lec_climatology_rerun.common import RunConfig
 
 
 def duration(seconds: float | None, *, active: bool = True) -> str:

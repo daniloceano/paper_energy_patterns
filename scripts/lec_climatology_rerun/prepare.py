@@ -7,11 +7,15 @@ import argparse
 import csv
 import json
 import math
+import sys
 from pathlib import Path
 
 import pandas as pd
 
-from .common import (
+# Allow running this file directly, not only as `python -m`.
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from scripts.lec_climatology_rerun.common import (
     PROJECT_ROOT,
     PHASE_SOURCE_DOI,
     TRACK_SOURCE_DOI,

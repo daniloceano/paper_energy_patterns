@@ -5,11 +5,15 @@ from __future__ import annotations
 
 import argparse
 import sqlite3
+import sys
 from pathlib import Path
 
 import pandas as pd
 
-from .common import RunConfig
+# Allow running this file directly, not only as `python -m`.
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from scripts.lec_climatology_rerun.common import RunConfig
 
 PHASES = ["incipient", "intensification", "mature", "decay"]
 

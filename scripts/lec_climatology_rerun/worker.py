@@ -13,10 +13,14 @@ import math
 import os
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 
-from .common import (
+# Allow running this file directly, not only as `python -m`.
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from scripts.lec_climatology_rerun.common import (
     ERA5_VARIABLES,
     PRESSURE_LEVELS,
     RunConfig,

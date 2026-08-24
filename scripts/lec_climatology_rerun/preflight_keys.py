@@ -5,13 +5,23 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import tempfile
 import time
 from pathlib import Path
 
 import cdsapi
 
-from .common import RunConfig, StateDB, isolated_cds_home, load_keys, utc_now
+# Allow running this file directly, not only as `python -m`.
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+
+from scripts.lec_climatology_rerun.common import (
+    RunConfig,
+    StateDB,
+    isolated_cds_home,
+    load_keys,
+    utc_now,
+)
 
 
 REQUEST = {

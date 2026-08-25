@@ -281,8 +281,8 @@ def main() -> int:
     parser.add_argument("--ep1-cases", type=Path)
     parser.add_argument("--periods-source", type=Path)
     parser.add_argument("--keys-file", type=Path, default=Path("/p1-swell/danilocs/cds-keys"))
-    parser.add_argument("--download-workers", type=int, default=8)
-    parser.add_argument("--max-download-workers", type=int, default=16)
+    parser.add_argument("--download-workers", type=int, default=16)
+    parser.add_argument("--max-download-workers", type=int, default=22)
     parser.add_argument("--compute-workers", type=int, default=8)
     args = parser.parse_args()
     worktree = args.toolkit_worktree or args.run_root / "LorenzCycleToolkit-pinned"

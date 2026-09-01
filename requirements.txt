@@ -38,3 +38,6 @@ pymannkendall>=1.4.0
 # Meteorology and Climate Data
 metpy>=1.5.0
 cdsapi>=0.6.1
+
+# PDF export of the technical reports
+reportlab>=4.0.0

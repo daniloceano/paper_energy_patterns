@@ -14,6 +14,8 @@ scripts/
 ├── ep_structure_analysis/              # ERA5 composite analysis (EP1, EP2, EP3, EPALL)
 ├── lec_field_dependence_analysis/      # PREDEP: individual-cyclone LEC–field predictive dependence
 ├── ck_subterms_analysis/               # Ck decomposition into subterms for EP1
+├── lec_climatology_rerun/              # Corrected LEC climatology rerun (LorenzCycleToolKit 2.0.0)
+├── lec_rerun_comparison/               # Legacy vs corrected LEC: split violins + technical report
 ├── preprocess_data/                    # Data download and preprocessing
 ├── utils/                              # Shared utility functions
 ├── web/                                # Scripts to build and update the results website
@@ -194,6 +196,38 @@ Decomposes the barotropic conversion term (Ck) into its three subterms for EP1 c
 **Inputs:** `results/cluster/kmeans_clustered_data.csv`, ERA5 (auto-downloaded by toolkit)
 
 **Outputs:** `data/ck_analysis/`, `results/ck_analysis/`
+
+---
+
+### `lec_rerun_comparison/` — Legacy vs Corrected LEC Comparison
+
+Quantifies how much the LEC terms changed after the corrected rerun
+(`lec_climatology_rerun`), before any downstream product is regenerated. Legacy
+and corrected phase means are paired on the same cyclones, the same frozen
+lifecycle windows and the same time steps, so every difference comes from the
+LorenzCycleToolKit 2.0.0 correction alone. Runs on partial rerun state.
+
+**Pipeline:**
+
+```bash
+python scripts/lec_rerun_comparison/run_all.py
+```
+
+1. `step1_build_comparison_table.py` — Pair legacy and corrected phase means
+2. `step2_plot_split_violins.py` — Split violins (left = legacy, right = corrected) per term family
+3. `step3_summary_stats.py` — Change magnitude, rank correlation, sign-change rates
+4. `step5_plot_lec_diagram.py` — Four-box LEC diagram with doubled arrows where terms changed
+5. `step6_plot_eof_diagram.py` — Same diagram carrying EOF 1–4 loadings (replicates the article EOF figures)
+6. `step4_write_report.py` — Regenerate the technical report from those tables
+7. `step7_build_report_pdf.py` — Render the report to a shareable PDF with the figures embedded
+
+**Prerequisite:** the rerun state database at `--run-root` (server only).
+
+**Inputs:** `data/energy_cache.parquet`, `data/temp_lec_zenodo/`, `<run-root>/lec_results/`
+
+**Outputs:** `results/lec_rerun_comparison/`, `figures/lec_rerun_comparison/`, `docs/lec_rerun_comparison_report.md` and `.pdf`
+
+See `scripts/lec_rerun_comparison/README.md` for details.
 
 ---
 

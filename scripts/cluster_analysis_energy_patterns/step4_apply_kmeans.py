@@ -32,6 +32,13 @@ RESULTS_DIR = PROJECT_ROOT / "results" / "cluster"
 INPUT_FILE = "pca_scores.csv"  # Wide matrix format (all phases together)
 OPTIMAL_K_FILE = "optimal_k.txt"
 
+# Energy cache this clustering ultimately derives from. Recorded in the
+# cluster → EP mapping so downstream scripts can tell a corrected run from a
+# legacy one; must match step1_normalize_and_pca.py.
+from scripts.cluster_analysis_energy_patterns.step1_normalize_and_pca import (  # noqa: E402
+    CACHE_FILE,
+)
+
 # K-Means parameters
 USE_OPTIMAL_K = True  # If False, use MANUAL_K
 MANUAL_K = 4  # Manual k value (if USE_OPTIMAL_K is False)
@@ -178,8 +185,21 @@ def save_results(df_pca: pd.DataFrame, labels: np.ndarray, kmeans: KMeans,
         centroids_energy.to_csv(centroids_energy_file, index=False)
         print(f"  ✓ Centroids (energy space): {centroids_energy_file.name}")
         print(f"    Shape: {centroids_energy.shape} (wide format: {len(energy_vars)} features)")
+
+        # Derive and persist the cluster → EP mapping for this run. K-means
+        # indices are arbitrary, so downstream scripts must never assume the
+        # ordering of a previous run: they read this file instead.
+        from scripts.utils.ep_mapping import derive_cluster_to_ep, write_cluster_mapping
+
+        mapping_file = write_cluster_mapping(
+            centroids_energy, pd.Series(labels), source_cache=str(CACHE_FILE)
+        )
+        mapping = derive_cluster_to_ep(centroids_energy)
+        print(f"  ✓ Cluster → EP mapping: {mapping_file.name}")
+        print(f"    {', '.join(f'cluster {c} → EP{e}' for c, e in sorted(mapping.items()))}")
     else:
         print("  ⚠️  PCA/Scaler models not available, skipping energy space centroids")
+        print("      Cluster → EP mapping NOT written; downstream scripts will refuse to run")
     
     # Save KMeans model
     model_file = results_dir / f"{prefix}_model.pkl"

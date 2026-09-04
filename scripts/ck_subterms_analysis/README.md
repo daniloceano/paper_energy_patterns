@@ -1,15 +1,38 @@
-# Ck Subterms Analysis: Barotropic Energy Conversion Decomposition
+# Ck Subterms Analysis — Barotropic Conversion Decomposition, all Energy Patterns
 
-## Scientific Motivation
+Decomposes the barotropic conversion term `C_K` into its five subterms for
+**EP1, EP2, EP3 and EPALL**, from the corrected LEC climatology.
 
-The barotropic conversion term C_K (also written Ck) represents the transfer of kinetic energy
-between cyclone-scale eddies and the large-scale mean flow. In the limited-area, semi-Lagrangian
-Lorenz Energy Cycle framework used here, the sign convention is:
-when C_K < 0 the mean flow transfers energy to the eddies (barotropic instability, K_Z → K_E);
-when C_K > 0 the eddies transfer energy to the mean flow (K_E → K_Z).
+## What changed and why
 
-The full expression for C_K (vertically integrated from pressure level p_t to p_b; paper.tex Eq.
-for C_K) is:
+The decomposition used to be an EP1-only study (444 cyclones). That was a
+computational limit, not a scientific choice: the article's archived results
+carried only the total `C_K`, so obtaining the subterms required a separate
+LorenzCycleToolKit run, and running it over the whole population would have
+meant ~222 GB of ERA5 and thousands of toolkit executions.
+
+The corrected climatology rerun (`scripts/lec_climatology_rerun`) removes that
+limit. It writes `Ck_1_pressure_level.csv` … `Ck_5_pressure_level.csv` for every
+one of the 3,820 cyclones, so **the decomposition is now available for every
+Energy Pattern at no extra computational cost**. This pipeline reads those
+products; it launches nothing.
+
+The previous EP1 side run is retired in `deprecated_ep1_side_run/`. Its outputs
+in `results/ck_analysis/` predate the LorenzCycleToolKit 2.0.0 corrections and
+must not reach the article.
+
+## Scientific framing
+
+`C_K` is the transfer of kinetic energy between the cyclone-scale eddy and the
+large-scale mean flow. In the limited-area, semi-Lagrangian framework used here:
+
+- `C_K < 0` → K_Z → K_E: the mean flow feeds the eddy (barotropic instability);
+- `C_K > 0` → K_E → K_Z: the eddy exports energy to the mean flow.
+
+The **dominant subterm** of a cyclone is therefore the *most negative* one — the
+largest contributor to the mean-to-eddy transfer.
+
+Vertically integrated from p_t to p_b (manuscript equation for C_K):
 
 $$C_K = \int_{p_t}^{p_b} \frac{1}{g} \left[
   \underbrace{\frac{\cos\phi}{a}(u)'(v)'\frac{\partial}{\partial\phi}\!\left(\frac{[u]}{\cos\phi}\right)}_{\text{(A)}}
@@ -19,491 +42,104 @@ $$C_K = \int_{p_t}^{p_b} \frac{1}{g} \left[
 + \underbrace{(\omega)'(v)'\frac{\partial [v]}{\partial p}}_{\text{(E)}}
 \right] dp$$
 
-where square brackets and primes denote area means and deviations, respectively, and
-g = 9.8 m s⁻².
+Square brackets are area means, primes the deviations from them.
 
-### Physical Interpretation of Subterms (from paper.tex)
+| File stem | Label | Physical mechanism |
+|---|---|---|
+| `Ck_1` | Ck_A | Eddy momentum flux against the meridional shear of `[u]` — the classic barotropic-instability term |
+| `Ck_2` | Ck_B | Meridional flux of eddy KE against the meridional gradient of `[v]` |
+| `Ck_3` | Ck_C | Curvature (tan φ) flux of zonal eddy KE |
+| `Ck_4` | Ck_D | Vertical flux of zonal eddy momentum against the shear of `[u]` |
+| `Ck_5` | Ck_E | Vertical flux of meridional eddy momentum against the shear of `[v]` |
 
-| Subterm | Physical mechanism |
-|---------|-------------------|
-| Term (A) | Eddy momentum flux linked to the meridional (N–S) gradient of zonal wind — most directly associated with barotropic instability |
-| Term (B) | Meridional flux of eddy KE associated with meridional wind and its meridional gradient |
-| Term (C) | Meridional flux of zonal eddy KE (tan-φ curvature term) |
-| Term (D) | Zonal and vertical flux associated with the vertical shear of zonal wind |
-| Term (E) | Meridional and vertical flux associated with the vertical shear of meridional wind |
+### Unit convention (important)
 
-### Sign Convention (authoritative source: paper.tex)
+The toolkit writes the `Ck` family **without** the `1/g` factor, in both
+versions. `scripts/utils/corrected_lec.py` applies `g = 9.80665` on read, so
+every value in this pipeline already integrates to the integrated `C_K`. Never
+re-apply a gravity division downstream. The legacy scripts used `9.8`, a 0.07 %
+high bias.
 
-$$\frac{\partial K_E}{\partial t} = BK_E + C_E + C_K + B\Phi_E - D_E$$
+The decomposition is verified to close, `C_K = Σ Ck_i`, to round-off; the
+relative residual is carried in the output and step 1 refuses to write above
+`1e-6`.
 
-- **C_K < 0**: K_Z → K_E (mean flow transfers energy to eddies; barotropic instability). EP1 cyclones have mean C_K ≈ −16.5 W m⁻² — they are the strongest barotropic-instability systems among all Energy Patterns.
-- **C_K > 0**: K_E → K_Z (eddies export energy to mean flow).
+## Research questions
 
-Note: EP1 cyclones ARE driven by barotropic instability (large negative C_K means the mean flow strongly feeds the eddies, K_Z → K_E). The dominant subterm is the one with the most negative intensification-phase mean, i.e., the one contributing most to this mean-to-eddy energy transfer.
+1. Which subterm dominates the barotropic transfer in each Energy Pattern and
+   each lifecycle phase?
+2. How large is each subterm, and what share of the total `C_K` does it carry?
+3. Do the Energy Patterns differ in *mechanism*, or only in *amplitude* of the
+   same mechanism?
 
-### Energy Pattern 1 (EP1) Characteristics
+## Pipeline
 
-EP1 cyclones exhibit the strongest energetic conversions in the Southwestern Atlantic:
-- **Mean C_K**: −16.48 W m⁻² (largest-magnitude barotropic conversion among all patterns)
-- **Frequency**: 444 cyclones (11.6% of total)
-- **Analysis scope**: ALL EP1 cyclones (no spatial restriction)
-- **Dominant level**: C_K is most negative at ~350 hPa (from paper.tex Fig. S3)
+```bash
+python scripts/ck_subterms_analysis/run_all.py
+```
 
-## Research Questions
-
-1. **Which C_K subterm dominates the barotropic instability (K_Z → K_E) during EP1 intensification?**
-   - Dominance = subterm with minimum (most negative) intensification-phase mean
-   - Most negative = strongest contribution to mean-to-eddy energy transfer
-   - Results: Ck⁽ᴱ⁾ (Term E, 43%), Ck⁽ᴮ⁾ (Term B, 38%), Ck⁽ᴬ⁾ (Term A, 19%)
-
-2. **Is genesis location linked to the dominant C_K subterm?**
-   - Genesis density maps + normalized anomaly maps
-
-3. **Coverage and integrity audit of locally computed Ck subterms**
-   - LEC audit: coverage and integrity of results/ck_analysis/lec_results/
-   - Internal consistency: subterm sum ≈ total C_K
-
-## Methodology
+| Step | Script | Output |
+|---|---|---|
+| 1 | `step1_build_subterms_table.py` | Integrated subterms per cyclone, phase and EP; closure validation |
+| 2 | `step2_subterm_statistics.py` | Descriptive statistics, dominance frequency, EP contrasts |
+| 3 | `step3_subterm_figures.py` | Vertical profiles, boxplots, lifecycle evolution |
 
 ### Prerequisites
 
-**IMPORTANT**: This analysis requires the `ep_structure_analysis` results:
-- `results/ep_structure/ep1_cases.csv` (produced by `scripts/ep_structure_analysis/`)
-- This file is the **new source of truth** for EP1 cyclone selection, replacing the
-  removed `ep1_full_analysis` workflow (`results/ep1_full/all_ep1_cases.csv` is obsolete).
-- It contains all EP1 cyclones with their intensification-phase windows.
-- **No spatial restriction** — all EP1 cyclones regardless of genesis location are included.
+1. The corrected rerun is COMPLETE and
+   `scripts/lec_climatology_rerun/build_corrected_vertical_levels.py` has written
+   `data/corrected/vertical_phase_means_corrected.parquet`.
+2. The clustering has been rebuilt on `data/corrected/energy_cache_corrected.parquet`,
+   so `results/cluster/cluster_to_ep.json` records a corrected lineage. `run_all.py`
+   refuses to proceed on a legacy clustering unless `--allow-partial` is given.
 
-The `results/cluster/kmeans_clustered_data.csv` file (cluster analysis) is retained for
-backward compatibility but is no longer the primary source for EP1 IDs.
+`--allow-partial` runs the pipeline on whatever the rerun has finished so far.
+Use it to develop and sanity-check; never for an article result, because the
+population then depends on the moment the script ran.
 
-### Workflow Overview
+## Statistics
+
+The subterm distributions are heavy-tailed and change sign, so the tests are
+rank based:
+
+- Kruskal-Wallis across EP1/EP2/EP3 per (subterm, phase);
+- pairwise Mann-Whitney U with the rank-biserial correlation as effect size;
+- Benjamini-Hochberg FDR at q = 0.05 over all pairwise tests of a phase, which
+  controls the 5 subterms × 3 contrasts multiplicity.
+
+EPALL is reported descriptively and never tested against its own members.
+
+## Outputs
 
 ```
-Step 1: Prepare Track Files
-    ↓
-Step 2: Run LorenzCycleToolkit (automated ERA5 download & LEC computation)
-    ↓
-Step 3: Extract and Analyze Ck Subterms
-    ↓
-Step 4: Compare Lifecycle Evolution
-    ↓
-Step 5: Statistical Analysis and Visualization
+results/ck_subterms_corrected/
+├── subterms_by_cyclone.csv    one row per (track_id, phase): the six integrated
+│                              Ck quantities, shares, dominant subterm, closure
+├── subterms_long.csv          tidy form for plotting
+├── subterm_statistics.csv     mean/median/IQR/share per EP, phase, subterm
+├── dominance_frequency.csv    how often each subterm dominates
+├── ep_contrasts.csv           Kruskal-Wallis + FDR-corrected pairwise tests
+├── build_report.md            coverage and closure validation
+└── statistics_report.md       readable answer to the three questions
+
+figures/ck_subterms_corrected/
+├── ck_subterms_vertical_profiles.png   mean profile of C_K and subterms per EP
+├── ck_subterms_boxplots.png            integrated subterm distributions per EP
+└── ck_subterms_lifecycle.png           phase-by-phase ensemble means per EP
 ```
 
----
-
-### Step 1: Prepare Track Files for LorenzCycleToolkit
-
-**Objective**: Convert ALL EP1 cyclone tracks to LorenzCycleToolkit input format.
-
-**Input**:
-- `results/ep_structure/ep1_cases.csv` — EP1 cyclones from ep_structure_analysis (new source of truth)
-- Main track database (via `load_tracks()`)
-
-**Output Format** (one file per cyclone):
-```
-time;Lat;Lon
-2005-08-08-0000;-22.5;-45.0
-2005-08-08-0600;-23.0;-44.5
-2005-08-08-1200;-23.5;-44.0
-...
-```
-
-**File Naming**: `track_{track_id}.txt`
-- Example: `track_20070643.txt`
-
-**Output Directory**: `data/ck_analysis/tracks/`
-
-**Key Considerations**:
-- Time format: `YYYY-MM-DD-HHMM` (no spaces, dash before time)
-- Header: `time;Lat;Lon` (capitalized)
-- Coordinates: Latitude and Longitude in decimal degrees
-- Delimiter: Semicolon (`;`) with NO spaces
-- Data source: Full cyclone lifecycle (all phases, all timesteps)
-- Temporal resolution: 3-hourly (matches project configuration)
-
-**Script**: `step1_prepare_tracks.py`
-
----
-
-### Step 2: Run LorenzCycleToolkit with ERA5 Download
-
-**Objective**: Compute Lorenz Energy Cycle with full term decomposition using the updated toolkit version.
-
-**LorenzCycleToolkit Configuration**:
-```python
-# Example configuration (to be adjusted)
-from LorenzCycleToolkit import LorenzCycleAnalysis
-
-# Initialize analysis
-lec = LorenzCycleAnalysis(
-    track_file='data/ck_analysis/tracks/track_20070643.txt',
-    dataset='ERA5',
-    auto_download=True,  # Automatically download ERA5 data
-    pressure_levels='standard',  # All standard pressure levels
-    spatial_filter='moving_box',  # Follow cyclone center
-    box_size=15,  # 15° × 15° domain (consistent with EP1 analysis)
-    decompose_terms=True  # Enable full term decomposition
-)
-
-# Run analysis
-lec.compute()
-lec.save_results('results/ck_analysis/lec_results/')
-```
-
-**Key Features of Updated Toolkit**:
-- **Automatic ERA5 download**: No manual CDS API interaction needed
-- **Term decomposition**: Separates Ck into individual subterms
-- **Vertical resolution**: Maintains level-by-level information
-- **Phase identification**: Uses CycloPhaser for lifecycle detection
-
-**Output Structure** (per cyclone):
-```
-results/ck_analysis/lec_results/{track_id}_ERA5_track/
-├── periods.csv              # Lifecycle phases
-├── results.csv              # Integrated terms (all phases)
-├── Ck_level.csv            # Total Ck by pressure level
-├── Ck_uv_level.csv         # Horizontal momentum flux term
-├── Ck_uw_level.csv         # Vertical momentum flux (zonal) term
-├── Ck_vw_level.csv         # Vertical momentum flux (meridional) term
-├── Ca_level.csv            # Baroclinic conversion (for reference)
-└── ...                     # Other energy terms
-```
-
-**Computational Requirements**:
-- **Storage**: ~500 MB per cyclone (ERA5 data + results)
-- **Time**: ~30-60 min per cyclone (depending on lifecycle length)
-- **Total for ALL EP1**: ~444 cyclones × 500 MB = ~222 GB
-- **Processing**: Can be parallelized across cyclones
-
-**Script**: `step2_run_lec_toolkit.py` (wrapper script)
-- Iterates through prepared tracks
-- Submits LorenzCycleToolkit jobs
-- Monitors progress and handles errors
-
----
-
-### Step 3: Extract and Analyze Ck Subterms
-
-**Objective**: Load LEC results and extract Ck subterm contributions for all EP1 cyclones.
-
-**Analysis Tasks**:
-
-1. **Load Ck Subterms by Level**:
-   - `Ck_uv(p)`: Horizontal momentum flux contribution
-   - `Ck_uw(p)`: Vertical momentum flux (zonal) contribution
-   - `Ck_vw(p)`: Vertical momentum flux (meridional) contribution
-   - Validate: `Ck_total ≈ Ck_uv + Ck_uw + Ck_vw`
-
-2. **Phase-Specific Analysis**:
-   - Extract values during intensification phase only
-   - Compare with mature and decay phases
-   - Compute phase-averaged profiles
-
-3. **Vertical Structure**:
-   - Identify pressure level of maximum contribution for each subterm
-   - Analyze vertical distribution (surface → upper troposphere)
-   - Compare with Ck minimum level from Step 2 of EP1 analysis
-
-4. **Relative Importance Metrics**:
-   - Percentage contribution: $\frac{Ck_{subterm}}{Ck_{total}} \times 100\%$
-   - Dominant term identification (largest absolute contribution)
-   - Term consistency across cyclones (standard deviation)
-
-**Output**:
-- `results/ck_analysis/subterms_by_cyclone.csv` - Individual cyclone subterm values
-- `results/ck_analysis/subterms_statistics.csv` - Ensemble statistics
-- `results/ck_analysis/vertical_profiles.csv` - Mean profiles by phase
-
-**Script**: `step3_extract_subterms.py`
-
----
-
-### Step 4: Lifecycle Evolution Analysis
-
-**Objective**: Quantify how Ck subterm contributions change throughout the cyclone lifecycle.
-
-**Methodology**:
-
-1. **Temporal Evolution**:
-   - Time series of each subterm throughout lifecycle
-   - Smoothed profiles (24h running mean)
-   - Identification of transition points between phases
-
-2. **Phase Composites**:
-   - Mean subterm values by phase (incipient, intensification, mature, decay)
-   - Vertical structure evolution (2D: pressure × phase)
-   - Statistical significance testing (phase-to-phase changes)
-
-3. **Energetic Pathway Analysis**:
-   - Dominant mechanism identification by phase
-   - Transitions: Which subterm leads intensification onset?
-   - Which subterm sustains mature phase?
-
-**Visualization**:
-- Time-height cross-sections (pressure × time)
-- Phase-composite boxplots (subterm × phase)
-- Stacked area charts (relative contribution evolution)
-
-**Output**:
-- `figures/ck_analysis/lifecycle_evolution.png`
-- `figures/ck_analysis/phase_composites.png`
-- `results/ck_analysis/lifecycle_statistics.csv`
-
-**Script**: `step4_lifecycle_analysis.py`
-
----
-
-### Step 5: Statistical Analysis and Validation
-
-**Objective**: Validate results against previous analysis and identify patterns.
-
-**Validation**:
-
-1. **LEC Results Audit (locally computed energetics)**:
-   - Coverage check: verify presence and integrity of Ck CSV files for all EP1 cyclones
-   - Expected: all Ck_1..5_pressure_level.csv present and non-empty within intensification window
-   - Internal consistency: subterm sum ≈ total C_K (confirms correct vertical integration)
-2. **Consistency Checks**:
-   - Mass budget conservation (total energy should be conserved)
-   - Term magnitude reasonableness (compare with literature values)
-   - Spatial averaging consistency
-
-**Statistical Tests**:
-
-1. **Inter-cyclone Variability**:
-   - Standard deviation of subterm contributions
-   - Coefficient of variation (CV = σ/μ)
-   - Identification of outlier cyclones
-
-2. **Regional/Seasonal Patterns**:
-   - Subterm contributions vs. genesis latitude
-   - Summer vs. winter differences (if data sufficient)
-   - Track orientation effects (NE vs. SE propagation)
-
-3. **Correlation Analysis**:
-   - Subterm vs. cyclone intensity (maximum vorticity)
-   - Subterm vs. lifecycle duration
-   - Cross-correlations between subterms
-
-**Output**:
-- `figures/ck_analysis/validation_plots.png`
-- `figures/ck_analysis/statistical_summary.png`
-- `results/ck_analysis/final_report.txt`
-
-**Script**: `step5_statistical_analysis.py`
-
----
-
-## Expected Results
-
-### Hypothesis 1: Horizontal Momentum Flux Dominance
-
-**Expectation**: The horizontal momentum flux term ($-\overline{u'v'}\frac{\partial \overline{u}}{\partial y}$) will dominate Ck during intensification.
-
-**Rationale**:
-- EP1 cyclones occur in regions of strong baroclinicity
-- Associated with strong meridional temperature gradients
-- Thermal wind balance implies strong vertical wind shear
-- Eddy momentum fluxes (u'v') transport momentum meridionally
-- This is the "classic" barotropic conversion mechanism
-
-**Expected Magnitude**: ~70-80% of total Ck
-
----
-
-### Hypothesis 2: Vertical Level Structure
-
-**Expectation**: Maximum Ck contributions occur at mid-tropospheric levels (500-700 hPa).
-
-**Rationale**:
-- Previous analysis shows Ck minimum at ~500-600 hPa
-- This level corresponds to:
-  - Maximum meridional wind shear ($\partial u/\partial y$)
-  - Jet stream level in South Atlantic
-  - Level of maximum eddy kinetic energy
-
-**Implication**: Barotropic conversion is primarily a mid-tropospheric process in EP1 cyclones
-
----
-
-### Hypothesis 3: Phase-Dependent Mechanisms
-
-**Expectation**: Different subterms dominate in different lifecycle phases.
-
-**Phase-Specific Predictions**:
-
-1. **Incipient Phase**:
-   - Weak Ck (small absolute values)
-   - All subterms comparable in magnitude
-   - Horizontal flux begins to dominate
-
-2. **Intensification Phase**:
-   - Horizontal momentum flux (u'v') dominates
-   - Strong negative Ck (mean flow feeds eddies; K_Z → K_E barotropic instability)
-   - Peak subterm magnitudes
-
-3. **Mature Phase**:
-   - Horizontal flux remains dominant but weakens
-   - Vertical flux terms become relatively more important
-   - Beginning of transition to decay
-
-4. **Decay Phase**:
-   - Weakening of all subterms
-   - Possible reversal of some terms (positive contributions)
-   - Dominance structure may shift
-
----
-
-## Technical Notes
-
-### Data Sources
-
-1. **Cyclone Selection**:
-   - From `results/ep_structure/ep1_cases.csv` (produced by `scripts/ep_structure_analysis/`)
-   - This is the **new source of truth** — replaces the removed `ep1_full_analysis` workflow
-   - Contains EP1 cyclones with intensification-phase windows
-   - No spatial domain restriction (all EP1 cyclones regardless of genesis location)
-
-3. **ERA5 Reanalysis**:
-   - Automatically downloaded by LorenzCycleToolkit
-   - Standard pressure levels (1000-100 hPa)
-   - 3-hourly temporal resolution
-   - 0.25° spatial resolution
-
-3. **Track Data**:
-   - From main database via `load_tracks()`
-   - Full lifecycle coverage
-   - Vorticity center tracking
-
-### LorenzCycleToolkit Updates
-
-**New Version Features** (term decomposition):
-
-1. **Term Decomposition**:
-   - Previous: Only total Ck computed
-   - New: Ck separated into three subterms
-
-2. **Pressure Level Output**:
-   - Previous: Single `Ck_level.csv` file
-   - New: Separate files for each subterm (`Ck_uv_level.csv`, etc.)
-
-3. **Corrections Applied**:
-   - Previous version had sign/normalization issues (documented in EP1 analysis)
-   - New version: Corrections already implemented
-   - No post-processing corrections needed
-
-4. **Automatic Workflow**:
-   - Previous: Manual ERA5 download via CDS API
-   - New: Integrated download within toolkit
-   - Simplified workflow, fewer error points
-
-### Spatial Domain Considerations
-
-**Analysis Domain**: 15° × 15° box centered on cyclone
-
-**Rationale**:
-- Consistent with EP1 instability analysis (step3_download_era5.py)
-- Large enough to capture synoptic-scale features
-- Small enough to focus on cyclone-related processes
-- Captures eddy momentum fluxes and mean state gradients
-
-**Alternative Domains** (for sensitivity analysis):
-- 10° × 10°: More local, emphasizes cyclone core
-- 20° × 20°: More regional, includes larger-scale environment
-
----
-
-## Directory Structure
-
-```
-data/ck_analysis/
-├── tracks/                        # Prepared track files
-│   ├── track_19790001.txt
-│   ├── track_19790006.txt
-│   └── ...
-└── era5/                          # ERA5 data (downloaded by toolkit)
-    └── {track_id}/
-        └── ...
-
-results/ck_analysis/
-├── lec_results/                   # LorenzCycleToolkit output
-│   └── {track_id}_ERA5_track/
-│       ├── periods.csv
-│       ├── results.csv
-│       ├── Ck_level.csv
-│       ├── Ck_uv_level.csv
-│       ├── Ck_uw_level.csv
-│       └── Ck_vw_level.csv
-├── subterms_by_cyclone.csv       # Individual cyclone data
-├── subterms_statistics.csv       # Ensemble statistics
-├── vertical_profiles.csv         # Mean vertical profiles
-├── lifecycle_statistics.csv      # Phase-composite statistics
-└── final_report.txt              # Summary of findings
-
-figures/ck_analysis/
-├── vertical_profiles.png         # Mean profiles by subterm
-├── lifecycle_evolution.png       # Time evolution composites
-├── phase_composites.png          # Boxplots by phase
-├── validation_plots.png          # LEC audit integrity plots
-└── statistical_summary.png       # Scatter plots and correlations
-```
-
----
+## Expectations to re-test, not to assume
+
+The earlier EP1-only study, on legacy data, reported Ck_E dominant in 43 % of
+cases, Ck_B in 38 % and Ck_A in 19 %, and hypothesised that the horizontal
+momentum flux (Ck_A) would carry 70–80 % of the total. Both the toolkit
+correction and the widened population make those numbers provisional: treat the
+new `statistics_report.md` as the result, and revisit the manuscript text rather
+than reconciling the new output to the old claims.
 
 ## References
 
-### Lorenz Energy Cycle
-
-- **Lorenz, E. N.** (1955). Available potential energy and the maintenance of the general circulation. *Tellus*, 7(2), 157-167.
-
-- **Brennan, F. E., & Vincent, D. G.** (1980). Zonal and eddy components of the synoptic-scale energy budget during intensification of Hurricane Carmen (1974). *Monthly Weather Review*, 108(7), 954-965.
-
-### Barotropic Conversion
-
-- **Orlanski, I., & Sheldon, J. P.** (1995). Stages in the energetics of baroclinic systems. *Tellus A*, 47(5), 605-628.
-
-- **Dias Pinto, J. R., & da Rocha, R. P.** (2011). The energy cycle and structural evolution of cyclones over southeastern South America in three case studies. *Journal of Geophysical Research*, 116, D14104.
-
-### South Atlantic Cyclones
-
-- **Gan, M. A., & Rao, V. B.** (1991). Surface cyclogenesis over South America. *Monthly Weather Review*, 119(5), 1293-1302.
-
-- **Reboita, M. S., et al.** (2010). Climatology of cyclones over the South Atlantic. *International Journal of Climatology*, 30(11), 1781-1798.
-
----
-
-## Future Work
-
-### Sensitivity Analyses
-
-1. **Domain Size Sensitivity**:
-   - Repeat analysis with 10°×10° and 20°×20° domains
-   - Assess impact on subterm contributions
-
-2. **Vertical Resolution**:
-   - Use all available pressure levels vs. subset
-   - Impact on vertical derivative calculations
-
-3. **Temporal Resolution**:
-   - Effect of 3-hourly vs. 6-hourly data
-   - Sub-daily variability in subterm contributions
-
-### Extended Analyses
-
-1. **Comparison with Other Energy Patterns**:
-   - EP2, EP3, EP4 cyclones
-   - Identify unique features of EP1 barotropic conversion
-
-2. **Seasonal Variability**:
-   - Winter (JJA) vs. summer (DJF) differences
-   - Connection to ENSO phases
-
-3. **Trajectory Analysis**:
-   - Subterm evolution along cyclone track
-   - Spatial patterns of energy conversion
-
-4. **Ageostrophic Effects**:
-   - Role of ageostrophic circulation in Ck subterms
-   - Connection to frontal dynamics
+- **Lorenz, E. N.** (1955). Available potential energy and the maintenance of the general circulation. *Tellus*, 7(2), 157–167.
+- **Orlanski, I., & Sheldon, J. P.** (1995). Stages in the energetics of baroclinic systems. *Tellus A*, 47(5), 605–628.
+- **Dias Pinto, J. R., & da Rocha, R. P.** (2011). The energy cycle and structural evolution of cyclones over southeastern South America in three case studies. *JGR*, 116, D14104.
+- **Michaelides, S. C.** (1987). Limited area energetics of Genoa cyclogenesis. *Mon. Wea. Rev.*, 115, 13–26.

@@ -200,16 +200,53 @@ costs drive the estimate and uncertainty interval.
 
 ## Rebuild downstream products (only after 3,820 COMPLETE)
 
-The cache builder refuses partial state:
+Three builders turn the run root into the artefacts the analysis scripts read.
+All of them refuse partial state unless `--allow-partial` is given, which
+labels the output `_partial` and is for exploration only: on a growing subset
+the population would depend on the moment the script ran.
 
 ```bash
 RUN=/p1-swell/danilocs/lec_climatology_corrected_v2
+cd /p1-swell/danilocs/paper_energy_patterns
+
+# 1. Phase-mean cache — input to the PCA/k-means Energy Patterns
 conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.build_corrected_cache \
+  --run-root "$RUN" --output data/corrected/energy_cache_corrected.parquet
+
+# 2. Per-timestep tracks + corrected energetics — LPS, case study, phase density
+conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.build_corrected_tracks \
   --run-root "$RUN"
-PAPER_ENERGY_CACHE="$RUN/processed/energy_cache_corrected.parquet" \
-  conda run --no-capture-output -n paper_energy_patterns \
-  python scripts/cluster_analysis_energy_patterns/run_all.py
+
+# 3. Phase-mean vertical profiles, incl. the five Ck subterms for all 3,820
+conda run -n paper_energy_patterns python -m scripts.lec_climatology_rerun.build_corrected_vertical_levels \
+  --run-root "$RUN"
 ```
+
+They write into `data/corrected/`, which every downstream script reads through
+`scripts/utils/corrected_lec.py`:
+
+| Product | Replaces | Consumers |
+|---|---|---|
+| `energy_cache_corrected.parquet` | `data/energy_cache.parquet` | cluster analysis (PCA + k-means) |
+| `tracks_with_energetics_corrected.csv` | `data/tracks_SAt_filtered_with_energetics_processed.csv` | LPS diagrams, case study, phase density |
+| `vertical_phase_means_corrected.parquet` | `data/temp_lec_zenodo/.../{Ca,Ck}_level.csv` | vertical-levels figure, Ck subterms for every EP |
+
+Then rebuild the Energy Patterns and everything that depends on them:
+
+```bash
+conda run --no-capture-output -n paper_energy_patterns \
+  python scripts/cluster_analysis_energy_patterns/run_all.py
+conda run --no-capture-output -n paper_energy_patterns \
+  python scripts/ck_subterms_analysis/run_all.py
+```
+
+`step4_apply_kmeans.py` re-derives the cluster → Energy Pattern mapping from the
+new centroids and records the cache lineage in `results/cluster/cluster_to_ep.json`.
+K-means indices are arbitrary, so downstream scripts read that file rather than
+assuming the ordering of the previous run, and publication steps refuse to run
+while it still points at the legacy cache.
+
+`docs/legacy_data_retirement.md` tracks what remains to be repointed.
 
 Review the corrected cache and new clustering before generating/replacing
 scientific figures. Publish corrected artifacts as a separately versioned

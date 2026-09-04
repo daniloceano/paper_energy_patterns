@@ -1,42 +1,66 @@
 """
 Energy Pattern Mapping Utilities
 
-Single source of truth for cluster → Energy Pattern mappings.
+Single source of truth for cluster -> Energy Pattern mappings.
 
-Cluster Assignments (from K-Means clustering on LEC diagnostics):
-    - Cluster 0 → EP1 (444 cyclones, 11.6%) - High energy conversions
-    - Cluster 1 → EP3 (2,397 cyclones, 62.7%) - Weak/background energetics
-    - Cluster 2 → EP2 (979 cyclones, 25.6%) - Moderate conversions
+Why this module no longer hardcodes the mapping
+-----------------------------------------------
+K-means cluster indices are arbitrary: they depend on the initialisation and on
+the data. The article's mapping (cluster 0 -> EP1, 1 -> EP3, 2 -> EP2) was a
+property of the *legacy* clustering run. Re-running the clustering on the
+corrected LEC climatology reshuffles those indices, and a hardcoded table would
+then silently relabel every Energy Pattern in every downstream figure.
+
+The mapping is therefore *derived* from the cluster centroids and persisted next
+to the clustering it describes, in ``results/cluster/cluster_to_ep.json``:
+
+    EP1 -> strongest intensification-phase conversions
+    EP2 -> intermediate
+    EP3 -> weakest ("day-to-day" cyclones)
+
+ranked by ``|Ca_int| + |Ck_int|``, which is the definition the manuscript uses.
+That rule reproduces the article's mapping exactly when applied to the legacy
+centroids, so the convention is unchanged -- only its provenance is.
+
+``step4_apply_kmeans.py`` writes the file; every consumer reads it. Counts and
+percentages likewise come from the clustering that is actually on disk, never
+from constants baked into this module.
 
 Usage:
     from scripts.utils.ep_mapping import (
         CLUSTER_TO_EP, EP_TO_CLUSTER, EP_LABELS, EP_COLORS, ALL_EPS
     )
-    
-    ep_label = CLUSTER_TO_EP[cluster_id]  # e.g., 0 → 1 (EP1)
-    cluster_id = EP_TO_CLUSTER[1]         # e.g., 1 → 0
+
+    ep_label = CLUSTER_TO_EP[cluster_id]   # e.g. 0 -> 1 (EP1)
+    cluster_id = EP_TO_CLUSTER[1]
+
+    # publication scripts should additionally assert the data lineage
+    from scripts.utils.ep_mapping import assert_corrected_clustering
+    assert_corrected_clustering()
 
 Author: Danilo Couto de Souza
-Date: April 2026
 """
 
-from typing import Dict, List
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+CLUSTER_DIR = PROJECT_ROOT / "results" / "cluster"
+MAPPING_FILE = CLUSTER_DIR / "cluster_to_ep.json"
+CENTROIDS_FILE = CLUSTER_DIR / "kmeans_centroids_energy.csv"
+
+#: Terms ranked to order the Energy Patterns, in the intensification phase.
+RANKING_TERMS = ["Ca_int", "Ck_int"]
 
 # =============================================================================
-# CORE MAPPINGS (Single Source of Truth)
+# STATIC IDENTITY (independent of any clustering run)
 # =============================================================================
 
-# Cluster ID → Energy Pattern number
-CLUSTER_TO_EP: Dict[int, int] = {
-    0: 1,  # cluster 0 → EP1 (high conversions)
-    1: 3,  # cluster 1 → EP3 (weak/background)
-    2: 2,  # cluster 2 → EP2 (moderate conversions)
-}
-
-# Energy Pattern number → Cluster ID
-EP_TO_CLUSTER: Dict[int, int] = {ep: cluster for cluster, ep in CLUSTER_TO_EP.items()}
-
-# All Energy Pattern identifiers (ordered for consistent iteration)
 ALL_EPS: List[int] = [1, 2, 3]  # EP1, EP2, EP3 only (clustered groups)
 
 # EPALL as ep=0: all cyclones pooled regardless of cluster assignment.
@@ -45,7 +69,6 @@ ALL_EPS: List[int] = [1, 2, 3]  # EP1, EP2, EP3 only (clustered groups)
 EPALL_EP: int = 0
 ALL_EPS_WITH_EPALL: List[int] = [0, 1, 2, 3]  # 0 = EPALL, 1/2/3 = clustered EPs
 
-# Energy Pattern label strings
 EP_LABELS: Dict[int, str] = {
     0: "EPALL",  # All cyclones pooled (not a cluster)
     1: "EP1",
@@ -53,7 +76,6 @@ EP_LABELS: Dict[int, str] = {
     3: "EP3",
 }
 
-# Canonical abbreviations for filenames and output
 EP_ABBREVS: Dict[int, str] = {
     0: "epall",
     1: "ep1",
@@ -61,7 +83,6 @@ EP_ABBREVS: Dict[int, str] = {
     3: "ep3",
 }
 
-# EPALL represents the union of all EPs (total cyclone composite)
 EPALL_LABEL = "EPALL"
 EPALL_ABBREV = "epall"
 
@@ -83,7 +104,6 @@ EP_COLORS: Dict[int, str] = {
     3: "#2ca02c",  # EP3 - green
 }
 
-# Extended colors including EPALL
 EP_COLORS_EXTENDED: Dict[str, str] = {
     "EPALL": "#666666",
     "EP1": "#1f77b4",
@@ -101,17 +121,148 @@ EP_DESCRIPTIONS: Dict[int, str] = {
     3: "Weak energetics representing typical 'day-to-day' cyclones",
 }
 
-EP_COUNTS: Dict[int, int] = {
-    1: 444,   # EP1 count from clustering
-    2: 979,   # EP2 count from clustering
-    3: 2397,  # EP3 count from clustering
-}
 
-EP_PERCENTAGES: Dict[int, float] = {
-    1: 11.6,
-    2: 25.6,
-    3: 62.7,
-}
+# =============================================================================
+# DERIVATION AND PERSISTENCE
+# =============================================================================
+
+class ClusterMappingMissing(FileNotFoundError):
+    """Raised when no clustering run has published a cluster -> EP mapping."""
+
+
+def derive_cluster_to_ep(centroids: pd.DataFrame) -> Dict[int, int]:
+    """Rank cluster centroids into Energy Patterns.
+
+    Parameters
+    ----------
+    centroids
+        ``kmeans_centroids_energy.csv``: one row per cluster, a ``cluster``
+        column, and the wide term-by-phase columns.
+
+    Returns
+    -------
+    dict
+        ``{cluster_id: ep_number}``, EP1 being the strongest conversions.
+    """
+    missing = [term for term in RANKING_TERMS if term not in centroids.columns]
+    if missing:
+        raise ValueError(
+            f"centroids lack the ranking terms {missing}; cannot order the "
+            "Energy Patterns. Columns present: {list(centroids.columns)[:8]}..."
+        )
+    magnitude = sum(centroids[term].abs() for term in RANKING_TERMS)
+    order = centroids.assign(_magnitude=magnitude).sort_values(
+        "_magnitude", ascending=False
+    )
+    return {
+        int(row.cluster): ep
+        for ep, row in zip(ALL_EPS, order.itertuples(index=False))
+    }
+
+
+def write_cluster_mapping(
+    centroids: pd.DataFrame,
+    labels: pd.Series,
+    source_cache: str,
+    path: Path = MAPPING_FILE,
+) -> Path:
+    """Persist the derived mapping alongside the clustering that produced it.
+
+    ``source_cache`` records which energy cache the clustering consumed, so a
+    downstream script can tell a corrected run from a legacy one.
+    """
+    mapping = derive_cluster_to_ep(centroids)
+    counts = labels.value_counts().to_dict()
+    total = int(labels.size)
+    payload = {
+        "cluster_to_ep": {str(cluster): ep for cluster, ep in mapping.items()},
+        "ranking_terms": RANKING_TERMS,
+        "ranking_rule": "descending |Ca_int| + |Ck_int|; EP1 strongest",
+        "source_cache": str(source_cache),
+        "n_cyclones": total,
+        "ep_counts": {
+            str(ep): int(counts.get(cluster, 0)) for cluster, ep in mapping.items()
+        },
+        "ep_percentages": {
+            str(ep): round(100.0 * counts.get(cluster, 0) / total, 4)
+            for cluster, ep in mapping.items()
+        },
+    }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    return path
+
+
+def load_mapping(path: Path = MAPPING_FILE) -> dict:
+    """Read the persisted mapping payload."""
+    if not path.is_file():
+        raise ClusterMappingMissing(
+            f"no cluster -> EP mapping at {path}. Run "
+            "scripts/cluster_analysis_energy_patterns/step4_apply_kmeans.py, "
+            "which derives it from the centroids of the clustering on disk."
+        )
+    return json.loads(path.read_text())
+
+
+def mapping_source() -> str:
+    """Energy cache the current clustering was built from."""
+    return str(load_mapping().get("source_cache", "unknown"))
+
+
+def is_corrected_clustering() -> bool:
+    """True when the clustering on disk came from the corrected LEC cache."""
+    return "corrected" in mapping_source()
+
+
+def assert_corrected_clustering() -> None:
+    """Guard for publication scripts: refuse a legacy clustering.
+
+    The corrected rerun is the only scientific truth for this article. A figure
+    built on ``data/energy_cache.parquet`` would carry the superseded LEC
+    equations even if every other input were current.
+    """
+    source = mapping_source()
+    if "corrected" not in source:
+        raise RuntimeError(
+            f"the clustering on disk was built from {source!r}, not the "
+            "corrected LEC climatology. Rebuild it with "
+            "scripts/cluster_analysis_energy_patterns/run_all.py against "
+            "data/corrected/energy_cache_corrected.parquet before producing "
+            "any article result."
+        )
+
+
+def _derived(name: str):
+    """Resolve a mapping-derived constant on first access."""
+    payload = load_mapping()
+    if name == "CLUSTER_TO_EP":
+        return {int(cluster): int(ep) for cluster, ep in payload["cluster_to_ep"].items()}
+    if name == "EP_TO_CLUSTER":
+        return {int(ep): int(cluster) for cluster, ep in payload["cluster_to_ep"].items()}
+    if name == "EP_COUNTS":
+        return {int(ep): int(count) for ep, count in payload["ep_counts"].items()}
+    if name == "EP_PERCENTAGES":
+        return {int(ep): float(pct) for ep, pct in payload["ep_percentages"].items()}
+    raise AttributeError(name)
+
+
+_DERIVED_NAMES = {"CLUSTER_TO_EP", "EP_TO_CLUSTER", "EP_COUNTS", "EP_PERCENTAGES"}
+
+
+def __getattr__(name: str):
+    """Resolve clustering-dependent constants lazily (PEP 562).
+
+    Keeps ``from scripts.utils.ep_mapping import CLUSTER_TO_EP`` working while
+    guaranteeing the value describes the clustering currently on disk rather
+    than a table frozen in this file.
+    """
+    if name in _DERIVED_NAMES:
+        return _derived(name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> List[str]:
+    return sorted(list(globals()) + list(_DERIVED_NAMES))
 
 
 # =============================================================================
@@ -120,16 +271,18 @@ EP_PERCENTAGES: Dict[int, float] = {
 
 def get_ep_from_cluster(cluster_id: int) -> int:
     """Convert cluster ID to Energy Pattern number."""
-    if cluster_id not in CLUSTER_TO_EP:
-        raise ValueError(f"Unknown cluster ID: {cluster_id}. Valid: {list(CLUSTER_TO_EP.keys())}")
-    return CLUSTER_TO_EP[cluster_id]
+    mapping = _derived("CLUSTER_TO_EP")
+    if cluster_id not in mapping:
+        raise ValueError(f"Unknown cluster ID: {cluster_id}. Valid: {list(mapping)}")
+    return mapping[cluster_id]
 
 
 def get_cluster_from_ep(ep_num: int) -> int:
     """Convert Energy Pattern number to cluster ID."""
-    if ep_num not in EP_TO_CLUSTER:
-        raise ValueError(f"Unknown EP number: {ep_num}. Valid: {list(EP_TO_CLUSTER.keys())}")
-    return EP_TO_CLUSTER[ep_num]
+    mapping = _derived("EP_TO_CLUSTER")
+    if ep_num not in mapping:
+        raise ValueError(f"Unknown EP number: {ep_num}. Valid: {list(mapping)}")
+    return mapping[ep_num]
 
 
 def get_ep_label(ep_num: int) -> str:
@@ -151,3 +304,19 @@ def get_ep_color(ep_num: int) -> str:
     if ep_num not in EP_COLORS:
         raise ValueError(f"Unknown EP number: {ep_num}. Valid: {list(EP_COLORS.keys())}")
     return EP_COLORS[ep_num]
+
+
+def load_ep_assignments(path: Optional[Path] = None) -> pd.DataFrame:
+    """Per-cyclone Energy Pattern assignment of the clustering on disk.
+
+    Returns ``track_id`` (str), ``cluster`` and ``ep``.
+    """
+    path = path or CLUSTER_DIR / "kmeans_clustered_data.csv"
+    if not path.is_file():
+        raise ClusterMappingMissing(f"clustering output not found: {path}")
+    frame = pd.read_csv(path, usecols=["track_id", "cluster"], dtype={"track_id": str})
+    frame["ep"] = frame["cluster"].map(_derived("CLUSTER_TO_EP"))
+    if frame["ep"].isna().any():
+        raise ValueError("cluster labels absent from the persisted cluster -> EP mapping")
+    frame["ep"] = frame["ep"].astype(int)
+    return frame

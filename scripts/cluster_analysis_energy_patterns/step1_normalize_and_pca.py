@@ -43,9 +43,19 @@ warnings.filterwarnings('ignore')
 # CONFIGURATION
 # ============================================================================
 
-# Cache file location
+# Cache file location.
+#
+# The corrected LEC climatology (scripts/lec_climatology_rerun, toolkit 2.0.0)
+# is the only scientific truth for this article. The legacy
+# data/energy_cache.parquet carries the superseded equations and is kept solely
+# as the "before" side of scripts/lec_rerun_comparison — pointing this pipeline
+# at it would silently reintroduce the corrected errors into every Energy
+# Pattern, so it is no longer the default and is not an accepted fallback.
 CACHE_FILE = Path(
-    os.environ.get("PAPER_ENERGY_CACHE", PROJECT_ROOT / "data" / "energy_cache.parquet")
+    os.environ.get(
+        "PAPER_ENERGY_CACHE",
+        PROJECT_ROOT / "data" / "corrected" / "energy_cache_corrected.parquet",
+    )
 )
 
 # Energy variables to use (7 terms, excluding Ce and RKe)

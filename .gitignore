@@ -23,6 +23,9 @@ data/*.h5
 data/*.hdf5
 
 # Exclude specific data subdirectories
+# Corrected LEC climatology derived products (rebuildable from the run root)
+data/corrected/
+
 data/lec_results/
 data/temp_lec_zenodo
 data/era5_ep1_full
@@ -65,6 +68,10 @@ data/test/
 results/**/*.csv
 results/**/*.txt
 results/**/*.json
+# ...except the cluster -> Energy Pattern mapping: scripts/utils/ep_mapping.py
+# reads it at import time and refuses to run without it, and it records which
+# energy cache the clustering consumed.
+!results/cluster/cluster_to_ep.json
 figures/**/*.png
 figures/**/*.jpg
 figures/**/*.jpeg

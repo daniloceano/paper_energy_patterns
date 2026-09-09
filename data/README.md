@@ -9,7 +9,8 @@ This directory contains cached/processed data files. Input data is accessed remo
 > **Corrected LEC rerun (2026):** Production freezes the 3,820 IDs selected
 > from tracked `energy_cache.parquet`, uses the complete Zenodo track extract,
 > and records hashes/commits. EP1/EPALL structure files are downstream subsets.
-> See `scripts/lec_climatology_rerun/README.md`.
+> The completed rerun workflow and provenance are maintained in
+> [`lec-climatology-rerun`](https://github.com/daniloceano/lec-climatology-rerun).
 
 ### 1. GitHub - Cyclone Tracks (Used by Main Scripts)
 

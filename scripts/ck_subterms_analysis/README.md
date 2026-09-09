@@ -11,8 +11,10 @@ carried only the total `C_K`, so obtaining the subterms required a separate
 LorenzCycleToolKit run, and running it over the whole population would have
 meant ~222 GB of ERA5 and thousands of toolkit executions.
 
-The corrected climatology rerun (`scripts/lec_climatology_rerun`) removes that
-limit. It writes `Ck_1_pressure_level.csv` … `Ck_5_pressure_level.csv` for every
+The corrected climatology workflow in
+[`lec-climatology-rerun`](https://github.com/daniloceano/lec-climatology-rerun)
+removes that limit. It writes `Ck_1_pressure_level.csv` …
+`Ck_5_pressure_level.csv` for every
 one of the 3,820 cyclones, so **the decomposition is now available for every
 Energy Pattern at no extra computational cost**. This pipeline reads those
 products; it launches nothing.
@@ -86,8 +88,8 @@ python scripts/ck_subterms_analysis/run_all.py
 
 ### Prerequisites
 
-1. The corrected rerun is COMPLETE and
-   `scripts/lec_climatology_rerun/build_corrected_vertical_levels.py` has written
+1. The corrected rerun is COMPLETE and its external
+   `build_corrected_vertical_levels.py` has written
    `data/corrected/vertical_phase_means_corrected.parquet`.
 2. The clustering has been rebuilt on `data/corrected/energy_cache_corrected.parquet`,
    so `results/cluster/cluster_to_ep.json` records a corrected lineage. `run_all.py`

@@ -4,11 +4,12 @@
 corrected_lec.py — Single access point to the corrected LEC climatology.
 
 Every downstream analysis of this paper must read its energetics through this
-module. The corrected rerun (``scripts/lec_climatology_rerun``, LorenzCycleToolKit
-2.0.0, pinned commit ``d38cda7e``) is the only scientific truth for the article;
-the legacy Zenodo archive and ``data/energy_cache.parquet`` are kept solely as
-the *before* side of ``scripts/lec_rerun_comparison`` and must never feed a
-result, table, or figure again.
+module. The corrected rerun (maintained in the independent
+``lec-climatology-rerun`` repository, LorenzCycleToolKit 2.0.0, pinned commit
+``d38cda7e``) is the only scientific truth for the article. The legacy Zenodo
+archive and ``data/energy_cache.parquet`` are kept solely as the *before* side
+of that repository's comparison and must never feed a result, table, or figure
+again.
 
 Why a shared module
 -------------------
@@ -47,8 +48,9 @@ Layout consumed
         periods.csv                             windows as used by the toolkit
         results_vertical_levels/<stem>_pressure_level.csv
 
-``data/corrected/`` (repository, built by ``scripts/lec_climatology_rerun``)
-holds the derived products that workstation scripts read without the run root.
+``data/corrected/`` (this article repository, built by the independent rerun
+workflow) holds the derived products that workstation scripts read without the
+run root.
 
 Environment
 -----------
@@ -78,7 +80,7 @@ DEFAULT_CORRECTED_DATA = PROJECT_ROOT / "data" / "corrected"
 #: Population targeted by the rerun (see ``<run-root>/provenance.json``).
 EXPECTED_POPULATION = 3820
 
-# Derived products written by scripts/lec_climatology_rerun/build_*.py
+# Derived products written by lec-climatology-rerun/build_*.py
 ENERGY_CACHE = "energy_cache_corrected.parquet"
 TRACKS_WITH_ENERGETICS = "tracks_with_energetics_corrected.csv"
 VERTICAL_PHASE_MEANS = "vertical_phase_means_corrected.parquet"

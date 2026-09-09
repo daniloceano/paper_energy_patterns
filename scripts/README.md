@@ -14,8 +14,6 @@ scripts/
 ├── ep_structure_analysis/              # ERA5 composite analysis (EP1, EP2, EP3, EPALL)
 ├── lec_field_dependence_analysis/      # PREDEP: individual-cyclone LEC–field predictive dependence
 ├── ck_subterms_analysis/               # Ck decomposition into 5 subterms, all EPs
-├── lec_climatology_rerun/              # Corrected LEC climatology rerun (LorenzCycleToolKit 2.0.0) + derived-product builders
-├── lec_rerun_comparison/               # Legacy vs corrected LEC: split violins + technical report
 ├── preprocess_data/                    # Data download and preprocessing
 ├── utils/                              # Shared utility functions
 ├── web/                                # Scripts to build and update the results website
@@ -203,8 +201,8 @@ python scripts/ck_subterms_analysis/run_all.py
 2. `step2_subterm_statistics.py` — Descriptive statistics, dominance frequency, EP contrasts (Kruskal-Wallis + Mann-Whitney + BH-FDR)
 3. `step3_subterm_figures.py` — Vertical profiles, boxplots, lifecycle evolution
 
-**Prerequisites:** `data/corrected/vertical_phase_means_corrected.parquet` (from
-`lec_climatology_rerun`) and a clustering rebuilt on the corrected cache. The
+**Prerequisites:** `data/corrected/vertical_phase_means_corrected.parquet` (built
+by the external `lec-climatology-rerun` workflow) and a clustering rebuilt on the corrected cache. The
 orchestrator refuses to run on a legacy clustering.
 
 **Inputs:** `data/corrected/vertical_phase_means_corrected.parquet`, `results/cluster/`
@@ -215,62 +213,15 @@ The retired EP1 side run is kept, unrunnable, in `deprecated_ep1_side_run/`.
 
 ---
 
-### `lec_climatology_rerun/` — Corrected LEC Climatology
+### Corrected LEC production workflow (external repository)
 
-Recomputes the semi-Lagrangian LEC climatology with LorenzCycleToolKit 2.0.0
-(pinned commit), which corrected `Ca`, the fifth `Ck` subterm, `BΦ_Z`/`BΦ_E`,
-vertical-level alignment, time tendencies and NaN handling. **The output of this
-rerun is the only scientific truth for the article**; the legacy Zenodo archive
-and `data/energy_cache.parquet` survive only as the *before* side of
-`lec_rerun_comparison`.
-
-See `scripts/lec_climatology_rerun/README.md` for the run itself (state machine,
-CDS key pool, monitoring) and `docs/legacy_data_retirement.md` for the migration
-status of every downstream script.
-
-**Derived-product builders** — run once the rerun is COMPLETE; each writes into
-`data/corrected/` and refuses a partial population:
-
-| Builder | Output | Replaces |
-|---|---|---|
-| `build_corrected_cache.py` | `energy_cache_corrected.parquet` | `data/energy_cache.parquet` |
-| `build_corrected_tracks.py` | `tracks_with_energetics_corrected.csv` | `data/tracks_SAt_filtered_with_energetics_processed.csv` |
-| `build_corrected_vertical_levels.py` | `vertical_phase_means_corrected.parquet` | `data/temp_lec_zenodo/.../{Ca,Ck}_level.csv` |
-
-Pass `--allow-partial` (or `--limit N`) for exploratory builds on the cyclones
-finished so far; the output is suffixed `_partial` and is never publishable.
-
----
-
-### `lec_rerun_comparison/` — Legacy vs Corrected LEC Comparison
-
-Quantifies how much the LEC terms changed after the corrected rerun
-(`lec_climatology_rerun`), before any downstream product is regenerated. Legacy
-and corrected phase means are paired on the same cyclones, the same frozen
-lifecycle windows and the same time steps, so every difference comes from the
-LorenzCycleToolKit 2.0.0 correction alone. Runs on partial rerun state.
-
-**Pipeline:**
-
-```bash
-python scripts/lec_rerun_comparison/run_all.py
-```
-
-1. `step1_build_comparison_table.py` — Pair legacy and corrected phase means
-2. `step2_plot_split_violins.py` — Split violins (left = legacy, right = corrected) per term family
-3. `step3_summary_stats.py` — Change magnitude, rank correlation, sign-change rates
-4. `step5_plot_lec_diagram.py` — Four-box LEC diagram with doubled arrows where terms changed
-5. `step6_plot_eof_diagram.py` — Same diagram carrying EOF 1–4 loadings (replicates the article EOF figures)
-6. `step4_write_report.py` — Regenerate the technical report from those tables
-7. `step7_build_report_pdf.py` — Render the report to a shareable PDF with the figures embedded
-
-**Prerequisite:** the rerun state database at `--run-root` (server only).
-
-**Inputs:** `data/energy_cache.parquet`, `data/temp_lec_zenodo/`, `<run-root>/lec_results/`
-
-**Outputs:** `results/lec_rerun_comparison/`, `figures/lec_rerun_comparison/`, `docs/lec_rerun_comparison_report.md` and `.pdf`
-
-See `scripts/lec_rerun_comparison/README.md` for details.
+The 3,820-cyclone recomputation, corrected-product builders, and the final
+legacy-versus-corrected comparison are maintained in
+[`lec-climatology-rerun`](https://github.com/daniloceano/lec-climatology-rerun).
+The workflow is kept separate from the article analyses because its large
+run-root lives on `swell`; this repository consumes its corrected products from
+`data/corrected/`. See `docs/legacy_data_retirement.md` for the downstream
+cutover plan.
 
 ---
 

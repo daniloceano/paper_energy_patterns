@@ -9,7 +9,9 @@ This document describes the data structure and sources for cyclone tracking and 
 For the corrected climatology rerun, the authoritative population is the
 3,820 complete-lifecycle set reproducibly selected from tracked
 `energy_cache.parquet`; `ep1_cases.csv` and `epall_cases.csv` are downstream
-subsets. See `scripts/lec_climatology_rerun/README.md`.
+subsets. See the independent
+[`lec-climatology-rerun`](https://github.com/daniloceano/lec-climatology-rerun)
+repository for the completed production workflow and its provenance.
 
 ```
 PRIMARY SOURCES (Remote):

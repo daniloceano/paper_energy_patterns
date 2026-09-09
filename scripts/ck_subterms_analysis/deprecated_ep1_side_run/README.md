@@ -9,8 +9,8 @@ archived results carried the total term alone. They wrote into
 
 They are superseded on two counts:
 
-1. **Coverage.** The corrected climatology rerun
-   (`scripts/lec_climatology_rerun`) computes `Ck_1` … `Ck_5` for all 3,820
+1. **Coverage.** The independent `lec-climatology-rerun` workflow computes
+   `Ck_1` … `Ck_5` for all 3,820
    cyclones, so the decomposition exists for EP1, EP2, EP3 and EPALL without
    any further ERA5 download or toolkit execution.
 2. **Correctness.** That side run predates the LorenzCycleToolKit 2.0.0

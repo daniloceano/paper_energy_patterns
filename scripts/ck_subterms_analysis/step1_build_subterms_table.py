@@ -32,7 +32,7 @@ carried in the output so any drift is visible rather than assumed away.
 Inputs
 ------
     data/corrected/vertical_phase_means_corrected.parquet
-        built by scripts/lec_climatology_rerun/build_corrected_vertical_levels.py
+        built by lec-climatology-rerun/build_corrected_vertical_levels.py
     results/cluster/kmeans_clustered_data.csv + cluster_to_ep.json
         Energy Pattern assignment of the corrected clustering
 
@@ -206,7 +206,7 @@ def main() -> int:
     if not source.is_file():
         raise SystemExit(
             f"vertical phase means not found: {source}\n"
-            "Run scripts/lec_climatology_rerun/build_corrected_vertical_levels.py first."
+            "Build it from the independent lec-climatology-rerun repository first."
         )
     if "_partial" in source.name and not args.allow_partial:
         raise SystemExit(

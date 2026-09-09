@@ -1,9 +1,9 @@
 # Preprocess Data
 
 > For the corrected 2026 Lorenz Energy Cycle climatology, use
-> `scripts/lec_climatology_rerun/`. It preserves the legacy cache, pins
-> toolkit/data provenance, and refuses to build a corrected cache until all
-> 3,820 selected cyclones validate as complete.
+> [`lec-climatology-rerun`](https://github.com/daniloceano/lec-climatology-rerun).
+> It preserves the legacy cache, pins toolkit/data provenance, and only builds
+> the final corrected cache after all 3,820 selected cyclones validate.
 
 Scripts for downloading and preprocessing cyclone data from remote sources (GitHub, Zenodo) into optimized local caches.
 

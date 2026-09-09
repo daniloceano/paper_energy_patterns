@@ -8,10 +8,12 @@ This repository organises all scripts, data, and results for the paper on energe
 
 ### Corrected LEC climatology rerun (2026)
 
-The resumable production workflow for recomputing all 3,820 article cyclones
-with the pinned LorenzCycleToolKit 2.0.0 corrections is documented in
-`scripts/lec_climatology_rerun/README.md`. It preserves legacy results and
-locks mass production behind validated short/median/long pilot cases.
+The corrected production run finished with all 3,820 article cyclones
+validated. Its operational workflow, legacy comparison, final report, and
+figures now live in the independent
+[`lec-climatology-rerun`](https://github.com/daniloceano/lec-climatology-rerun)
+repository. This article repository retains the corrected derived cache used by
+the downstream PCA, clustering, and figure pipelines.
 
 ### 1. Setup Environment
 

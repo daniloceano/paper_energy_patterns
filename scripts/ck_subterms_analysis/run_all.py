@@ -12,7 +12,7 @@ The scripts that drove the old EP1-only side run live in
 Prerequisites
 -------------
 1. The corrected rerun is COMPLETE, and
-   ``scripts/lec_climatology_rerun/build_corrected_vertical_levels.py`` has
+   ``lec-climatology-rerun/build_corrected_vertical_levels.py`` has
    produced ``data/corrected/vertical_phase_means_corrected.parquet``.
 2. The clustering has been rebuilt on the corrected energy cache, so
    ``results/cluster/cluster_to_ep.json`` describes the corrected run.

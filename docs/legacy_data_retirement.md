@@ -1,13 +1,15 @@
 # Retiring the legacy LEC data
 
 Status of the migration from the legacy (article) Lorenz Energy Cycle results to
-the corrected climatology produced by `scripts/lec_climatology_rerun`
-(LorenzCycleToolKit 2.0.0, pinned commit `d38cda7e`).
+the corrected climatology maintained in
+[`lec-climatology-rerun`](https://github.com/daniloceano/lec-climatology-rerun)
+(LorenzCycleToolKit 2.0.0, pinned commit `d38cda7e`). The production run reached
+3,820/3,820 validated cyclones on 2026-09-09.
 
 **Policy.** The corrected rerun is the only scientific truth for this article.
 The legacy artefacts survive for exactly one purpose — the *before* side of
-`scripts/lec_rerun_comparison` — and must not feed any other result, table or
-figure. Anything else that reads them is a defect.
+the comparison in the independent rerun repository — and must not feed any
+other result, table or figure. Anything else that reads them is a defect.
 
 ---
 
@@ -32,8 +34,9 @@ from the run root, not from `data/temp_lec_zenodo/`.
 
 ## 2. Replacements
 
-Built by `scripts/lec_climatology_rerun/build_*.py` into `data/corrected/`, and
-read through `scripts/utils/corrected_lec.py`:
+Built by `scripts/lec_climatology_rerun/build_*.py` in the independent rerun
+repository, written into this repository's `data/corrected/`, and read through
+`scripts/utils/corrected_lec.py`:
 
 | New product | Replaces | Builder |
 |---|---|---|
@@ -119,8 +122,8 @@ on a legacy clustering. The file currently on disk is stamped
 |---|---|
 | `scripts/utils/corrected_lec.py` | **New.** Single access point; owns the conventions of §3. |
 | `scripts/utils/ep_mapping.py` | Mapping derived from centroids, lineage-stamped, lazily resolved. |
-| `scripts/lec_climatology_rerun/build_corrected_tracks.py` | **New.** |
-| `scripts/lec_climatology_rerun/build_corrected_vertical_levels.py` | **New.** |
+| `lec-climatology-rerun`: `build_corrected_tracks.py` | **External builder.** |
+| `lec-climatology-rerun`: `build_corrected_vertical_levels.py` | **External builder.** |
 | `scripts/cluster_analysis_energy_patterns/step1_normalize_and_pca.py` | Defaults to the corrected cache; legacy is no longer a fallback. |
 | `scripts/cluster_analysis_energy_patterns/step4_apply_kmeans.py` | Writes `cluster_to_ep.json` with the cache lineage. |
 | `scripts/ck_subterms_analysis/` | Rewritten for all EPs; side run deprecated. |
@@ -157,30 +160,34 @@ file to exist.
 
 | Script | Why |
 |---|---|
-| `scripts/lec_rerun_comparison/*` | The legacy side *is* the subject: it quantifies what the correction changed. |
+| `lec-climatology-rerun/scripts/lec_rerun_comparison/*` | The legacy side *is* the subject: it quantifies what the correction changed. |
 | `scripts/preprocess_data/*` | Documents how the legacy inputs were obtained; it is the provenance record. |
 | `scripts/ep_structure_analysis_legacy/*`, `*_BACKUP.py` | Already marked legacy. |
 | `scripts/exploratory/*` | Not in the paper. Anything promoted to a figure must be repointed first. |
 
 ---
 
-## 7. Order of operations once the rerun completes
+## 7. Order of operations after the completed rerun
+
+The rerun and the corrected phase-mean cache are complete. Further derived
+products can be rebuilt from the independent checkout before continuing the
+article pipeline:
 
 ```bash
 RUN=/p1-swell/danilocs/lec_climatology_corrected_v2
-cd /p1-swell/danilocs/paper_energy_patterns
+RERUN=/p1-swell/danilocs/lec-climatology-rerun
+PAPER=/p1-swell/danilocs/paper_energy_patterns
 E=paper_energy_patterns
 
-# 0. confirm 3,820/3,820 COMPLETE
-conda run -n $E python scripts/lec_climatology_rerun/monitor.py --run-root "$RUN"
-
-# 1. derived products
-conda run -n $E python -m scripts.lec_climatology_rerun.build_corrected_cache \
-  --run-root "$RUN" --output data/corrected/energy_cache_corrected.parquet
-conda run -n $E python -m scripts.lec_climatology_rerun.build_corrected_tracks --run-root "$RUN"
-conda run -n $E python -m scripts.lec_climatology_rerun.build_corrected_vertical_levels --run-root "$RUN"
+# 1. optional derived products not yet built
+cd "$RERUN"
+conda run -n $E python -m scripts.lec_climatology_rerun.build_corrected_tracks \
+  --run-root "$RUN" --output "$PAPER/data/corrected/tracks_with_energetics_corrected.csv"
+conda run -n $E python -m scripts.lec_climatology_rerun.build_corrected_vertical_levels \
+  --run-root "$RUN" --output "$PAPER/data/corrected/vertical_phase_means_corrected.parquet"
 
 # 2. Energy Patterns (rewrites cluster_to_ep.json with a corrected lineage)
+cd "$PAPER"
 conda run -n $E python scripts/cluster_analysis_energy_patterns/run_all.py
 
 # 3. analyses that depend on the Energy Patterns
@@ -191,13 +198,6 @@ conda run -n $E python scripts/ep_structure_analysis/step1_select_ep_tracks.py
 # 4. figures, then the website
 conda run -n $E python scripts/main/run_all.py
 conda run -n $E python scripts/web/prepare_site.py
-```
-
-The 32 `FAILED_FINAL` cyclones (CDS 5xx/timeouts, not data problems) must be
-retried before step 1: every builder refuses a partial population.
-
-```bash
-conda run -n $E python -m scripts.lec_climatology_rerun.pipeline retry-failures --run-root "$RUN"
 ```
 
 ---

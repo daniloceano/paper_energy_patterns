@@ -124,12 +124,46 @@ def extract_step4_clustering():
     print(f"  ✓ {output.relative_to(REPO_ROOT)}")
 
 
+def extract_energy_patterns():
+    """Publish site-wide EP counts and corrected intensification centroids."""
+    mapping_path = RESULTS_DIR / "cluster_to_ep.json"
+    centroids_path = RESULTS_DIR / "kmeans_centroids_energy.csv"
+    if not mapping_path.is_file() or not centroids_path.is_file():
+        raise FileNotFoundError(
+            "corrected cluster mapping and energy centroids are required for the site"
+        )
+
+    mapping = json.loads(mapping_path.read_text())
+    if "corrected" not in str(mapping.get("source_cache", "")):
+        raise RuntimeError("refusing to publish Energy Patterns from legacy clustering")
+
+    centroids = {
+        int(row["cluster"]): row for row in read_csv_safe(centroids_path)
+    }
+    patterns = {}
+    for cluster_text, ep_value in mapping["cluster_to_ep"].items():
+        cluster = int(cluster_text)
+        ep = int(ep_value)
+        centroid = centroids[cluster]
+        patterns[f"EP{ep}"] = {
+            "count": int(mapping["ep_counts"][str(ep)]),
+            "percentage": float(mapping["ep_percentages"][str(ep)]),
+            "meanCk": float(centroid["Ck_int"]),
+            "meanCa": float(centroid["Ca_int"]),
+        }
+
+    output = WEB_CONTENT / "energy_patterns.json"
+    output.write_text(json.dumps(patterns, indent=2) + "\n")
+    print(f"  ✓ {output.relative_to(REPO_ROOT)}")
+
+
 def main():
     print("Extracting cluster analysis data for site...")
     ensure_output_dir()
     extract_step2_pca()
     extract_step3_optimal_k()
     extract_step4_clustering()
+    extract_energy_patterns()
     print("Done.")
 
 

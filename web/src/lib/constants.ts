@@ -10,6 +10,7 @@ import type {
   DocumentInfo,
   Reference,
 } from './types'
+import energyPatternData from '@/content/energy_patterns.json'
 
 // --- Site metadata ---
 export const SITE_TITLE = 'Energy Patterns of South Atlantic Cyclones'
@@ -20,30 +21,30 @@ export const SITE_DESCRIPTION =
 export const ENERGY_PATTERNS: Record<string, EnergyPattern> = {
   EP1: {
     id: 'EP1',
-    label: 'EP1 — Strong Conversions / Energy Exporters',
-    count: 444,
-    percentage: 11.6,
-    meanCk: -16.48,
+    label: 'EP1 — Strongest Conversion Magnitudes',
+    count: energyPatternData.EP1.count,
+    percentage: energyPatternData.EP1.percentage,
+    meanCk: energyPatternData.EP1.meanCk,
     description:
-      'Most energetically active cyclones. Strong barotropic and baroclinic conversions. Tend to export energy (negative boundary fluxes). Genesis concentrated at the Brazil-Malvinas Confluence and SE-Brazil shelf.',
+      'Cyclones with the strongest combined intensification-phase baroclinic and barotropic conversion magnitudes in the corrected clustering.',
     color: '#e63946',
   },
   EP2: {
     id: 'EP2',
-    label: 'EP2 — Intermediate Conversions / Energy Importers',
-    count: 979,
-    percentage: 25.6,
-    meanCk: -3.49,
+    label: 'EP2 — Intermediate Conversion Magnitudes',
+    count: energyPatternData.EP2.count,
+    percentage: energyPatternData.EP2.percentage,
+    meanCk: energyPatternData.EP2.meanCk,
     description:
-      'Moderately energetic cyclones coupled to jet stream dynamics. Tend to import energy (positive boundary fluxes), drawing energy from the large-scale flow. Genesis mainly in the La Plata region.',
+      'Cyclones occupying the intermediate conversion regime of the corrected Energy Pattern classification.',
     color: '#457b9d',
   },
   EP3: {
     id: 'EP3',
     label: 'EP3 — Weak Energetics',
-    count: 2397,
-    percentage: 62.7,
-    meanCk: -1.71,
+    count: energyPatternData.EP3.count,
+    percentage: energyPatternData.EP3.percentage,
+    meanCk: energyPatternData.EP3.meanCk,
     description:
       'Typical transient cyclones representing the climatological background. Minimal energy conversions and weak intensity.',
     color: '#a8dadc',

@@ -51,7 +51,12 @@ import pandas as pd
 from tqdm import tqdm
 
 from scripts.utils.load_data import load_tracks
-from scripts.utils.ep_mapping import CLUSTER_TO_EP, ALL_EPS, get_ep_label
+from scripts.utils.ep_mapping import (
+    CLUSTER_TO_EP,
+    ALL_EPS,
+    assert_corrected_clustering,
+    get_ep_label,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CSV_DIR = Path(__file__).resolve().parent / "csv_output"
@@ -83,6 +88,7 @@ def read_one(path: Path) -> pd.DataFrame:
 
 
 def main():
+    assert_corrected_clustering()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)

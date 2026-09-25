@@ -134,7 +134,8 @@ def extract_manifest() -> dict:
         },
         "sign_convention": (
             "Negative Ck transfers kinetic energy from the mean flow to the eddy "
-            "(KZ → KE); the dominant subterm is the most negative contribution."
+            "(KZ → KE); the dominant subterm is the most negative contribution, "
+            "while all-positive decompositions are classified separately."
         ),
         "subterms": [
             {"key": key, **metadata} for key, metadata in SUBTERM_LABELS.items()

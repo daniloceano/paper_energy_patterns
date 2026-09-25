@@ -145,7 +145,7 @@ export default function CkSubtermsPage() {
               'C_K > 0': 'the eddy transfers kinetic energy to the mean flow (K_E → K_Z)',
               '[·]_λφ': 'area-weighted horizontal mean',
             }}
-            notes="For each cyclone and phase, the dominant growth contribution is the most negative of the five vertically integrated subterms. Results are descriptive population summaries; dominance percentages are not hypothesis tests."
+            notes="For each cyclone and phase, the strongest mean-flow-to-eddy contribution is the most negative of the five vertically integrated subterms. Cases in which all five are positive are reported separately rather than being labelled as barotropically unstable. Results are descriptive population summaries; percentages are not hypothesis tests."
           />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {manifest.subterms.map((subterm) => (
@@ -161,7 +161,7 @@ export default function CkSubtermsPage() {
 
         <section>
           <h2 className="mb-4 text-lg font-bold text-slate-900">
-            Dominant intensification mechanism
+            Intensification contribution classification
           </h2>
           <div className="grid gap-5 lg:grid-cols-3">
             {dominanceByEp.map(({ ep, rows }) => (

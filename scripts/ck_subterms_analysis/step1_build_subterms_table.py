@@ -23,7 +23,8 @@ The five subterms follow the C_K equation of the manuscript::
 
 Sign convention (as in the manuscript): ``C_K < 0`` means K_Z -> K_E, the mean
 flow feeding the eddy (barotropic instability). The *dominant* subterm of a
-cyclone is the most negative one, i.e. the largest contributor to that transfer.
+cyclone is the most negative one, i.e. the largest contributor to that transfer,
+provided it is negative; all-positive cases are kept as a separate class.
 
 The subterms are verified to close: ``Ck = sum(Ck_1..Ck_5)`` to round-off, both
 per pressure level and after vertical integration. The closure residual is
@@ -117,12 +118,17 @@ def add_diagnostics(table: pd.DataFrame) -> pd.DataFrame:
     for stem in subterms:
         table[f"{stem}_share"] = table[stem] / table["Ck"].where(lambda s: s != 0)
 
-    # Dominant subterm: the most negative one, i.e. the strongest contributor to
-    # the mean-flow-to-eddy transfer that defines barotropic instability here.
+    # Minimum-valued subterm: when it is negative, this is the strongest
+    # contributor to mean-flow-to-eddy transfer. If every subterm is positive,
+    # no component feeds the eddy and assigning a "dominant instability term"
+    # would be physically misleading.
     dominant = table[subterms].idxmin(axis=1)
-    table["dominant_subterm"] = dominant
-    table["dominant_label"] = dominant.map(clec.CK_SUBTERM_LABELS)
-    table["dominant_value"] = table[subterms].min(axis=1)
+    minimum = table[subterms].min(axis=1)
+    table["dominant_subterm"] = dominant.where(minimum < 0, "none")
+    table["dominant_label"] = table["dominant_subterm"].map(
+        {**clec.CK_SUBTERM_LABELS, "none": "None (all positive)"}
+    )
+    table["dominant_value"] = minimum
 
     return table
 
@@ -170,9 +176,10 @@ def write_report(table: pd.DataFrame, source: Path, path: Path) -> Path:
         "## Dominant subterm during intensification",
         "",
         "| Energy Pattern | " + " | ".join(
-            clec.CK_SUBTERM_LABELS[stem] for stem in clec.CK_SUBTERMS
+            [clec.CK_SUBTERM_LABELS[stem] for stem in clec.CK_SUBTERMS]
+            + ["None (all positive)"]
         ) + " |",
-        "|---" * (len(clec.CK_SUBTERMS) + 1) + "|",
+        "|---" * (len(clec.CK_SUBTERMS) + 2) + "|",
     ]
     intensifying = table[table["phase"] == "intensification"]
     for label, group in intensifying.groupby("ep_label", observed=True):
@@ -181,6 +188,7 @@ def write_report(table: pd.DataFrame, source: Path, path: Path) -> Path:
             f"{shares.get(clec.CK_SUBTERM_LABELS[stem], 0.0):.1f}%"
             for stem in clec.CK_SUBTERMS
         ]
+        cells.append(f"{shares.get('None (all positive)', 0.0):.1f}%")
         lines.append(f"| {label} | " + " | ".join(cells) + " |")
 
     path.write_text("\n".join(lines) + "\n")

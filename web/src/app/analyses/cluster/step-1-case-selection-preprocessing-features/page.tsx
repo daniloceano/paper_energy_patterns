@@ -27,7 +27,7 @@ export default function Step1Page() {
         <section>
           <h2 className="mb-3 text-lg font-bold text-slate-900">Data Source</h2>
           <p className="text-sm leading-relaxed text-slate-600">
-            Cyclone tracks and semi-Lagrangian LEC diagnostics from{' '}
+            Cyclone tracks from{' '}
             <a
               href="https://doi.org/10.5281/zenodo.18133432"
               target="_blank"
@@ -36,8 +36,19 @@ export default function Step1Page() {
             >
               Zenodo (DOI: 10.5281/zenodo.18133432)
             </a>
-            . The dataset spans {DATASET_STATS.period} ({DATASET_STATS.years} years) with{' '}
-            {DATASET_STATS.totalCyclones.toLocaleString()} cyclones in the South Atlantic domain.
+            . The dataset spans {DATASET_STATS.period} ({DATASET_STATS.years} years). The LEC
+            diagnostics used here come from the{' '}
+            <a
+              href="https://github.com/daniloceano/lec-climatology-rerun"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 hover:underline"
+            >
+              complete corrected recomputation
+            </a>{' '}
+            with toolkit v2.0.0; the clustering cache contains{' '}
+            {DATASET_STATS.filteredCyclones.toLocaleString()} South Atlantic cyclones with
+            complete lifecycles.
           </p>
         </section>
 
@@ -94,9 +105,10 @@ export default function Step1Page() {
         {/* Summary */}
         <ResultSummaryCallout type="result" title="Step 1 Result">
           <p>
-            {DATASET_STATS.filteredCyclones.toLocaleString()} cyclones retained with
-            complete lifecycle data. Feature matrix: {DATASET_STATS.phaseRecords.toLocaleString()}{' '}
-            rows × 7 standardised energy columns, ready for phase-separated PCA.
+            {DATASET_STATS.filteredCyclones.toLocaleString()} cyclones retained with complete
+            lifecycle data. After phase means are pivoted into columns, the feature matrix has{' '}
+            {DATASET_STATS.filteredCyclones.toLocaleString()} rows × 28 standardised columns
+            (7 terms × 4 phases), ready for a single global PCA.
           </p>
         </ResultSummaryCallout>
 
@@ -104,15 +116,13 @@ export default function Step1Page() {
         <FileProvenanceBadge
           files={[
             'scripts/cluster_analysis_energy_patterns/step1_normalize_and_pca.py',
-            'data/tracks_SAt_filtered_with_energetics_processed.csv',
-            'data/energy_cache.parquet',
+            'data/corrected/energy_cache_corrected.parquet',
           ]}
           label="Input / Script"
         />
         <FileProvenanceBadge
           files={[
             'results/cluster/pca_full_data.csv',
-            'results/cluster/pca_full_data_{phase}.csv',
           ]}
           label="Outputs"
         />

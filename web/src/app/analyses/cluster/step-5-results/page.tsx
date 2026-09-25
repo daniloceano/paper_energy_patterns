@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
-import FigurePanel from '@/components/analysis/FigurePanel'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import { ENERGY_PATTERNS } from '@/lib/constants'
 
@@ -17,7 +16,7 @@ export default function Step5Page() {
         title="Results & Summary"
         subtitle="Step 5 of 5"
         badge="Cluster Analysis"
-        description="Summary of identified Energy Patterns with their physical characteristics, including intensity metrics, geographical distribution, and seasonality."
+        description="Summary of the corrected Energy Pattern classification, its population sizes, and its intensification-phase conversion centroids."
       />
 
       <div className="space-y-8">
@@ -43,55 +42,29 @@ export default function Step5Page() {
                   <div>
                     <p className="text-sm font-bold text-slate-900">{ep.id}</p>
                     <p className="text-xs text-slate-500">
-                      N = {ep.count} · {ep.percentage}%
+                      N = {ep.count.toLocaleString()} · {ep.percentage.toFixed(1)}%
                     </p>
                   </div>
                 </div>
                 <p className="mt-3 text-sm text-slate-600">{ep.description}</p>
                 <p className="mt-2 text-xs font-medium text-slate-400">
-                  Mean C<sub>k</sub> = {ep.meanCk} W m⁻²
+                  C<sub>a,int</sub> = {ep.meanCa.toFixed(2)} · C<sub>k,int</sub> ={' '}
+                  {ep.meanCk.toFixed(2)} W m⁻²
                 </p>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Publication figures */}
-        <section>
-          <h2 className="mb-4 text-lg font-bold text-slate-900">
-            Publication Figures
-          </h2>
-          <div className="space-y-4">
-            <FigurePanel
-              src="/figures/main/4_lps_combined.png"
-              alt="Combined Lorenz Phase Space for EP1, EP2, EP3"
-              caption="Combined LPS diagram showing the three Energy Patterns in both conversion and import spaces. Publication-ready figure."
-              source="figures/main/4_lps_combined.png"
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FigurePanel
-                src="/figures/main/5_ep_intensity_seasonality_trends.png"
-                alt="EP intensity, seasonality, and trends"
-                caption="Intensity metrics, seasonal distribution, and interannual trends by Energy Pattern."
-                source="figures/main/5_ep_intensity_seasonality_trends.png"
-              />
-              <FigurePanel
-                src="/figures/main/6_ep_genesis_density_kde.png"
-                alt="Genesis density KDE maps by EP"
-                caption="Kernel density estimation of genesis locations for each Energy Pattern."
-                source="figures/main/6_ep_genesis_density_kde.png"
-              />
-            </div>
-          </div>
-        </section>
-
         <ResultSummaryCallout type="result" title="Summary">
           <p>
             The cluster analysis successfully identifies three physically distinct Energy Patterns
-            from {(3820).toLocaleString()} South Atlantic cyclones. EP1 (11.6%) represents the most
-            energetically active systems, EP2 (25.6%) captures intermediate externally-forced cyclones,
-            and EP3 (62.7%) the weak climatological background. These patterns form the basis for
-            the subsequent composite structure analysis.
+            from {Object.values(ENERGY_PATTERNS).reduce((sum, ep) => sum + ep.count, 0).toLocaleString()}{' '}
+            South Atlantic cyclones. EP1 contains {ENERGY_PATTERNS.EP1.percentage.toFixed(1)}%,
+            EP2 {ENERGY_PATTERNS.EP2.percentage.toFixed(1)}%, and EP3{' '}
+            {ENERGY_PATTERNS.EP3.percentage.toFixed(1)}%. Their names encode the descending
+            intensification-phase |C<sub>a</sub>| + |C<sub>k</sub>| ranking; causal atmospheric
+            interpretations are evaluated separately in later analyses.
           </p>
         </ResultSummaryCallout>
       </div>

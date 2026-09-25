@@ -97,7 +97,7 @@ export default function HomePage() {
                   <div>
                     <p className="text-sm font-semibold text-slate-900">{ep.label}</p>
                     <p className="text-xs text-slate-500">
-                      N = {ep.count} ({ep.percentage}%)
+                      N = {ep.count.toLocaleString()} ({ep.percentage.toFixed(1)}%)
                     </p>
                   </div>
                 </div>
@@ -105,7 +105,8 @@ export default function HomePage() {
                   {ep.description}
                 </p>
                 <p className="mt-2 text-xs text-slate-400">
-                  Mean C<sub>k</sub> = {ep.meanCk} W m⁻²
+                  C<sub>a,int</sub> = {ep.meanCa.toFixed(2)} · C<sub>k,int</sub> ={' '}
+                  {ep.meanCk.toFixed(2)} W m⁻²
                 </p>
               </div>
             ))}
@@ -246,9 +247,8 @@ export default function HomePage() {
                 <p>
                   PCA-based K-Means clustering identifies three distinct{' '}
                   <strong>Energy Patterns</strong>. ERA5 composite analysis reveals the
-                  atmospheric structure differences between EP1 (strong conversions,
-                  energy exporters) and EP2 (intermediate conversions, energy importers)
-                  during intensification.
+                  atmospheric structure differences among groups ranked by their combined
+                  intensification-phase baroclinic and barotropic conversion magnitudes.
                 </p>
               </div>
             </div>

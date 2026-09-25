@@ -238,7 +238,9 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
             # Plot each cluster trajectory
             for cluster_id in range(n_clusters):
                 ep_num = CLUSTER_TO_EP.get(cluster_id, cluster_id + 1)
-                connection_linewidth = ep_num * 2  # Thicker lines for higher EP numbers
+                # EP labels are ranked strongest-to-weakest (EP1 → EP3), so
+                # line weight follows that same ordering in the categorical key.
+                connection_linewidth = (4 - ep_num) * 2
                 fig = lps.plot_data(
                     x_axis=all_x_data[cluster_id],
                     y_axis=all_y_data[cluster_id],
@@ -260,7 +262,7 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
             ep_to_cluster = {ep: cid for cid, ep in CLUSTER_TO_EP.items()}
             # Sort by EP number
             for ep_num in sorted(ep_to_cluster.keys()):
-                linewidth = ep_num * 2  # Same as used in plotting
+                linewidth = (4 - ep_num) * 2  # Same as used in plotting
                 legend_elements.append(
                     Line2D([0], [0], color='black', linewidth=linewidth, 
                            label=f'EP{ep_num}')

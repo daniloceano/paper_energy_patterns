@@ -148,7 +148,8 @@ export default function DataReferencesPage() {
               </div>
               <p className="mt-2 text-sm text-slate-600">
                 Conversion from zonal KE to eddy KE via horizontal wind shear. C<sub>k</sub> &lt; 0
-                indicates barotropic energy extraction from the mean flow (EP1 hallmark).
+                indicates barotropic energy extraction from the mean flow; C<sub>k</sub> &gt; 0
+                indicates transfer from eddy to zonal kinetic energy.
               </p>
               <div className="mt-3">
                   <FormulaBlock

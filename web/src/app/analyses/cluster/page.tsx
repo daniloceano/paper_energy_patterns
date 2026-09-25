@@ -8,6 +8,7 @@ import MethodsPanel from '@/components/analysis/MethodsPanel'
 import FormulaBlock from '@/components/analysis/FormulaBlock'
 import StatsTable from '@/components/analysis/StatsTable'
 import { SimpleTerms, InThisStudy } from '@/components/analysis/Didactic'
+import optimalKData from '@/content/cluster_step3_data.json'
 
 export const metadata: Metadata = {
   title: 'Cluster Analysis',
@@ -49,13 +50,12 @@ export default function ClusterPage() {
         <div className="min-w-0 flex-1 space-y-8">
           <ResultSummaryCallout type="result" title="Key Result">
             <p>
-              Three distinct Energy Patterns were identified with k = 3 (optimal via
-              5-index ensemble). <strong>EP1</strong> (N={ENERGY_PATTERNS.EP1.count},{' '}
-              {ENERGY_PATTERNS.EP1.percentage}%): strong barotropic and baroclinic
-              conversions. <strong>EP2</strong> (N={ENERGY_PATTERNS.EP2.count},{' '}
-              {ENERGY_PATTERNS.EP2.percentage}%): intermediate, externally forced.{' '}
-              <strong>EP3</strong> (N={ENERGY_PATTERNS.EP3.count},{' '}
-              {ENERGY_PATTERNS.EP3.percentage}%): weak background energetics.
+              Three Energy Patterns were identified with k = {optimalKData.optimal_k} using five internal validity
+              indices plus cross-validated stability. <strong>EP1</strong> contains{' '}
+              {ENERGY_PATTERNS.EP1.count.toLocaleString()} cyclones ({ENERGY_PATTERNS.EP1.percentage.toFixed(1)}%),{' '}
+              <strong>EP2</strong> {ENERGY_PATTERNS.EP2.count.toLocaleString()} ({ENERGY_PATTERNS.EP2.percentage.toFixed(1)}%),
+              and <strong>EP3</strong> {ENERGY_PATTERNS.EP3.count.toLocaleString()} ({ENERGY_PATTERNS.EP3.percentage.toFixed(1)}%).
+              Labels follow descending |C<sub>a,int</sub>| + |C<sub>k,int</sub>|.
             </p>
           </ResultSummaryCallout>
 
@@ -140,11 +140,10 @@ export default function ClusterPage() {
               </h3>
               <p className="mt-2 text-sm text-slate-600">
                 K-Means requires the number of clusters to be fixed in advance, so choosing
-                it by eye would make the whole result subjective. Instead, five cluster
-                validity indices — each measuring compactness and separation differently —
-                are computed for every candidate k from 3 to 15, rescaled to a common 0–1
-                range, and averaged into a single ensemble score. The k that maximises the
-                ensemble is selected.
+                it by eye would make the whole result subjective. Instead, five internal cluster
+                validity indices and repeated cross-validated Reval stability are computed for
+                every candidate k from 3 to 15, rescaled to a common 0–1 range, and averaged into
+                a six-criterion ensemble score. The k that maximises the ensemble is selected.
               </p>
               <div className="mt-3">
                 <StatsTable
@@ -160,16 +159,17 @@ export default function ClusterPage() {
                     { idx: 'Calinski–Harabasz', opt: 'Max', what: 'Ratio of between-cluster to within-cluster dispersion' },
                     { idx: 'Score Function', opt: 'Max', what: 'Bounded combination of compactness and separation' },
                     { idx: 'Gap statistic', opt: 'Max', what: 'Observed dispersion against that expected under a random null reference' },
+                    { idx: 'Reval stability', opt: 'Max', what: 'Prediction stability over repeated 5-fold cross-validation' },
                   ]}
-                  caption="Davies–Bouldin is inverted before averaging so that higher is better for every index. The ensemble consistently selects k = 3."
+                  caption="Davies–Bouldin is inverted before averaging. Reval is represented as 1 minus validation misclassification, so higher is better for every criterion."
                 />
               </div>
               <SimpleTerms>
                 <p>
                   Any single index can be fooled by a particular data geometry. Requiring
-                  five indices that disagree by construction to nonetheless point at the
-                  same answer is a much stronger argument than quoting whichever one gave
-                  the most convenient result.
+                  Combining indices that measure different aspects of the solution reduces
+                  dependence on any single data geometry. Reval adds an out-of-sample check:
+                  cluster labels should remain predictable under repeated data splits.
                 </p>
               </SimpleTerms>
             </div>
@@ -201,12 +201,10 @@ export default function ClusterPage() {
               </div>
               <InThisStudy>
                 <p>
-                  The three resulting clusters are labelled EP1, EP2 and EP3 by the
-                  magnitude of their barotropic conversion <em>C</em><sub>k</sub>. Note
-                  what this procedure does <em>not</em> assume: nothing about intensity,
-                  season, or genesis region enters the clustering. That EP1 turns out to be
-                  the most intense group, and EP2 the most prone to subtropical transition,
-                  are findings about the energetics — not inputs to it.
+                  The three K-Means clusters are labelled EP1, EP2 and EP3 by descending{' '}
+                  |<em>C</em><sub>a,int</sub>| + |<em>C</em><sub>k,int</sub>| at their reconstructed
+                  centroids. Nothing about cyclone intensity, season, genesis region, or later
+                  environmental interpretation enters either the clustering or this ranking.
                 </p>
               </InThisStudy>
             </div>

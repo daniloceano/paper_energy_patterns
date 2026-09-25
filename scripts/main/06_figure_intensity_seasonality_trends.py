@@ -53,6 +53,10 @@ except ImportError:
 
 from scipy.stats import theilslopes
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.utils.ep_mapping import CLUSTER_TO_EP, assert_corrected_clustering
+
 # ============================================================================
 # Configuration
 # ============================================================================
@@ -67,13 +71,6 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 # Energy Pattern configuration
 EP_NAMES = ['EP1', 'EP2', 'EP3']
 EP_COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Blue, Orange, Green
-
-# Cluster to EP mapping (based on Ck energy levels)
-CLUSTER_TO_EP = {
-    0: 1,
-    2: 2,
-    1: 3
-}
 
 # Season configuration
 SEASONS = {
@@ -117,6 +114,7 @@ plt.rcParams.update({
 
 def load_data():
     """Load cyclone data with EP assignments."""
+    assert_corrected_clustering()
     import sys
     scripts_dir = BASE_DIR / 'scripts'
     sys.path.insert(0, str(scripts_dir))

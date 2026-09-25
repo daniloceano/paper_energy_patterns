@@ -32,6 +32,10 @@ from matplotlib.colors import TwoSlopeNorm
 import warnings
 warnings.filterwarnings('ignore')
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.utils.ep_mapping import CLUSTER_TO_EP, assert_corrected_clustering
+
 # ============================================================================
 # Configuration
 # ============================================================================
@@ -57,13 +61,6 @@ COLOR_LIMITS = {
     'EP3': None
 }
 
-# Cluster to EP mapping (based on Ck energy levels)
-CLUSTER_TO_EP = {
-    0: 1,  # Cluster 0 → EP1 (lowest Ck)
-    2: 2,  # Cluster 2 → EP2 (middle Ck)
-    1: 3   # Cluster 1 → EP3 (highest Ck)
-}
-
 # Domain configuration
 LON_MIN, LON_MAX = -75, -20
 LAT_MIN, LAT_MAX = -55, -20
@@ -87,6 +84,7 @@ plt.rcParams.update({
 
 def load_data():
     """Load cyclone data with EP assignments."""
+    assert_corrected_clustering()
     # Add parent directory to path for imports
     import sys
     scripts_dir = BASE_DIR / 'scripts'

@@ -24,6 +24,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 warnings.filterwarnings('ignore')
 
+from scripts.utils.ep_mapping import CLUSTER_TO_EP, assert_corrected_clustering
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -51,13 +53,6 @@ LPS_ZOOM_LEGEND_TITLESIZE = 18
 LPS_ZOOM_TICK_LABELSIZE = 14
 LPS_ZOOM_CBAR_LABELSIZE = 18
 LPS_ZOOM_FIGSIZE = (10, 10)
-
-# Cluster to EP mapping (based on Ck energy levels)
-CLUSTER_TO_EP = {
-    0: 1,  # Cluster 0 → EP1 (lowest Ck)
-    2: 2,  # Cluster 2 → EP2 (middle Ck)
-    1: 3   # Cluster 1 → EP3 (highest Ck)
-}
 
 # ============================================================================
 
@@ -370,6 +365,7 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
 
 def main():
     """Main execution function."""
+    assert_corrected_clustering()
     results_dir = Path(RESULTS_DIR)
     figures_dir = Path(FIGURES_DIR)
     

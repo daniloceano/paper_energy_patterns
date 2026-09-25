@@ -188,8 +188,8 @@ The LEC framework employed here is the same as in \citet{de2025lorenz}, implemen
 \begin{flalign}
 \frac{\partial A_Z}{\partial t} &= BA_Z - C_Z - C_A + G_Z \\
 \frac{\partial A_E}{\partial t} &= BA_E - C_E + C_A + G_E \\
-\frac{\partial K_Z}{\partial t} &= BK_Z + C_Z - C_K + B\Phi_Z - D_Z \\
-\frac{\partial K_E}{\partial t} &= BK_E + C_E + C_K + B\Phi_E - D_E 
+\frac{\partial K_Z}{\partial t} &= BK_Z + C_Z + C_K + B\Phi_Z - D_Z \\
+\frac{\partial K_E}{\partial t} &= BK_E + C_E - C_K + B\Phi_E - D_E
 \end{flalign}
 
 In these equations, APE is divided into zonal ($A_Z$) and eddy ($A_E$) components, as is kinetic energy ($K_Z$ and $K_E$, respectively). $C_A$ represents the conversion between $A_Z$ and $A_E$, $C_E$ denotes the conversion from $A_E$ to $K_E$, $C_K$ signifies the transformation from $K_E$ to $K_Z$, and $C_Z$ describes the conversion from $A_Z$ to $K_Z$. The generation of APE and the dissipation of kinetic energy are indicated by $G$ and $D$, with $G_Z$ and $G_E$ denoting the generation of $A_Z$ and $A_E$, and $D_Z$ and $D_E$ representing the dissipation of $K_Z$ and $K_E$, respectively. The terms $BA_Z$, $BA_E$, $BK_Z$, and $BK_E$ represent the fluxes of zonal and eddy APE and kinetic energy across the boundaries. The terms $B\Phi_Z$ and $B\Phi_E$ are grouped with $C_Z$ and $C_E$, respectively, because both arise from the same derivation of the $K_Z$ and $K_E$ balances. \citet{muench1965dynamics} notes the difficulty in interpreting $B\Phi_Z$ and $B\Phi_E$, indicating that they are related to the downward flux of kinetic energy (i.e., toward lower altitudes) and represent the emergence of kinetic energy at the boundaries of the computational domain. For the full mathematical formulations of these processes, we refer to \citet{muench1965dynamics} and \citet{brennan1980zonal}.

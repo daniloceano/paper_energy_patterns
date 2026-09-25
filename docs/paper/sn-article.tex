@@ -261,9 +261,9 @@ After dimensionality reduction with PCA, we clustered the cyclones using the $k$
 
 where $\mathcal{I}_c$ is the index set of points assigned to cluster $c$ and $\boldsymbol{\mu}_c\in\mathbb{R}^{K}$ is the cluster centroid (i.e., the mean of the points in cluster $c$). The optimization is performed iteratively using Lloyd's algorithm: (i) assign each point to the nearest centroid in Euclidean distance, and (ii) update each centroid as the mean of the points currently assigned to it, repeating until convergence \citep{lloyd1982least}. Here, we used the scikit-learn implementation of $k$-means with $k$-means++ initialization \citep{arthur2006k}, which selects initial centroids in a distance-aware manner to improve convergence and reduce the chance of poor local minima.
 
-Because $k$-means requires the number of clusters to be specified \emph{a priori}, we adopted an objective, multi-metric procedure to select this value. More than 100 cluster validity indices (CVIs) have been proposed in the literature \citep{arbelaitz2013extensive,hassan2024z}; here we combine five complementary CVIs that quantify cluster compactness and separation from different perspectives (Table~\ref{tab:cvi_summary}). For each candidate number of clusters $C$ (tested over a prescribed range), we computed all five indices from the $k$-means partition in the retained PCA space.
+Because $k$-means requires the number of clusters to be specified \emph{a priori}, we adopted an objective, multi-metric procedure to select this value. More than 100 cluster validity indices (CVIs) have been proposed in the literature \citep{arbelaitz2013extensive,hassan2024z}; here we combine five internal CVIs that quantify cluster compactness and separation with a cross-validated relative-stability score (Table~\ref{tab:cvi_summary}). For each candidate number of clusters $C=3,\ldots,15$, we computed the five internal indices from the $k$-means partition in the retained PCA space. Stability was evaluated with the Reval procedure using ten repetitions of five-fold cross-validation, a $k$-nearest-neighbour classifier, and 50 random-label iterations. Reval's validation misclassification score was converted to stability as one minus the score, so that larger values indicate more reproducible partitions.
 
-To place all CVIs on a common scale, each index $I_m(C)$ (with $m=1,\ldots,5$) was rescaled to $[0,1]$ using min--max normalization,
+To place all six criteria on a common scale, each index $I_m(C)$ (with $m=1,\ldots,6$) was rescaled to $[0,1]$ using min--max normalization,
 \begin{equation}
 \widetilde{I}_m(C) = \frac{I_m(C) - \min\limits_{C} I_m(C)}{\max\limits_{C} I_m(C) - \min\limits_{C} I_m(C)}.
 \end{equation}
@@ -273,14 +273,14 @@ For indices where smaller values indicate better clustering (Davies--Bouldin), w
 \end{equation}
 Finally, we defined a composite (unweighted) agreement score as the mean of the normalized CVIs,
 \begin{equation}
-\overline{I}(C) = \frac{1}{5}\sum_{m=1}^{5}\widetilde{I}_m^{\,*}(C),
+\overline{I}(C) = \frac{1}{6}\sum_{m=1}^{6}\widetilde{I}_m^{\,*}(C),
 \end{equation}
 and selected the optimal number of clusters as the maximizer of $\overline{I}(C)$. This procedure consistently indicated $C=3$ as the optimal partition for the full dataset, supporting three distinct energy patterns while reducing reliance on any single validity criterion  (Figure \ref{fig:S1_pca_clustering_validation}b). 
 
 
 \begin{table}[t]
 \centering
-\caption{Cluster validity indices (CVIs) used to select the number of clusters $C$: Silhouette (SIL; \citealp{rousseeuw1987silhouettes}), Davies--Bouldin (DB; \citealp{davies2009cluster}), Calinski--Harabasz (CH; \citealp{calinski1974dendrite}), Score Function (SF; \citealp{saitta2008comprehensive}), and Gap statistic (GAP; \citealp{tibshirani2001estimating}). Optimization indicates whether the index should be maximized (Max) or minimized (Min).}
+\caption{Criteria used to select the number of clusters $C$: Silhouette (SIL; \citealp{rousseeuw1987silhouettes}), Davies--Bouldin (DB; \citealp{davies2009cluster}), Calinski--Harabasz (CH; \citealp{calinski1974dendrite}), Score Function (SF; \citealp{saitta2008comprehensive}), Gap statistic (GAP; \citealp{tibshirani2001estimating}), and cross-validated relative stability (STAB). Optimization indicates whether the criterion should be maximized (Max) or minimized (Min).}
 \label{tab:cvi_summary}
 \begin{tabular}{p{0.8cm}p{1cm}p{0.8cm}p{7.2cm}}
 \toprule
@@ -296,6 +296,8 @@ SF  & $(0,\,1)$ & Max &
 Normalized measure combining compactness and separation via a bounded (sigmoid) transformation of the log-ratio between- and within-cluster distances. \\
 GAP & $[0,\,\infty)$ & Max &
 Difference between observed within-cluster dispersion and that expected under a null reference distribution; larger gaps indicate stronger clustering structure than random. \\
+STAB & $[0,\,1]$ & Max &
+One minus the Reval validation misclassification score; larger values indicate cluster labels that are more reproducible on held-out folds. \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -184,6 +184,8 @@ Cyclones have variable lifetimes, being able to last for less than 24 hours to o
 
 The LEC framework employed here is the same as in \citet{de2025lorenz}, implemented with LorenzCycleToolKit version 2.0.0 \citep{de2024lorenzcycletoolkit}. A semi-Lagrangian framework was used to compute the LEC every 3 hours for a $15^\circ \times 15^\circ$ computational domain centered on the cyclone's central position, integrating the 32 available pressure levels from 1000 to 10 hPa. The energy budget equations for the zonal and eddy forms of APE and kinetic energy are expressed as:
 
+All 3{,}820 cyclones were recomputed with the corrected toolkit implementation rather than mixing archived and newly calculated energetics. The rerun retained the previously defined life-cycle windows so that differences arise from the LEC implementation rather than from a change in phase detection. In particular, the corrected implementation affects $C_A$, $C_K$ (including its fifth subterm), and the boundary pressure-work terms; therefore, every PCA, clustering, figure, composite grouping, and statistical result reported below was regenerated from the corrected products. The complete run manifest, validation records, and paired comparison against the superseded calculation are archived with the reproducible rerun workflow.
+
 
 \begin{flalign}
 \frac{\partial A_Z}{\partial t} &= BA_Z - C_Z - C_A + G_Z \\
@@ -603,7 +605,7 @@ The authors have no relevant financial or non-financial interests to disclose.
 
 \subsection*{Data Availability}
 
-The cyclone tracks used in this study were obtained from the \textit{Atlantic Extratropical Cyclone Tracks Database}, available at \url{https://doi.org/10.17632/kwcvfr52hp.4}. All datasets, including the computed Lorenz Energy Cycle results for each cyclone, along with the scripts used to generate the figures and analyses presented in this study, are publicly available at the following GitHub repository: \url{https://github.com/daniloceano/energetic_patterns_cyclones_south_atlantic}. The source code of the \texttt{Cyclophaser} package, used for detecting cyclone life cycle phases, is available on PyPI at \url{https://pypi.org/project/cyclophaser/}. The \texttt{LorenzCycleToolkit} package, used for computing the Lorenz Energy Cycle components, is also available on PyPI at \url{https://pypi.org/project/LorenzCycleToolkit/}.
+The cyclone tracks used in this study were obtained from the \textit{Atlantic Extratropical Cyclone Tracks Database}, available at \url{https://doi.org/10.17632/kwcvfr52hp.4}. The article analysis, figures, and website source are available at \url{https://github.com/daniloceano/paper_energy_patterns}. The independent, auditable workflow used to recompute and validate the complete corrected LEC climatology is available at \url{https://github.com/daniloceano/lec-climatology-rerun}; its manifest records the exact toolkit commit, inputs, phase-window hashes, completion state, and output validation for all 3{,}820 cyclones. The source code of the \texttt{Cyclophaser} package, used for detecting cyclone life cycle phases, is available on PyPI at \url{https://pypi.org/project/cyclophaser/}. The \texttt{LorenzCycleToolkit} package, used for computing the Lorenz Energy Cycle components, is also available on PyPI at \url{https://pypi.org/project/LorenzCycleToolkit/}.
 
 \subsection*{Author contributions}
 

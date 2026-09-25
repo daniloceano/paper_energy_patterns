@@ -123,6 +123,7 @@ def main():
         ("scripts/web/extract_ck_subterms_site_data.py", "extract_ck_subterms_site_data.py"),
         ("scripts/web/extract_cyclone_explorer_data.py", "extract_cyclone_explorer_data.py"),
         ("scripts/web/extract_cps_site_data.py",       "extract_cps_site_data.py"),
+        ("scripts/web/export_lec_field_dependence.py", "export_lec_field_dependence.py"),
     ]
     step3_ok = True
     for script, desc in manifest_scripts:

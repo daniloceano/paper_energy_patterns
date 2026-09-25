@@ -186,6 +186,34 @@ def copy_ep_structure_tree(dry_run: bool = False) -> tuple[int, int]:
     return copied, up_to_date
 
 
+def copy_analysis_tree(name: str, dry_run: bool = False) -> tuple[int, int]:
+    """Copy one complete analysis figure tree into the site's static assets."""
+    src_root = FIGURES_SRC / name
+    dst_root = FIGURES_DST / name
+
+    if not src_root.exists():
+        print(f"  ⚠  MISSING   {name}/ directory in figures/")
+        return 0, 0
+
+    copied = 0
+    up_to_date = 0
+    for src in sorted(src_root.rglob("*")):
+        if not src.is_file() or src.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+        dst = dst_root / src.relative_to(src_root)
+        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+            up_to_date += 1
+            continue
+        if dry_run:
+            print(f"  [dry-run]   {name}/{src.relative_to(src_root)}")
+        else:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            print(f"  ✓  {name}/{src.relative_to(src_root)}")
+        copied += 1
+    return copied, up_to_date
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Copy figures to web/public/figures/ for Vercel deployment."
@@ -212,8 +240,20 @@ def main():
     # Copy EP structure composite figures (with mode suffixes)
     ep_copied, ep_uptodate = copy_ep_structure_tree(dry_run=args.dry_run)
 
-    total_copied = copied + cx_copied + ep_copied
-    total_uptodate = up_to_date + cx_uptodate + ep_uptodate
+    # These analyses have complete, self-contained site sections. Copy their
+    # trees dynamically so new corrected panels cannot be omitted from a
+    # deployment by an outdated hand-maintained file list.
+    ck_copied, ck_uptodate = copy_analysis_tree(
+        "ck_subterms_corrected", dry_run=args.dry_run
+    )
+    lfd_copied, lfd_uptodate = copy_analysis_tree(
+        "lec_field_dependence", dry_run=args.dry_run
+    )
+
+    total_copied = copied + cx_copied + ep_copied + ck_copied + lfd_copied
+    total_uptodate = (
+        up_to_date + cx_uptodate + ep_uptodate + ck_uptodate + lfd_uptodate
+    )
 
     print()
     print(f"  ✓ Copied        : {total_copied}")

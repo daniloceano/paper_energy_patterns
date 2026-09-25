@@ -37,9 +37,9 @@ export default function AnalysesPage() {
             icon: Layers,
           },
           {
-            title: 'Ck Subterms Analysis — EP1 Barotropic Decomposition',
+            title: 'Ck Subterms Analysis — Corrected All-Pattern Decomposition',
             description:
-              'Decomposition of barotropic energy conversion (Ck) into five subterms (A–E) for EP1 cyclones. Genesis density maps and dominance classification by intensification-phase subterm.',
+              'Corrected decomposition of barotropic energy conversion (Ck) into five subterms (A–E), with vertical profiles, distributions, lifecycle evolution, and intensification-phase dominance for every Energy Pattern.',
             href: '/analyses/ck-subterms',
             icon: TrendingDown,
           },

@@ -307,10 +307,11 @@ def normalize_and_find_optimal_k(df_results: pd.DataFrame,
         else:
             df_norm[col] = 0.5
     
-    # Invert indices where lower is better
+    # Invert indices whose normalized raw values are lower-is-better. Reval is
+    # deliberately absent here: ``compute_reval_stability`` has already
+    # converted its misclassification rate to ``1 - ms_val``, so larger Reval
+    # values mean greater stability and must remain larger after normalization.
     cols_invert = ['Davies-Bouldin']
-    if 'Stability_reval' in df_norm.columns:
-        cols_invert.append('Stability_reval')
     
     for col in cols_invert:
         if col in df_norm.columns:

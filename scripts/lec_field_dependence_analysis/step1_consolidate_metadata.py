@@ -32,10 +32,10 @@ from datetime import datetime
 import pandas as pd
 
 from scripts.lec_field_dependence_analysis.utils_io import (
-    RESULTS_DIR, LOG_DIR, LEC_ZENODO_DIR,
-    load_all_ep_cases, resolve_csv,
+    RESULTS_DIR, LOG_DIR, load_all_ep_cases,
 )
 from scripts.utils.ep_mapping import EP_LABELS, ALL_EPS
+from scripts.utils import corrected_lec as clec
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -59,17 +59,13 @@ def setup_logging():
 
 
 def check_lec_availability(track_id: str) -> bool:
-    """Check whether LEC Zenodo data exists for a given cyclone."""
-    lec_dir = LEC_ZENODO_DIR / f"{track_id}_ERA5_track"
-    if not lec_dir.exists():
-        return False
-    # Check that the results CSV exists
-    results_name = f"{track_id}_ERA5_track_results.csv"
-    results_path = resolve_csv(lec_dir / results_name)
-    return results_path is not None
+    """Check whether validated corrected LEC data exists for a cyclone."""
+    result = clec.result_dir(track_id) / f"{track_id}_ERA5_track_results.csv"
+    return result.is_file() and result.stat().st_size > 0
 
 
 def main():
+    clec.require_complete("lec-field dependence analysis")
     setup_logging()
     logging.info("=" * 70)
     logging.info("STEP 1: CONSOLIDATE METADATA — LEC–FIELD DEPENDENCE ANALYSIS")
@@ -84,7 +80,7 @@ def main():
         logging.info(f"   {EP_LABELS[ep]}: {n}")
 
     # 2. Check LEC availability per cyclone
-    logging.info("\n2. Checking LEC Zenodo data availability...")
+    logging.info("\n2. Checking corrected LEC data availability...")
     ep_cases["lec_available"] = ep_cases["track_id"].apply(
         lambda tid: check_lec_availability(str(tid))
     )
@@ -121,7 +117,7 @@ def main():
         report_lines.append(f"  {EP_LABELS[ep]}: {n}")
     report_lines.append(f"  Total: {len(ep_cases)}")
     report_lines.append("")
-    report_lines.append("LEC Zenodo data availability:")
+    report_lines.append("Corrected LEC data availability:")
     for ep in ALL_EPS:
         subset = ep_cases[ep_cases["ep"] == ep]
         avail = subset["lec_available"].sum()

@@ -14,6 +14,8 @@ import numpy as np
 from pathlib import Path
 from typing import Optional, List, Dict
 
+from scripts.utils import corrected_lec as clec
+
 # ---------------------------------------------------------------------------
 # Canonical paths (relative to project root)
 # ---------------------------------------------------------------------------
@@ -21,7 +23,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 CLUSTER_FILE = PROJECT_ROOT / "results" / "cluster" / "kmeans_clustered_data.csv"
 EP_CASES_DIR = PROJECT_ROOT / "results" / "ep_structure"
-LEC_ZENODO_DIR = PROJECT_ROOT / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 ERA5_EP_DIR = PROJECT_ROOT / "data" / "era5_ep_structure"
 
 # Allow isolated test runs by setting LEC_TEST_RESULTS_DIR in the environment.
@@ -120,9 +121,9 @@ def _select_central_indices(n: int) -> list:
         return [mid - 1, mid]
 
 
-def load_lec_from_zenodo(track_id: str) -> Optional[pd.DataFrame]:
+def load_corrected_lec(track_id: str) -> Optional[pd.DataFrame]:
     """
-    Load LEC time series from Zenodo and return the mean over the central
+    Load the corrected LEC time series and return the mean over the central
     timesteps of the intensification phase.
 
     Uses the canonical ep_structure temporal selection:
@@ -145,15 +146,11 @@ def load_lec_from_zenodo(track_id: str) -> Optional[pd.DataFrame]:
         values = mean over central timesteps of intensification.
         Returns None if data unavailable or window is empty.
     """
-    lec_dir = LEC_ZENODO_DIR / f"{track_id}_ERA5_track"
-    if not lec_dir.exists():
+    try:
+        periods = clec.read_phase_windows(track_id)
+        df = clec.read_integrated(track_id)
+    except (FileNotFoundError, ValueError):
         return None
-
-    # Load periods
-    periods_path = resolve_csv(lec_dir / "periods.csv")
-    if periods_path is None:
-        return None
-    periods = pd.read_csv(periods_path, index_col=0)
     if "intensification" not in periods.index:
         return None
 
@@ -161,18 +158,6 @@ def load_lec_from_zenodo(track_id: str) -> Optional[pd.DataFrame]:
     t_start = pd.to_datetime(intens["start"])
     t_end = pd.to_datetime(intens["end"])
 
-    # Load full LEC results
-    results_name = f"{track_id}_ERA5_track_results.csv"
-    results_path = resolve_csv(lec_dir / results_name)
-    if results_path is None:
-        return None
-
-    try:
-        df = pd.read_csv(results_path, index_col=0)
-    except Exception:
-        return None
-
-    df.index = pd.to_datetime(df.index)
     # Filter to intensification phase
     mask = (df.index >= t_start) & (df.index <= t_end)
     df_intens = df.loc[mask]
@@ -189,6 +174,11 @@ def load_lec_from_zenodo(track_id: str) -> Optional[pd.DataFrame]:
     result.index = [track_id]
     result.index.name = "track_id"
     return result
+
+
+# Backward-compatible import name for existing pipeline steps. The data source
+# is corrected despite the historical function name.
+load_lec_from_zenodo = load_corrected_lec
 
 
 # LEC term names (canonical order, from the results CSV)

@@ -42,7 +42,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 from scripts.lec_field_dependence_analysis.utils_io import (
     RESULTS_DIR, LOG_DIR,
-    load_lec_from_zenodo,
+    load_corrected_lec,
     LEC_TERMS_FULL, LEC_TERMS_CORE,
 )
 
@@ -71,7 +71,7 @@ def setup_logging():
 
 def _load_one(track_id: str):
     """Worker: central-timestep mean (canonical ep_structure method)."""
-    df = load_lec_from_zenodo(track_id)
+    df = load_corrected_lec(track_id)
     if df is not None:
         return track_id, df
     return track_id, None

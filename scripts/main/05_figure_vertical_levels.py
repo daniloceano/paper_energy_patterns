@@ -17,14 +17,14 @@ Key findings:
   • Minimum (most negative) Ck typically occurs in the mid-troposphere (~350 hPa) for EP1
   • EP comparison reveals pressure-level differences in baroclinic/barotropic energy pathways
 
-Data source: Zenodo (DOI: 10.5281/zenodo.18243447)
-  • Complete Lorenz Energy Cycle results with vertical resolution
-  • 32 pressure levels from 1000 hPa to 100 hPa
+Data source: corrected LorenzCycleToolKit 2.0.0 climatology
+  • Validated phase-mean vertical profiles for all 3,820 cyclones
+  • 32 pressure levels from 1000 to 10 hPa (1000–100 hPa displayed)
   • 3-hourly temporal resolution during intensification phase
 
-IMPORTANT: This script requires the cluster results and Zenodo LEC archive:
+IMPORTANT: This script requires corrected cluster and vertical products:
   • Cluster results: results/cluster/kmeans_clustered_data.csv
-  • LEC data: data/temp_lec_zenodo/LEC_Results_energetic-patterns/
+  • LEC data: data/corrected/vertical_phase_means_corrected.parquet
 
 Outputs:
   • Figure: figures/main/5_vertical_levels.png (300 DPI)
@@ -45,7 +45,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import warnings
 warnings.filterwarnings('ignore')
-from tqdm import tqdm
+from scripts.utils import corrected_lec as clec
+from scripts.utils.ep_mapping import CLUSTER_TO_EP, assert_corrected_clustering
 
 # ============================================================================
 # Configuration
@@ -58,39 +59,27 @@ RESULTS_DIR = BASE_DIR / 'results'
 CLUSTER_RESULTS_DIR = RESULTS_DIR / 'cluster'
 FIGURES_DIR = BASE_DIR / 'figures' / 'main'
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-LEC_DATA_DIR = BASE_DIR / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
-
-# Physical constants
-GRAVITY = 9.8  # m/s² — used for Ck correction
 
 # Figure settings
 FIG_WIDTH = 14
 FIG_HEIGHT = 16
 DPI = 300
 
-# Zenodo data source
-ZENODO_DOI = "10.5281/zenodo.18243447"
-
-# Energy Pattern configuration
-# cluster index follows the canonical mapping in scripts/utils/ep_mapping.py:
-# cluster 0 -> EP1 (high conversions), cluster 2 -> EP2 (moderate), cluster 1 -> EP3 (weak/background)
+# Energy Pattern styles. Cluster identities come from cluster_to_ep.json.
 EP_CONFIG = {
     'EP1': {
-        'cluster': 0,
         'box_color': 'lightcoral',
         'edge_color': 'darkred',
         'median_color': 'darkred',
         'offset': -0.30,
     },
     'EP2': {
-        'cluster': 2,
         'box_color': 'lightblue',
         'edge_color': 'darkblue',
         'median_color': 'darkblue',
         'offset': 0.00,
     },
     'EP3': {
-        'cluster': 1,
         'box_color': 'lightgreen',
         'edge_color': 'darkgreen',
         'median_color': 'darkgreen',
@@ -132,68 +121,19 @@ def get_cyclones_by_ep():
             "Please run clustering analysis first"
         )
 
+    assert_corrected_clustering()
     clustered = pd.read_csv(cluster_file)
+    clustered['track_id'] = clustered['track_id'].astype(str)
+    clustered['ep'] = clustered['cluster'].map(CLUSTER_TO_EP)
 
     ep_tracks = {}
-    for ep_name, cfg in EP_CONFIG.items():
-        cluster_idx = cfg['cluster']
-        ep_tracks[ep_name] = clustered[clustered['cluster'] == cluster_idx]['track_id'].tolist()
+    for ep_num, ep_name in enumerate(EP_CONFIG, start=1):
+        ep_tracks[ep_name] = clustered[clustered['ep'] == ep_num]['track_id'].tolist()
 
     return ep_tracks
 
 
-def load_lec_level_data(track_id, variable='Ca'):
-    """
-    Load LEC level data (Ca or Ck) for a specific cyclone.
-
-    Data corrections applied:
-    1. Ca: Sign inversion (-Ca_raw)
-    2. Ck: Division by gravity (Ck_raw / 9.8)
-
-    See SCIENTIFIC_NOTES.md §Figure 5 for validation details.
-    """
-    lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
-    file_path = lec_dir / f"{variable}_level.csv"
-
-    # Handle case where file_path is actually a directory
-    if file_path.is_dir():
-        file_path = file_path / f"{variable}_level.csv"
-
-    if not file_path.exists():
-        return None
-
-    df = pd.read_csv(file_path, index_col=0, parse_dates=True)
-
-    # Apply data corrections
-    if variable == 'Ca':
-        df = -df
-    elif variable == 'Ck':
-        df = df / GRAVITY
-
-    return df
-
-
-def get_intensification_phase_times(track_id):
-    """Get start and end times of the intensification phase from periods.csv."""
-    lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
-    periods_file = lec_dir / "periods.csv" / "periods.csv"
-
-    if not periods_file.exists():
-        return None
-
-    periods = pd.read_csv(periods_file, index_col=0)
-
-    if 'intensification' not in periods.index:
-        return None
-
-    intensification_row = periods.loc['intensification']
-    start_time = pd.to_datetime(intensification_row['start'])
-    end_time = pd.to_datetime(intensification_row['end'])
-
-    return start_time, end_time
-
-
-def analyze_vertical_profiles(track_ids, ep_label):
+def analyze_vertical_profiles(track_ids, ep_label, vertical_data):
     """
     Analyze vertical profiles of Ca and Ck for a given set of cyclones.
 
@@ -219,52 +159,22 @@ def analyze_vertical_profiles(track_ids, ep_label):
         'ck_profiles': {},
     }
 
-    successful = 0
-    missing = 0
+    wanted = {str(track_id) for track_id in track_ids}
+    subset = vertical_data[
+        vertical_data['track_id'].astype(str).isin(wanted)
+        & (vertical_data['level_hpa'] >= 100.0)
+    ].copy()
+    for term, prefix in [('Ca', 'ca'), ('Ck', 'ck')]:
+        term_data = subset[subset['term'] == term]
+        for level, values in term_data.groupby('level_hpa')['value']:
+            results[f'{prefix}_by_level'][int(level)] = values.dropna().tolist()
+        for track_id, profile in term_data.groupby('track_id'):
+            results[f'{prefix}_profiles'][str(track_id)] = (
+                profile.set_index('level_hpa')['value']
+            )
 
-    for track_id in tqdm(track_ids, desc=f"  {ep_label}", leave=False):
-
-        ca_data = load_lec_level_data(track_id, 'Ca')
-        ck_data = load_lec_level_data(track_id, 'Ck')
-
-        if ca_data is None or ck_data is None:
-            missing += 1
-            continue
-
-        phase_times = get_intensification_phase_times(track_id)
-        if phase_times is None:
-            missing += 1
-            continue
-
-        start_time, end_time = phase_times
-
-        ca_intens = ca_data[(ca_data.index >= start_time) & (ca_data.index <= end_time)]
-        ck_intens = ck_data[(ck_data.index >= start_time) & (ck_data.index <= end_time)]
-
-        if len(ca_intens) == 0:
-            missing += 1
-            continue
-
-        ca_mean = ca_intens.mean(axis=0)
-        ck_mean = ck_intens.mean(axis=0)
-
-        # Convert pressure levels Pa → hPa; keep only >= 100 hPa
-        pressure_hpa = ca_mean.index.astype(float) / 100.0
-        valid = pressure_hpa >= 100.0
-        pressure_hpa = pressure_hpa[valid]
-        ca_mean = ca_mean[valid]
-        ck_mean = ck_mean[valid]
-
-        for p_hpa, ca_val, ck_val in zip(pressure_hpa, ca_mean.values, ck_mean.values):
-            p_key = int(p_hpa)
-            results['ca_by_level'].setdefault(p_key, []).append(ca_val)
-            results['ck_by_level'].setdefault(p_key, []).append(ck_val)
-
-        results['ca_profiles'][track_id] = ca_mean
-        results['ck_profiles'][track_id] = ck_mean
-
-        successful += 1
-
+    successful = subset['track_id'].nunique()
+    missing = len(wanted) - successful
     print(f"   {ep_label}: {successful} analyzed, {missing} skipped")
     return results
 
@@ -440,23 +350,21 @@ def main():
     print("Figure 5: Vertical Distribution of Energy Conversions (EP1, EP2, EP3)")
     print("=" * 80)
 
-    if not LEC_DATA_DIR.exists():
-        raise FileNotFoundError(
-            f"LEC data directory not found: {LEC_DATA_DIR}\n"
-            "Please download the Zenodo archive (DOI: 10.5281/zenodo.18243447) and "
-            "unpack it into data/temp_lec_zenodo/"
-        )
-
     print("\n1. Loading cyclones by Energy Pattern...")
     ep_tracks = get_cyclones_by_ep()
     for ep_name, track_ids in ep_tracks.items():
         print(f"   {ep_name}: {len(track_ids)} cyclones")
 
-    print(f"\n2. Analyzing vertical profiles (intensification phase)...")
-    print(f"   Data source: Zenodo (DOI: {ZENODO_DOI})")
+    print(f"\n2. Loading corrected vertical profiles (intensification phase)...")
+    vertical_data = clec.read_vertical_phase_means(
+        terms=['Ca', 'Ck'], phases=['intensification']
+    )
+    print(f"   Data source: {clec.corrected_path(clec.VERTICAL_PHASE_MEANS)}")
     results_by_ep = {}
     for ep_name, track_ids in ep_tracks.items():
-        results_by_ep[ep_name] = analyze_vertical_profiles(track_ids, ep_name)
+        results_by_ep[ep_name] = analyze_vertical_profiles(
+            track_ids, ep_name, vertical_data
+        )
 
     output_file = create_boxplots(results_by_ep)
 

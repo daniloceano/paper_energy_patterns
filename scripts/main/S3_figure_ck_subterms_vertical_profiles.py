@@ -66,7 +66,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
+from scripts.utils import corrected_lec as clec
+from scripts.utils.ep_mapping import assert_corrected_clustering
 
 warnings.filterwarnings("ignore")
 
@@ -92,8 +93,7 @@ BOXPLOT_WIDTH        = 0.6         # fraction of available slot width
 # ============================================================================
 
 EP1_CASES_CSV   = BASE_DIR / "results" / "ep_structure" / "ep1_cases.csv"
-SUBTERMS_CSV    = BASE_DIR / "results" / "ck_analysis" / "ck_subterms_boxplot_input.csv"
-LEC_DIR         = BASE_DIR / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
+SUBTERMS_CSV    = BASE_DIR / "results" / "ck_subterms_corrected" / "subterms_long.csv"
 FIGURES_DIR     = BASE_DIR / "figures" / "main"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_PNG      = FIGURES_DIR / "S3_ck_subterms_vertical_profiles.png"
@@ -101,8 +101,6 @@ OUTPUT_PNG      = FIGURES_DIR / "S3_ck_subterms_vertical_profiles.png"
 # ============================================================================
 # CONSTANTS
 # ============================================================================
-
-GRAVITY = 9.8  # m s⁻²
 
 # Subterm display order and labels (panel b)
 SUBTERM_ORDER = ["Ck_A", "Ck_B", "Ck_C", "Ck_D", "Ck_E"]
@@ -136,166 +134,26 @@ PRESSURE_LEVELS_DISPLAY = [
 # DATA LOADING
 # ============================================================================
 
-def _ck_level_path(track_id: str) -> Path:
-    """Return the path to Ck_level.csv inside the Zenodo archive."""
-    p = LEC_DIR / f"{track_id}_ERA5_track" / "Ck_level.csv"
-    # Some entries are directories wrapping the file
-    if p.is_dir():
-        p = p / "Ck_level.csv"
-    return p
-
-
-def _periods_path(track_id: str) -> Path:
-    """Return path to periods.csv (CycloPhaser lifecycle output)."""
-    p = LEC_DIR / f"{track_id}_ERA5_track" / "periods.csv"
-    if p.is_dir():
-        p = p / "periods.csv"
-    return p
-
-
-def _get_intensif_window_from_periods(track_id: str) -> tuple[pd.Timestamp, pd.Timestamp] | None:
-    """
-    Return (start, end) of the intensification phase from periods.csv.
-    Returns None if file missing or phase absent.
-    """
-    pp = _periods_path(track_id)
-    if pp.exists():
-        try:
-            periods = pd.read_csv(pp, index_col=0)
-            if "intensification" in periods.index:
-                row = periods.loc["intensification"]
-                return pd.to_datetime(row["start"]), pd.to_datetime(row["end"])
-        except Exception:
-            pass
-    return None
-
-
-def _get_intensif_window(track_id: str, ep1_row: pd.Series) -> tuple[pd.Timestamp, pd.Timestamp] | None:
-    """
-    Return (start, end) of the intensification phase.
-
-    Primary source: periods.csv from Zenodo.
-    Fallback: intensification_start / intensification_end from ep1_cases.csv.
-    """
-    w = _get_intensif_window_from_periods(track_id)
-    if w is not None:
-        return w
-
-    # Fallback to ep1_cases
-    try:
-        s = pd.to_datetime(ep1_row["intensification_start"])
-        e = pd.to_datetime(ep1_row["intensification_end"])
-        return s, e
-    except Exception:
-        return None
-
-
 def load_vertical_ck_ep1(ep1_cases: pd.DataFrame) -> dict[float, list[float]]:
     """
     Load Ck per pressure level for all EP1 cyclones, filtered to intensification.
 
     Returns a dict {pressure_Pa: [cyclone-mean values in W m⁻²]}.
     """
-    level_data: dict[float, list[float]] = {}
-
-    missing = 0
-    for _, row in tqdm(ep1_cases.iterrows(), total=len(ep1_cases),
-                       desc="  Loading Ck_level (EP1)", leave=False):
-        tid = str(row["track_id"])
-        fp = _ck_level_path(tid)
-        if not fp.exists():
-            missing += 1
-            continue
-
-        window = _get_intensif_window(tid, row)
-        if window is None:
-            missing += 1
-            continue
-
-        try:
-            df = pd.read_csv(fp, index_col=0, parse_dates=True)
-        except Exception:
-            missing += 1
-            continue
-
-        # Apply gravity correction
-        df = df / GRAVITY
-
-        start, end = window
-        mask = (df.index >= start) & (df.index <= end)
-        df_int = df.loc[mask]
-        if df_int.empty:
-            missing += 1
-            continue
-
-        cyc_mean = df_int.mean(axis=0)
-
-        for col, val in cyc_mean.items():
-            try:
-                p_pa = float(col)
-            except ValueError:
-                continue
-            if np.isfinite(val):
-                level_data.setdefault(p_pa, []).append(val)
-
-    if missing > 0:
-        print(f"  ⚠  {missing} EP1 cyclones skipped (missing file or phase).")
-
-    return level_data
-    """
-    Load Ck per pressure level for ALL cyclones in the Zenodo archive,
-    filtered to the intensification phase (from periods.csv).
-
-    Returns a dict {pressure_Pa: [cyclone-mean values in W m⁻²]}.
-    """
-    level_data: dict[float, list[float]] = {}
-    track_dirs = sorted(d for d in lec_dir.iterdir()
-                        if d.is_dir() and "_ERA5_track" in d.name)
-
-    missing = 0
-    for track_dir in tqdm(track_dirs, desc="  Loading Ck_level (all cyclones)", leave=False):
-        tid = track_dir.name.replace("_ERA5_track", "")
-        fp = _ck_level_path(tid)
-        if not fp.exists():
-            missing += 1
-            continue
-
-        window = _get_intensif_window_from_periods(tid)
-        if window is None:
-            missing += 1
-            continue
-
-        try:
-            df = pd.read_csv(fp, index_col=0, parse_dates=True)
-        except Exception:
-            missing += 1
-            continue
-
-        # Apply gravity correction
-        df = df / GRAVITY
-
-        start, end = window
-        mask = (df.index >= start) & (df.index <= end)
-        df_int = df.loc[mask]
-        if df_int.empty:
-            missing += 1
-            continue
-
-        # Per-cyclone mean over intensification timesteps
-        cyc_mean = df_int.mean(axis=0)
-
-        for col, val in cyc_mean.items():
-            try:
-                p_pa = float(col)
-            except ValueError:
-                continue
-            if np.isfinite(val):
-                level_data.setdefault(p_pa, []).append(val)
-
-    if missing > 0:
-        print(f"  ⚠  {missing} cyclones skipped (missing file, missing periods, or empty phase).")
-
-    return level_data
+    profiles = clec.read_vertical_phase_means(
+        terms=["Ck"], phases=["intensification"]
+    )
+    wanted = set(ep1_cases["track_id"].astype(str))
+    profiles = profiles[profiles["track_id"].astype(str).isin(wanted)]
+    covered = profiles["track_id"].nunique()
+    if covered != len(wanted):
+        raise RuntimeError(
+            f"corrected Ck profiles cover {covered}/{len(wanted)} EP1 cyclones"
+        )
+    return {
+        float(level): values.dropna().tolist()
+        for level, values in profiles.groupby("level_hpa")["value"]
+    }
 
 
 def load_integrated_subterms() -> pd.DataFrame:
@@ -306,9 +164,9 @@ def load_integrated_subterms() -> pd.DataFrame:
     for the intensification phase.
     """
     df = pd.read_csv(SUBTERMS_CSV)
-    # Keep only the 5 physical subterms (drop total 'Ck')
-    df = df[df["subterm"].isin(SUBTERM_ORDER)].copy()
-    # This CSV already contains only intensification phase entries
+    df = df[(df["ep"] == 1) & (df["phase"] == "intensification")].copy()
+    df["subterm"] = df["subterm"].map(clec.CK_SUBTERM_LABELS)
+    df = df[df["subterm"].isin(SUBTERM_ORDER)]
     return df
 
 
@@ -476,6 +334,7 @@ def make_figure(level_data: dict[float, list[float]],
 # ============================================================================
 
 def main() -> None:
+    assert_corrected_clustering()
     print("\n=== Figure S3: C_K Vertical Profiles & Subterms (EP1, Intensification) ===\n")
 
     # 1. EP1 cases
@@ -485,11 +344,8 @@ def main() -> None:
     ep1_cases = pd.read_csv(EP1_CASES_CSV)
     print(f"  EP1 cyclones loaded: {len(ep1_cases)}")
 
-    # 2. Vertical Ck profiles from Zenodo — EP1 only
-    if not LEC_DIR.exists():
-        print(f"ERROR: Zenodo LEC directory not found:\n  {LEC_DIR}")
-        sys.exit(1)
-    print(f"  Loading Ck vertical profiles (EP1) from Zenodo archive …")
+    # 2. Corrected vertical Ck profiles — EP1 only
+    print("  Loading corrected Ck vertical profiles (EP1) …")
     level_data = load_vertical_ck_ep1(ep1_cases)
     n_levels_found = len(level_data)
     n_cyclones_found = max((len(v) for v in level_data.values()), default=0)
@@ -517,11 +373,9 @@ def main() -> None:
     print(f"     Dimensions: {w} × {h} px  |  Size: {sz:.1f} KB")
 
     print("\n─── Data availability note ──────────────────────────────────────────")
-    print("  Panel (a): total C_K vertical profile — EP1 cyclones only")
-    print("  (Ck_level.csv from Zenodo, intensification phase, /g correction).")
-    print("  Per-level subterm files are not available locally.")
-    print("  Panel (b): vertically integrated EP1 subterms from")
-    print("  results/ck_analysis/ck_subterms_boxplot_input.csv.")
+    print("  Panel (a): corrected total C_K vertical profile — EP1 only.")
+    print("  Panel (b): corrected integrated EP1 subterms from")
+    print("  results/ck_subterms_corrected/subterms_long.csv.")
     print("─────────────────────────────────────────────────────────────────────\n")
 
 

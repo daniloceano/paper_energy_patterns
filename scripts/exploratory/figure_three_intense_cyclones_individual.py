@@ -23,6 +23,10 @@ from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.utils import corrected_lec as clec
+
 try:
     from lorenz_phase_space.phase_diagrams import Visualizer
     HAS_LPS = True
@@ -39,10 +43,6 @@ except ImportError:
 BASE_DIR = Path(__file__).resolve().parents[2]
 FIGURES_DIR = BASE_DIR / 'figures' / 'exploratory' / 'three_most_intense_cyclones'
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-
-# Data sources
-DATA_URL = "https://zenodo.org/records/18133432/files/tracks_SAt_filtered_with_energetics.csv"
-PROCESSED_DATA = BASE_DIR / 'data' / 'tracks_SAt_filtered_with_energetics_processed.csv'
 
 # Figure settings
 plt.rcParams.update({
@@ -62,24 +62,11 @@ plt.rcParams.update({
 # ============================================================================
 
 def load_data():
-    """Load cyclone tracks and energetics from Zenodo."""
-    print("Loading data from Zenodo...")
-    print(f"URL: {DATA_URL}")
-    # Prefer a preprocessed local CSV for speed. If missing, instruct user
-    if PROCESSED_DATA.exists():
-        print(f"Loading processed data: {PROCESSED_DATA}")
-        df = pd.read_csv(PROCESSED_DATA)
-        if 'date' in df.columns:
-            df['date'] = pd.to_datetime(df['date'])
-        print(f"✓ Loaded {len(df)} records from processed file")
-        print(f"✓ {df['track_id'].nunique()} unique cyclones")
-        return df
-
-    msg = (
-        "Processed data not found. Run the extractor to create it:\n"
-        "python scripts/analysis/extract_tracks_from_zenodo.py"
-    )
-    raise FileNotFoundError(msg)
+    """Load cyclone tracks carrying corrected three-hourly energetics."""
+    df = clec.read_corrected_tracks()
+    print(f"✓ Loaded {len(df)} records from corrected tracks")
+    print(f"✓ {df['track_id'].nunique()} unique cyclones")
+    return df
 
 def find_most_intense_cyclones(df, n=3):
     """Find n cyclones with maximum vorticity."""

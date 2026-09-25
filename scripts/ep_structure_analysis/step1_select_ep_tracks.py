@@ -45,10 +45,10 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from matplotlib.lines import Line2D
-from scripts.utils.load_data import load_tracks
+from scripts.utils import corrected_lec as clec
 from scripts.utils.ep_mapping import (
     CLUSTER_TO_EP, EP_TO_CLUSTER, ALL_EPS, EP_LABELS, EP_COLORS,
-    get_ep_label, get_ep_abbrev, get_ep_color
+    get_ep_label, get_ep_abbrev, get_ep_color, assert_corrected_clustering
 )
 from scripts.utils.timestep_selection import (
     select_central_timesteps, get_selected_timesteps_info, validate_duration_filter
@@ -61,19 +61,19 @@ OUTPUT_DIR = PROJECT_ROOT / "results" / "ep_structure"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR = PROJECT_ROOT / "figures" / "ep_structure" / "tracks"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-LEC_DATA_DIR = PROJECT_ROOT / "data" / "temp_lec_zenodo" / "LEC_Results_energetic-patterns"
 DPI = 300
 
 # Canonical filter threshold (April 2026 methodology)
 MIN_DURATION_HOURS = 24.0  # Only cyclones with >= 1 day of intensification
 
 
-def _resolve_csv(path: Path):
-    """Handle Zenodo quirk where *.csv can be a directory containing a CSV."""
-    if path.is_dir():
-        csvs = list(path.glob("*.csv"))
-        return csvs[0] if csvs else None
-    return path if path.exists() else None
+def _intensification_window(track_id):
+    """Primary intensification window frozen by the corrected rerun."""
+    periods = clec.read_phase_windows(str(track_id))
+    if "intensification" not in periods.index:
+        return None
+    row = periods.loc["intensification"]
+    return pd.to_datetime(row["start"]), pd.to_datetime(row["end"])
 
 
 def get_intensification_info(track_id, tracks_df):
@@ -87,19 +87,10 @@ def get_intensification_info(track_id, tracks_df):
     - all_times: list of all timestamps during intensification
     - n_selected: number of timesteps that will be used (2 or 3 central ones)
     """
-    lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
-    periods_file = _resolve_csv(lec_dir / "periods.csv")
-
-    if periods_file is None:
+    window = _intensification_window(track_id)
+    if window is None:
         return None
-
-    periods = pd.read_csv(periods_file, index_col=0)
-    if "intensification" not in periods.index:
-        return None
-
-    intensification = periods.loc["intensification"]
-    start_time = pd.to_datetime(intensification["start"])
-    end_time = pd.to_datetime(intensification["end"])
+    start_time, end_time = window
 
     # Get track data during intensification
     track_data = tracks_df[tracks_df["track_id"] == track_id].copy()
@@ -195,14 +186,10 @@ def plot_tracks(selected_df, tracks_df, ep_label, color):
             continue
         track = track.sort_values("date")
 
-        lec_dir = LEC_DATA_DIR / f"{track_id}_ERA5_track"
-        periods_file = _resolve_csv(lec_dir / "periods.csv")
+        window = _intensification_window(track_id)
 
-        if periods_file is not None:
-            periods = pd.read_csv(periods_file, index_col=0)
-            intensification = periods.loc["intensification"]
-            t_start = pd.to_datetime(intensification["start"])
-            t_end = pd.to_datetime(intensification["end"])
+        if window is not None:
+            t_start, t_end = window
 
             track["date"] = pd.to_datetime(track["date"])
             track_intens = track[(track["date"] >= t_start) & (track["date"] <= t_end)]
@@ -331,6 +318,7 @@ def select_ep_cases(ep_num, tracks_df, clustered_df):
 
 
 def main():
+    assert_corrected_clustering()
     print("=" * 80)
     print("STEP 1: SELECT EP1/EP2/EP3 TRACKS — CANONICAL METHODOLOGY (April 2026)")
     print("=" * 80)
@@ -350,6 +338,7 @@ def main():
         raise FileNotFoundError(f"Cluster file not found: {CLUSTER_FILE}")
 
     clustered_df = pd.read_csv(CLUSTER_FILE)
+    clustered_df["track_id"] = clustered_df["track_id"].astype(str)
     print(f"   Total clustered cyclones: {len(clustered_df)}")
     for cluster_id, ep_num in sorted(CLUSTER_TO_EP.items()):
         n = (clustered_df["cluster"] == cluster_id).sum()
@@ -357,7 +346,8 @@ def main():
 
     # 2. Load tracks
     print("\n2. Loading track data...")
-    tracks_df = load_tracks()
+    tracks_df = clec.read_corrected_tracks()
+    tracks_df["track_id"] = tracks_df["track_id"].astype(str)
     print(f"   Total tracks in database: {tracks_df['track_id'].nunique()}")
 
     # 3. Select cases for each EP (with >= 24h filter + central timesteps)

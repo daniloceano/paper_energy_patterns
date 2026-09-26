@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure S4: Pairwise Effect Size — Composite Scalar Features (EP1 vs EP2, EP1 vs EP3, EP2 vs EP3)
+Pairwise Effect Size — Composite Scalar Features (EP1 vs EP2, EP1 vs EP3, EP2 vs EP3)
 
 Discrete heatmap of |rank-biserial r| for each EPALL-relative (anomaly) scalar
 feature extracted from the ERA5 storm-relative composites, across all three
@@ -22,7 +22,7 @@ Visual conventions:
 f
 Design decisions:
   • Only EPALL-relative (anomaly) features are shown (field_type == 'anomaly').
-    These connect directly to Figure 7's EPALL-relative composites and isolate
+    These connect directly to the EPALL-relative composites and isolate
     EP-specific departures from the common intensifying-cyclone signal.
   • Fields are ordered by atmospheric level (upper → lower):
       PV 200 hPa → AFC 250 hPa → KE adv 250 hPa → AdvT 850 hPa → PV 850 hPa
@@ -335,7 +335,7 @@ def build_figure(pair_df: pd.DataFrame) -> Path:
 
 def main():
     print("=" * 70)
-    print("Figure S4: Pairwise Effect Size — Composite Scalar Features (2×3 layout)")
+    print("Pairwise Effect Size — Composite Scalar Features (2×3 layout)")
     print("=" * 70)
 
     if not INPUT_PAIR.exists():

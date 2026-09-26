@@ -57,7 +57,7 @@ with `corrected_lec.verify_conventions(track_id)`, which passes to ~1e-13.
 
 | Rule | Legacy code | Corrected data | Action |
 |---|---|---|---|
-| `Ca` vertical sign | `Ca = -Ca_level` (`main/05_figure_vertical_levels.py`) | `Ca_pressure_level` integrates to `+Ca` | **Remove the flip.** Keeping it reintroduces the fixed bug with the opposite sign. |
+| `Ca` vertical sign | `Ca = -Ca_level` (`main/figure_vertical_levels.py`) | `Ca_pressure_level` integrates to `+Ca` | **Remove the flip.** Keeping it reintroduces the fixed bug with the opposite sign. |
 | `Ck` vertical scale | `Ck_level / 9.8` | Still omits `1/g` | **Keep**, but with `g = 9.80665`. The legacy `9.8` was a 0.07 % high bias. |
 | `Kz`, `Ke` vertical scale | never handled | Omit `1/(2g)` | **New:** divide by `2g`. |
 | `Ck` decomposition | n/a (EP1 side run only) | `Ck = Σ Ck_1..Ck_5` closes to round-off | Usable directly; closure is asserted. |
@@ -132,8 +132,8 @@ on a legacy clustering. The file currently on disk is stamped
 
 | Script | Reads | Required change |
 |---|---|---|
-| `main/05_figure_vertical_levels.py` | `temp_lec_zenodo/{Ca,Ck}_level.csv`, hardcoded `-Ca` and `/9.8` | Read `vertical_phase_means_corrected.parquet` via `corrected_lec`; **delete both hacks** (§3). |
-| `main/S3_figure_ck_subterms_vertical_profiles.py` | `results/ck_analysis/`, `ep1_cases.csv`, `temp_lec_zenodo` | Repoint to `results/ck_subterms_corrected/`; can now show all EPs, not EP1 alone. |
+| `main/figure_vertical_levels.py` | `temp_lec_zenodo/{Ca,Ck}_level.csv`, hardcoded `-Ca` and `/9.8` | Read `vertical_phase_means_corrected.parquet` via `corrected_lec`; **delete both hacks** (§3). |
+| `main/figure_ck_subterms_vertical_profiles.py` | `results/ck_analysis/`, `ep1_cases.csv`, `temp_lec_zenodo` | Repoint to `results/ck_subterms_corrected/`; can now show all EPs, not EP1 alone. |
 | `ep_structure_analysis/step1_select_ep_tracks.py` | `temp_lec_zenodo/*/periods.csv`, `kmeans_clustered_data.csv` | Read windows from `<run-root>/phase_windows/`; rerun after re-clustering. |
 | `ep_structure_analysis/step2*`–`step6*` | `ep{1,2,3,all}_cases.csv` | Rerun after step 1; ERA5 composites can be reused where the case lists are unchanged, but the *populations will change* with the new clustering. |
 | `lec_field_dependence_analysis/utils_io.py` (`load_lec_from_zenodo`) | `temp_lec_zenodo` | Replace with a corrected reader; it is the single LEC entry point of that pipeline. |

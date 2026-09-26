@@ -22,7 +22,7 @@ deepening itself happens, and it is not in general co-located with either.
 
 The estimator is imported from `scripts/cps_analysis/cps_density.py` rather than
 re-implemented, so these maps, the CPS maps and the manuscript's genesis-density
-figure (`scripts/main/07_figure_genesis_density_kde.py`) are literally the same
+figure (`scripts/main/figure_genesis_density_kde.py`) are literally the same
 calculation: Gaussian kernel with a haversine metric, bandwidth 0.05 rad
 (~318 km), on the 2.5° grid of Hoskins & Hodges (2005).
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure S2: Pairwise Effect Size — LEC Terms (EP1 vs EP2, EP1 vs EP3, EP2 vs EP3)
+Pairwise Effect Size — LEC Terms (EP1 vs EP2, EP1 vs EP3, EP2 vs EP3)
 
 Layout: 2×3 subplot grid, one panel per physically related LEC group:
   (a) Energies               | (b) Conversions          | (c) Generation & Boundary KE
@@ -312,7 +312,7 @@ def build_figure(pair_df: pd.DataFrame) -> Path:
 
 def main():
     print("=" * 70)
-    print("Figure S3: Pairwise Effect Size — LEC Terms (2×3 subplot layout)")
+    print("Pairwise Effect Size — LEC Terms (2×3 subplot layout)")
     print("=" * 70)
 
     if not INPUT_PAIR.exists():

@@ -16,7 +16,7 @@ Selection Criteria:
 Intensity Subset:
 - Additionally selects the 10 most intense cyclones per EP group
 - Intensity metric: maximum |vor42| (central relative vorticity at 850 hPa)
-- Consistent with intensity definition in 05_figure_intensity_seasonality_trends.py
+- Consistent with intensity definition in figure_intensity_seasonality_trends.py
 - Used for the 'intense_10' composite mode in step3
 
 Output:
@@ -114,7 +114,7 @@ def select_top10_intense(ep_df, tracks_df, ep_label):
     
     Intensity metric: maximum |vor42| (central vorticity at 850 hPa) during the
     cyclone's full lifecycle. This is consistent with standard cyclone intensity
-    definitions used throughout the project (see 05_figure_intensity_seasonality_trends.py).
+    definitions used throughout the project (see figure_intensity_seasonality_trends.py).
     
     Parameters
     ----------

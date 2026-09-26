@@ -1,4 +1,4 @@
-"""Figure S1: PCA and Clustering Validation.
+"""PCA and clustering validation figure.
 
 This script creates a supplementary figure with two panels:
 (a) PCA Explained Variance - showing the variance explained by each principal component

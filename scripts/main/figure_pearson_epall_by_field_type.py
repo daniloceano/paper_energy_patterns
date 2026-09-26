@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure 9: Pearson |r| Heatmaps — EPALL, Absolute Fields, Canonical LEC Terms
+Pearson |r| Heatmaps — EPALL, Absolute Fields, Canonical LEC Terms
           (grouped by field type)
 
 Scientific context
@@ -24,7 +24,7 @@ Output:
   figures/main/pearson_epall_by_field_type.png  (300 DPI)
 
 Run from repository root:
-  python scripts/main/09_figure_pearson_epall_by_field_type.py
+  python scripts/main/figure_pearson_epall_by_field_type.py
 
 Author: Danilo Couto de Souza
 """

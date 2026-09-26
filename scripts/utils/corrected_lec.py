@@ -20,7 +20,7 @@ with :func:`verify_conventions`:
 
 1. Most vertical files integrate directly in pressure to the matching column of
    the integrated results file. The legacy ``Ca = -Ca_level`` sign flip
-   (``main/05_figure_vertical_levels.py``) compensated a bug that 2.0.0 fixed:
+   (``main/figure_vertical_levels.py``) compensated a bug that 2.0.0 fixed:
    applying it to corrected data would reintroduce the error with the opposite
    sign. No term needs a sign correction any more.
 2. Some files omit their normalising factor and must be divided by

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure 8: EP − EPALL Dynamical Composites — EPALL-Relative Anomaly (3×3 Layout)
+EP − EPALL Dynamical Composites — EPALL-Relative Anomaly (3×3 Layout)
 
 Publication-ready figure isolating the dynamical structure that distinguishes
 each Energy Pattern (EP1, EP2, EP3) from a generic intensifying extratropical
@@ -37,7 +37,7 @@ DOCUMENTATION MAINTENANCE
 ────────────────────────────────────────────────────────────────────────────
 Every time you modify fields, layout, or display units in this script, you
 MUST also update the following companion documents:
-  1. scripts/main/README.md          — Figure 8 panel table + key design bullets
+  1. scripts/main/README.md          — panel table + key design bullets
   2. scripts/main/SCIENTIFIC_NOTES.md — §8.3–8.6 (per-row and colormap descriptions)
 
 Checklist for additions:
@@ -171,7 +171,7 @@ CMAP_PV200_ANOM = CMAP_PV_ANOM   # PV@200 anom: warm/cool diverging
 CMAP_PV850_ANOM = CMAP_PV_ANOM   # PV@850 anom: warm/cool diverging
 # CMAP_AFC is imported directly from scripts.utils.colormaps (= CMAP_PV_ANOM)
 
-# ── Font sizes (consistent with Figure 8 and project convention) ─────────────
+# ── Font sizes (consistent with the project convention) ─────────────────────
 BASE_FONTSIZE       = 11
 PANEL_TITLESIZE     = 12
 TICK_LABELSIZE      = 9
@@ -460,7 +460,7 @@ def _add_colorbar(fig, gs_cell, im, label):
 
 def create_figure(ep_data, output_png):
     """
-    Create Figure 8: 3×3 EPALL-relative dynamical composites.
+    Create the 3×3 EPALL-relative dynamical composites figure.
 
     Colormap limits are computed globally across EP1, EP2, EP3 (98th percentile
     of absolute values), so shading intensity is directly comparable between columns.
@@ -666,7 +666,7 @@ def create_figure(ep_data, output_png):
 # ============================================================================
 
 def main():
-    """Generate Figure 8: EP − EPALL dynamical composites (3×3)."""
+    """Generate the EP − EPALL dynamical composites figure (3×3)."""
     print("=" * 80)
     print("FIGURE 7 — EP − EPALL DYNAMICAL COMPOSITES (3×3)")
     print("Anomaly = EP_composite − EPALL_composite")
@@ -703,7 +703,7 @@ def main():
     create_figure(ep_data, OUTPUT_PNG)
 
     print(f"\n{'='*80}")
-    print("Figure 8 complete!")
+    print("Dynamical composites figure complete!")
     print(f"  PNG : {OUTPUT_PNG}")
     print(f"{'='*80}\n")
     return 0

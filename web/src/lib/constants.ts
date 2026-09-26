@@ -502,8 +502,8 @@ export const CLUSTER_STEPS: AnalysisStep[] = [
       'web/src/content/energy_pattern_exploratory.json',
     ],
     scripts: [
-      'scripts/main/06_figure_intensity_seasonality_trends.py',
-      'scripts/main/07_figure_genesis_density_kde.py',
+      'scripts/main/figure_intensity_seasonality_trends.py',
+      'scripts/main/figure_genesis_density_kde.py',
       'scripts/web/extract_cluster_site_data.py',
     ],
     figures: [

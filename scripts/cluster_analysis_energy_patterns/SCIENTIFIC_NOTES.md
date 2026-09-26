@@ -334,7 +334,7 @@ EP assignment remains stable across lifecycle phases for most cyclones, indicati
 
 **Spatial Distribution:**
 
-Based on composite analysis of cyclone genesis locations and tracks (see `scripts/main/07_figure_genesis_density_kde.py`):
+Based on composite analysis of cyclone genesis locations and tracks (see `scripts/main/figure_genesis_density_kde.py`):
 
 - **EP1**: Concentrated in two primary regions:
   1. **Brazil-Malvinas Confluence (BMC):** Most frequent region, associated with strong SST gradients and ocean fronts
@@ -346,7 +346,7 @@ Based on composite analysis of cyclone genesis locations and tracks (see `script
 
 **Seasonal Variation:**
 
-Based on intensity and seasonality analysis (see `scripts/main/06_figure_intensity_seasonality_trends.py`):
+Based on intensity and seasonality analysis (see `scripts/main/figure_intensity_seasonality_trends.py`):
 
 - **EP1**: Peak in austral winter (JJA) when baroclinicity is strongest
 - **EP2**: Year-round occurrence with slight seasonal modulation

@@ -14,34 +14,34 @@ All outputs are generated at 300 DPI and saved to `figures/main/`.
 conda activate paper_energy_patterns
 
 # Run a single figure
-python scripts/main/01_figure_tracks_genesis_frequency.py
+python scripts/main/figure_tracks_genesis_frequency.py
 
 # Run all figures sequentially
 python scripts/main/run_all.py
 ```
 
-> **Note:** Figures 2, 3, 4, and S3 require upstream pre-processing steps
-> that must be completed first. See the per-figure sections below.
+> **Note:** The case-study, phase-density, LPS-comparison, and C_K-subterm
+> analyses require upstream preprocessing. See the per-analysis sections below.
 
 ---
 
-## Figure Inventory
+## Analysis Inventory
 
-| ID | Script | Output file | Short description | Upstream dependency |
-|----|--------|-------------|-------------------|---------------------|
-| 1 | `01_figure_tracks_genesis_frequency.py` | `tracks_genesis_frequency.png` | Cyclone tracks by region + genesis-frequency sunburst | None |
-| 2 | `02_figure_20070643_publication.py` | `cyclone_20070643_lps_track.png` | Case study — cyclone 20070643 LPS and track | Exploratory images (see §Fig 2) |
-| 3 | `03_make_phase_density_2x2.py` | `phase_density.png` | Phase-space density for all cyclones, by lifecycle phase | Exploratory images (see §Fig 3) |
-| 4 | `04_figure_lps_combined.py` | `lps_combined.png` | Lorenz Phase Space (Conversion + Imports) for EP1–EP3 | Cluster figures (see §Fig 4) |
-| 5 | `05_figure_vertical_levels.py` | `vertical_levels.png` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones | Zenodo LEC archive (see §Fig 5) |
-| 6 | `06_figure_intensity_seasonality_trends.py` | `ep_intensity_seasonality_trends.png` | EP intensity, seasonal distribution, and interannual trends | Cluster results |
-| 7 | `07_figure_genesis_density_kde.py` | `ep_genesis_density_kde.png` | Genesis density (KDE, Hoskins & Hodges method) | Cluster results |
-| 8 | `08_figure_ep1_ep2_dynamical_composites.py` | `dynamical_composites_epall_relative.png` | EPALL-relative dynamical composites — 3×3 layout (EP1−EPALL \| EP2−EPALL \| EP3−EPALL) | ERA5 composites (see §Fig 8) |
-| 9 | `09_figure_pearson_epall_by_field_type.py` | `pearson_epall_by_field_type.png` | Pearson \|r\| heatmaps grouped by field type (AdvT, AFC, KE adv, PV200, PV850) — EPALL, anomaly fields, canonical LEC terms | `lec_field_dependence_analysis` step 7 |
-| S1 | `S1_figure_pca_clustering_validation.py` | `pca_clustering_validation.png` | PCA variance explained + optimal-*k* cluster validation | Cluster results |
-| S2 | `S2_figure_pairwise_effectsize_lec_terms.py` | `pairwise_effectsize_lec_terms.png` | Pairwise effect size (\|rank-biserial r\|) for canonical LEC terms, EP1 vs EP2 vs EP3 | `lec_field_dependence_analysis` step7b |
-| S3 | `S3_figure_ck_subterms_vertical_profiles.py` | `ck_subterms_vertical_profiles.png` | C_K vertical profiles (Zenodo) + integrated subterms A–E for EP1, intensification | Zenodo LEC archive + ck_analysis results |
-| S4 | `S4_figure_pairwise_effectsize_composite_scalars.py` | `pairwise_effectsize_composite_scalars.png` | Pairwise effect size (\|rank-biserial r\|) for EPALL-relative composite scalar features, EP1 vs EP2 vs EP3 | `lec_field_dependence_analysis` step7b |
+| Category | Script | Output file | Short description | Upstream dependency |
+|----------|--------|-------------|-------------------|---------------------|
+| Main | `figure_tracks_genesis_frequency.py` | `tracks_genesis_frequency.png` | Cyclone tracks by region + genesis-frequency sunburst | None |
+| Main | `figure_20070643_publication.py` | `cyclone_20070643_lps_track.png` | Case study — cyclone 20070643 LPS and track | Exploratory images |
+| Main | `make_phase_density_2x2.py` | `phase_density.png` | Phase-space density for all cyclones, by lifecycle phase | Exploratory images |
+| Main | `figure_lps_combined.py` | `lps_combined.png` | Lorenz Phase Space (Conversion + Imports) for EP1–EP3 | Cluster figures |
+| Main | `figure_vertical_levels.py` | `vertical_levels.png` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones | Corrected vertical LEC archive |
+| Main | `figure_intensity_seasonality_trends.py` | `ep_intensity_seasonality_trends.png` | EP intensity, seasonal distribution, and interannual trends | Cluster results |
+| Main | `figure_genesis_density_kde.py` | `ep_genesis_density_kde.png` | Genesis density (KDE, Hoskins & Hodges method) | Cluster results |
+| Main | `figure_ep1_ep2_dynamical_composites.py` | `dynamical_composites_epall_relative.png` | EPALL-relative dynamical composites — 3×3 layout (EP1−EPALL \| EP2−EPALL \| EP3−EPALL) | ERA5 composites |
+| Main | `figure_pearson_epall_by_field_type.py` | `pearson_epall_by_field_type.png` | Pearson \|r\| heatmaps grouped by field type — EPALL, anomaly fields, canonical LEC terms | `lec_field_dependence_analysis` step 7 |
+| Supplementary | `figure_pca_clustering_validation.py` | `pca_clustering_validation.png` | PCA variance explained + optimal-*k* cluster validation | Cluster results |
+| Supplementary | `figure_pairwise_effectsize_lec_terms.py` | `pairwise_effectsize_lec_terms.png` | Pairwise effect size for canonical LEC terms, EP1 vs EP2 vs EP3 | `lec_field_dependence_analysis` step7b |
+| Supplementary | `figure_ck_subterms_vertical_profiles.py` | `ck_subterms_vertical_profiles.png` | C_K vertical profiles + integrated subterms A–E for EP1, intensification | Corrected vertical LEC archive + ck_analysis results |
+| Supplementary | `figure_pairwise_effectsize_composite_scalars.py` | `pairwise_effectsize_composite_scalars.png` | Pairwise effect size for EPALL-relative composite scalar features | `lec_field_dependence_analysis` step7b |
 
 ---
 
@@ -56,13 +56,13 @@ The following datasets must exist before running **any** figure script:
 
 ---
 
-## Per-Figure Details
+## Per-Analysis Details
 
 ---
 
-### Figure 1 — Cyclone tracks and genesis frequency
+### Cyclone tracks and genesis frequency
 
-**Script:** `01_figure_tracks_genesis_frequency.py`  
+**Script:** `figure_tracks_genesis_frequency.py`
 **Output:** `figures/main/tracks_genesis_frequency.png`
 
 **What it shows:**
@@ -79,14 +79,14 @@ A two-element figure combining a geographic track map and a frequency summary:
 
 **How to run:**
 ```bash
-python scripts/main/01_figure_tracks_genesis_frequency.py
+python scripts/main/figure_tracks_genesis_frequency.py
 ```
 
 ---
 
-### Figure 2 — Case study: cyclone 20070643
+### Case study: cyclone 20070643
 
-**Script:** `02_figure_20070643_publication.py`  
+**Script:** `figure_20070643_publication.py`
 **Output:** `figures/main/cyclone_20070643_lps_track.png`
 
 **What it shows:**
@@ -111,14 +111,14 @@ The script will raise `SystemExit` if any source image is missing.
 
 **How to run (after upstream step):**
 ```bash
-python scripts/main/02_figure_20070643_publication.py
+python scripts/main/figure_20070643_publication.py
 ```
 
 ---
 
-### Figure 3 — Phase-space density (2×2 layout)
+### Phase-space density (2×2 layout)
 
-**Script:** `03_make_phase_density_2x2.py`  
+**Script:** `make_phase_density_2x2.py`
 **Output:** `figures/main/phase_density.png`
 
 **What it shows:**
@@ -143,14 +143,14 @@ python scripts/exploratory/density_diagrams_with_ge.py
 
 **How to run (after upstream step):**
 ```bash
-python scripts/main/03_make_phase_density_2x2.py
+python scripts/main/make_phase_density_2x2.py
 ```
 
 ---
 
-### Figure 4 — Lorenz Phase Space for EP1–EP3
+### Lorenz Phase Space for EP1–EP3
 
-**Script:** `04_figure_lps_combined.py`  
+**Script:** `figure_lps_combined.py`
 **Output:** `figures/main/lps_combined.png`
 
 **What it shows:**
@@ -176,14 +176,14 @@ python scripts/cluster_analysis_energy_patterns/step5_plot_energy_patterns.py
 
 **How to run (after upstream step):**
 ```bash
-python scripts/main/04_figure_lps_combined.py
+python scripts/main/figure_lps_combined.py
 ```
 
 ---
 
-### Figure 5 — Vertical distribution of Ca and Ck (EP1, EP2, EP3)
+### Vertical distribution of Ca and Ck (EP1, EP2, EP3)
 
-**Script:** `05_figure_vertical_levels.py`  
+**Script:** `figure_vertical_levels.py`
 **Output:** `figures/main/vertical_levels.png`
 
 **What it shows:**
@@ -221,18 +221,18 @@ No intermediate Python preprocessing step is required beyond that download.
 
 **How to run:**
 ```bash
-python scripts/main/05_figure_vertical_levels.py
+python scripts/main/figure_vertical_levels.py
 ```
 
 For the scientific interpretation of the vertical Ca/Ck profiles and the
 rationale for the pressure-level corrections, see
-[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 5.
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), in the vertical-profile section.
 
 ---
 
-### Figure 6 — EP intensity, seasonality, and trends
+### EP intensity, seasonality, and trends
 
-**Script:** `06_figure_intensity_seasonality_trends.py`  
+**Script:** `figure_intensity_seasonality_trends.py`
 **Output:** `figures/main/ep_intensity_seasonality_trends.png`
 **Side output:** `results/exploratory/mk_trend_results.csv`
 
@@ -254,7 +254,7 @@ Three-panel figure characterizing the climatic properties of each Energy Pattern
 - Theil–Sen slope with 95% CI documented in the side CSV
 
 For all equations and interpretation guidance, see
-[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 6.
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), in the intensity, seasonality, and trends section.
 
 **Required inputs:**
 - `data/tracks_SAt_filtered_with_energetics_processed.csv`
@@ -262,14 +262,14 @@ For all equations and interpretation guidance, see
 
 **How to run:**
 ```bash
-python scripts/main/06_figure_intensity_seasonality_trends.py
+python scripts/main/figure_intensity_seasonality_trends.py
 ```
 
 ---
 
-### Figure 7 — Genesis density (KDE)
+### Genesis density (KDE)
 
-**Script:** `07_figure_genesis_density_kde.py`  
+**Script:** `figure_genesis_density_kde.py`
 **Output:** `figures/main/ep_genesis_density_kde.png`
 
 **What it shows:**
@@ -282,7 +282,7 @@ following Hoskins & Hodges (2005):
 
 KDE parameters: Gaussian kernel, bandwidth ≈ 0.05 radians (~555 km),
 2.5° global grid, haversine metric. See [`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md),
-§Figure 7, for the full methodology and normalization rationale.
+in the genesis-density section, for the full methodology and normalization rationale.
 
 **Required inputs:**
 - `data/tracks_SAt_filtered_with_energetics_processed.csv`
@@ -290,14 +290,14 @@ KDE parameters: Gaussian kernel, bandwidth ≈ 0.05 radians (~555 km),
 
 **How to run:**
 ```bash
-python scripts/main/07_figure_genesis_density_kde.py
+python scripts/main/figure_genesis_density_kde.py
 ```
 
 ---
 
-### Figure 8 — EPALL-relative dynamical composites (EP − EPALL)
+### EPALL-relative dynamical composites (EP − EPALL)
 
-**Script:** `08_figure_ep1_ep2_dynamical_composites.py`  
+**Script:** `figure_ep1_ep2_dynamical_composites.py`
 **Output:** `figures/main/dynamical_composites_epall_relative.png`
 
 **What it shows:**
@@ -362,17 +362,17 @@ python scripts/ep_structure_analysis/step3_precompute_composites.py
 
 **How to run (after upstream steps):**
 ```bash
-python scripts/main/08_figure_ep1_ep2_dynamical_composites.py
+python scripts/main/figure_ep1_ep2_dynamical_composites.py
 ```
 
 For physical interpretation of each diagnostic and sign conventions, see
-[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), §Figure 8.
+[`SCIENTIFIC_NOTES.md`](SCIENTIFIC_NOTES.md), in the dynamical-composites section.
 
 ---
 
-### Figure 9 — Pearson |r| heatmaps by field type (EPALL, anomaly)
+### Pearson |r| heatmaps by field type (EPALL, anomaly)
 
-**Script:** `09_figure_pearson_epall_by_field_type.py`  
+**Script:** `figure_pearson_epall_by_field_type.py`
 **Output:** `figures/main/pearson_epall_by_field_type.png`
 
 **What it shows:**
@@ -409,14 +409,14 @@ python scripts/lec_field_dependence_analysis/step7_compute_predep.py
 
 **How to run:**
 ```bash
-python scripts/main/09_figure_pearson_epall_by_field_type.py
+python scripts/main/figure_pearson_epall_by_field_type.py
 ```
 
 ---
 
-### Figure S1 — PCA and clustering validation
+### PCA and clustering validation
 
-**Script:** `S1_figure_pca_clustering_validation.py`  
+**Script:** `figure_pca_clustering_validation.py`
 **Output:** `figures/main/pca_clustering_validation.png`
 
 **What it shows:**
@@ -441,14 +441,14 @@ python scripts/cluster_analysis_energy_patterns/step3_optimal_k_analysis.py
 
 **How to run:**
 ```bash
-python scripts/main/S1_figure_pca_clustering_validation.py
+python scripts/main/figure_pca_clustering_validation.py
 ```
 
 ---
 
-### Figure S3 — C_K vertical profiles and integrated subterms (EP1)
+### C_K vertical profiles and integrated subterms (EP1)
 
-**Script:** `S3_figure_ck_subterms_vertical_profiles.py`  
+**Script:** `figure_ck_subterms_vertical_profiles.py`
 **Output:** `figures/main/ck_subterms_vertical_profiles.png`
 
 **What it shows:**
@@ -471,7 +471,7 @@ Panel (b) uses `results/ck_analysis/ck_subterms_boxplot_input.csv` (integrated v
 
 **How to run:**
 ```bash
-python scripts/main/S3_figure_ck_subterms_vertical_profiles.py
+python scripts/main/figure_ck_subterms_vertical_profiles.py
 ```
 
 ---
@@ -482,35 +482,35 @@ python scripts/main/S3_figure_ck_subterms_vertical_profiles.py
 scripts/preprocess_data/           → data/tracks_SAt_filtered_with_energetics_processed.csv
   └─ scripts/cluster_analysis_energy_patterns/step1..4   → results/cluster/kmeans_clustered_data.csv
        │
-       ├─ 01_figure_tracks_genesis_frequency.py          (Figure 1)
-       ├─ 06_figure_intensity_seasonality_trends.py      (Figure 6)
-       ├─ 07_figure_genesis_density_kde.py               (Figure 7)
-       ├─ S1_figure_pca_clustering_validation.py         (Figure S1, also needs step3_optimal_k)
+       ├─ figure_tracks_genesis_frequency.py
+       ├─ figure_intensity_seasonality_trends.py
+       ├─ figure_genesis_density_kde.py
+       ├─ figure_pca_clustering_validation.py         (also needs step3_optimal_k)
        │
        ├─ scripts/cluster_analysis_energy_patterns/step5  → figures/cluster/lps_*_zoom.png
-       │    └─ 04_figure_lps_combined.py                 (Figure 4)
+       │    └─ figure_lps_combined.py
        │
        ├─ data/temp_lec_zenodo/LEC_Results_energetic-patterns/ (Zenodo)
-       │    └─ 05_figure_vertical_levels.py               (Figure 5)
+       │    └─ figure_vertical_levels.py
        │
        └─ scripts/ep_structure_analysis/step1_select_ep_tracks
             │
             ├─ step2_download_era5 + step3_precompute_composites
             │    └─ data/era5_ep_structure/precomputed_composites_ep{1,2}.nc
-            │         └─ 08_figure_ep1_ep2_dynamical_composites.py  (Figure 8)
+            │         └─ figure_ep1_ep2_dynamical_composites.py
             │
             └─ scripts/ck_subterms_analysis/ + results/ep_structure/ep1_cases.csv
                  │
                  └─ results/ck_analysis/ck_subterms_boxplot_input.csv
                       + data/temp_lec_zenodo/LEC_Results_energetic-patterns/ (Zenodo)
-                           └─ S3_figure_ck_subterms_vertical_profiles.py  (Figure S3)
+                           └─ figure_ck_subterms_vertical_profiles.py
 scripts/exploratory/figure_three_intense_cyclones_individual_zoom.py
   └─ figures/exploratory/three_most_intense_cyclones_zoom/20070643_*.png
-       └─ 02_figure_20070643_publication.py               (Figure 2)
+       └─ figure_20070643_publication.py
 
 scripts/exploratory/density_diagrams_with_ge.py
   └─ figures/exploratory/density_ge/by_phase/{inc,int,mat,dec}.png
-       └─ 03_make_phase_density_2x2.py                   (Figure 3)
+       └─ make_phase_density_2x2.py
 ```
 
 ---

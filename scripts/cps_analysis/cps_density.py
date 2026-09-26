@@ -2,7 +2,7 @@
 Spherical KDE density machinery shared by the CPS density maps.
 
 The estimator is the one already used for the manuscript's genesis-density
-figure (`scripts/main/07_figure_genesis_density_kde.py`), transcribed here so
+figure (`scripts/main/figure_genesis_density_kde.py`), transcribed here so
 that the CPS maps and the manuscript figure are the same calculation:
 
     Hoskins, B. J., & Hodges, K. I. (2005). A new perspective on Southern
@@ -29,7 +29,7 @@ i.e. the whole-life maps count each 3-hourly position as an eighth of a cyclone
 day, which is the standard way of stating residence-time density and keeps the
 number independent of the sampling cadence.
 
-Departure from `07_figure_genesis_density_kde.py`
+Departure from `figure_genesis_density_kde.py`
 -------------------------------------------------
 The KDE is evaluated only on the grid points inside the plotted domain (plus a
 one-cell halo so the contours reach the frame) rather than on the whole globe.

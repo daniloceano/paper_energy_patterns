@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure S3: Vertical Profile of C_K (All Cyclones) and Integrated Subterms for EP1
-         (Intensification Phase)
+Vertical Profile of C_K (All Cyclones) and Integrated Subterms for EP1
+(Intensification Phase)
 
 Scientific context
 ------------------
@@ -48,7 +48,7 @@ Outputs
 Usage
 -----
     # from repository root:
-    python scripts/main/S3_figure_ck_subterms_vertical_profiles.py
+    python scripts/main/figure_ck_subterms_vertical_profiles.py
 
 Author: Danilo Couto de Souza / GitHub Copilot
 Date:   April 2026
@@ -181,7 +181,7 @@ def _pressure_pa_to_hpa(p_pa: float) -> float:
 
 def make_figure(level_data: dict[float, list[float]],
                 subterm_df: pd.DataFrame) -> None:
-    """Build and save Figure S3."""
+    """Build and save the C_K vertical-profile and subterms figure."""
 
     # ── Convert pressure keys to hPa and sort ─────────────────────────────
     level_hpa: dict[float, list[float]] = {
@@ -335,7 +335,7 @@ def make_figure(level_data: dict[float, list[float]],
 
 def main() -> None:
     assert_corrected_clustering()
-    print("\n=== Figure S3: C_K Vertical Profiles & Subterms (EP1, Intensification) ===\n")
+    print("\n=== C_K Vertical Profiles & Subterms (EP1, Intensification) ===\n")
 
     # 1. EP1 cases
     if not EP1_CASES_CSV.exists():

@@ -391,7 +391,7 @@ print(f"Found {len(all_cyclones)} cyclones with LEC results")
 
 **Directory**: `data/era5_ep_structure/`  
 **Created By**: `scripts/ep_structure_analysis/` pipeline  
-**Used By**: `scripts/main/08_figure_ep1_ep2_dynamical_composites.py`
+**Used By**: `scripts/main/figure_ep1_ep2_dynamical_composites.py`
 
 ### Files:
 - `precomputed_composites_ep1.nc` (~200 MB) - Composite of 444 EP1 cyclones

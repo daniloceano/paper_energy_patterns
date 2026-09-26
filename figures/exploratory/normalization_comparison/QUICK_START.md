@@ -4,7 +4,7 @@
 
 ✔️ 7 métodos de normalização implementados e testados  
 ✔️ 9 figuras geradas (7 individuais + 1 comparação + documentação)  
-✔️ Script principal (`06_figure_genesis_density_kde.py`) **JÁ ATUALIZADO** com Min-Max  
+✔️ Script principal (`figure_genesis_density_kde.py`) **JÁ ATUALIZADO** com Min-Max
 ✔️ Documentação completa (`README.md`) **JÁ ATUALIZADA**  
 
 ---
@@ -62,7 +62,7 @@ open figures/exploratory/normalization_comparison/COMPARISON_minmax_vs_zscore.pn
 ### 2. Regenerar Figura 6 (30 segundos)
 ```bash
 source activate.sh
-python scripts/main/07_figure_genesis_density_kde.py
+python scripts/main/figure_genesis_density_kde.py
 ```
 ✅ Script **já usa Min-Max**!
 
@@ -118,7 +118,7 @@ Use: `2_zscore_genesis_density.png`
 - [ ] Revisei `1_minmax_genesis_density.png`
 - [ ] Revisei `COMPARISON_minmax_vs_zscore.png`
 - [ ] Decidi usar Min-Max (recomendado)
-- [ ] Regenerei o KDE de gênese: `python scripts/main/07_figure_genesis_density_kde.py`
+- [ ] Regenerei o KDE de gênese: `python scripts/main/figure_genesis_density_kde.py`
 - [ ] Verifiquei output: `figures/main/ep_genesis_density_kde.png`
 - [ ] (Opcional) Adicionei Z-Score como suplementar
 - [ ] Incorporei insight sobre EP2's variabilidade no texto

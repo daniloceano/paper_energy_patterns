@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Figure 5: Vertical Distribution of Energy Conversions for EP1, EP2, and EP3 Cyclones
+Vertical Distribution of Energy Conversions for EP1, EP2, and EP3 Cyclones
 
 This script creates a two-panel boxplot showing the vertical distribution of:
   • (a) Baroclinic conversion (Ca) across 32 pressure levels (1000–100 hPa)
@@ -194,7 +194,7 @@ def create_boxplots(results_by_ep):
         Keys are EP names ('EP1', 'EP2', 'EP3'); values are results dicts from
         analyze_vertical_profiles().
     """
-    print("\n3. Creating Figure 5: Vertical Distribution of Energy Conversions...")
+    print("\nCreating the vertical distribution of energy conversions figure...")
 
     # Collect all pressure levels present across all EPs
     all_levels = set()
@@ -344,10 +344,10 @@ def create_boxplots(results_by_ep):
 # ============================================================================
 
 def main():
-    """Generate Figure 5: Vertical Distribution of Energy Conversions for EP1–EP3."""
+    """Generate the vertical distribution of energy conversions for EP1–EP3."""
 
     print("=" * 80)
-    print("Figure 5: Vertical Distribution of Energy Conversions (EP1, EP2, EP3)")
+    print("Vertical Distribution of Energy Conversions (EP1, EP2, EP3)")
     print("=" * 80)
 
     print("\n1. Loading cyclones by Energy Pattern...")
@@ -369,7 +369,7 @@ def main():
     output_file = create_boxplots(results_by_ep)
 
     print("\n" + "=" * 80)
-    print("✅ Figure 5 generation complete")
+    print("✅ Vertical-distribution figure generation complete")
     print("=" * 80)
 
 

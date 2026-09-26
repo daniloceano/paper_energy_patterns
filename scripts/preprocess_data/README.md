@@ -87,7 +87,7 @@ N_WORKERS = 50  # Parallel download workers (adjust based on network/CPU)
 
 **Run Time**: ~5-10 minutes (download 634 MB + extract)  
 **Used By**:
-- `scripts/main/05_figure_vertical_levels.py` (publication figure)
+- `scripts/main/figure_vertical_levels.py` (publication figure)
 - `scripts/ck_subterms_analysis/` (Ck decomposition)
 - `scripts/ep_structure_analysis/step1_select_ep_tracks.py` (periods extraction)
 
@@ -149,8 +149,8 @@ python scripts/preprocess_data/run_all.py
 
 ```bash
 # Just run your analysis scripts - they'll auto-load from GitHub
-python scripts/main/01_figure_tracks_genesis_frequency.py  # Works immediately
-python scripts/main/07_figure_genesis_density_kde.py       # Works immediately
+python scripts/main/figure_tracks_genesis_frequency.py  # Works immediately
+python scripts/main/figure_genesis_density_kde.py       # Works immediately
 ```
 
 ### For Clustering Analysis
@@ -168,7 +168,7 @@ python scripts/cluster_analysis_energy_patterns/step1_normalize_and_pca.py
 
 ```bash
 python scripts/preprocess_data/download_lec_from_zenodo.py  # Run once (~10 min)
-python scripts/main/05_figure_vertical_levels.py
+python scripts/main/figure_vertical_levels.py
 ```
 
 ### For Everything

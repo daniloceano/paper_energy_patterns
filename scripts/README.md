@@ -27,24 +27,30 @@ scripts/
 
 ### `main/` — Final Publication Figure Scripts
 
-Repository of final publication-ready figure scripts, numbered by figure order (01–07 main figures, S1–S3 supplementary). Output goes to `figures/main/`.
+Repository of final publication-ready figure scripts. Script names describe the
+analysis and are independent of manuscript figure numbering. Output goes to
+`figures/main/`.
 
 **Main scripts:**
 
-| Script | Figure |
-|--------|--------|
-| `01_figure_tracks_genesis_frequency.py` | Fig 1: Study area and workflow |
-| `02_figure_20070643_publication.py` | Fig 2: Case study cyclone 20070643 |
-| `03_make_phase_density_2x2.py` | Fig 3: Phase space density (2×2) |
-| `04_figure_lps_combined.py` | Fig 4: Lorenz Phase Space for EP1–EP3 |
-| `05_figure_intensity_seasonality_trends.py` | Fig 5: EP intensity, seasonality, trends |
-| `06_figure_genesis_density_kde.py` | Fig 6: Genesis density (KDE) |
-| `07_figure_ep1_ep2_dynamical_composites.py` | Fig 7: EPALL-relative dynamical composites (3×3, EP1/EP2/EP3) |
-| `S1_figure_pca_clustering_validation.py` | Fig S1: PCA/clustering validation |
-| `S2_figure_vertical_levels.py` | Fig S2: Vertical Ca/Ck distributions for EP1, EP2, and EP3 |
+| Script | Analysis |
+|--------|----------|
+| `figure_tracks_genesis_frequency.py` | Study area and workflow |
+| `figure_20070643_publication.py` | Case study cyclone 20070643 |
+| `make_phase_density_2x2.py` | Phase space density (2×2) |
+| `figure_lps_combined.py` | Lorenz Phase Space for EP1–EP3 |
+| `figure_vertical_levels.py` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 |
+| `figure_intensity_seasonality_trends.py` | EP intensity, seasonality, and trends |
+| `figure_genesis_density_kde.py` | Genesis density (KDE) |
+| `figure_ep1_ep2_dynamical_composites.py` | EPALL-relative dynamical composites (3×3, EP1/EP2/EP3) |
+| `figure_pearson_epall_by_field_type.py` | Pearson correlations by dynamical field |
+| `figure_pca_clustering_validation.py` | PCA/clustering validation |
+| `figure_pairwise_effectsize_lec_terms.py` | Pairwise LEC-term effect sizes |
+| `figure_ck_subterms_vertical_profiles.py` | C_K vertical profiles and integrated subterms |
+| `figure_pairwise_effectsize_composite_scalars.py` | Pairwise composite-scalar effect sizes |
 | `run_all.py` | Run all figure scripts sequentially |
 
-**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; Fig 7 additionally requires composites from `data/era5_ep_structure/`; Fig S2 requires the Zenodo LEC archive in `data/temp_lec_zenodo/`.
+**Inputs:** `data/tracks_SAt_filtered_with_energetics_processed.csv`, `results/cluster/kmeans_clustered_data.csv`; dynamical composites additionally require `data/era5_ep_structure/`, and vertical profiles require the corrected vertical LEC archive.
 
 **Outputs:** `figures/main/`
 
@@ -318,8 +324,8 @@ from scripts.utils.load_data import load_tracks
 ```
 
 This ensures scripts work from **any working directory**:
-- From project root: `python scripts/main/01_figure_tracks_genesis_frequency.py`
-- From scripts dir: `python main/01_figure_tracks_genesis_frequency.py`
+- From project root: `python scripts/main/figure_tracks_genesis_frequency.py`
+- From scripts dir: `python main/figure_tracks_genesis_frequency.py`
 
 Depth reference: scripts in `scripts/` use `.parents[1]`; scripts in `scripts/subdir/` use `.parents[2]`.
 
@@ -346,7 +352,7 @@ python scripts/cluster_analysis_energy_patterns/run_all.py
 
 # From any subdirectory (imports resolve automatically)
 cd scripts/main
-python 01_figure_tracks_genesis_frequency.py
+python figure_tracks_genesis_frequency.py
 ```
 
 ---

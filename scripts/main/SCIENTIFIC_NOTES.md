@@ -422,7 +422,7 @@ standard unit for Southern Hemisphere cyclone density maps
 haversine metric on radian-converted coordinates, which correctly handles great-circle
 distances. A reference Earth radius of 6369 km (at ~40°S) is used in area
 normalization. The exact normalization constants are in the script configuration block
-of `06_figure_genesis_density_kde.py`.
+of `figure_genesis_density_kde.py`.
 
 ### 8.2 Min-max normalized relative anomaly (panels b–d)
 
@@ -917,7 +917,7 @@ to detect trend in serially correlated hydrological series. *Water Resources Man
 ### TODO / unresolved uncertainties
 
 - **Figure 5 corrections re-validation:** The Ca sign inversion and Ck / $g$
-  normalization applied in `05_figure_vertical_levels.py` were validated against the
+  normalization applied in `figure_vertical_levels.py` were validated against the
   current Zenodo archive. If the archive is regenerated, re-run the validation script
   before interpreting the figure.
 

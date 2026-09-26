@@ -21,16 +21,16 @@ references are in:
 
 | File | Script | Description |
 |------|--------|-------------|
-| `tracks_genesis_frequency.png` | `01_figure_tracks_genesis_frequency.py` | Cyclone tracks by region + genesis-frequency sunburst |
-| `cyclone_20070643_lps_track.png` | `02_figure_20070643_publication.py` | Case study — cyclone 20070643 LPS and track |
-| `phase_density.png` | `03_make_phase_density_2x2.py` | Phase-space density by lifecycle phase (2×2) |
-| `lps_combined.png` | `04_figure_lps_combined.py` | Lorenz Phase Space for EP1–EP3 (Conversion + Imports) |
-| `vertical_levels.png` | `05_figure_vertical_levels.py` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones |
-| `ep_intensity_seasonality_trends.png` | `06_figure_intensity_seasonality_trends.py` | EP intensity, seasonal distribution, and interannual trends |
-| `ep_genesis_density_kde.png` | `07_figure_genesis_density_kde.py` | Genesis density using KDE (Hoskins & Hodges method) |
-| `dynamical_composites_epall_relative.png` | `08_figure_ep1_ep2_dynamical_composites.py` | EPALL-relative dynamical composites — 3×3 layout |
-| `pearson_epall_by_field_type.png` | `09_figure_pearson_epall_by_field_type.py` | Pearson \|r\| heatmaps by field type (AdvT, AFC, KE adv, PV200, PV850) — EPALL anomaly, canonical LEC terms |
-| `pca_clustering_validation.png` | `S1_figure_pca_clustering_validation.py` | PCA variance + optimal-*k* cluster validation |
-| `pairwise_effectsize_lec_terms.png` | `S2_figure_pairwise_effectsize_lec_terms.py` | Pairwise effect size (\|rank-biserial r\|) for canonical LEC terms, EP1 vs EP2 vs EP3 |
-| `ck_subterms_vertical_profiles.png` | `S3_figure_ck_subterms_vertical_profiles.py` | C_K vertical profiles + integrated subterms for EP1 (barotropic instability) |
-| `pairwise_effectsize_composite_scalars.png` | `S4_figure_pairwise_effectsize_composite_scalars.py` | Pairwise effect size (\|rank-biserial r\|) for EPALL-relative composite scalar features, EP1 vs EP2 vs EP3 |
+| `tracks_genesis_frequency.png` | `figure_tracks_genesis_frequency.py` | Cyclone tracks by region + genesis-frequency sunburst |
+| `cyclone_20070643_lps_track.png` | `figure_20070643_publication.py` | Case study — cyclone 20070643 LPS and track |
+| `phase_density.png` | `make_phase_density_2x2.py` | Phase-space density by lifecycle phase (2×2) |
+| `lps_combined.png` | `figure_lps_combined.py` | Lorenz Phase Space for EP1–EP3 (Conversion + Imports) |
+| `vertical_levels.png` | `figure_vertical_levels.py` | Vertical Ca/Ck distributions for EP1, EP2, and EP3 cyclones |
+| `ep_intensity_seasonality_trends.png` | `figure_intensity_seasonality_trends.py` | EP intensity, seasonal distribution, and interannual trends |
+| `ep_genesis_density_kde.png` | `figure_genesis_density_kde.py` | Genesis density using KDE (Hoskins & Hodges method) |
+| `dynamical_composites_epall_relative.png` | `figure_ep1_ep2_dynamical_composites.py` | EPALL-relative dynamical composites — 3×3 layout |
+| `pearson_epall_by_field_type.png` | `figure_pearson_epall_by_field_type.py` | Pearson \|r\| heatmaps by field type (AdvT, AFC, KE adv, PV200, PV850) — EPALL anomaly, canonical LEC terms |
+| `pca_clustering_validation.png` | `figure_pca_clustering_validation.py` | PCA variance + optimal-*k* cluster validation |
+| `pairwise_effectsize_lec_terms.png` | `figure_pairwise_effectsize_lec_terms.py` | Pairwise effect size (\|rank-biserial r\|) for canonical LEC terms, EP1 vs EP2 vs EP3 |
+| `ck_subterms_vertical_profiles.png` | `figure_ck_subterms_vertical_profiles.py` | C_K vertical profiles + integrated subterms for EP1 (barotropic instability) |
+| `pairwise_effectsize_composite_scalars.png` | `figure_pairwise_effectsize_composite_scalars.py` | Pairwise effect size (\|rank-biserial r\|) for EPALL-relative composite scalar features, EP1 vs EP2 vs EP3 |

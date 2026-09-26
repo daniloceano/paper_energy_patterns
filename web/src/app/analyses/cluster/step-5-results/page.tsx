@@ -101,10 +101,10 @@ export default function Step5Page() {
             </table>
           </div>
           <FigurePanel
-            src="/figures/main/6_ep_intensity_seasonality_trends.png"
+            src="/figures/main/ep_intensity_seasonality_trends.png"
             alt="Corrected EP intensity distributions, seasonal genesis frequencies, and annual-count trends"
             caption="Figure 6. Maximum intensity, seasonal genesis distribution, and interannual occurrence for the corrected EP classification. Dashed trend lines are not significant at p < 0.05."
-            source="figures/main/6_ep_intensity_seasonality_trends.png"
+            source="figures/main/ep_intensity_seasonality_trends.png"
           />
         </section>
 
@@ -118,10 +118,10 @@ export default function Step5Page() {
             enhancement and blue regions relative reduction.
           </p>
           <FigurePanel
-            src="/figures/main/7_ep_genesis_density_kde.png"
+            src="/figures/main/ep_genesis_density_kde.png"
             alt="Corrected kernel density estimates of cyclone genesis for all cyclones and each Energy Pattern"
             caption="Figure 7. Kernel density estimate of genesis locations for all cyclones and EP-relative normalized anomalies for EP1, EP2, and EP3."
-            source="figures/main/7_ep_genesis_density_kde.png"
+            source="figures/main/ep_genesis_density_kde.png"
           />
         </section>
 

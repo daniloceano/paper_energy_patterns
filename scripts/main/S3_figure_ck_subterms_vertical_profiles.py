@@ -43,7 +43,7 @@ and are NOT part of the local Zenodo archive.  Therefore this script uses:
 
 Outputs
 -------
-  figures/main/S3_ck_subterms_vertical_profiles.png  (300 DPI)
+  figures/main/ck_subterms_vertical_profiles.png  (300 DPI)
 
 Usage
 -----
@@ -96,7 +96,7 @@ EP1_CASES_CSV   = BASE_DIR / "results" / "ep_structure" / "ep1_cases.csv"
 SUBTERMS_CSV    = BASE_DIR / "results" / "ck_subterms_corrected" / "subterms_long.csv"
 FIGURES_DIR     = BASE_DIR / "figures" / "main"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_PNG      = FIGURES_DIR / "S3_ck_subterms_vertical_profiles.png"
+OUTPUT_PNG      = FIGURES_DIR / "ck_subterms_vertical_profiles.png"
 
 # ============================================================================
 # CONSTANTS

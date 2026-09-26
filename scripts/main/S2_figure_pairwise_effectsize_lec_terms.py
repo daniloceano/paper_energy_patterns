@@ -26,7 +26,7 @@ Data source: results/lec_field_dependence/step7b_pairwise_table.csv
   (produced by scripts/lec_field_dependence_analysis/step7b_ep_significance_tests.py)
 
 Outputs:
-  figures/main/S3_pairwise_effectsize_lec_terms.png  (300 DPI)
+  figures/main/pairwise_effectsize_lec_terms.png  (300 DPI)
 
 Author: Danilo Couto de Souza
 Date: April 2026
@@ -55,7 +55,7 @@ INPUT_PAIR = BASE_DIR / "results" / "lec_field_dependence" / "step7b_pairwise_ta
 FIGURES_DIR = BASE_DIR / "figures" / "main"
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 
-OUTPUT_FILE = FIGURES_DIR / "S2_pairwise_effectsize_lec_terms.png"
+OUTPUT_FILE = FIGURES_DIR / "pairwise_effectsize_lec_terms.png"
 
 # Statistical threshold
 ALPHA = 0.05

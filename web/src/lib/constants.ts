@@ -507,8 +507,8 @@ export const CLUSTER_STEPS: AnalysisStep[] = [
       'scripts/web/extract_cluster_site_data.py',
     ],
     figures: [
-      'figures/main/6_ep_intensity_seasonality_trends.png',
-      'figures/main/7_ep_genesis_density_kde.png',
+      'figures/main/ep_intensity_seasonality_trends.png',
+      'figures/main/ep_genesis_density_kde.png',
     ],
   },
 ]

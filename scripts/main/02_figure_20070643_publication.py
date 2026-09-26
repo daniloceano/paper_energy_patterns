@@ -68,7 +68,7 @@ ax3.text(0.33, 0.99, '(c)', transform=ax3.transAxes,
 
 
 # Save
-out_file = OUT_DIR / f'2_{TRACK_ID}_lps_track_publication.png'
+out_file = OUT_DIR / f'cyclone_{TRACK_ID}_lps_track.png'
 plt.savefig(out_file, dpi=300, bbox_inches='tight', facecolor='white')
 plt.close(fig)
 print(f'✓ Saved: {out_file}')

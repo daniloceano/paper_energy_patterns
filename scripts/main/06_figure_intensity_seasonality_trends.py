@@ -17,7 +17,7 @@ Trend analysis methodology:
   • All test results saved to results/exploratory/mk_trend_results.csv
 
 Outputs:
-  • Figure: figures/main/6_ep_intensity_seasonality_trends.png (300 DPI)
+  • Figure: figures/main/ep_intensity_seasonality_trends.png (300 DPI)
   • CSV: results/exploratory/mk_trend_results.csv (all MK test results with slope, CI, autocorr info)
   • CSV: results/exploratory/ep_intensity_seasonality_summary.csv
 
@@ -452,7 +452,7 @@ def create_figure():
     plot_interannual_trends(ax3, df)
     print("\n  ✓ Trend analysis complete.")
 
-    output_file = FIGURES_DIR / '6_ep_intensity_seasonality_trends.png'
+    output_file = FIGURES_DIR / 'ep_intensity_seasonality_trends.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n{'='*60}")
     print(f"Figure saved: {output_file}")

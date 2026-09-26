@@ -25,7 +25,7 @@ FILES = [
     'dec.png',
 ]
 
-OUT_PATH = os.path.join(OUT_DIR, '3_phase_density_2x2.png')
+OUT_PATH = os.path.join(OUT_DIR, 'phase_density.png')
 
 
 def make_2x2():

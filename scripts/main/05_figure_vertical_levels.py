@@ -27,7 +27,7 @@ IMPORTANT: This script requires corrected cluster and vertical products:
   • LEC data: data/corrected/vertical_phase_means_corrected.parquet
 
 Outputs:
-  • Figure: figures/main/5_vertical_levels.png (300 DPI)
+  • Figure: figures/main/vertical_levels.png (300 DPI)
 
 Author: Danilo Couto de Souza
 Date: January 2026
@@ -316,7 +316,7 @@ def create_boxplots(results_by_ep):
 
     plt.tight_layout()
 
-    output_file = FIGURES_DIR / "5_vertical_levels.png"
+    output_file = FIGURES_DIR / "vertical_levels.png"
     plt.savefig(output_file, dpi=DPI, bbox_inches='tight')
     plt.close()
 

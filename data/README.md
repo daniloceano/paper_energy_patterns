@@ -121,7 +121,7 @@ This directory contains cached/processed data files. Input data is accessed remo
 - **Total-field**: egr, pv_200/850, adv_T_850, div_q_975, msl, ke_adv_250, u/v winds
 - **Anomalies**: pv_anom, adv_T_anom, div_q_anom, ke_adv_anom, msl_anom
 
-**Used By**: `scripts/main/07_figure_ep1_ep2_dynamical_composites.py`
+**Used By**: `scripts/main/08_figure_ep1_ep2_dynamical_composites.py`
 
 ### `ck_analysis/` Directory
 

@@ -108,7 +108,7 @@ environmental contexts, while EP3 is concentrated in the primary hotspot.
 3. Regenerate Fig. 6 (script already updated):
 ```bash
 source activate.sh
-python scripts/main/06_figure_genesis_density_kde.py
+python scripts/main/07_figure_genesis_density_kde.py
 ```
 4. Update manuscript text to note robustness across methods and the EP2 insight.
 

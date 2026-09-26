@@ -21,7 +21,7 @@ Author: Danilo Couto de Souza
 Date: December 2024
 
 Output:
-- figures/main/7_ep_genesis_density_kde.png (300 DPI)
+- figures/main/ep_genesis_density_kde.png (300 DPI)
 """
 
 import numpy as np
@@ -436,7 +436,7 @@ def create_figure():
     plt.tight_layout()
     
     # Save figure
-    output_file = FIGURES_DIR / '7_ep_genesis_density_kde.png'
+    output_file = FIGURES_DIR / 'ep_genesis_density_kde.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n{'='*60}")
     print(f"Figure saved: {output_file}")

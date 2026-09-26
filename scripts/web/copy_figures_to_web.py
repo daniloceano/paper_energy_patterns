@@ -54,19 +54,20 @@ FIGURES_MANIFEST = {
     "cluster/lps_imports_zoom.png":       "cluster/lps_imports_zoom.png",
 
     # --- Main / publication figures ---
-    "main/4_lps_combined.png":                    "main/4_lps_combined.png",
-    # Compatibility aliases retained for links from the earlier site numbering.
-    "main/5_ep_intensity_seasonality_trends.png":  "main/6_ep_intensity_seasonality_trends.png",
-    "main/6_ep_genesis_density_kde.png":           "main/7_ep_genesis_density_kde.png",
-    "main/6_ep_intensity_seasonality_trends.png":  "main/6_ep_intensity_seasonality_trends.png",
-    "main/7_ep_genesis_density_kde.png":           "main/7_ep_genesis_density_kde.png",
-    "main/7_ep1_ep2_dynamical_composites.png":     "main/7_ep1_ep2_dynamical_composites.png",
-    "main/S1_pca_clustering_validation.png":       "main/S1_pca_clustering_validation.png",
-    "main/S2_selected_tracks.png":                 "main/S2_selected_tracks.png",
-    "main/S3_vertical_levels.png":                 "main/S3_vertical_levels.png",
-    "main/1_tracks_genesis_frequency.png":         "main/1_tracks_genesis_frequency.png",
-    "main/2_20070643_lps_track_publication.png":   "main/2_20070643_lps_track_publication.png",
-    "main/3_phase_density_2x2.png":                "main/3_phase_density_2x2.png",
+    # Filenames describe content only; publication order belongs in the paper.
+    "main/tracks_genesis_frequency.png":              "main/tracks_genesis_frequency.png",
+    "main/cyclone_20070643_lps_track.png":             "main/cyclone_20070643_lps_track.png",
+    "main/phase_density.png":                          "main/phase_density.png",
+    "main/lps_combined.png":                           "main/lps_combined.png",
+    "main/vertical_levels.png":                        "main/vertical_levels.png",
+    "main/ep_intensity_seasonality_trends.png":        "main/ep_intensity_seasonality_trends.png",
+    "main/ep_genesis_density_kde.png":                 "main/ep_genesis_density_kde.png",
+    "main/dynamical_composites_epall_relative.png":    "main/dynamical_composites_epall_relative.png",
+    "main/pearson_epall_by_field_type.png":            "main/pearson_epall_by_field_type.png",
+    "main/pca_clustering_validation.png":              "main/pca_clustering_validation.png",
+    "main/pairwise_effectsize_lec_terms.png":          "main/pairwise_effectsize_lec_terms.png",
+    "main/ck_subterms_vertical_profiles.png":          "main/ck_subterms_vertical_profiles.png",
+    "main/pairwise_effectsize_composite_scalars.png":  "main/pairwise_effectsize_composite_scalars.png",
 
     # --- CPS analysis (cyclone phase space) ---
     # The 745-figure case gallery under figures/cps_analysis/cases/ is NOT copied:

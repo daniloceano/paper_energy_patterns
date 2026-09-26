@@ -45,7 +45,7 @@ Object paths: mirrors the figures/ directory structure in the repo, WITHOUT the
 
   Local path                               → Supabase object key
   figures/cluster/pca_variance_wide.png    → cluster/pca_variance_wide.png
-  figures/main/4_lps_combined.png          → main/4_lps_combined.png
+  figures/main/lps_combined.png            → main/lps_combined.png
   figures/ep_structure/composite_egr.png   → ep_structure/composite_egr.png
 
 Public URL (set as NEXT_PUBLIC_SUPABASE_FIGURES_URL in Vercel):

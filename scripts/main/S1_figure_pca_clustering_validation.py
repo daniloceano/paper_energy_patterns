@@ -39,7 +39,7 @@ OPTIMAL_K_FILE = "optimal_k.txt"
 
 # Output settings
 FIGURES_DIR = PROJECT_ROOT / "figures" / "main"
-OUTPUT_FILE = "S1_pca_clustering_validation.png"
+OUTPUT_FILE = "pca_clustering_validation.png"
 DPI = 300
 
 # Plot settings

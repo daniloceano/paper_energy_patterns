@@ -21,7 +21,7 @@ Data source (same as diagnostic figure
   results/lec_field_dependence/step7_predep_absolute_epall.csv
 
 Output:
-  figures/main/9_pearson_epall_by_field_type.png  (300 DPI)
+  figures/main/pearson_epall_by_field_type.png  (300 DPI)
 
 Run from repository root:
   python scripts/main/09_figure_pearson_epall_by_field_type.py
@@ -67,7 +67,7 @@ NCOLS                = 2             # subplot columns
 # ---------------------------------------------------------------------------
 INPUT_CSV   = BASE_DIR / "results" / "lec_field_dependence" / "step7_predep_absolute_epall.csv"
 FIGURES_DIR = BASE_DIR / "figures" / "main"
-OUTPUT_PNG  = FIGURES_DIR / "9_pearson_epall_by_field_type.png"
+OUTPUT_PNG  = FIGURES_DIR / "pearson_epall_by_field_type.png"
 
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 

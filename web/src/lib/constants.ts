@@ -489,14 +489,27 @@ export const CLUSTER_STEPS: AnalysisStep[] = [
     title: 'Results & Summary',
     shortTitle: 'Results',
     description:
-      'Corrected Energy Pattern populations and intensification-phase Ca and Ck centroids, with downstream interpretations intentionally separated.',
+      'Corrected Energy Pattern populations, intensification-phase Ca and Ck centroids, intensity, seasonality, interannual trends, and genesis density.',
     inputs: [
       'results/cluster/kmeans_summary.csv',
       'results/cluster/kmeans_centroids_energy.csv',
+      'results/cluster/kmeans_clustered_data.csv',
     ],
-    outputs: ['web/src/content/energy_patterns.json'],
-    scripts: ['scripts/web/extract_cluster_site_data.py'],
-    figures: [],
+    outputs: [
+      'results/exploratory/ep_intensity_seasonality_summary.csv',
+      'results/exploratory/mk_trend_results.csv',
+      'web/src/content/energy_patterns.json',
+      'web/src/content/energy_pattern_exploratory.json',
+    ],
+    scripts: [
+      'scripts/main/06_figure_intensity_seasonality_trends.py',
+      'scripts/main/07_figure_genesis_density_kde.py',
+      'scripts/web/extract_cluster_site_data.py',
+    ],
+    figures: [
+      'figures/main/6_ep_intensity_seasonality_trends.png',
+      'figures/main/7_ep_genesis_density_kde.png',
+    ],
   },
 ]
 

@@ -14,6 +14,7 @@ Outputs:
     web/src/content/cluster_step3_data.json
     web/src/content/cluster_step4_data.json
     web/src/content/energy_patterns.json
+    web/src/content/energy_pattern_exploratory.json
 """
 
 import csv
@@ -22,6 +23,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RESULTS_DIR = REPO_ROOT / "results" / "cluster"
+EXPLORATORY_RESULTS_DIR = REPO_ROOT / "results" / "exploratory"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
 
 def ensure_output_dir():
@@ -41,6 +43,17 @@ def read_csv_required(filepath):
     rows = read_csv_safe(filepath)
     if not rows:
         raise FileNotFoundError(f"required non-empty clustering result is missing: {filepath}")
+    return rows
+
+
+def read_commented_csv_required(filepath):
+    """Read a CSV whose metadata header uses comment lines."""
+    if not filepath.exists():
+        raise FileNotFoundError(f"required result is missing: {filepath}")
+    with open(filepath) as f:
+        rows = list(csv.DictReader(line for line in f if not line.startswith("#")))
+    if not rows:
+        raise ValueError(f"required result is empty: {filepath}")
     return rows
 
 
@@ -169,6 +182,59 @@ def extract_energy_patterns():
     print(f"  ✓ {output.relative_to(REPO_ROOT)}")
 
 
+def extract_energy_pattern_exploratory():
+    """Publish corrected intensity, seasonality, and chosen trend results."""
+    summary_rows = read_csv_required(
+        EXPLORATORY_RESULTS_DIR / "ep_intensity_seasonality_summary.csv"
+    )
+    trend_rows = read_commented_csv_required(
+        EXPLORATORY_RESULTS_DIR / "mk_trend_results.csv"
+    )
+    mapping = json.loads((RESULTS_DIR / "cluster_to_ep.json").read_text())
+
+    summaries = {row["EP"]: row for row in summary_rows}
+    chosen_trends = {row["EP"]: row for row in trend_rows if row["chosen"] == "True"}
+    expected = {"EP1", "EP2", "EP3"}
+    if set(summaries) != expected or set(chosen_trends) != expected:
+        raise ValueError("exploratory publication requires one summary and one chosen trend per EP")
+
+    data = {}
+    for ep in sorted(expected):
+        summary = summaries[ep]
+        trend = chosen_trends[ep]
+        ep_number = ep.removeprefix("EP")
+        expected_count = int(mapping["ep_counts"][ep_number])
+        if int(summary["n_cyclones"]) != expected_count:
+            raise ValueError(f"{ep} exploratory count does not match corrected clustering")
+        data[ep] = {
+            "count": expected_count,
+            "intensity": {
+                key: float(summary[f"intensity_{key}"])
+                for key in ("mean", "median", "std", "min", "max")
+            },
+            "seasonality": {
+                season: float(summary[f"{season}_percent"])
+                for season in ("DJF", "MAM", "JJA", "SON")
+            },
+            "peakSeason": summary["peak_season"],
+            "peakSeasonPercent": float(summary["peak_season_percent"]),
+            "trend": {
+                "test": trend["test"],
+                "result": trend["trend"],
+                "pValue": float(trend["p_value"]),
+                "tau": float(trend["tau"]),
+                "slopePerYear": float(trend["slope_per_year"]),
+                "slopeCiLow": float(trend["slope_ci_low"]),
+                "slopeCiHigh": float(trend["slope_ci_high"]),
+                "years": trend["years_range"],
+            },
+        }
+
+    output = WEB_CONTENT / "energy_pattern_exploratory.json"
+    output.write_text(json.dumps(data, indent=2) + "\n")
+    print(f"  ✓ {output.relative_to(REPO_ROOT)}")
+
+
 def main():
     print("Extracting cluster analysis data for site...")
     ensure_output_dir()
@@ -176,6 +242,7 @@ def main():
     extract_step3_optimal_k()
     extract_step4_clustering()
     extract_energy_patterns()
+    extract_energy_pattern_exploratory()
     print("Done.")
 
 

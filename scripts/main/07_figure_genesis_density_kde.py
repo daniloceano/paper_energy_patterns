@@ -19,6 +19,9 @@ relative to the overall climatology.
 
 Author: Danilo Couto de Souza
 Date: December 2024
+
+Output:
+- figures/main/7_ep_genesis_density_kde.png (300 DPI)
 """
 
 import numpy as np

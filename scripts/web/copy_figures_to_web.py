@@ -55,8 +55,11 @@ FIGURES_MANIFEST = {
 
     # --- Main / publication figures ---
     "main/4_lps_combined.png":                    "main/4_lps_combined.png",
-    "main/5_ep_intensity_seasonality_trends.png":  "main/5_ep_intensity_seasonality_trends.png",
-    "main/6_ep_genesis_density_kde.png":           "main/6_ep_genesis_density_kde.png",
+    # Compatibility aliases retained for links from the earlier site numbering.
+    "main/5_ep_intensity_seasonality_trends.png":  "main/6_ep_intensity_seasonality_trends.png",
+    "main/6_ep_genesis_density_kde.png":           "main/7_ep_genesis_density_kde.png",
+    "main/6_ep_intensity_seasonality_trends.png":  "main/6_ep_intensity_seasonality_trends.png",
+    "main/7_ep_genesis_density_kde.png":           "main/7_ep_genesis_density_kde.png",
     "main/7_ep1_ep2_dynamical_composites.png":     "main/7_ep1_ep2_dynamical_composites.png",
     "main/S1_pca_clustering_validation.png":       "main/S1_pca_clustering_validation.png",
     "main/S2_selected_tracks.png":                 "main/S2_selected_tracks.png",
@@ -83,7 +86,9 @@ FIGURES_MANIFEST = {
 }
 
 
-def copy_figures(dry_run: bool = False) -> tuple[int, int, int]:
+def copy_figures(
+    dry_run: bool = False, only: set[str] | None = None
+) -> tuple[int, int, int]:
     """Copy figures to web/public/figures/.
 
     Returns (copied, skipped_missing, already_up_to_date).
@@ -91,6 +96,8 @@ def copy_figures(dry_run: bool = False) -> tuple[int, int, int]:
     copied = missing = up_to_date = 0
 
     for dst_rel, src_rel in FIGURES_MANIFEST.items():
+        if only is not None and dst_rel not in only:
+            continue
         src = FIGURES_SRC / src_rel
         dst = FIGURES_DST / dst_rel
 
@@ -219,7 +226,19 @@ def main():
         description="Copy figures to web/public/figures/ for Vercel deployment."
     )
     parser.add_argument("--dry-run", action="store_true", help="Preview without copying")
+    parser.add_argument(
+        "--only",
+        action="append",
+        metavar="PATH",
+        help="Copy only this manifest target (repeat for multiple figures)",
+    )
     args = parser.parse_args()
+    only = set(args.only) if args.only else None
+
+    if only is not None:
+        unknown = only.difference(FIGURES_MANIFEST)
+        if unknown:
+            parser.error(f"unknown manifest target(s): {', '.join(sorted(unknown))}")
 
     print("=" * 60)
     print("COPY FIGURES TO WEB PUBLIC ASSETS")
@@ -232,23 +251,23 @@ def main():
     if not args.dry_run:
         FIGURES_DST.mkdir(parents=True, exist_ok=True)
 
-    copied, missing, up_to_date = copy_figures(dry_run=args.dry_run)
+    copied, missing, up_to_date = copy_figures(dry_run=args.dry_run, only=only)
 
-    # Copy cyclone explorer assets
-    cx_copied, cx_uptodate = copy_cyclone_explorer_tree(dry_run=args.dry_run)
-    
-    # Copy EP structure composite figures (with mode suffixes)
-    ep_copied, ep_uptodate = copy_ep_structure_tree(dry_run=args.dry_run)
-
-    # These analyses have complete, self-contained site sections. Copy their
-    # trees dynamically so new corrected panels cannot be omitted from a
-    # deployment by an outdated hand-maintained file list.
-    ck_copied, ck_uptodate = copy_analysis_tree(
-        "ck_subterms_corrected", dry_run=args.dry_run
-    )
-    lfd_copied, lfd_uptodate = copy_analysis_tree(
-        "lec_field_dependence", dry_run=args.dry_run
-    )
+    if only is None:
+        # Copy complete analysis trees only during a full site synchronization.
+        cx_copied, cx_uptodate = copy_cyclone_explorer_tree(dry_run=args.dry_run)
+        ep_copied, ep_uptodate = copy_ep_structure_tree(dry_run=args.dry_run)
+        ck_copied, ck_uptodate = copy_analysis_tree(
+            "ck_subterms_corrected", dry_run=args.dry_run
+        )
+        lfd_copied, lfd_uptodate = copy_analysis_tree(
+            "lec_field_dependence", dry_run=args.dry_run
+        )
+    else:
+        cx_copied = cx_uptodate = 0
+        ep_copied = ep_uptodate = 0
+        ck_copied = ck_uptodate = 0
+        lfd_copied = lfd_uptodate = 0
 
     total_copied = copied + cx_copied + ep_copied + ck_copied + lfd_copied
     total_uptodate = (

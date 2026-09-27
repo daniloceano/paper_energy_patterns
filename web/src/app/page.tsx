@@ -13,7 +13,11 @@ import {
   FileWarning,
   Workflow,
   ArrowRight,
+  BetweenVerticalStart,
+  GitCompareArrows,
   GitBranch,
+  Tornado,
+  TrendingDown,
 } from 'lucide-react'
 import { ENERGY_PATTERNS, DATASET_STATS } from '@/lib/constants'
 
@@ -323,26 +327,57 @@ export default function HomePage() {
             Explore the Research
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Analysis-specific methods stay next to their results. Shared methodology is
-            documented separately from data provenance and the bibliography.
+            Open each analysis directly from the homepage. Analysis-specific methods stay next
+            to their results, while shared methodology remains separate from data provenance and
+            the bibliography.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                title: 'Analyses',
-                desc: 'Clustering, ERA5 composites, Ck subterms, LEC–field dependence, and the cyclone phase space',
-                href: '/analyses',
+                title: 'Energy Patterns',
+                desc: 'PCA, optimal cluster determination, K-Means classification, lifecycle energetics, intensity, seasonality, trends, and genesis density.',
+                href: '/analyses/cluster',
                 icon: BarChart3,
               },
               {
+                title: 'Vertical Structure — Ca and Ck',
+                desc: 'Corrected pressure-level distributions showing the vertical energy pathways of EP1, EP2, EP3, and the pooled population.',
+                href: '/analyses/vertical-structure',
+                icon: BetweenVerticalStart,
+              },
+              {
+                title: 'Ck Subterms',
+                desc: 'Corrected all-pattern decomposition of barotropic conversion into five mechanisms, with profiles, distributions, and lifecycle evolution.',
+                href: '/analyses/ck-subterms',
+                icon: TrendingDown,
+              },
+              {
+                title: 'ERA5 Composites',
+                desc: 'Storm-centred atmospheric structure across EGR, PV, temperature advection, moisture, SLP, instability, and kinetic-energy diagnostics.',
+                href: '/analyses/composites',
+                icon: Layers,
+              },
+              {
+                title: 'LEC–Field Dependence',
+                desc: 'EP differences and per-cyclone dependence between dynamical fields and Lorenz Energy Cycle terms.',
+                href: '/analyses/field-dependence',
+                icon: GitCompareArrows,
+              },
+              {
+                title: 'Cyclone Phase Space',
+                desc: 'Thermal structure, persistent phase transitions, and subtropical occurrence across the Energy Patterns.',
+                href: '/analyses/cps',
+                icon: Tornado,
+              },
+              {
                 title: 'Methodology',
-                desc: 'Shared processing sequence, corrected LEC equations, feature construction, and numerical conventions',
+                desc: 'Shared processing sequence, corrected LEC equations, feature construction, explosive-cyclone identification, and numerical conventions.',
                 href: '/methodology',
                 icon: Workflow,
               },
               {
                 title: 'Data & References',
-                desc: 'Dataset inventory, analysis populations, provenance, bibliography, and DOI records',
+                desc: 'Dataset inventory, analysis populations, provenance, bibliography, and DOI records.',
                 href: '/data-references',
                 icon: BookOpen,
               },

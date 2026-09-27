@@ -7,9 +7,34 @@ import traceback
 HERE = os.path.dirname(os.path.abspath(__file__))
 ME = os.path.basename(__file__)
 
+# Execution order is explicit so filenames can remain independent of manuscript
+# figure numbering. Update this list only when pipeline dependencies change.
+SCRIPT_ORDER = [
+    "figure_tracks_genesis_frequency.py",
+    "figure_20070643_publication.py",
+    "make_phase_density_2x2.py",
+    "figure_lps_combined.py",
+    "figure_vertical_levels.py",
+    "figure_intensity_seasonality_trends.py",
+    "figure_genesis_density_kde.py",
+    "figure_ep1_ep2_dynamical_composites.py",
+    "figure_pearson_epall_by_field_type.py",
+    "figure_pca_clustering_validation.py",
+    "figure_pairwise_effectsize_lec_terms.py",
+    "figure_ck_subterms_vertical_profiles.py",
+    "figure_pairwise_effectsize_composite_scalars.py",
+]
+
 def main():
     print("\n✨ Running all scripts in 'main' — let's go! ✨\n")
-    py_files = sorted([f for f in os.listdir(HERE) if f.endswith('.py') and f not in ('__init__.py', ME)])
+    missing = [fname for fname in SCRIPT_ORDER if not os.path.exists(os.path.join(HERE, fname))]
+    if missing:
+        print("Missing scripts declared in SCRIPT_ORDER:")
+        for fname in missing:
+            print(f"   - {fname}")
+        return 1
+
+    py_files = SCRIPT_ORDER
     successes = []
     failures = {}
 

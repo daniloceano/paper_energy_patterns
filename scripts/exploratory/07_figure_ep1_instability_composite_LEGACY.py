@@ -23,7 +23,7 @@ Columns: local (5°) | mesoscale (15°) | synoptic (30°)
 12 panels total, labeled (a)–(l)
 
 Outputs:
-  • figures/main/7_ep1_instability_composite_4x3.png (300 DPI)
+  • figures/main/ep1_instability_composite_4x3.png (300 DPI)
 
 Author: Danilo Couto de Souza
 Date: February 2026
@@ -407,7 +407,7 @@ def main():
     print("Creating figure...")
     print(f"{'='*80}")
 
-    output_file = FIGURES_DIR / "7_ep1_instability_composite_4x3.png"
+    output_file = FIGURES_DIR / "ep1_instability_composite_4x3.png"
     create_main_figure(data_dict, n_cases, output_file)
 
     print(f"\n{'='*80}")

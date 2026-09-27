@@ -24,6 +24,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 warnings.filterwarnings('ignore')
 
+from scripts.utils.ep_mapping import CLUSTER_TO_EP, assert_corrected_clustering
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -51,13 +53,6 @@ LPS_ZOOM_LEGEND_TITLESIZE = 18
 LPS_ZOOM_TICK_LABELSIZE = 14
 LPS_ZOOM_CBAR_LABELSIZE = 18
 LPS_ZOOM_FIGSIZE = (10, 10)
-
-# Cluster to EP mapping (based on Ck energy levels)
-CLUSTER_TO_EP = {
-    0: 1,  # Cluster 0 → EP1 (lowest Ck)
-    2: 2,  # Cluster 2 → EP2 (middle Ck)
-    1: 3   # Cluster 1 → EP3 (highest Ck)
-}
 
 # ============================================================================
 
@@ -243,7 +238,9 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
             # Plot each cluster trajectory
             for cluster_id in range(n_clusters):
                 ep_num = CLUSTER_TO_EP.get(cluster_id, cluster_id + 1)
-                connection_linewidth = ep_num * 2  # Thicker lines for higher EP numbers
+                # EP labels are ranked strongest-to-weakest (EP1 → EP3), so
+                # line weight follows that same ordering in the categorical key.
+                connection_linewidth = (4 - ep_num) * 2
                 fig = lps.plot_data(
                     x_axis=all_x_data[cluster_id],
                     y_axis=all_y_data[cluster_id],
@@ -265,7 +262,7 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
             ep_to_cluster = {ep: cid for cid, ep in CLUSTER_TO_EP.items()}
             # Sort by EP number
             for ep_num in sorted(ep_to_cluster.keys()):
-                linewidth = ep_num * 2  # Same as used in plotting
+                linewidth = (4 - ep_num) * 2  # Same as used in plotting
                 legend_elements.append(
                     Line2D([0], [0], color='black', linewidth=linewidth, 
                            label=f'EP{ep_num}')
@@ -370,6 +367,7 @@ def plot_energy_patterns(centroids_energy: pd.DataFrame, summary: pd.DataFrame,
 
 def main():
     """Main execution function."""
+    assert_corrected_clustering()
     results_dir = Path(RESULTS_DIR)
     figures_dir = Path(FIGURES_DIR)
     

@@ -35,6 +35,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 warnings.filterwarnings('ignore')
 
+from scripts.utils.ep_mapping import CLUSTER_TO_EP, assert_corrected_clustering
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -47,13 +49,6 @@ CLUSTERED_DATA_FILE = "kmeans_clustered_data.csv"
 # Output settings - use absolute paths
 FIGURES_DIR = PROJECT_ROOT / "figures" / "exploratory" / "density_ge"
 DPI = 300
-
-# Energy Pattern mapping (cluster_id → EP_id)
-CLUSTER_TO_EP = {
-    0: 1,  # Cluster 0 → EP1 (lowest Ck)
-    2: 2,  # Cluster 2 → EP2 (middle Ck)
-    1: 3   # Cluster 1 → EP3 (highest Ck)
-}
 
 # Phases
 PHASES = ['inc', 'int', 'mat', 'dec']
@@ -94,6 +89,7 @@ def load_data() -> pd.DataFrame:
     Returns:
         DataFrame with energy variables, cluster, and energy_pattern
     """
+    assert_corrected_clustering()
     print("Loading data...")
     
     results_dir = Path(RESULTS_DIR)

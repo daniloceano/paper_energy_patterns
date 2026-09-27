@@ -18,7 +18,7 @@ Data sources:
 Both sources are merged on (track_id, date). Values are used as-is: this is
 the same vertically-integrated, semi-Lagrangian LEC pipeline that feeds
 data/energy_cache.parquet (verified to reproduce identical phase means for a
-sample cyclone) and scripts/main/04_figure_lps_combined.py. No sign/gravity
+sample cyclone) and scripts/main/figure_lps_combined.py. No sign/gravity
 correction is applied here — that correction only applies to the separately
 vertically-RESOLVED Zenodo archive (temp_lec_zenodo/*_level.csv), not to
 these vertically-integrated values.

@@ -188,8 +188,8 @@ The LEC framework employed here is the same as in \citet{de2025lorenz}, which us
 \begin{flalign}
 \frac{\partial A_Z}{\partial t} &= BA_Z - C_Z - C_A + G_Z \\
 \frac{\partial A_E}{\partial t} &= BA_E - C_E + C_A + G_E \\
-\frac{\partial K_Z}{\partial t} &= BK_Z + C_Z - C_K + B\Phi_Z - D_Z \\
-\frac{\partial K_E}{\partial t} &= BK_E + C_E + C_K + B\Phi_E - D_E 
+\frac{\partial K_Z}{\partial t} &= BK_Z + C_Z + C_K + B\Phi_Z - D_Z \\
+\frac{\partial K_E}{\partial t} &= BK_E + C_E - C_K + B\Phi_E - D_E 
 \end{flalign}
 
 In these equations, APE is divided into zonal ($A_Z$) and eddy ($A_E$) components, as is kinetic energy ($K_Z$ and $K_E$, respectively). $C_A$ represents the conversion between $A_Z$ and $A_E$, $C_E$ denotes the conversion from $A_E$ to $K_E$, $C_K$ signifies the transformation from $K_E$ to $K_Z$, and $C_Z$ describes the conversion from $A_Z$ to $K_Z$. The generation of APE and the dissipation of kinetic energy are indicated by $G$ and $D$, with $G_Z$ and $G_E$ denoting the generation of $A_Z$ and $A_E$, and $D_Z$ and $D_E$ representing the dissipation of $K_Z$ and $K_E$, respectively. The terms $BA_Z$, $BA_E$, $BK_Z$, and $BK_E$ represent the fluxes of zonal and eddy APE and kinetic energy across the boundaries. The terms $B\Phi_Z$ and $B\Phi_E$ are grouped with $C_Z$ and $C_E$, respectively, because both arise from the same derivation of the $K_Z$ and $K_E$ balances. \citet{muench1965dynamics} notes the difficulty in interpreting $B\Phi_Z$ and $B\Phi_E$, indicating that they are related to the downward flux of kinetic energy (i.e., toward lower altitudes) and represent the emergence of kinetic energy at the boundaries of the computational domain. For the full mathematical formulations of these processes, we refer to \citet{muench1965dynamics} and \citet{brennan1980zonal}.
@@ -421,10 +421,6 @@ The clustering analysis yielded three centroids defining the energy patterns (EP
 
 Figure~\ref{fig:4_lps_combined}a shows the conversion LPS for these EPs, indicating that, for all EPs, the energy cycle is largely modulated by barotropic and baroclinic conversions that feed the eddy. For EP3, these contributions are more modest, including the contribution from $G_E$. For EP2, systems begin the incipient phase with moderate conversions, which increase nearly proportionally during intensification, return approximately to their initial values, and then decrease toward near-neutral conditions. EP1 also begins with modest conversions, but exhibits large increases during intensification and further increases during the mature phase, particularly in barotropic conversion. EP1 also shows relatively large conversion values during decay. $G_E$ is highest during intensification for both EP1 and EP2, but $K_E$ is larger for EP2 during intensification, suggesting that EP1 systems tend to intensify more slowly.
 
-The $C_A$ and $C_K$ terms are now assessed only during the intensification phase, when these terms reach their largest magnitudes. In terms of $C_A$ magnitude, EP1 and EP2 are statistically similar (Fig.~\ref{fig:S2_pairwise_effectsize_lec_terms}), with values peaking near the surface, remaining relatively large from low to mid-levels, and increasing again between 600 and 300\,hPa (Fig.~\ref{fig:S3_vertical_levels}a). In contrast, EP1 exhibits significantly larger $C_K$ (Figure~\ref{fig:4_lps_combined}a); therefore, we further investigate the characteristics of this term for EP1 systems. For EP1, $C_K$ reaches its largest magnitudes between 400 and 250\,hPa (Fig.~\ref{fig:5_ck_subterms_vertical_profiles}a). This vertical structure is broadly mirrored by EP2 cyclones, whereas EP3 cyclones show consistently low $C_K$ values throughout the atmosphere (Fig.~\ref{fig:S3_vertical_levels}b).
-
-As shown in Fig.~\ref{fig:5_ck_subterms_vertical_profiles}b, the $C_K$ subterm with the largest median magnitude is term E, which is related to the vertical flux of eddy meridional momentum coupled with the vertical shear of the mean meridional wind. This is followed by term B, associated with the meridional flux of eddy kinetic energy and the meridional gradient of the mean meridional wind, and term A, which represents the primary barotropic instability mechanism. Terms D and C exhibit low median magnitudes and are mostly positive, indicating that they contribute to energy transfer from the eddy to the mean flow. Term D is associated with the vertical flux of eddy zonal momentum coupled with the vertical shear of the mean zonal wind, whereas term C represents eddy zonal kinetic energy modulated by the mean meridional flow. Although term E has a larger median magnitude than term B, the latter exhibits greater variability and is therefore more intense in some systems. Among EP1 cyclones, term E is dominant in 43\% of the cases, followed by term B in 38\% and term A in 19\%.
-
 \begin{figure}[ht!]
     \centering
     \includegraphics[width=1\linewidth]{4_lps_combined.png}
@@ -432,16 +428,7 @@ As shown in Fig.~\ref{fig:5_ck_subterms_vertical_profiles}b, the $C_K$ subterm w
     \label{fig:4_lps_combined}
 \end{figure}
 
-
 Figure~\ref{fig:4_lps_combined}b shows the import LPS. EP3 initially exhibits modest imports of $A_E$ that decrease over time, while $K_E$ remains close to neutral; by decay, both terms are nearly neutral. EP2 shows a similar behavior, but with modest imports of $K_E$; both imports decrease over the life cycle, becoming nearly neutral by decay. EP1, in contrast, starts with small imports of $A_E$ and near-neutral $K_E$; while $K_E$ imports increase slightly during intensification, the system transitions to exporting $A_E$. During the mature and decay phases, EP1 exports large amounts of both forms of eddy energy. This suggests that the large conversion values attained during these phases counteract these exports (and dissipation; \citealp{de2025lorenz}), keeping the system active until it eventually dissipates.
-
-\begin{figure}[ht!]
-    \centering
-    \includegraphics[width=1\linewidth]{5_ck_subterms_vertical_profiles.png}
-    \caption{$C_K$ subterm characteristics for EP1 cyclones during the intensification phase.  (a) Vertical distribution of $C_K$ as a function of pressure level. Boxplots show the distribution across cyclones, with the red line indicating the median and whiskers representing the interquartile range.(b) Domain-integrated $C_K$ subterms (A–E) across cyclones. The dashed vertical line marks zero, separating energy transfer from the mean flow to the eddy (negative values) from transfer from the eddy to the mean flow (positive values).}
-    \label{fig:5_ck_subterms_vertical_profiles}
-\end{figure}
-
 
 Figure~\ref{fig:6_ep_intensity_seasonality_trends} summarizes the overall characteristics of cyclones within each EP. Overall, EP3 includes the weakest systems in the dataset (Fig.~\ref{fig:6_ep_intensity_seasonality_trends}a), consistent with its comparatively less active energy cycle, and is also the most frequent group (Fig.~\ref{fig:6_ep_intensity_seasonality_trends}c). These systems exhibit pronounced seasonality, with higher genesis frequency during DJF and SON (Fig.~\ref{fig:6_ep_intensity_seasonality_trends}b). In contrast, EP1 comprises the strongest systems, is also the least frequent, and shows a clear peak during JJA. EP2 displays intermediate intensity and a weaker seasonal modulation, with relatively higher frequencies during JJA and SON.
 
@@ -467,6 +454,19 @@ Finally, EP1, while being the least frequent and most active during the cold sea
 
 
 \subsection{Cyclone structure}\label{sec:composites}
+
+In this section, we investigate the three-dimensional structure of cyclones during the intensification phase, as the energy-cycle terms generally exhibit lower magnitudes during cyclogenesis (incipient phase). In terms of integrated $C_A$ magnitude, EP1 and EP2 are statistically similar (Fig.~\ref{fig:S2_pairwise_effectsize_lec_terms}b); however, their vertical structures present subtle differences (Fig.~\ref{fig:5_vertical_levels}a). Both EPs exhibit values that peak near the surface, remain relatively large from low to mid-levels, and increase again between 600 and 300\,hPa. However, EP1 generally exhibits higher median values within these layers.
+
+In contrast, EP1 exhibits significantly larger $C_K$ magnitudes than EP2 (Figs.~\ref{fig:4_lps_combined}b and \ref{fig:S2_pairwise_effectsize_lec_terms}b), a difference that is evident throughout the vertical profile (Fig.~\ref{fig:5_vertical_levels}b). For EP1, $C_K$ reaches its largest magnitudes between 400 and 250\,hPa, whereas EP2 exhibits higher magnitudes near 550\,hPa (Fig.~\ref{fig:S3_ck_subterms_vertical_profiles}a). Meanwhile, EP3 cyclones show consistently lower $C_A$ and $C_K$ values throughout the atmospheric column.
+
+\begin{figure}[ht!]
+    \centering
+    \includegraphics[width=0.8\linewidth]{5_vertical_levels.png}
+    \caption{Vertical distribution of conversion terms for EPs 1-3 ($W m ^{-2}$), during the intensification phase. (a) Baroclinic conversion ($C_A$) by pressure level; the star marks the level of maximum median $C_A$. (b) Barotropic conversion ($C_K$) by pressure level; the star marks the level of minimum median $C_K$.}
+    \label{fig:5_vertical_levels}
+\end{figure}
+
+As EP1 systems present consistently higher $C_K$ magnitudes, we further investigate the characteristics of this term for those systems. As shown in Fig.~\ref{fig:S3_ck_subterms_vertical_profiles}b, the $C_K$ subterm with the largest median magnitude is term E, which is related to the vertical flux of eddy meridional momentum coupled with the vertical shear of the mean meridional wind. This is followed by term B, associated with the meridional flux of eddy kinetic energy and the meridional gradient of the mean meridional wind, and term A, which represents the primary barotropic instability mechanism. Terms D and C exhibit low median magnitudes and are mostly positive, indicating that they contribute to energy transfer from the eddy to the mean flow. Term D is associated with the vertical flux of eddy zonal momentum coupled with the vertical shear of the mean zonal wind, whereas term C represents eddy zonal kinetic energy modulated by the mean meridional flow. Although term E has a larger median magnitude than term B, the latter exhibits greater variability and is therefore more intense in some systems. Among EP1 cyclones, term E is dominant in 43\% of the cases, followed by term B in 38\% and term A in 19\%.
 
 Figure \ref{fig:8_dynamical_composites_epall_relative} presents the dynamical composites for EP1, EP2, and EP3. The first row (\ref{fig:8_dynamical_composites_epall_relative}a--c) shows upper-level PV ($PV'_{200}$), lower- to mid-tropospheric baroclinicity (represented by $EGR_{850-500}'$), and sea-level pressure. For PV and EGR, anomalies are shown with respect to the total cyclone composite (EPALL), whereas for SLP the total composite is shown. For all EPs, the SLP field exhibits a clear cyclonic signature, marked by closed isobars. For both EP2 and EP3 there is a ridge downstream of the surface cyclone. However, for EP1 the ridge seems to be upstream of the surface cyclone, a feature which will be relevant for future analysis. 
 
@@ -576,12 +576,13 @@ Consistently, border/sector W PV values are negatively correlated with $C_A$ and
     \label{fig:S2_pairwise_effectsize_lec_terms}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[ht!]
     \centering
-    \includegraphics[width=1\linewidth]{S3_vertical_levels.png}
-    \caption{Vertical distribution of conversion terms for EPs 1-3 ($W m ^{-2}$. (a) Baroclinic conversion ($C_A$) by pressure level; the star marks the level of maximum median $C_A$. (b) Barotropic conversion ($C_K$) by pressure level; the star marks the level of minimum median $C_K$.}
-    \label{fig:S3_vertical_levels}
+    \includegraphics[width=1\linewidth]{S3_ck_subterms_vertical_profiles.png}
+    \caption{$C_K$ subterm characteristics for EP1 cyclones during the intensification phase.  (a) Vertical distribution of $C_K$ as a function of pressure level. Boxplots show the distribution across cyclones, with the red line indicating the median and whiskers representing the interquartile range.(b) Domain-integrated $C_K$ subterms (A–E) across cyclones. The dashed vertical line marks zero, separating energy transfer from the mean flow to the eddy (negative values) from transfer from the eddy to the mean flow (positive values).}
+    \label{fig:S3_ck_subterms_vertical_profiles}
 \end{figure}
+
 
 \begin{figure}
     \centering

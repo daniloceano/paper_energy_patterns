@@ -23,7 +23,8 @@ The five subterms follow the C_K equation of the manuscript::
 
 Sign convention (as in the manuscript): ``C_K < 0`` means K_Z -> K_E, the mean
 flow feeding the eddy (barotropic instability). The *dominant* subterm of a
-cyclone is the most negative one, i.e. the largest contributor to that transfer.
+cyclone is the most negative one, i.e. the largest contributor to that transfer,
+provided it is negative; all-positive cases are kept as a separate class.
 
 The subterms are verified to close: ``Ck = sum(Ck_1..Ck_5)`` to round-off, both
 per pressure level and after vertical integration. The closure residual is
@@ -88,7 +89,7 @@ def integrate_profiles(profiles: pd.DataFrame) -> pd.DataFrame:
     def _integrate(group: pd.DataFrame) -> float:
         ordered = group.sort_values("level_hpa")
         pressure_pa = ordered["level_hpa"].to_numpy(dtype=float) * 100.0
-        return float(np.trapezoid(ordered["value"].to_numpy(dtype=float), pressure_pa))
+        return float(np.trapz(ordered["value"].to_numpy(dtype=float), pressure_pa))
 
     integrated = (
         profiles.groupby(["track_id", "phase", "term"], observed=True)
@@ -117,12 +118,17 @@ def add_diagnostics(table: pd.DataFrame) -> pd.DataFrame:
     for stem in subterms:
         table[f"{stem}_share"] = table[stem] / table["Ck"].where(lambda s: s != 0)
 
-    # Dominant subterm: the most negative one, i.e. the strongest contributor to
-    # the mean-flow-to-eddy transfer that defines barotropic instability here.
+    # Minimum-valued subterm: when it is negative, this is the strongest
+    # contributor to mean-flow-to-eddy transfer. If every subterm is positive,
+    # no component feeds the eddy and assigning a "dominant instability term"
+    # would be physically misleading.
     dominant = table[subterms].idxmin(axis=1)
-    table["dominant_subterm"] = dominant
-    table["dominant_label"] = dominant.map(clec.CK_SUBTERM_LABELS)
-    table["dominant_value"] = table[subterms].min(axis=1)
+    minimum = table[subterms].min(axis=1)
+    table["dominant_subterm"] = dominant.where(minimum < 0, "none")
+    table["dominant_label"] = table["dominant_subterm"].map(
+        {**clec.CK_SUBTERM_LABELS, "none": "None (all positive)"}
+    )
+    table["dominant_value"] = minimum
 
     return table
 
@@ -170,9 +176,10 @@ def write_report(table: pd.DataFrame, source: Path, path: Path) -> Path:
         "## Dominant subterm during intensification",
         "",
         "| Energy Pattern | " + " | ".join(
-            clec.CK_SUBTERM_LABELS[stem] for stem in clec.CK_SUBTERMS
+            [clec.CK_SUBTERM_LABELS[stem] for stem in clec.CK_SUBTERMS]
+            + ["None (all positive)"]
         ) + " |",
-        "|---" * (len(clec.CK_SUBTERMS) + 1) + "|",
+        "|---" * (len(clec.CK_SUBTERMS) + 2) + "|",
     ]
     intensifying = table[table["phase"] == "intensification"]
     for label, group in intensifying.groupby("ep_label", observed=True):
@@ -181,6 +188,7 @@ def write_report(table: pd.DataFrame, source: Path, path: Path) -> Path:
             f"{shares.get(clec.CK_SUBTERM_LABELS[stem], 0.0):.1f}%"
             for stem in clec.CK_SUBTERMS
         ]
+        cells.append(f"{shares.get('None (all positive)', 0.0):.1f}%")
         lines.append(f"| {label} | " + " | ".join(cells) + " |")
 
     path.write_text("\n".join(lines) + "\n")
@@ -221,6 +229,56 @@ def main() -> int:
         raise SystemExit(
             f"{source} carries no Ck terms. Rebuild it including {CK_TERMS}."
         )
+
+    profiles = profiles.copy()
+    profiles["track_id"] = profiles["track_id"].astype(str)
+    if profiles.duplicated(["track_id", "phase", "term", "level_hpa"]).any():
+        raise SystemExit("the vertical product contains duplicate profile rows")
+    if not np.isfinite(profiles["value"]).all():
+        raise SystemExit("the vertical product contains non-finite Ck values")
+
+    observed_terms = set(profiles["term"].astype(str))
+    observed_phases = set(profiles["phase"].astype(str))
+    if observed_terms != set(CK_TERMS):
+        raise SystemExit(
+            f"the vertical product carries {sorted(observed_terms)}; "
+            f"expected {sorted(CK_TERMS)}"
+        )
+    if observed_phases != set(clec.PHASES):
+        raise SystemExit(
+            f"the vertical product carries phases {sorted(observed_phases)}; "
+            f"expected {sorted(clec.PHASES)}"
+        )
+
+    level_count = profiles["level_hpa"].nunique()
+    coverage = profiles.groupby(
+        ["track_id", "phase", "term"], observed=True
+    )["level_hpa"].nunique()
+    expected_profiles = (
+        profiles["track_id"].nunique() * len(clec.PHASES) * len(CK_TERMS)
+    )
+    incomplete = coverage.ne(level_count)
+    if len(coverage) != expected_profiles or incomplete.any():
+        raise SystemExit(
+            "the vertical product has incomplete cyclone/phase/term coverage: "
+            f"{int(incomplete.sum())} incomplete profiles and "
+            f"{expected_profiles - len(coverage)} missing profiles"
+        )
+
+    if not args.allow_partial:
+        if profiles["track_id"].nunique() != clec.EXPECTED_POPULATION:
+            raise SystemExit(
+                f"the corrected product covers {profiles['track_id'].nunique()}/"
+                f"{clec.EXPECTED_POPULATION} cyclones"
+            )
+        if level_count != 32:
+            raise SystemExit(
+                f"the corrected product carries {level_count}/32 pressure levels"
+            )
+        if not em.is_corrected_clustering():
+            raise SystemExit(
+                "the Energy Pattern assignment is not derived from the corrected cache"
+            )
 
     print("integrating phase-mean profiles ...")
     table = integrate_profiles(profiles)

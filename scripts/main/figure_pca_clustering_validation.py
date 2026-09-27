@@ -1,4 +1,4 @@
-"""Figure S1: PCA and Clustering Validation.
+"""PCA and clustering validation figure.
 
 This script creates a supplementary figure with two panels:
 (a) PCA Explained Variance - showing the variance explained by each principal component
@@ -39,7 +39,7 @@ OPTIMAL_K_FILE = "optimal_k.txt"
 
 # Output settings
 FIGURES_DIR = PROJECT_ROOT / "figures" / "main"
-OUTPUT_FILE = "S1_pca_clustering_validation.png"
+OUTPUT_FILE = "pca_clustering_validation.png"
 DPI = 300
 
 # Plot settings

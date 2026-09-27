@@ -157,7 +157,7 @@ def _vertically_integrate(df: pd.DataFrame) -> pd.Series:
 
 
 # ============================================================================
-# DENSITY / MAP FUNCTIONS (verbatim from 06_figure_genesis_density_kde.py)
+# DENSITY / MAP FUNCTIONS (verbatim from figure_genesis_density_kde.py)
 # ============================================================================
 
 def compute_density(tracks_df, num_time):
@@ -799,7 +799,7 @@ def create_figure_normalized_diff(dom_df: pd.DataFrame, genesis_df: pd.DataFrame
     Formula: norm_EP − norm_All  (minmax normalization on positive values)
     where norm_All = minmax_normalize_positive(density_all_EP1).
 
-    This is the exact same normalization used in 06_figure_genesis_density_kde.py.
+    This is the exact same normalization used in figure_genesis_density_kde.py.
     Positive (red) = enhanced genesis for this subterm; negative (blue) = suppressed.
 
     Empty panels (insufficient data) render the full map geometry with a blank

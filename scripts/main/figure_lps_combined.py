@@ -41,7 +41,7 @@ SOURCE_FILES = [
 ]
 
 # Output file
-OUTPUT_FILE = MAIN_FIGURES_DIR / '4_lps_combined.png'
+OUTPUT_FILE = MAIN_FIGURES_DIR / 'lps_combined.png'
 
 # Figure settings
 DPI = 300

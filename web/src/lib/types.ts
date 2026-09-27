@@ -9,6 +9,7 @@ export interface EnergyPattern {
   count: number
   percentage: number
   meanCk: number
+  meanCa: number
   description: string
   color: string
 }

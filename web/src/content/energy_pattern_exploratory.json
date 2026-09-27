@@ -1,0 +1,86 @@
+{
+  "EP1": {
+    "count": 548,
+    "intensity": {
+      "mean": 9.012226560218979,
+      "median": 9.18014,
+      "std": 2.4185065403093433,
+      "min": 2.23372,
+      "max": 15.38497
+    },
+    "seasonality": {
+      "DJF": 18.43065693430657,
+      "MAM": 26.459854014598537,
+      "JJA": 33.75912408759124,
+      "SON": 21.350364963503647
+    },
+    "peakSeason": "JJA",
+    "peakSeasonPercent": 33.75912408759124,
+    "trend": {
+      "test": "original_test",
+      "result": "no trend",
+      "pValue": 0.46541527526431703,
+      "tau": 0.07897793263646923,
+      "slopePerYear": 0.03225806451612903,
+      "slopeCiLow": -0.06896551724137931,
+      "slopeCiHigh": 0.11764705882352941,
+      "years": "1979-2020"
+    }
+  },
+  "EP2": {
+    "count": 860,
+    "intensity": {
+      "mean": 9.154614895348837,
+      "median": 9.171105,
+      "std": 2.513490144886022,
+      "min": 2.11415,
+      "max": 15.94652
+    },
+    "seasonality": {
+      "DJF": 20.348837209302324,
+      "MAM": 25.348837209302328,
+      "JJA": 27.44186046511628,
+      "SON": 26.86046511627907
+    },
+    "peakSeason": "JJA",
+    "peakSeasonPercent": 27.44186046511628,
+    "trend": {
+      "test": "original_test",
+      "result": "no trend",
+      "pValue": 0.1048045457448481,
+      "tau": 0.17421602787456447,
+      "slopePerYear": 0.09090909090909091,
+      "slopeCiLow": 0.0,
+      "slopeCiHigh": 0.21875,
+      "years": "1979-2020"
+    }
+  },
+  "EP3": {
+    "count": 2412,
+    "intensity": {
+      "mean": 6.432342625207297,
+      "median": 6.299615,
+      "std": 2.441212389061586,
+      "min": 1.81202,
+      "max": 14.28698
+    },
+    "seasonality": {
+      "DJF": 31.343283582089555,
+      "MAM": 21.35157545605307,
+      "JJA": 20.812603648424542,
+      "SON": 26.492537313432834
+    },
+    "peakSeason": "DJF",
+    "peakSeasonPercent": 31.343283582089555,
+    "trend": {
+      "test": "original_test",
+      "result": "no trend",
+      "pValue": 0.564264763650205,
+      "tau": 0.0627177700348432,
+      "slopePerYear": 0.038461538461538464,
+      "slopeCiLow": -0.13333333333333333,
+      "slopeCiHigh": 0.23809523809523808,
+      "years": "1979-2020"
+    }
+  }
+}

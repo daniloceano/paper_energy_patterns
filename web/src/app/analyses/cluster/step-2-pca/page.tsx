@@ -5,6 +5,7 @@ import FigurePanel from '@/components/analysis/FigurePanel'
 import FileProvenanceBadge from '@/components/analysis/FileProvenanceBadge'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import MethodologyAccordion from '@/components/analysis/MethodologyAccordion'
+import pcaData from '@/content/cluster_step2_data.json'
 
 export const metadata: Metadata = {
   title: 'Step 2 — PCA',
@@ -18,26 +19,25 @@ export default function Step2Page() {
         title="Principal Component Analysis"
         subtitle="Step 2 of 5"
         badge="Cluster Analysis"
-        description="Independent PCA per lifecycle phase reduces the 7-dimensional energy space while retaining ≥97% of variance. Phase separation ensures that the distinct energetic behaviour of each lifecycle stage is preserved."
+        description={`A single PCA reduces the 28-dimensional term-by-phase energy space to ${pcaData.n_components} components while retaining ${(pcaData.retained_variance * 100).toFixed(1)}% of the joint variance.`}
       />
 
       <div className="space-y-8">
         <section>
           <h2 className="mb-3 text-lg font-bold text-slate-900">Rationale</h2>
           <p className="text-sm leading-relaxed text-slate-600">
-            PCA is applied independently to each lifecycle phase (incipient,
-            intensification, mature, decay) rather than to the combined dataset. This
-            prevents the mixing of phase-specific variance structures and ensures that
-            cluster assignments reflect the energetic behaviour within each phase.
+            PCA is applied once to the global 28-feature matrix. Keeping all four lifecycle
+            phases in the same row allows the components to represent both relationships among
+            energy terms and the way those relationships evolve from incipient to decay.
           </p>
         </section>
 
         <MethodologyAccordion
           items={[
             {
-              title: 'Phase-separated approach',
+              title: 'Global wide-matrix approach',
               content:
-                'Each phase produces its own PCA model with its own loadings and explained variance ratios. Typically, 6 out of 7 PCs are retained per phase to capture ≥97% of variance.',
+                `One PCA model is fitted to 7 terms × 4 phases. The first ${pcaData.n_components} components retain ${(pcaData.retained_variance * 100).toFixed(1)}% of the total standardised variance.`,
             },
             {
               title: 'Standardisation',
@@ -61,25 +61,25 @@ export default function Step2Page() {
             <FigurePanel
               src="/figures/cluster/pca_variance_wide.png"
               alt="PCA explained variance by phase"
-              caption="Explained variance ratio for each PC across lifecycle phases. ≥97% variance is retained."
+              caption={`Explained and cumulative variance for the global PCA. ${pcaData.n_components} components retain ${(pcaData.retained_variance * 100).toFixed(1)}% of the variance.`}
               source="figures/cluster/pca_variance_wide.png"
             />
             <FigurePanel
               src="/figures/cluster/pca_loadings_wide.png"
-              alt="PCA loadings heatmap by phase"
-              caption="Variable loadings on principal components for each lifecycle phase."
+              alt="PCA loadings heatmap for term-by-phase features"
+              caption="Loadings of the 28 term-by-phase features on the retained principal components."
               source="figures/cluster/pca_loadings_wide.png"
             />
             <FigurePanel
               src="/figures/cluster/pca_correlation_wide.png"
-              alt="PCA correlation circle"
-              caption="Correlation circle showing variable projections on the first two PCs."
+              alt="Correlation matrix of the 28 energy features"
+              caption="Correlation matrix across energy terms and lifecycle phases."
               source="figures/cluster/pca_correlation_wide.png"
             />
             <FigurePanel
               src="/figures/cluster/pca_scatter_wide.png"
               alt="PCA scatter plot"
-              caption="Cyclone distribution in PC1-PC2 space for each lifecycle phase."
+              caption="Cyclone distribution across the leading global principal components."
               source="figures/cluster/pca_scatter_wide.png"
             />
           </div>
@@ -87,9 +87,9 @@ export default function Step2Page() {
 
         <ResultSummaryCallout type="result" title="Step 2 Result">
           <p>
-            PCA reduces the 7-dimensional energy space to ~6 PCs per phase, retaining
-            ≥97% variance. The reduced representation is used as input for cluster
-            validity analysis and K-Means clustering.
+            PCA reduces the 28-dimensional global energy space to {pcaData.n_components}{' '}
+            components, retaining {(pcaData.retained_variance * 100).toFixed(1)}% of the
+            variance. This single representation feeds both cluster validation and K-Means.
           </p>
         </ResultSummaryCallout>
 
@@ -102,9 +102,9 @@ export default function Step2Page() {
         />
         <FileProvenanceBadge
           files={[
-            'results/cluster/pca_scores_{phase}.csv',
-            'results/cluster/pca_loadings_{phase}.csv',
-            'results/cluster/pca_explained_variance_{phase}.csv',
+            'results/cluster/pca_scores.csv',
+            'results/cluster/pca_loadings.csv',
+            'results/cluster/pca_explained_variance.csv',
             'results/cluster/pca_models.pkl',
           ]}
           label="Outputs"

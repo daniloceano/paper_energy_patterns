@@ -7,6 +7,7 @@ import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import StatsTable from '@/components/analysis/StatsTable'
 import FormulaBlock from '@/components/analysis/FormulaBlock'
 import { ENERGY_PATTERNS } from '@/lib/constants'
+import optimalKData from '@/content/cluster_step3_data.json'
 
 export const metadata: Metadata = {
   title: 'Step 4 — Clustering & LPS',
@@ -20,7 +21,7 @@ export default function Step4Page() {
         title="Clustering & Lorenz Phase Space"
         subtitle="Step 4 of 5"
         badge="Cluster Analysis"
-        description="K-Means (k=3, n_init=100) is applied per lifecycle phase. Clusters are labelled as EP1, EP2, EP3 based on energy conversion magnitudes. The Lorenz Phase Space provides a physical visualisation of each pattern."
+        description={`One K-Means solution (k=${optimalKData.optimal_k}, n_init=100) is applied to the global lifecycle representation. Clusters are ranked by intensification-phase conversion magnitude, and Lorenz Phase Space visualises their trajectories.`}
       />
 
       <div className="space-y-8">
@@ -34,10 +35,10 @@ export default function Step4Page() {
             ]}
             rows={[
               { param: 'Algorithm', value: "Lloyd's K-Means with K-Means++ init" },
-              { param: 'k', value: '3 (from Step 3)' },
-              { param: 'n_init', value: '100 (convergence guarantee)' },
+              { param: 'k', value: `${optimalKData.optimal_k} (from Step 3)` },
+              { param: 'n_init', value: '100 independent initialisations' },
               { param: 'random_state', value: '42 (reproducibility)' },
-              { param: 'Application', value: 'Phase-separated (4 independent runs)' },
+              { param: 'Application', value: 'One global run on 15 PCA components' },
             ]}
           />
         </section>
@@ -48,10 +49,11 @@ export default function Step4Page() {
             Cluster Labelling
           </h2>
           <p className="text-sm leading-relaxed text-slate-600">
-            After clustering, the three groups are labelled based on the magnitude of their
-            barotropic conversion (C<sub>k</sub>) and overall energetic intensity. The
-            centroids are reconstructed from PC space back to the original energy space to
-            enable physical interpretation.
+            K-Means cluster numbers are arbitrary. After fitting, the centroids are reconstructed
+            from PC space to the original 28 energy features and ranked by{' '}
+            |C<sub>a,int</sub>| + |C<sub>k,int</sub>|. The largest combined magnitude is EP1,
+            the intermediate value is EP2, and the smallest is EP3. This mapping is written to a
+            versioned result file and consumed by every downstream view.
           </p>
         </section>
 
@@ -65,20 +67,22 @@ export default function Step4Page() {
               { key: 'id', label: 'Pattern' },
               { key: 'count', label: 'N' },
               { key: 'pct', label: '%' },
-              { key: 'ck', label: 'Mean Ck (W m⁻²)' },
+              { key: 'ca', label: 'Mean Ca,int (W m⁻²)' },
+              { key: 'ck', label: 'Mean Ck,int (W m⁻²)' },
               { key: 'character', label: 'Character' },
             ]}
             rows={Object.values(ENERGY_PATTERNS).map((ep) => ({
               id: ep.id,
-              count: ep.count,
-              pct: ep.percentage,
-              ck: ep.meanCk,
+              count: ep.count.toLocaleString(),
+              pct: ep.percentage.toFixed(1),
+              ca: ep.meanCa.toFixed(2),
+              ck: ep.meanCk.toFixed(2),
               character:
                 ep.id === 'EP1'
-                  ? 'Strong conversions, energy exporter'
+                  ? 'Strongest combined |Ca,int| + |Ck,int|'
                   : ep.id === 'EP2'
-                    ? 'Intermediate, energy importer'
-                    : 'Weak, background',
+                    ? 'Intermediate combined conversion magnitude'
+                    : 'Weakest combined conversion magnitude',
             }))}
             highlightColumn="ck"
           />
@@ -125,12 +129,16 @@ export default function Step4Page() {
         {/* Physical interpretation */}
         <ResultSummaryCallout type="result" title="Physical Interpretation">
           <p>
-            <strong>EP1</strong> cyclones are energy exporters with the largest barotropic (C<sub>k</sub> = {ENERGY_PATTERNS.EP1.meanCk} W m⁻²)
-            and baroclinic conversions, extracting energy from both horizontal shear and temperature gradients.
-            They contribute to downstream cyclogenesis via negative boundary fluxes.{' '}
-            <strong>EP2</strong> cyclones are energy importers with moderate conversions, coupled to jet
-            stream dynamics.{' '}
-            <strong>EP3</strong> represents the climatological background with weak energetics.
+            The corrected solution separates two different high-conversion regimes rather than a
+            simple strong-to-weak sequence in C<sub>k</sub>. EP1 combines C<sub>a,int</sub> ={' '}
+            {ENERGY_PATTERNS.EP1.meanCa.toFixed(2)} and C<sub>k,int</sub> ={' '}
+            {ENERGY_PATTERNS.EP1.meanCk.toFixed(2)} W m⁻²; EP2 combines{' '}
+            {ENERGY_PATTERNS.EP2.meanCa.toFixed(2)} and{' '}
+            {ENERGY_PATTERNS.EP2.meanCk.toFixed(2)} W m⁻²; EP3 has the smallest combined
+            conversion magnitude. Under the toolkit sign convention, negative C<sub>k</sub>{' '}
+            transfers kinetic energy from the zonal flow to eddies, while positive C<sub>k</sub>{' '}
+            transfers it from eddies to the zonal flow. Dynamical interpretations beyond these
+            measured centroids are reserved for the downstream analyses.
           </p>
         </ResultSummaryCallout>
 
@@ -143,9 +151,10 @@ export default function Step4Page() {
         />
         <FileProvenanceBadge
           files={[
-            'results/cluster/kmeans_clustered_data_{phase}.csv',
-            'results/cluster/kmeans_centroids_energy_{phase}.csv',
-            'results/cluster/kmeans_summary_{phase}.csv',
+            'results/cluster/kmeans_clustered_data.csv',
+            'results/cluster/kmeans_centroids_energy.csv',
+            'results/cluster/kmeans_summary.csv',
+            'results/cluster/cluster_to_ep.json',
           ]}
           label="Outputs"
         />

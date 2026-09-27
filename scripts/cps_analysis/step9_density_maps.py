@@ -23,7 +23,7 @@ is a substitute for the other:
                       columns 2-4 are the min-max normalised anomaly of the
                       type within that EP against the same type over EPALL.
                       This is the convention of the manuscript's genesis figure
-                      (`scripts/main/07_figure_genesis_density_kde.py`) and it
+                      (`scripts/main/figure_genesis_density_kde.py`) and it
                       isolates the SHAPE of the distribution from the sample
                       size, which matters here because the EPs are very
                       unequal in number (EP1 444, EP2 979, EP3 2,397) and the

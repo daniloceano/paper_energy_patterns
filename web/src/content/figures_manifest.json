@@ -3072,69 +3072,99 @@
     "api_url": "/api/figures?path=figures/exploratory/vertical_term_boxplots_ep1_ep2.png"
   },
   {
-    "filename": "1_tracks_genesis_frequency.png",
-    "path": "figures/main/1_tracks_genesis_frequency.png",
+    "filename": "tracks_genesis_frequency.png",
+    "path": "figures/main/tracks_genesis_frequency.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/1_tracks_genesis_frequency.png"
+    "api_url": "/api/figures?path=figures/main/tracks_genesis_frequency.png"
   },
   {
-    "filename": "2_20070643_lps_track_publication.png",
-    "path": "figures/main/2_20070643_lps_track_publication.png",
+    "filename": "cyclone_20070643_lps_track.png",
+    "path": "figures/main/cyclone_20070643_lps_track.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/2_20070643_lps_track_publication.png"
+    "api_url": "/api/figures?path=figures/main/cyclone_20070643_lps_track.png"
   },
   {
-    "filename": "3_phase_density_2x2.png",
-    "path": "figures/main/3_phase_density_2x2.png",
+    "filename": "phase_density.png",
+    "path": "figures/main/phase_density.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/3_phase_density_2x2.png"
+    "api_url": "/api/figures?path=figures/main/phase_density.png"
   },
   {
-    "filename": "4_lps_combined.png",
-    "path": "figures/main/4_lps_combined.png",
+    "filename": "lps_combined.png",
+    "path": "figures/main/lps_combined.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/4_lps_combined.png"
+    "api_url": "/api/figures?path=figures/main/lps_combined.png"
   },
   {
-    "filename": "5_ep_intensity_seasonality_trends.png",
-    "path": "figures/main/5_ep_intensity_seasonality_trends.png",
+    "filename": "vertical_levels.png",
+    "path": "figures/main/vertical_levels.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/5_ep_intensity_seasonality_trends.png"
+    "api_url": "/api/figures?path=figures/main/vertical_levels.png"
   },
   {
-    "filename": "6_ep_genesis_density_kde.png",
-    "path": "figures/main/6_ep_genesis_density_kde.png",
+    "filename": "ep_intensity_seasonality_trends.png",
+    "path": "figures/main/ep_intensity_seasonality_trends.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/6_ep_genesis_density_kde.png"
+    "api_url": "/api/figures?path=figures/main/ep_intensity_seasonality_trends.png"
   },
   {
-    "filename": "7_dynamical_composites_epall_relative.png",
-    "path": "figures/main/7_dynamical_composites_epall_relative.png",
+    "filename": "ep_genesis_density_kde.png",
+    "path": "figures/main/ep_genesis_density_kde.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/7_dynamical_composites_epall_relative.png"
+    "api_url": "/api/figures?path=figures/main/ep_genesis_density_kde.png"
   },
   {
-    "filename": "7_ep1_ep2_dynamical_composites.png",
-    "path": "figures/main/7_ep1_ep2_dynamical_composites.png",
+    "filename": "dynamical_composites_epall_relative.png",
+    "path": "figures/main/dynamical_composites_epall_relative.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/7_ep1_ep2_dynamical_composites.png"
+    "api_url": "/api/figures?path=figures/main/dynamical_composites_epall_relative.png"
   },
   {
-    "filename": "S1_pca_clustering_validation.png",
-    "path": "figures/main/S1_pca_clustering_validation.png",
+    "filename": "pearson_epall_by_field_type.png",
+    "path": "figures/main/pearson_epall_by_field_type.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/S1_pca_clustering_validation.png"
+    "api_url": "/api/figures?path=figures/main/pearson_epall_by_field_type.png"
   },
   {
-    "filename": "S2_selected_tracks.png",
-    "path": "figures/main/S2_selected_tracks.png",
+    "filename": "ep1_ep2_dynamical_composites.png",
+    "path": "figures/main/ep1_ep2_dynamical_composites.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/S2_selected_tracks.png"
+    "api_url": "/api/figures?path=figures/main/ep1_ep2_dynamical_composites.png"
   },
   {
-    "filename": "S3_vertical_levels.png",
-    "path": "figures/main/S3_vertical_levels.png",
+    "filename": "pca_clustering_validation.png",
+    "path": "figures/main/pca_clustering_validation.png",
     "category": "main",
-    "api_url": "/api/figures?path=figures/main/S3_vertical_levels.png"
+    "api_url": "/api/figures?path=figures/main/pca_clustering_validation.png"
+  },
+  {
+    "filename": "pairwise_effectsize_lec_terms.png",
+    "path": "figures/main/pairwise_effectsize_lec_terms.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/pairwise_effectsize_lec_terms.png"
+  },
+  {
+    "filename": "ck_subterms_vertical_profiles.png",
+    "path": "figures/main/ck_subterms_vertical_profiles.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/ck_subterms_vertical_profiles.png"
+  },
+  {
+    "filename": "pairwise_effectsize_composite_scalars.png",
+    "path": "figures/main/pairwise_effectsize_composite_scalars.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/pairwise_effectsize_composite_scalars.png"
+  },
+  {
+    "filename": "selected_tracks.png",
+    "path": "figures/main/selected_tracks.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/selected_tracks.png"
+  },
+  {
+    "filename": "selected_vertical_levels.png",
+    "path": "figures/main/selected_vertical_levels.png",
+    "category": "main",
+    "api_url": "/api/figures?path=figures/main/selected_vertical_levels.png"
   }
 ]

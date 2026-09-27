@@ -1,0 +1,266 @@
+{
+  "analysis": "vertical_structure",
+  "phase": "intensification",
+  "source": "data/corrected/vertical_phase_means_corrected.parquet",
+  "source_sha256": "3a3bb86a337442ff7381561dc19c3c52a035e74dfb24eacc5c358896225076f1",
+  "cluster_source": "results/cluster/kmeans_clustered_data.csv",
+  "population": {
+    "total": 3820,
+    "energy_patterns": {
+      "EP1": 548,
+      "EP2": 860,
+      "EP3": 2412
+    },
+    "levels_available": 32,
+    "levels_displayed": 27,
+    "display_range_hpa": [
+      100,
+      1000
+    ]
+  },
+  "units": {
+    "profile": "W m^-2 Pa^-1",
+    "integrated": "W m^-2"
+  },
+  "sign_convention": {
+    "Ca": "Ca > 0: zonal available potential energy transfers to eddy available potential energy",
+    "Ck": "Ck < 0: zonal kinetic energy transfers to eddy kinetic energy; Ck > 0 is the reverse"
+  },
+  "validation": {
+    "single_interval_cyclones_checked": 3637,
+    "comparison_rows": 7274,
+    "maximum_absolute_error": 3.950617610826157e-12,
+    "maximum_relative_error": 1.455800122717886e-10,
+    "rtol": 1e-10,
+    "atol": 1e-10
+  },
+  "patterns": {
+    "EP1": {
+      "n": 548,
+      "Ca": {
+        "dominant_level_hpa": 975,
+        "dominant_median_profile": 0.00017253754041665335,
+        "column_mean": 9.249253813793588,
+        "column_median": 8.60043162298361,
+        "column_q1": 5.404162747345862,
+        "column_q3": 12.582137011682796,
+        "positive_percentage": 96.71532846715328,
+        "negative_percentage": 3.2846715328467155,
+        "layers": {
+          "full_10_1000": {
+            "mean": 9.249253813793588,
+            "median": 8.60043162298361
+          },
+          "displayed_100_1000": {
+            "mean": 9.237939550897465,
+            "median": 8.549221859110634
+          },
+          "lower_700_1000": {
+            "mean": 3.984116213608056,
+            "median": 3.4630724988383115
+          },
+          "middle_400_700": {
+            "mean": 4.038956234232002,
+            "median": 3.6427649980027352
+          },
+          "upper_100_400": {
+            "mean": 1.2148671030574063,
+            "median": 0.9922356346347787
+          },
+          "above_10_100": {
+            "mean": 0.01131426289612323,
+            "median": 0.008629593009138417
+          }
+        }
+      },
+      "Ck": {
+        "dominant_level_hpa": 400,
+        "dominant_median_profile": -7.296841538085558e-05,
+        "column_mean": -6.715054027729439,
+        "column_median": -4.520204358224534,
+        "column_q1": -10.3319386817364,
+        "column_q3": -0.9536138277151424,
+        "positive_percentage": 17.88321167883212,
+        "negative_percentage": 82.11678832116789,
+        "layers": {
+          "full_10_1000": {
+            "mean": -6.715054027729439,
+            "median": -4.520204358224534
+          },
+          "displayed_100_1000": {
+            "mean": -6.677755927429699,
+            "median": -4.538163764853344
+          },
+          "lower_700_1000": {
+            "mean": -1.7701920895200745,
+            "median": -1.3526250372627535
+          },
+          "middle_400_700": {
+            "mean": -1.848646572757617,
+            "median": -1.227288129064097
+          },
+          "upper_100_400": {
+            "mean": -3.0589172651520067,
+            "median": -1.318999093254226
+          },
+          "above_10_100": {
+            "mean": -0.03729810029974002,
+            "median": -0.005394829198659384
+          }
+        }
+      }
+    },
+    "EP2": {
+      "n": 860,
+      "Ca": {
+        "dominant_level_hpa": 975,
+        "dominant_median_profile": 0.00010505370110756159,
+        "column_mean": 6.63261192770501,
+        "column_median": 5.89688688929899,
+        "column_q1": 3.2691665450151604,
+        "column_q3": 9.246643736003596,
+        "positive_percentage": 96.16279069767441,
+        "negative_percentage": 3.8372093023255816,
+        "layers": {
+          "full_10_1000": {
+            "mean": 6.63261192770501,
+            "median": 5.89688688929899
+          },
+          "displayed_100_1000": {
+            "mean": 6.628055377686937,
+            "median": 5.873131099179265
+          },
+          "lower_700_1000": {
+            "mean": 3.0418563839087804,
+            "median": 2.5730311082581157
+          },
+          "middle_400_700": {
+            "mean": 2.917144190620853,
+            "median": 2.527136327067841
+          },
+          "upper_100_400": {
+            "mean": 0.6690548031573024,
+            "median": 0.5804046785481289
+          },
+          "above_10_100": {
+            "mean": 0.00455655001807351,
+            "median": 0.0037176776617445393
+          }
+        }
+      },
+      "Ck": {
+        "dominant_level_hpa": 300,
+        "dominant_median_profile": 0.00010673153082796873,
+        "column_mean": 3.119215698479559,
+        "column_median": 2.7286154896620465,
+        "column_q1": -1.0913373610563504,
+        "column_q3": 6.586347506272867,
+        "positive_percentage": 69.88372093023256,
+        "negative_percentage": 30.116279069767444,
+        "layers": {
+          "full_10_1000": {
+            "mean": 3.119215698479559,
+            "median": 2.7286154896620465
+          },
+          "displayed_100_1000": {
+            "mean": 3.1078701297664666,
+            "median": 2.7090034813748365
+          },
+          "lower_700_1000": {
+            "mean": -0.09815806312008611,
+            "median": -0.16785033386278334
+          },
+          "middle_400_700": {
+            "mean": 1.0308052086835269,
+            "median": 0.8158525900605806
+          },
+          "upper_100_400": {
+            "mean": 2.175222984203026,
+            "median": 2.1472262963351363
+          },
+          "above_10_100": {
+            "mean": 0.011345568713092604,
+            "median": 0.012329748584861763
+          }
+        }
+      }
+    },
+    "EP3": {
+      "n": 2412,
+      "Ca": {
+        "dominant_level_hpa": 450,
+        "dominant_median_profile": 2.2240861095710107e-05,
+        "column_mean": 2.0950440704196094,
+        "column_median": 1.5194726887507666,
+        "column_q1": 0.22699194788436888,
+        "column_q3": 3.462279440735263,
+        "positive_percentage": 80.84577114427861,
+        "negative_percentage": 19.154228855721392,
+        "layers": {
+          "full_10_1000": {
+            "mean": 2.0950440704196094,
+            "median": 1.5194726887507666
+          },
+          "displayed_100_1000": {
+            "mean": 2.092294092218714,
+            "median": 1.5141684284441792
+          },
+          "lower_700_1000": {
+            "mean": 0.9358775306880037,
+            "median": 0.6176192080301806
+          },
+          "middle_400_700": {
+            "mean": 0.9359810864410587,
+            "median": 0.5736103038837848
+          },
+          "upper_100_400": {
+            "mean": 0.2204354750896515,
+            "median": 0.162276187302614
+          },
+          "above_10_100": {
+            "mean": 0.002749978200895444,
+            "median": 0.002449747015747081
+          }
+        }
+      },
+      "Ck": {
+        "dominant_level_hpa": 300,
+        "dominant_median_profile": 1.1960841206815408e-05,
+        "column_mean": -0.08712130033894089,
+        "column_median": 0.12136344675142335,
+        "column_q1": -1.584509908641072,
+        "column_q3": 1.7473494256970268,
+        "positive_percentage": 52.77777777777778,
+        "negative_percentage": 47.22222222222222,
+        "layers": {
+          "full_10_1000": {
+            "mean": -0.08712130033894089,
+            "median": 0.12136344675142335
+          },
+          "displayed_100_1000": {
+            "mean": -0.08080478960283992,
+            "median": 0.12241149696300607
+          },
+          "lower_700_1000": {
+            "mean": -0.20421155304718291,
+            "median": -0.1461361759424692
+          },
+          "middle_400_700": {
+            "mean": -0.03918897299288372,
+            "median": 0.028088863115632155
+          },
+          "upper_100_400": {
+            "mean": 0.1625957364372267,
+            "median": 0.279069630788624
+          },
+          "above_10_100": {
+            "mean": -0.006316510736100978,
+            "median": 0.0045984674472920855
+          }
+        }
+      }
+    }
+  },
+  "figure": "figures/main/vertical_levels.png",
+  "level_statistics": "results/vertical_structure/level_statistics.csv"
+}

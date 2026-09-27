@@ -20,7 +20,7 @@ with :func:`verify_conventions`:
 
 1. Most vertical files integrate directly in pressure to the matching column of
    the integrated results file. The legacy ``Ca = -Ca_level`` sign flip
-   (``main/05_figure_vertical_levels.py``) compensated a bug that 2.0.0 fixed:
+   (``main/figure_vertical_levels.py``) compensated a bug that 2.0.0 fixed:
    applying it to corrected data would reintroduce the error with the opposite
    sign. No term needs a sign correction any more.
 2. Some files omit their normalising factor and must be divided by
@@ -186,6 +186,72 @@ def corrected_data_dir() -> Path:
 def corrected_path(name: str) -> Path:
     """Absolute path of a derived corrected product."""
     return corrected_data_dir() / name
+
+
+def _require_derived(name: str) -> Path:
+    """Return a derived-product path, rejecting missing or partial products."""
+    path = corrected_path(name)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"corrected derived product not found: {path}. Rebuild it from the "
+            "completed lec-climatology-rerun before running article outputs."
+        )
+    return path
+
+
+def _validate_population(frame: pd.DataFrame, source: Path) -> pd.DataFrame:
+    """Validate that a derived table covers the complete corrected population."""
+    if "track_id" not in frame.columns:
+        raise ValueError(f"{source} has no track_id column")
+    frame = frame.copy()
+    frame["track_id"] = frame["track_id"].astype(str)
+    observed = frame["track_id"].nunique()
+    if observed != EXPECTED_POPULATION:
+        raise RerunIncomplete(
+            f"{source} covers {observed}/{EXPECTED_POPULATION} cyclones; "
+            "partial corrected products cannot feed article results."
+        )
+    return frame
+
+
+def read_corrected_cache() -> pd.DataFrame:
+    """Complete corrected phase-mean cache used by PCA and clustering."""
+    path = _require_derived(ENERGY_CACHE)
+    frame = _validate_population(pd.read_parquet(path), path)
+    observed_phases = set(frame["phase"].dropna().astype(str))
+    if observed_phases != set(PHASES):
+        raise ValueError(f"{path} has unexpected phases: {sorted(observed_phases)}")
+    return frame
+
+
+def read_corrected_tracks() -> pd.DataFrame:
+    """One-hourly tracks with corrected LEC values at exact three-hour steps."""
+    path = _require_derived(TRACKS_WITH_ENERGETICS)
+    frame = _validate_population(
+        pd.read_csv(path, dtype={"track_id": str}, parse_dates=["date"]), path
+    )
+    return frame
+
+
+def read_vertical_phase_means(
+    *, terms: Optional[Iterable[str]] = None, phases: Optional[Iterable[str]] = None
+) -> pd.DataFrame:
+    """Complete corrected pressure-level phase means for article figures."""
+    path = _require_derived(VERTICAL_PHASE_MEANS)
+    frame = _validate_population(pd.read_parquet(path), path)
+    if terms is not None:
+        wanted_terms = set(terms)
+        missing = wanted_terms - set(frame["term"].astype(str).unique())
+        if missing:
+            raise ValueError(f"{path} lacks corrected vertical terms: {sorted(missing)}")
+        frame = frame[frame["term"].isin(wanted_terms)]
+    if phases is not None:
+        wanted_phases = set(phases)
+        missing = wanted_phases - set(frame["phase"].astype(str).unique())
+        if missing:
+            raise ValueError(f"{path} lacks lifecycle phases: {sorted(missing)}")
+        frame = frame[frame["phase"].isin(wanted_phases)]
+    return frame.reset_index(drop=True)
 
 
 def result_dir(track_id: str | int) -> Path:

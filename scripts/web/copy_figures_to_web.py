@@ -54,16 +54,20 @@ FIGURES_MANIFEST = {
     "cluster/lps_imports_zoom.png":       "cluster/lps_imports_zoom.png",
 
     # --- Main / publication figures ---
-    "main/4_lps_combined.png":                    "main/4_lps_combined.png",
-    "main/5_ep_intensity_seasonality_trends.png":  "main/5_ep_intensity_seasonality_trends.png",
-    "main/6_ep_genesis_density_kde.png":           "main/6_ep_genesis_density_kde.png",
-    "main/7_ep1_ep2_dynamical_composites.png":     "main/7_ep1_ep2_dynamical_composites.png",
-    "main/S1_pca_clustering_validation.png":       "main/S1_pca_clustering_validation.png",
-    "main/S2_selected_tracks.png":                 "main/S2_selected_tracks.png",
-    "main/S3_vertical_levels.png":                 "main/S3_vertical_levels.png",
-    "main/1_tracks_genesis_frequency.png":         "main/1_tracks_genesis_frequency.png",
-    "main/2_20070643_lps_track_publication.png":   "main/2_20070643_lps_track_publication.png",
-    "main/3_phase_density_2x2.png":                "main/3_phase_density_2x2.png",
+    # Filenames describe content only; publication order belongs in the paper.
+    "main/tracks_genesis_frequency.png":              "main/tracks_genesis_frequency.png",
+    "main/cyclone_20070643_lps_track.png":             "main/cyclone_20070643_lps_track.png",
+    "main/phase_density.png":                          "main/phase_density.png",
+    "main/lps_combined.png":                           "main/lps_combined.png",
+    "main/vertical_levels.png":                        "main/vertical_levels.png",
+    "main/ep_intensity_seasonality_trends.png":        "main/ep_intensity_seasonality_trends.png",
+    "main/ep_genesis_density_kde.png":                 "main/ep_genesis_density_kde.png",
+    "main/dynamical_composites_epall_relative.png":    "main/dynamical_composites_epall_relative.png",
+    "main/pearson_epall_by_field_type.png":            "main/pearson_epall_by_field_type.png",
+    "main/pca_clustering_validation.png":              "main/pca_clustering_validation.png",
+    "main/pairwise_effectsize_lec_terms.png":          "main/pairwise_effectsize_lec_terms.png",
+    "main/ck_subterms_vertical_profiles.png":          "main/ck_subterms_vertical_profiles.png",
+    "main/pairwise_effectsize_composite_scalars.png":  "main/pairwise_effectsize_composite_scalars.png",
 
     # --- CPS analysis (cyclone phase space) ---
     # The 745-figure case gallery under figures/cps_analysis/cases/ is NOT copied:
@@ -83,7 +87,9 @@ FIGURES_MANIFEST = {
 }
 
 
-def copy_figures(dry_run: bool = False) -> tuple[int, int, int]:
+def copy_figures(
+    dry_run: bool = False, only: set[str] | None = None
+) -> tuple[int, int, int]:
     """Copy figures to web/public/figures/.
 
     Returns (copied, skipped_missing, already_up_to_date).
@@ -91,6 +97,8 @@ def copy_figures(dry_run: bool = False) -> tuple[int, int, int]:
     copied = missing = up_to_date = 0
 
     for dst_rel, src_rel in FIGURES_MANIFEST.items():
+        if only is not None and dst_rel not in only:
+            continue
         src = FIGURES_SRC / src_rel
         dst = FIGURES_DST / dst_rel
 
@@ -186,12 +194,52 @@ def copy_ep_structure_tree(dry_run: bool = False) -> tuple[int, int]:
     return copied, up_to_date
 
 
+def copy_analysis_tree(name: str, dry_run: bool = False) -> tuple[int, int]:
+    """Copy one complete analysis figure tree into the site's static assets."""
+    src_root = FIGURES_SRC / name
+    dst_root = FIGURES_DST / name
+
+    if not src_root.exists():
+        print(f"  ⚠  MISSING   {name}/ directory in figures/")
+        return 0, 0
+
+    copied = 0
+    up_to_date = 0
+    for src in sorted(src_root.rglob("*")):
+        if not src.is_file() or src.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+        dst = dst_root / src.relative_to(src_root)
+        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+            up_to_date += 1
+            continue
+        if dry_run:
+            print(f"  [dry-run]   {name}/{src.relative_to(src_root)}")
+        else:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+            print(f"  ✓  {name}/{src.relative_to(src_root)}")
+        copied += 1
+    return copied, up_to_date
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Copy figures to web/public/figures/ for Vercel deployment."
     )
     parser.add_argument("--dry-run", action="store_true", help="Preview without copying")
+    parser.add_argument(
+        "--only",
+        action="append",
+        metavar="PATH",
+        help="Copy only this manifest target (repeat for multiple figures)",
+    )
     args = parser.parse_args()
+    only = set(args.only) if args.only else None
+
+    if only is not None:
+        unknown = only.difference(FIGURES_MANIFEST)
+        if unknown:
+            parser.error(f"unknown manifest target(s): {', '.join(sorted(unknown))}")
 
     print("=" * 60)
     print("COPY FIGURES TO WEB PUBLIC ASSETS")
@@ -204,16 +252,28 @@ def main():
     if not args.dry_run:
         FIGURES_DST.mkdir(parents=True, exist_ok=True)
 
-    copied, missing, up_to_date = copy_figures(dry_run=args.dry_run)
+    copied, missing, up_to_date = copy_figures(dry_run=args.dry_run, only=only)
 
-    # Copy cyclone explorer assets
-    cx_copied, cx_uptodate = copy_cyclone_explorer_tree(dry_run=args.dry_run)
-    
-    # Copy EP structure composite figures (with mode suffixes)
-    ep_copied, ep_uptodate = copy_ep_structure_tree(dry_run=args.dry_run)
+    if only is None:
+        # Copy complete analysis trees only during a full site synchronization.
+        cx_copied, cx_uptodate = copy_cyclone_explorer_tree(dry_run=args.dry_run)
+        ep_copied, ep_uptodate = copy_ep_structure_tree(dry_run=args.dry_run)
+        ck_copied, ck_uptodate = copy_analysis_tree(
+            "ck_subterms_corrected", dry_run=args.dry_run
+        )
+        lfd_copied, lfd_uptodate = copy_analysis_tree(
+            "lec_field_dependence", dry_run=args.dry_run
+        )
+    else:
+        cx_copied = cx_uptodate = 0
+        ep_copied = ep_uptodate = 0
+        ck_copied = ck_uptodate = 0
+        lfd_copied = lfd_uptodate = 0
 
-    total_copied = copied + cx_copied + ep_copied
-    total_uptodate = up_to_date + cx_uptodate + ep_uptodate
+    total_copied = copied + cx_copied + ep_copied + ck_copied + lfd_copied
+    total_uptodate = (
+        up_to_date + cx_uptodate + ep_uptodate + ck_uptodate + lfd_uptodate
+    )
 
     print()
     print(f"  ✓ Copied        : {total_copied}")

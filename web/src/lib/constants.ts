@@ -10,6 +10,7 @@ import type {
   DocumentInfo,
   Reference,
 } from './types'
+import energyPatternData from '@/content/energy_patterns.json'
 
 // --- Site metadata ---
 export const SITE_TITLE = 'Energy Patterns of South Atlantic Cyclones'
@@ -20,32 +21,35 @@ export const SITE_DESCRIPTION =
 export const ENERGY_PATTERNS: Record<string, EnergyPattern> = {
   EP1: {
     id: 'EP1',
-    label: 'EP1 — Strong Conversions / Energy Exporters',
-    count: 444,
-    percentage: 11.6,
-    meanCk: -16.48,
+    label: 'EP1 — Strongest Conversion Magnitudes',
+    count: energyPatternData.EP1.count,
+    percentage: energyPatternData.EP1.percentage,
+    meanCk: energyPatternData.EP1.meanCk,
+    meanCa: energyPatternData.EP1.meanCa,
     description:
-      'Most energetically active cyclones. Strong barotropic and baroclinic conversions. Tend to export energy (negative boundary fluxes). Genesis concentrated at the Brazil-Malvinas Confluence and SE-Brazil shelf.',
+      'Cyclones with the strongest combined intensification-phase baroclinic and barotropic conversion magnitudes in the corrected clustering.',
     color: '#e63946',
   },
   EP2: {
     id: 'EP2',
-    label: 'EP2 — Intermediate Conversions / Energy Importers',
-    count: 979,
-    percentage: 25.6,
-    meanCk: -3.49,
+    label: 'EP2 — Intermediate Conversion Magnitudes',
+    count: energyPatternData.EP2.count,
+    percentage: energyPatternData.EP2.percentage,
+    meanCk: energyPatternData.EP2.meanCk,
+    meanCa: energyPatternData.EP2.meanCa,
     description:
-      'Moderately energetic cyclones coupled to jet stream dynamics. Tend to import energy (positive boundary fluxes), drawing energy from the large-scale flow. Genesis mainly in the La Plata region.',
+      'Cyclones occupying the intermediate conversion regime of the corrected Energy Pattern classification.',
     color: '#457b9d',
   },
   EP3: {
     id: 'EP3',
     label: 'EP3 — Weak Energetics',
-    count: 2397,
-    percentage: 62.7,
-    meanCk: -1.71,
+    count: energyPatternData.EP3.count,
+    percentage: energyPatternData.EP3.percentage,
+    meanCk: energyPatternData.EP3.meanCk,
+    meanCa: energyPatternData.EP3.meanCa,
     description:
-      'Typical transient cyclones representing the climatological background. Minimal energy conversions and weak intensity.',
+      'Cyclones with the weakest combined intensification-phase conversion magnitudes in the corrected clustering.',
     color: '#a8dadc',
   },
 }
@@ -398,12 +402,10 @@ export const CLUSTER_STEPS: AnalysisStep[] = [
     description:
       'Filter cyclones with complete lifecycle phases, standardise 7 energy terms, and prepare features for dimensionality reduction.',
     inputs: [
-      'data/tracks_SAt_filtered_with_energetics_processed.csv',
-      'data/energy_cache.parquet',
+      'data/corrected/energy_cache_corrected.parquet',
     ],
     outputs: [
       'results/cluster/pca_full_data.csv',
-      'results/cluster/pca_full_data_{phase}.csv',
     ],
     scripts: ['scripts/cluster_analysis_energy_patterns/step1_normalize_and_pca.py'],
     figures: [],
@@ -414,12 +416,12 @@ export const CLUSTER_STEPS: AnalysisStep[] = [
     title: 'Principal Component Analysis',
     shortTitle: 'PCA',
     description:
-      'Independent PCA per lifecycle phase, retaining ≥97% variance. Typically 6 PCs per phase capture the essential variance of the 7 energy terms.',
-    inputs: ['results/cluster/pca_full_data_{phase}.csv'],
+      'A single global PCA reduces the 28 term-by-phase features while retaining at least 90% of their joint variance.',
+    inputs: ['results/cluster/pca_full_data.csv'],
     outputs: [
-      'results/cluster/pca_scores_{phase}.csv',
-      'results/cluster/pca_loadings_{phase}.csv',
-      'results/cluster/pca_explained_variance_{phase}.csv',
+      'results/cluster/pca_scores.csv',
+      'results/cluster/pca_loadings.csv',
+      'results/cluster/pca_explained_variance.csv',
       'results/cluster/pca_models.pkl',
     ],
     scripts: [
@@ -439,8 +441,8 @@ export const CLUSTER_STEPS: AnalysisStep[] = [
     title: 'Optimal Number of Clusters',
     shortTitle: 'Optimal k',
     description:
-      'Five cluster validity indices (Silhouette, Davies-Bouldin, Calinski-Harabasz, Score Function, Gap Statistic) are computed for k = 3–15 and averaged after normalisation. The ensemble consensus identifies k = 3 as optimal.',
-    inputs: ['results/cluster/pca_scores_{phase}.csv'],
+      'Five internal validity indices plus cross-validated Reval stability are computed for k = 3–15 and averaged after normalisation.',
+    inputs: ['results/cluster/pca_scores.csv'],
     outputs: [
       'results/cluster/optimal_k.txt',
       'results/cluster/optimal_k_raw_indices.csv',
@@ -457,16 +459,17 @@ export const CLUSTER_STEPS: AnalysisStep[] = [
     title: 'Clustering & Lorenz Phase Space',
     shortTitle: 'Clustering & LPS',
     description:
-      'K-Means (k=3, n_init=100) applied per lifecycle phase. Clusters are labelled as EP1, EP2, EP3 based on energy conversion magnitudes. Lorenz Phase Space diagrams visualise the distinct energetic signatures.',
+      'One K-Means solution (n_init=100) is fitted in the global PCA space. Clusters are ranked by |Ca| + |Ck| during intensification to obtain EP1, EP2, and EP3.',
     inputs: [
-      'results/cluster/pca_scores_{phase}.csv',
+      'results/cluster/pca_scores.csv',
       'results/cluster/optimal_k.txt',
     ],
     outputs: [
-      'results/cluster/kmeans_clustered_data_{phase}.csv',
-      'results/cluster/kmeans_centroids_pc_{phase}.csv',
-      'results/cluster/kmeans_centroids_energy_{phase}.csv',
-      'results/cluster/kmeans_summary_{phase}.csv',
+      'results/cluster/kmeans_clustered_data.csv',
+      'results/cluster/kmeans_centroids_pc.csv',
+      'results/cluster/kmeans_centroids_energy.csv',
+      'results/cluster/kmeans_summary.csv',
+      'results/cluster/cluster_to_ep.json',
       'results/cluster/kmeans_model.pkl',
     ],
     scripts: [
@@ -486,17 +489,26 @@ export const CLUSTER_STEPS: AnalysisStep[] = [
     title: 'Results & Summary',
     shortTitle: 'Results',
     description:
-      'Summary of identified Energy Patterns with their physical characteristics, geographical distribution, seasonality, and intensity metrics. This section will be expanded in a future iteration with additional exploratory analyses.',
+      'Corrected Energy Pattern populations, intensification-phase Ca and Ck centroids, intensity, seasonality, interannual trends, and genesis density.',
     inputs: [
       'results/cluster/kmeans_summary.csv',
       'results/cluster/kmeans_centroids_energy.csv',
+      'results/cluster/kmeans_clustered_data.csv',
     ],
-    outputs: [],
-    scripts: [],
+    outputs: [
+      'results/exploratory/ep_intensity_seasonality_summary.csv',
+      'results/exploratory/mk_trend_results.csv',
+      'web/src/content/energy_patterns.json',
+      'web/src/content/energy_pattern_exploratory.json',
+    ],
+    scripts: [
+      'scripts/main/figure_intensity_seasonality_trends.py',
+      'scripts/main/figure_genesis_density_kde.py',
+      'scripts/web/extract_cluster_site_data.py',
+    ],
     figures: [
-      'figures/main/4_lps_combined.png',
-      'figures/main/5_ep_intensity_seasonality_trends.png',
-      'figures/main/6_ep_genesis_density_kde.png',
+      'figures/main/ep_intensity_seasonality_trends.png',
+      'figures/main/ep_genesis_density_kde.png',
     ],
   },
 ]

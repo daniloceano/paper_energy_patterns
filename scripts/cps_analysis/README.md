@@ -234,7 +234,7 @@ and the same layout is drawn twice —
 | **whole life** (`fig10`) | every 3-hourly position of the track | cyclone days / 10⁶ km² / year |
 
 The estimator is the spherical KDE already used for the manuscript's genesis-density figure
-(`scripts/main/07_figure_genesis_density_kde.py`, after Hoskins & Hodges 2005): Gaussian
+(`scripts/main/figure_genesis_density_kde.py`, after Hoskins & Hodges 2005): Gaussian
 kernel, haversine metric, bandwidth 0.05 rad (~318 km), 2.5° grid. It lives in
 `cps_density.py` so the two figure families cannot drift apart. Whole-life density is
 expressed in **cyclone days** — each 3-hourly position counts as 1/8 of a day — so the number

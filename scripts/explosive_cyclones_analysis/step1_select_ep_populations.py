@@ -7,8 +7,8 @@ on top of the vorticity-based life cycle, so it must run over the FULL EP
 populations defined by the K-Means clustering — NOT the reduced subset used for
 the composite analysis (which keeps only intensification phases >= 24 h).
 
-Authoritative population (from clustering on LEC diagnostics):
-    EP1 = 444, EP2 = 979, EP3 = 2397   (total 3820)
+Authoritative population: the dynamically mapped EP counts from the corrected
+clustering on 3,820 LEC diagnostics. No population is hardcoded here.
 
 Outputs (results/explosive_cyclones/):
     ep_membership.csv          track_id, cluster, ep
@@ -31,7 +31,13 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 import pandas as pd
 
 from scripts.utils.load_data import load_tracks
-from scripts.utils.ep_mapping import CLUSTER_TO_EP, ALL_EPS, EP_COUNTS, get_ep_label
+from scripts.utils.ep_mapping import (
+    CLUSTER_TO_EP,
+    ALL_EPS,
+    EP_COUNTS,
+    assert_corrected_clustering,
+    get_ep_label,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CLUSTER_FILE = PROJECT_ROOT / "results" / "cluster" / "kmeans_clustered_data.csv"
@@ -42,6 +48,7 @@ TRACK_COLS = ["track_id", "date", "lat vor", "lon vor", "vor42", "period", "regi
 
 
 def main():
+    assert_corrected_clustering()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)

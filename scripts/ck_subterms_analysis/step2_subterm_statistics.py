@@ -112,7 +112,7 @@ def dominance_frequency(table: pd.DataFrame) -> pd.DataFrame:
     for ep_label, ep_frame in groups:
         for phase, phase_frame in ep_frame.groupby("phase", observed=True):
             counts = phase_frame["dominant_label"].value_counts()
-            total = int(counts.sum())
+            total = int(len(phase_frame))
             for stem in clec.CK_SUBTERMS:
                 label = clec.CK_SUBTERM_LABELS[stem]
                 count = int(counts.get(label, 0))
@@ -126,6 +126,20 @@ def dominance_frequency(table: pd.DataFrame) -> pd.DataFrame:
                     "fraction": count / total if total else np.nan,
                     "description": clec.CK_SUBTERM_DESCRIPTIONS[stem],
                 })
+            no_negative = int(counts.get("None (all positive)", 0))
+            records.append({
+                "ep_label": ep_label,
+                "phase": phase,
+                "term": "none",
+                "label": "None (all positive)",
+                "n_dominant": no_negative,
+                "n_total": total,
+                "fraction": no_negative / total if total else np.nan,
+                "description": (
+                    "All five subterms are positive, so none transfers kinetic "
+                    "energy from the mean flow to the eddy."
+                ),
+            })
     return pd.DataFrame(records)
 
 
@@ -207,7 +221,8 @@ def write_report(
         f"Energy cache lineage: `{em.mapping_source()}`",
         "",
         "Sign convention: `C_K < 0` means K_Z -> K_E (the mean flow feeds the",
-        "eddy). The dominant subterm is the most negative one.",
+        "eddy). The dominant subterm is the most negative one; cases in which",
+        "all five subterms are positive are reported separately.",
         "",
         "## 1. Intensification-phase magnitudes",
         "",
@@ -228,14 +243,16 @@ def write_report(
         "## 2. Dominance during intensification",
         "",
         "| Energy Pattern | " + " | ".join(
-            clec.CK_SUBTERM_LABELS[stem] for stem in clec.CK_SUBTERMS
+            [clec.CK_SUBTERM_LABELS[stem] for stem in clec.CK_SUBTERMS]
+            + ["None (all positive)"]
         ) + " |",
-        "|---" * (len(clec.CK_SUBTERMS) + 1) + "|",
+        "|---" * (len(clec.CK_SUBTERMS) + 2) + "|",
     ]
     intensifying_dominance = dominance[dominance["phase"] == "intensification"]
     for ep_label, group in intensifying_dominance.groupby("ep_label", observed=True):
         by_term = group.set_index("term")["fraction"]
         cells = [f"{100 * by_term.get(stem, 0):.1f}%" for stem in clec.CK_SUBTERMS]
+        cells.append(f"{100 * by_term.get('none', 0):.1f}%")
         lines.append(f"| {ep_label} | " + " | ".join(cells) + " |")
 
     lines += [

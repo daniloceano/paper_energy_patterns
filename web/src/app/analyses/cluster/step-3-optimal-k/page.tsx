@@ -6,12 +6,22 @@ import FileProvenanceBadge from '@/components/analysis/FileProvenanceBadge'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import StatsTable from '@/components/analysis/StatsTable'
 import MethodologyAccordion from '@/components/analysis/MethodologyAccordion'
+import optimalKData from '@/content/cluster_step3_data.json'
 
 export const metadata: Metadata = {
   title: 'Step 3 — Optimal k',
 }
 
 export default function Step3Page() {
+  const ensembleRanking = [...optimalKData.normalized_indices]
+    .sort((a, b) => Number(b.mean_index) - Number(a.mean_index))
+    .slice(0, 5)
+    .map((row) => ({
+      k: row.k,
+      ensemble: Number(row.mean_index).toFixed(3),
+      stability: Number(row.Stability_reval).toFixed(3),
+    }))
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
       <Breadcrumbs />
@@ -19,7 +29,7 @@ export default function Step3Page() {
         title="Optimal Number of Clusters"
         subtitle="Step 3 of 5"
         badge="Cluster Analysis"
-        description="Five cluster validity indices are computed for k = 3 to 15 and averaged after normalisation. The ensemble consensus identifies k = 3 as the optimal number of clusters."
+        description={`Five internal validity indices and cross-validated clustering stability are computed for k = 3 to 15. Their normalised ensemble selects k = ${optimalKData.optimal_k}.`}
       />
 
       <div className="space-y-8">
@@ -39,8 +49,9 @@ export default function Step3Page() {
               { index: 'Calinski-Harabasz', criterion: 'Between/within variance ratio', direction: 'Maximise' },
               { index: 'Score Function', criterion: 'Composite cluster quality', direction: 'Maximise' },
               { index: 'Gap Statistic', criterion: 'Within-cluster dispersion vs null', direction: 'Maximise' },
+              { index: 'Reval stability', criterion: 'Prediction stability under repeated cross-validation', direction: 'Maximise' },
             ]}
-            caption="All indices are normalised to [0, 1] before averaging."
+            caption="All six criteria are normalised to [0, 1] before averaging; Davies–Bouldin is reversed so that larger always means better."
           />
         </section>
 
@@ -49,17 +60,17 @@ export default function Step3Page() {
             {
               title: 'Normalisation and averaging',
               content:
-                'Each index is normalised to the [0, 1] range across all tested k values. For indices where smaller is better (e.g., Davies-Bouldin), the normalised score is inverted. The average normalised score identifies the k with the best overall performance.',
+                'Each criterion is normalised to the [0, 1] range across all tested k values. Davies–Bouldin is inverted because smaller is better. Reval is already expressed as stability (1 minus validation misclassification), so it is not inverted. The average of all six normalised criteria identifies the selected k.',
             },
             {
               title: 'Range tested',
               content:
-                'k = 3 to 15, evaluated on the PCA-reduced phase-separated data. k = 2 is excluded as it would only distinguish "strong" from "weak" without revealing intermediate patterns.',
+                'k = 3 to 15, evaluated on the 15-component global PCA representation. The candidate range is fixed before inspecting the scores.',
             },
             {
-              title: 'Decision for k = 3',
+              title: `Decision for k = ${optimalKData.optimal_k}`,
               content:
-                'The ensemble average peaks at k = 3, with consistent support across most individual indices. This aligns with the physical expectation of strong, intermediate, and weak energetic profiles.',
+                `The ensemble average reaches its maximum at k = ${optimalKData.optimal_k}. The choice follows the pre-defined numerical rule rather than a physical label imposed on the groups.`,
             },
           ]}
         />
@@ -71,17 +82,32 @@ export default function Step3Page() {
           </h2>
           <FigurePanel
             src="/figures/cluster/optimal_k_analysis.png"
-            alt="Optimal k analysis showing 5 cluster validity indices"
-            caption="Five cluster validity indices as a function of k. The vertical dashed line at k = 3 indicates the optimal value selected by ensemble averaging."
+            alt="Optimal k analysis showing six cluster validation criteria"
+            caption={`Six normalised validation criteria as a function of k. The selected solution is k = ${optimalKData.optimal_k}.`}
             source="figures/cluster/optimal_k_analysis.png"
+          />
+        </section>
+
+        <section>
+          <h2 className="mb-3 text-lg font-bold text-slate-900">
+            Highest Ensemble Scores
+          </h2>
+          <StatsTable
+            columns={[
+              { key: 'k', label: 'k' },
+              { key: 'ensemble', label: 'Mean of six criteria' },
+              { key: 'stability', label: 'Normalised Reval stability' },
+            ]}
+            rows={ensembleRanking}
+            highlightColumn="ensemble"
+            caption="Values are normalised across the tested k range; the first row is the deterministic ensemble choice."
           />
         </section>
 
         <ResultSummaryCallout type="result" title="Step 3 Result">
           <p>
-            <strong>k = 3</strong> is selected as the optimal number of clusters via
-            5-index ensemble consensus. This produces three distinct Energy Patterns
-            with clear physical separation.
+            <strong>k = {optimalKData.optimal_k}</strong> is selected by the mean of five
+            internal validity indices and repeated cross-validated Reval stability.
           </p>
         </ResultSummaryCallout>
 

@@ -1,16 +1,16 @@
 # Ck subterms — build report
 
-Source profiles: `/p1-swell/danilocs/paper_energy_patterns/data/corrected/vertical_phase_means_corrected_partial.parquet`
-Energy cache lineage: `data/energy_cache.parquet (LEGACY - superseded)`
+Source profiles: `/Users/danilocoutodesouza/Documents/Programs_and_scripts/paper_energy_patterns/data/corrected/vertical_phase_means_corrected.parquet`
+Energy cache lineage: `/p1-swell/danilocs/paper_energy_patterns/data/corrected/energy_cache_corrected.parquet`
 
 ## Coverage
 
 | Energy Pattern | cyclones | rows (cyclone x phase) |
 |---|---|---|
-| EP1 | 92 | 368 |
-| EP2 | 176 | 704 |
-| EP3 | 532 | 2128 |
-| **all** | **800** | **3200** |
+| EP1 | 548 | 2192 |
+| EP2 | 860 | 3440 |
+| EP3 | 2412 | 9648 |
+| **all** | **3820** | **15280** |
 
 ## Validation
 
@@ -20,8 +20,8 @@ Energy cache lineage: `data/energy_cache.parquet (LEGACY - superseded)`
 
 ## Dominant subterm during intensification
 
-| Energy Pattern | Ck_A | Ck_B | Ck_C | Ck_D | Ck_E |
-|---|---|---|---|---|---|
-| EP1 | 29.3% | 58.7% | 1.1% | 9.8% | 1.1% |
-| EP2 | 23.9% | 40.3% | 3.4% | 29.0% | 3.4% |
-| EP3 | 28.0% | 28.6% | 3.0% | 31.0% | 9.4% |
+| Energy Pattern | Ck_A | Ck_B | Ck_C | Ck_D | Ck_E | None (all positive) |
+|---|---|---|---|---|---|---|
+| EP1 | 32.3% | 60.0% | 0.2% | 4.4% | 1.6% | 1.5% |
+| EP2 | 20.3% | 32.4% | 0.5% | 32.7% | 3.0% | 11.0% |
+| EP3 | 28.2% | 32.5% | 0.5% | 23.5% | 8.4% | 6.9% |

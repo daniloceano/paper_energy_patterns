@@ -19,6 +19,7 @@ Trend analysis methodology:
 Outputs:
   • Figure: figures/main/ep_intensity_seasonality_trends.png (300 DPI)
   • CSV: results/exploratory/mk_trend_results.csv (all MK test results with slope, CI, autocorr info)
+  • CSV: results/exploratory/ep_intensity_seasonality_summary.csv
 
 Author: Danilo Couto de Souza
 Date: December 2024 / Updated January 2025
@@ -53,6 +54,10 @@ except ImportError:
 
 from scipy.stats import theilslopes
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from scripts.utils.ep_mapping import CLUSTER_TO_EP, assert_corrected_clustering
+
 # ============================================================================
 # Configuration
 # ============================================================================
@@ -67,13 +72,6 @@ FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 # Energy Pattern configuration
 EP_NAMES = ['EP1', 'EP2', 'EP3']
 EP_COLORS = ['#1f77b4', '#ff7f0e', '#2ca02c']  # Blue, Orange, Green
-
-# Cluster to EP mapping (based on Ck energy levels)
-CLUSTER_TO_EP = {
-    0: 1,
-    2: 2,
-    1: 3
-}
 
 # Season configuration
 SEASONS = {
@@ -117,6 +115,7 @@ plt.rcParams.update({
 
 def load_data():
     """Load cyclone data with EP assignments."""
+    assert_corrected_clustering()
     import sys
     scripts_dir = BASE_DIR / 'scripts'
     sys.path.insert(0, str(scripts_dir))
@@ -147,6 +146,51 @@ def load_data():
     print(f"Loaded {len(df)} cyclones with EP assignments")
     print(f"EP distribution: {df['EP'].value_counts().sort_index().to_dict()}")
     return df
+
+
+def write_exploratory_summary(df):
+    """Persist the intensity and seasonal values plotted in panels (a) and (b)."""
+    summary = df.copy()
+    summary['month'] = pd.to_datetime(summary['time']).dt.month
+    summary['season'] = summary['month'].map(
+        lambda month: next(
+            season for season, months in SEASONS.items() if month in months
+        )
+    )
+
+    rows = []
+    for ep_num in [1, 2, 3]:
+        ep_data = summary[summary['EP'] == ep_num]
+        intensity = ep_data['max_vorticity_module']
+        season_percentages = (
+            ep_data['season']
+            .value_counts(normalize=True)
+            .reindex(SEASONS, fill_value=0.0)
+            .mul(100.0)
+        )
+        peak_season = str(season_percentages.idxmax())
+        rows.append({
+            'EP': f'EP{ep_num}',
+            'n_cyclones': int(len(ep_data)),
+            'intensity_mean': float(intensity.mean()),
+            'intensity_median': float(intensity.median()),
+            'intensity_std': float(intensity.std()),
+            'intensity_min': float(intensity.min()),
+            'intensity_max': float(intensity.max()),
+            **{
+                f'{season}_percent': float(season_percentages[season])
+                for season in SEASONS
+            },
+            'peak_season': peak_season,
+            'peak_season_percent': float(season_percentages[peak_season]),
+        })
+
+    results_dir = BASE_DIR / 'results' / 'exploratory'
+    results_dir.mkdir(parents=True, exist_ok=True)
+    output = results_dir / 'ep_intensity_seasonality_summary.csv'
+    pd.DataFrame(rows).to_csv(output, index=False)
+    print(f"Exploratory summary saved: {output}")
+    return output
 
 # ============================================================================
 # Plotting Functions
@@ -230,6 +274,12 @@ def plot_interannual_trends(ax, df):
     results_dir = BASE_DIR / 'results' / 'exploratory'
     results_dir.mkdir(parents=True, exist_ok=True)
     out_csv = results_dir / 'mk_trend_results.csv'
+
+    # Each execution publishes one complete, self-contained result set.  The
+    # previous implementation appended to an existing CSV, so rerunning the
+    # figure silently duplicated every EP/test combination.
+    if out_csv.exists():
+        out_csv.unlink()
 
     for ep_num, color, label in zip([1, 2, 3], EP_COLORS, EP_NAMES):
         ep_data = df[df['EP'] == ep_num]
@@ -376,6 +426,7 @@ def plot_interannual_trends(ax, df):
 
 def create_figure():
     df = load_data()
+    write_exploratory_summary(df)
     fig = plt.figure(figsize=(10, 6))
     gs = fig.add_gridspec(2, 2, height_ratios=[1, 1], hspace=0.35, wspace=0.3, left=0.08, right=0.95, top=0.95, bottom=0.08)
     ax1 = fig.add_subplot(gs[0, 0])
@@ -401,7 +452,7 @@ def create_figure():
     plot_interannual_trends(ax3, df)
     print("\n  ✓ Trend analysis complete.")
 
-    output_file = FIGURES_DIR / '6_ep_intensity_seasonality_trends.png'
+    output_file = FIGURES_DIR / 'ep_intensity_seasonality_trends.png'
     plt.savefig(output_file, dpi=300, bbox_inches='tight', facecolor='white')
     print(f"\n{'='*60}")
     print(f"Figure saved: {output_file}")

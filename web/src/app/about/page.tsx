@@ -42,8 +42,8 @@ export default function AboutPage() {
             <p>
               PCA-based K-Means clustering identifies three distinct <strong>Energy
               Patterns</strong>. Subsequent ERA5 composite analysis reveals the atmospheric
-              structure differences between EP1 (strong conversions) and EP2 (intermediate)
-              cyclones during intensification.
+              structure differences among groups ranked by their combined
+              intensification-phase baroclinic and barotropic conversion magnitudes.
             </p>
           </div>
         </section>

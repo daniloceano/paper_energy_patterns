@@ -222,11 +222,12 @@ export default function MethodologyPage() {
           </p>
 
           <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">
-            <p className="font-semibold">Implementation status</p>
+            <p className="font-semibold">Correction and completion status</p>
             <p className="mt-1 leading-relaxed">
-              The end-to-end pipeline and the methodological definitions below are implemented.
-              The final full-population run and its manuscript integration remain pending, so this
-              page documents the method without presenting the preliminary output as a final result.
+              The end-to-end pipeline and the methodological definitions below exist, but the
+              EP membership must be rebuilt from the corrected classification and the remaining
+              pressure inputs must be completed. The final full-population run remains pending,
+              so this page documents the method without presenting preliminary output as final.
             </p>
           </div>
 

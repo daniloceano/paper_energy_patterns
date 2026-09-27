@@ -61,6 +61,16 @@ export default function CpsPage() {
       />
 
       <div className="space-y-12">
+        <ResultSummaryCallout type="warning" title="EP comparison rerun required">
+          <p>
+            The cyclone phase-space diagnostics have been computed, but the EP cross-tabs,
+            frequencies, statistical contrasts, and maps on this page still use the previous
+            Energy Pattern membership. Thirteen catalogue cyclones also lack a complete CPS
+            series. The EP-dependent results below are therefore provisional until the
+            membership is rebuilt and the missing cases are resolved or explicitly excluded.
+          </p>
+        </ResultSummaryCallout>
+
         {/* ---------------- Methods & Statistics ---------------- */}
         <MethodsPanel summary="How thermal structure is measured and classified, and how the association between Energy Pattern and phase class is tested.">
           <div className="rounded-xl border border-slate-200 bg-white p-5">

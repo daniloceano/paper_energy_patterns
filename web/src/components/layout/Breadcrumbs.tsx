@@ -10,6 +10,7 @@ const ROUTE_LABELS: Record<string, string> = {
   cluster: 'Cluster Analysis',
   composites: 'Composites',
   docs: 'Documentation',
+  methodology: 'Methodology',
   'data-references': 'Data & References',
   about: 'About',
   'step-1-case-selection-preprocessing-features': 'Step 1 — Selection & Features',

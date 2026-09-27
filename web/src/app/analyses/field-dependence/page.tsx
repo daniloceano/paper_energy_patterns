@@ -28,7 +28,16 @@ export default function FieldDependencePage() {
       />
 
       <div className="mb-8 space-y-4">
-        <ResultSummaryCallout type="result" title="Key Finding">
+        <ResultSummaryCallout type="warning" title="Correction required before these results are final">
+          <p>
+            This analysis was run on the previous ERA5-composite population and obsolete
+            Energy Pattern membership. It must be rebuilt after the corrected composites.
+            The statistics and figures below remain visible as a record of the previous run,
+            but they must not yet be quoted as current results.
+          </p>
+        </ResultSummaryCallout>
+
+        <ResultSummaryCallout type="warning" title="Previous-run finding — pending correction">
           <p>
             All 24 LEC terms differ significantly across EP1, EP2, and EP3.
             The strongest predictive associations (PREDEP &gt; 0.70) are found in EP3

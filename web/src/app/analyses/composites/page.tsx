@@ -3,7 +3,7 @@ import { Layers, MountainSnow } from 'lucide-react'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
-import { DIAGNOSTIC_LIST, DATASET_STATS, ENERGY_PATTERNS } from '@/lib/constants'
+import { DIAGNOSTIC_LIST, DATASET_STATS } from '@/lib/constants'
 import Link from 'next/link'
 import MethodsPanel from '@/components/analysis/MethodsPanel'
 import FormulaBlock from '@/components/analysis/FormulaBlock'
@@ -23,10 +23,20 @@ export default function CompositesPage() {
         title="Composite Analysis"
         subtitle="EP Structure — ERA5 Reanalysis"
         badge="EP1 / EP2 / EP3 / EPALL"
-        description={`Storm-centred ${DATASET_STATS.domainSize} composites of 10 diagnostic fields at key atmospheric levels, computed from ERA5 reanalysis at ${DATASET_STATS.era5Resolution} resolution. EP1 (N=${ENERGY_PATTERNS.EP1.count}), EP2 (N=${ENERGY_PATTERNS.EP2.count}), and EP3 (N=${ENERGY_PATTERNS.EP3.count}) composites are compared during the intensification phase alongside EPALL (all cyclones combined). EPALL-relative anomalies (EPx − EPALL) isolate what distinguishes each pattern from the climatological cyclone population.`}
+        description={`Storm-centred ${DATASET_STATS.domainSize} composites of 10 diagnostic fields at key atmospheric levels, computed from ERA5 reanalysis at ${DATASET_STATS.era5Resolution} resolution. EP1, EP2, and EP3 composites are compared during the intensification phase alongside EPALL (all cyclones combined). EPALL-relative anomalies (EPx − EPALL) isolate what distinguishes each pattern from the climatological cyclone population.`}
       />
 
       <div className="space-y-8">
+        <ResultSummaryCallout type="warning" title="Correction required before these results are final">
+          <p>
+            The figures and numerical results on this page were generated with the previous
+            Energy Pattern membership (EP1 = 444, EP2 = 979, EP3 = 2,397; 2,733 cyclones
+            remained after the duration filter). The corrected membership is EP1 = 548,
+            EP2 = 860, and EP3 = 2,412. The ERA5 composite pipeline must therefore be rerun;
+            values below document the previous execution and must not yet be quoted as final.
+          </p>
+        </ResultSummaryCallout>
+
         <ResultSummaryCallout type="info" title="Scientific Objective">
           <p>
             Understand the atmospheric structure and dynamical characteristics that distinguish

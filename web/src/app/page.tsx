@@ -5,10 +5,130 @@ import {
   Database,
   BookOpen,
   Microscope,
+  Activity,
+  CloudLightning,
+  Code2,
+  FileCheck2,
+  FileClock,
+  FileWarning,
   ArrowRight,
   GitBranch,
 } from 'lucide-react'
 import { ENERGY_PATTERNS, DATASET_STATS } from '@/lib/constants'
+
+const METHODOLOGICAL_FLOW = [
+  {
+    step: '1',
+    title: 'Tracks & Study Sample',
+    desc: 'Select 6,789 cyclone tracks with genesis in ARG, LA-PLATA, and SE-BR from the 1979–2020 catalogue.',
+    icon: Database,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Included in draft',
+    manuscriptStatus: 'included',
+  },
+  {
+    step: '2',
+    title: 'Lifecycle Normalisation',
+    desc: 'Detect incipient, intensification, mature, and decay phases; retain 3,820 cyclones with a complete standard lifecycle.',
+    icon: Activity,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Included in draft',
+    manuscriptStatus: 'included',
+  },
+  {
+    step: '3',
+    title: 'Corrected LEC Diagnostics',
+    desc: 'Compute seven eddy-development terms in a storm-following 15° × 15° domain and average them by lifecycle phase.',
+    icon: BarChart3,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Revision required',
+    manuscriptStatus: 'revision',
+  },
+  {
+    step: '4',
+    title: 'PCA + K-Means Classification',
+    desc: 'Standardise 28 phase-resolved features, retain 15 principal components, select k = 3, and assign EP1, EP2, and EP3.',
+    icon: GitBranch,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Revision required',
+    manuscriptStatus: 'revision',
+  },
+  {
+    step: '5',
+    title: 'Energy-Pattern Climatology',
+    desc: 'Characterise lifecycle energetics, intensity, seasonality, trends, and genesis-density differences for each Energy Pattern.',
+    icon: Microscope,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Revision required',
+    manuscriptStatus: 'revision',
+  },
+  {
+    step: '6',
+    title: 'Vertical Structure & Ck Subterms',
+    desc: 'Resolve corrected Ca and Ck pressure-level profiles and decompose Ck into five mechanisms for EP1, EP2, EP3, and EPALL.',
+    icon: Layers,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Revision required',
+    manuscriptStatus: 'revision',
+  },
+  {
+    step: '7',
+    title: 'Storm-Centred ERA5 Composites',
+    desc: 'For 2,733 cyclones with intensification lasting at least 24 h, compare EP-relative dynamical fields on a 30° × 30° grid.',
+    icon: Layers,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Included in draft',
+    manuscriptStatus: 'included',
+  },
+  {
+    step: '8',
+    title: 'LEC–Field Dependence',
+    desc: 'Relate LEC terms to scalar features derived from the ERA5 fields using Pearson, Spearman, PREDEP, and EP contrasts.',
+    icon: Activity,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Included in draft',
+    manuscriptStatus: 'included',
+  },
+  {
+    step: '9',
+    title: 'Cyclone Phase Space',
+    desc: 'Classify thermal structure and persistent phase transitions for 6,776 cyclones, then compare their occurrence across EPs.',
+    icon: GitBranch,
+    code: 'Implemented',
+    codeStatus: 'complete',
+    manuscript: 'Integration pending',
+    manuscriptStatus: 'missing',
+  },
+  {
+    step: '10',
+    title: 'Explosive Cyclones',
+    desc: 'Derive storm-centre pressure and normalized deepening rate to compare bomb frequency, severity, and spatial density across EPs.',
+    icon: CloudLightning,
+    code: 'Full run pending',
+    codeStatus: 'pending',
+    manuscript: 'Integration pending',
+    manuscriptStatus: 'missing',
+  },
+] as const
+
+const CODE_STATUS_STYLES = {
+  complete: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+  pending: 'border-amber-200 bg-amber-50 text-amber-700',
+} as const
+
+const MANUSCRIPT_STATUS_STYLES = {
+  included: 'border-sky-200 bg-sky-50 text-sky-700',
+  revision: 'border-amber-200 bg-amber-50 text-amber-700',
+  missing: 'border-rose-200 bg-rose-50 text-rose-700',
+} as const
 
 export default function HomePage() {
   return (
@@ -115,46 +235,41 @@ export default function HomePage() {
       </section>
 
       {/* Methodological flow */}
-      <section className="border-t border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8">
+      <section
+        id="methodological-flow"
+        className="scroll-mt-20 border-t border-slate-200 bg-slate-50 px-4 py-16 sm:px-6 lg:px-8"
+      >
         <div className="mx-auto max-w-5xl">
-          <h2 className="text-2xl font-bold text-slate-900">
-            Methodological Flow
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm text-slate-500">
-            From raw cyclone tracks to composite atmospheric structure analysis.
-          </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                step: '1',
-                title: 'Data & Filtering',
-                desc: 'Download Zenodo tracks, filter for complete lifecycles (3,820 cyclones)',
-                icon: Database,
-              },
-              {
-                step: '2',
-                title: 'PCA + Clustering',
-                desc: 'Normalise 7 energy terms, apply PCA, K-Means (k=3) → EP1, EP2, EP3',
-                icon: BarChart3,
-              },
-              {
-                step: '3',
-                title: 'ERA5 Composites',
-                desc: 'Storm-centred 30°×30° composites of 9 diagnostic fields at key levels',
-                icon: Layers,
-              },
-              {
-                step: '4',
-                title: 'Structure Analysis',
-                desc: 'Compare EP1 vs EP2 structure: real fields, anomalies, domain statistics',
-                icon: Microscope,
-              },
-            ].map((item) => {
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-900">
+                Methodological Flow &amp; Project Status
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-500">
+                The complete research path, from the source tracks to the complementary
+                thermal-structure and explosive-development analyses. Status labels distinguish
+                implemented scientific code from what is already represented—or still needs
+                revision or integration—in the manuscript draft.
+              </p>
+            </div>
+            <div className="shrink-0 rounded-xl border border-slate-200 bg-white p-4 text-xs text-slate-600 shadow-sm">
+              <p className="font-semibold text-slate-800">Status key</p>
+              <div className="mt-2 space-y-1.5">
+                <p><span className="font-semibold text-emerald-700">Code/results:</span> implemented end to end</p>
+                <p><span className="font-semibold text-amber-700">Full run pending:</span> pipeline exists; final outputs do not</p>
+                <p><span className="font-semibold text-sky-700">Manuscript included:</span> method/results are present in the draft</p>
+                <p><span className="font-semibold text-rose-700">Integration pending:</span> no method/results section yet</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {METHODOLOGICAL_FLOW.map((item) => {
               const Icon = item.icon
               return (
                 <div
                   key={item.step}
-                  className="rounded-xl border border-slate-200 bg-white p-5"
+                  className="flex min-h-64 flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
                 >
                   <div className="mb-3 flex items-center gap-2">
                     <span className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
@@ -163,11 +278,40 @@ export default function HomePage() {
                     <Icon className="h-4 w-4 text-indigo-500" />
                   </div>
                   <h3 className="font-semibold text-slate-900">{item.title}</h3>
-                  <p className="mt-1 text-sm text-slate-500">{item.desc}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-500">{item.desc}</p>
+                  <div className="mt-auto space-y-2 pt-5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                        <Code2 className="h-3.5 w-3.5" /> Code/results
+                      </span>
+                      <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${CODE_STATUS_STYLES[item.codeStatus]}`}>
+                        {item.code}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                        {item.manuscriptStatus === 'included' ? (
+                          <FileCheck2 className="h-3.5 w-3.5" />
+                        ) : item.manuscriptStatus === 'revision' ? (
+                          <FileClock className="h-3.5 w-3.5" />
+                        ) : (
+                          <FileWarning className="h-3.5 w-3.5" />
+                        )}
+                        Manuscript
+                      </span>
+                      <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${MANUSCRIPT_STATUS_STYLES[item.manuscriptStatus]}`}>
+                        {item.manuscript}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               )
             })}
           </div>
+          <p className="mt-5 text-xs leading-relaxed text-slate-500">
+            “Revision required” marks analyses whose corrected code/results are available but
+            have deliberately not been transferred to the manuscript in this update cycle.
+          </p>
         </div>
       </section>
 

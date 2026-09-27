@@ -8,7 +8,6 @@ import MethodsPanel from '@/components/analysis/MethodsPanel'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
 import { readManifest } from '@/lib/server-utils'
-import { figureUrl } from '@/lib/utils'
 
 export const metadata: Metadata = {
   title: 'Corrected Ck Subterms — All Energy Patterns',
@@ -108,7 +107,11 @@ function resolveFigure(path: string): string {
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/')) {
     return path
   }
-  return figureUrl(path)
+
+  // These corrected figures are committed under web/public/figures. Keeping
+  // their URLs site-local prevents the optional global Supabase override from
+  // pointing this page at objects that have not been uploaded to that bucket.
+  return `/${path}`
 }
 
 export default function CkSubtermsPage() {

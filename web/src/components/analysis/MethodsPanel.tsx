@@ -14,9 +14,9 @@ interface MethodsPanelProps {
  *
  * Methods live next to the results they produced rather than in a separate
  * tab, so a reader never has to navigate away to find out what a test does.
- * Content that is genuinely shared across analyses — the dataset, the seven
- * Lorenz Energy Cycle term definitions, and the bibliography — stays on
- * /data-references, which this panel links to.
+ * Content that is genuinely shared across analyses is separated by purpose:
+ * scientific procedures and LEC definitions live in /methodology, while data
+ * provenance and the bibliography live in /data-references.
  */
 export default function MethodsPanel({
   summary,
@@ -41,8 +41,11 @@ export default function MethodsPanel({
 
       <div className="border-t border-indigo-100 bg-white/60 px-5 py-3 sm:px-6">
         <p className="text-xs text-slate-500">
-          Dataset description, the seven Lorenz Energy Cycle term definitions, and the
-          bibliography are shared across all analyses and live in{' '}
+          Shared scientific procedures and Lorenz Energy Cycle definitions live in{' '}
+          <Link href="/methodology" className="font-medium text-indigo-600 hover:underline">
+            Methodology
+          </Link>
+          ; dataset provenance and the bibliography live in{' '}
           <Link href="/data-references" className="font-medium text-indigo-600 hover:underline">
             Data &amp; References
           </Link>

@@ -11,6 +11,7 @@ import {
   FileCheck2,
   FileClock,
   FileWarning,
+  Workflow,
   ArrowRight,
   GitBranch,
 } from 'lucide-react'
@@ -322,9 +323,8 @@ export default function HomePage() {
             Explore the Research
           </h2>
           <p className="mt-2 text-sm text-slate-500">
-            Two entry points. Each analysis carries its own Methods &amp; Statistics
-            panel, so the methodology sits next to the results it produced; only the
-            material shared by every analysis lives in Data &amp; References.
+            Analysis-specific methods stay next to their results. Shared methodology is
+            documented separately from data provenance and the bibliography.
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {[
@@ -335,8 +335,14 @@ export default function HomePage() {
                 icon: BarChart3,
               },
               {
+                title: 'Methodology',
+                desc: 'Shared processing sequence, corrected LEC equations, feature construction, and numerical conventions',
+                href: '/methodology',
+                icon: Workflow,
+              },
+              {
                 title: 'Data & References',
-                desc: 'Dataset, the seven Lorenz Energy Cycle term definitions, bibliography and DOIs',
+                desc: 'Dataset inventory, analysis populations, provenance, bibliography, and DOI records',
                 href: '/data-references',
                 icon: BookOpen,
               },

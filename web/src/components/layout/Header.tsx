@@ -6,6 +6,7 @@ import {
   Home,
   BarChart3,
   BookOpen,
+  Workflow,
   Menu,
   X,
 } from 'lucide-react'
@@ -14,6 +15,7 @@ import { useState } from 'react'
 const NAV_ITEMS = [
   { label: 'Home', href: '/', icon: Home },
   { label: 'Analyses', href: '/analyses', icon: BarChart3 },
+  { label: 'Methodology', href: '/methodology', icon: Workflow },
   { label: 'Data & References', href: '/data-references', icon: BookOpen },
 ]
 

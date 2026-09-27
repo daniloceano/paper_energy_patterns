@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -49,6 +50,14 @@ FIGURE_PATHS = {
 }
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _read_csv(path: Path) -> list[dict[str, str]]:
     if not path.is_file():
         raise FileNotFoundError(f"required corrected Ck result is missing: {path}")
@@ -77,6 +86,7 @@ def extract_manifest() -> dict:
     table = _read_csv(RESULTS_DIR / "subterms_by_cyclone.csv")
     dominance_rows = _read_csv(RESULTS_DIR / "dominance_frequency.csv")
     statistics_rows = _read_csv(RESULTS_DIR / "subterm_statistics.csv")
+    contrast_rows = _read_csv(RESULTS_DIR / "ep_contrasts.csv")
 
     track_ids = {row["track_id"] for row in table}
     expected = int(mapping["n_cyclones"])
@@ -84,11 +94,27 @@ def extract_manifest() -> dict:
         raise RuntimeError(
             f"refusing partial website manifest: {len(track_ids)}/{expected} cyclones"
         )
+    expected_phases = {"incipient", "intensification", "mature", "decay"}
+    observed_phases = {row["phase"] for row in table}
+    if observed_phases != expected_phases or len(table) != expected * len(expected_phases):
+        raise RuntimeError(
+            "refusing incomplete Ck lifecycle results: "
+            f"phases={sorted(observed_phases)}, rows={len(table)}"
+        )
+    row_keys = {(row["track_id"], row["phase"]) for row in table}
+    if len(row_keys) != len(table):
+        raise RuntimeError("refusing Ck results with duplicate cyclone-phase rows")
 
     worst_closure = max(float(row["ck_closure_relative"]) for row in table)
+    if worst_closure > 1.0e-6:
+        raise RuntimeError(
+            f"refusing Ck results that fail closure: {worst_closure:.3e}"
+        )
+    ep_counts = {f"EP{ep}": int(n) for ep, n in mapping["ep_counts"].items()}
+    expected_ep_labels = set(ep_counts)
     dominance = []
     for row in dominance_rows:
-        if row["phase"] != "intensification":
+        if row["phase"] != "intensification" or row["ep_label"] not in expected_ep_labels:
             continue
         dominance.append(
             {
@@ -102,29 +128,52 @@ def extract_manifest() -> dict:
             }
         )
 
+    intensification_totals = []
     intensification_stats = []
     for row in statistics_rows:
-        if row["phase"] != "intensification" or row["term"] == "Ck":
+        if row["phase"] != "intensification" or row["ep_label"] not in expected_ep_labels:
             continue
-        intensification_stats.append(
+        record = {
+            "ep": row["ep_label"],
+            "term_key": row["term"],
+            "term_label": row["label"],
+            "n": int(row["n"]),
+            "mean": float(row["mean"]),
+            "median": float(row["median"]),
+            "q25": float(row["q25"]),
+            "q75": float(row["q75"]),
+        }
+        if row["term"] == "Ck":
+            intensification_totals.append(record)
+        else:
+            intensification_stats.append(record)
+
+    contrasts = []
+    for row in contrast_rows:
+        if row["phase"] != "intensification":
+            continue
+        contrasts.append(
             {
-                "ep": row["ep_label"],
                 "subterm_key": row["term"],
                 "subterm_label": row["label"],
-                "n": int(row["n"]),
-                "mean": float(row["mean"]),
-                "median": float(row["median"]),
-                "q25": float(row["q25"]),
-                "q75": float(row["q75"]),
+                "contrast": row["contrast"],
+                "median_left": float(row["median_left"]),
+                "median_right": float(row["median_right"]),
+                "p_fdr": float(row["p_fdr"]),
+                "significant": row["significant"].strip().lower() == "true",
+                "effect_size_r": float(row["effect_size_r"]),
+                "effect_magnitude": row["effect_magnitude"],
             }
         )
 
-    ep_counts = {f"EP{ep}": int(n) for ep, n in mapping["ep_counts"].items()}
+    source_profiles = REPO_ROOT / "data" / "corrected" / "vertical_phase_means_corrected.parquet"
     manifest = {
         "analysis": "ck_subterms_corrected",
         "title": "Corrected Ck Subterms — All Energy Patterns",
         "phase": "intensification",
         "source_cache": mapping["source_cache"],
+        "source_profiles": str(source_profiles.relative_to(REPO_ROOT)),
+        "source_profiles_sha256": _sha256(source_profiles),
         "population": {
             "total": expected,
             "energy_patterns": ep_counts,
@@ -141,7 +190,9 @@ def extract_manifest() -> dict:
             {"key": key, **metadata} for key, metadata in SUBTERM_LABELS.items()
         ],
         "dominance": dominance,
+        "intensification_totals": intensification_totals,
         "intensification_statistics": intensification_stats,
+        "contrasts": contrasts,
         "figures": _figure_urls(),
     }
 

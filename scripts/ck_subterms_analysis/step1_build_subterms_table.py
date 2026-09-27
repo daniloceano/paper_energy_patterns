@@ -89,7 +89,7 @@ def integrate_profiles(profiles: pd.DataFrame) -> pd.DataFrame:
     def _integrate(group: pd.DataFrame) -> float:
         ordered = group.sort_values("level_hpa")
         pressure_pa = ordered["level_hpa"].to_numpy(dtype=float) * 100.0
-        return float(np.trapezoid(ordered["value"].to_numpy(dtype=float), pressure_pa))
+        return float(np.trapz(ordered["value"].to_numpy(dtype=float), pressure_pa))
 
     integrated = (
         profiles.groupby(["track_id", "phase", "term"], observed=True)
@@ -229,6 +229,56 @@ def main() -> int:
         raise SystemExit(
             f"{source} carries no Ck terms. Rebuild it including {CK_TERMS}."
         )
+
+    profiles = profiles.copy()
+    profiles["track_id"] = profiles["track_id"].astype(str)
+    if profiles.duplicated(["track_id", "phase", "term", "level_hpa"]).any():
+        raise SystemExit("the vertical product contains duplicate profile rows")
+    if not np.isfinite(profiles["value"]).all():
+        raise SystemExit("the vertical product contains non-finite Ck values")
+
+    observed_terms = set(profiles["term"].astype(str))
+    observed_phases = set(profiles["phase"].astype(str))
+    if observed_terms != set(CK_TERMS):
+        raise SystemExit(
+            f"the vertical product carries {sorted(observed_terms)}; "
+            f"expected {sorted(CK_TERMS)}"
+        )
+    if observed_phases != set(clec.PHASES):
+        raise SystemExit(
+            f"the vertical product carries phases {sorted(observed_phases)}; "
+            f"expected {sorted(clec.PHASES)}"
+        )
+
+    level_count = profiles["level_hpa"].nunique()
+    coverage = profiles.groupby(
+        ["track_id", "phase", "term"], observed=True
+    )["level_hpa"].nunique()
+    expected_profiles = (
+        profiles["track_id"].nunique() * len(clec.PHASES) * len(CK_TERMS)
+    )
+    incomplete = coverage.ne(level_count)
+    if len(coverage) != expected_profiles or incomplete.any():
+        raise SystemExit(
+            "the vertical product has incomplete cyclone/phase/term coverage: "
+            f"{int(incomplete.sum())} incomplete profiles and "
+            f"{expected_profiles - len(coverage)} missing profiles"
+        )
+
+    if not args.allow_partial:
+        if profiles["track_id"].nunique() != clec.EXPECTED_POPULATION:
+            raise SystemExit(
+                f"the corrected product covers {profiles['track_id'].nunique()}/"
+                f"{clec.EXPECTED_POPULATION} cyclones"
+            )
+        if level_count != 32:
+            raise SystemExit(
+                f"the corrected product carries {level_count}/32 pressure levels"
+            )
+        if not em.is_corrected_clustering():
+            raise SystemExit(
+                "the Energy Pattern assignment is not derived from the corrected cache"
+            )
 
     print("integrating phase-mean profiles ...")
     table = integrate_profiles(profiles)

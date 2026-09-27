@@ -3,7 +3,11 @@
 import { CheckCircle2, Clock3, RefreshCw } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 
-const REFRESHED_ANALYSES = ['/analyses/cluster']
+const REFRESHED_ANALYSES = [
+  '/analyses/cluster',
+  '/analyses/vertical-structure',
+  '/analyses/ck-subterms',
+]
 
 export default function AnalysisRefreshStatus() {
   const pathname = usePathname()

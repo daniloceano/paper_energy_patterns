@@ -47,11 +47,11 @@ be interpreted*.
     - [9.5 Row 3: Jet-level energetics departure](#95-row-3-jet-level-energetics-departure)
     - [9.6 Global colormap design](#96-global-colormap-design)
   - [9. Figure S1 — PCA and clustering validation](#9-figure-s1--pca-and-clustering-validation)
-  - [10. Figure 5 — Vertical Ca/Ck profiles (EP1, EP2, EP3)](#10-figure-5--vertical-cack-profiles-ep1-ep2-ep3)
+  - [10. Vertical Ca/Ck profiles (EP1, EP2, EP3)](#10-vertical-cack-profiles-ep1-ep2-ep3)
     - [10.1 Vertical profiles](#101-vertical-profiles)
     - [10.2 Data corrections](#102-data-corrections)
     - [10.3 Interpretation](#103-interpretation)
-  - [Figure S3 — C_K vertical profile and integrated subterms (EP1)](#figure-s3--c_k-vertical-profile-and-integrated-subterms-ep1)
+  - [C_K subterm analysis (EP1, EP2, EP3)](#c_k-subterm-analysis-ep1-ep2-ep3)
   - [12. Global caveats and interpretation boundaries](#12-global-caveats-and-interpretation-boundaries)
   - [13. References](#13-references)
     - [TODO / unresolved uncertainties](#todo--unresolved-uncertainties)
@@ -657,7 +657,7 @@ Their agreement at $k = 3$ constitutes convergent evidence for three clusters.
 
 ---
 
-## 10. Figure 5 — Vertical Ca/Ck profiles (EP1, EP2, EP3)
+## 10. Vertical Ca/Ck profiles (EP1, EP2, EP3)
 
 **Scientific purpose:** To determine which pressure level(s) carry the strongest
 baroclinic ($C_a$) and barotropic ($C_k$) energy conversion signals across all three
@@ -666,82 +666,72 @@ the conversion terms between EP1, EP2, and EP3.
 
 ### 10.1 Vertical profiles
 
-For each cyclone in EP1, EP2, and EP3 with available Zenodo LEC data, the
-time-mean (over the intensification phase) profiles of $C_a(p)$ and $C_k(p)$ at
-32 pressure levels (1000–100 hPa) are computed. These profiles are aggregated into
+For every corrected cyclone in EP1, EP2, and EP3, the time-mean (over the
+intensification phase) profiles of $C_a(p)$ and $C_k(p)$ are read from
+`data/corrected/vertical_phase_means_corrected.parquet`. The product contains 32
+pressure levels from 1000 to 10 hPa; the figure displays 1000–100 hPa. The profile
+values are pressure integrands in W m$^{-2}$ Pa$^{-1}$, whose pressure integral
+reproduces the phase-mean column conversion in W m$^{-2}$. Profiles are aggregated into
 per-EP level distributions and displayed as three side-by-side box-and-whisker plots
 at each pressure level — one box per EP (EP1: red, EP2: blue, EP3: green).
 
-The figure reveals:
-- **Peak $C_a$** level: typically in the mid-troposphere (~350–400 hPa), near the
-  level of maximum baroclinic interaction between the lower-tropospheric temperature
-  gradient and the upper-level jet. Differences between EPs in the pressure level
-  and magnitude of peak $C_a$ reflect differences in the effective baroclinic depth.
-- **Minimum $C_k$** level (most negative $C_k$, indicative of the strongest
-  $KZ \to KE$ transfer): again in the mid-troposphere, but the depth and magnitude
-  vary markedly between EPs — EP1 typically shows the most pronounced barotropic
-  signal, consistent with its dominant $C_k < 0$ signature in the integrated LEC.
+The corrected figure reveals:
+- **EP1:** mean column $C_a=9.25$ W m$^{-2}$ and $C_k=-6.72$ W m$^{-2}$.
+  The largest absolute median $C_k$ occurs at 400 hPa and is negative; 82.1% of
+  EP1 cyclones have negative column $C_k$.
+- **EP2:** mean column $C_a=6.63$ W m$^{-2}$ and $C_k=+3.12$ W m$^{-2}$.
+  Its strongest median $C_k$ is positive and occurs at 300 hPa, with the
+  100–400 hPa layer contributing +2.18 W m$^{-2}$ on average.
+- **EP3:** mean column $C_a=2.10$ W m$^{-2}$ and near-zero mean $C_k=-0.09$
+  W m$^{-2}$. Positive upper-level and negative lower-level $C_k$ contributions
+  nearly cancel in the column integral.
+- The strongest median $C_a$ value occurs at 975 hPa for EP1 and EP2, but at
+  450 hPa for EP3. Thus, the corrected data do not support the former statement
+  that all three patterns share a 350–400 hPa $C_a$ maximum.
 
-### 10.2 Data corrections
+### 10.2 Corrected-data conventions and validation
 
-Two corrections are applied to raw LEC level data from the Zenodo archive:
+The plotting script does not invert $C_a$ or divide $C_k$ directly. Those legacy
+workarounds belonged to the former Zenodo output and would corrupt the corrected
+rerun. All conventions are centralized in `scripts/utils/corrected_lec.py`; the
+derived vertical product is accepted only when it covers all 3,820 cyclones.
 
-**Ca sign inversion:**
-$$
-C_{a,\text{corrected}} = -C_{a,\text{raw}}
-$$
-*Reason:* The LorenzCycleToolkit version used to produce the Zenodo archive stored
-`Ca_level.csv` with the opposite sign convention relative to the integrated `Ca`
-values reported in the main LEC output files.
-
-**Ck gravity normalization:**
-$$
-C_{k,\text{corrected}} = C_{k,\text{raw}} / g, \quad g = 9.8 \, \text{m s}^{-2}
-$$
-*Reason:* The same LorenzCycleToolkit version stored `Ck_level.csv` without dividing
-by $g$, unlike the integrated `Ck` terms. This mismatch was identified by comparing
-the vertical integral of `Ck_level.csv` with integrated `Ck` in the same ensemble
-(see `scripts/ep_structure_analysis/validate_step2.py` or equivalent validation).
-
-> **These corrections are version-specific.** If the Zenodo archive is ever replaced
-> or regenerated with an updated version of LorenzCycleToolkit, it is essential to
-> re-validate whether these corrections still apply before using this figure.
+Pressure integration was checked against `energy_cache_corrected.parquet`. Exact
+one-to-one comparison is possible for 3,637 cyclones with a single intensification
+interval, yielding 7,274 $C_a/C_k$ comparisons. The maximum absolute discrepancy is
+$3.95\times10^{-12}$ W m$^{-2}$. The other 183 cyclones contain a secondary
+intensification interval: the vertical builder combines all timesteps, while the
+cache intentionally retains separate rows, so those cases are not forced into a
+non-equivalent one-to-one check.
 
 ### 10.3 Interpretation
 
-The identification of ~350–400 hPa as the level of peak $C_a$ is broadly consistent
-with the classical picture of baroclinic instability, in which the temperature
-perturbation and geopotential tilt are maximized near the steering level of the wave
-(Charney 1947; Eady 1949). The co-location of the $C_a$ maximum and $C_k$ minimum
-(most negative $C_k$, i.e., maximum $KZ \to KE$ transfer) in the mid-troposphere
-for EP1 suggests that in the same layer the cyclone is simultaneously extracting
-energy baroclinically ($C_a > 0 \Rightarrow$ APE from mean temperature gradient) and
-barotropically ($C_k < 0 \Rightarrow$ KE imported from the mean zonal flow). This
-co-occurrence of both growth mechanisms in one vertical layer is consistent with
-active development in an environment that offers both baroclinic and barotropic
-energy sources (Simmons & Hoskins 1978).
-
-Comparing all three EPs in the same panels makes it possible to assess whether the
-vertical level of dominant conversion — and not just the time-integrated magnitude —
-differs between patterns. If the peak levels are similar across EPs while the
-magnitudes differ, the EP classification is primarily an amplitude distinction. If
-the peak levels differ, the EPs reflect structurally different vertical modes of
-interaction with the background state.
+EP1 combines strong positive $C_a$ through the lower and middle troposphere with a
+deep negative $C_k$ signal centred near 400 hPa. It is therefore the pattern in which
+baroclinic conversion and mean-flow-to-eddy kinetic-energy transfer most clearly act
+together during intensification. EP2 retains strong positive $C_a$, but its positive
+upper-tropospheric $C_k$ indicates kinetic-energy transfer from the eddy back to the
+mean flow. EP3 is not merely a weaker copy: its $C_k$ profile changes sign with
+height, producing vertical compensation and a near-zero column mean. The EPs thus
+differ in vertical organisation as well as amplitude.
 
 **Caveats:**
 - Sample sizes differ between EPs; the width of the distributions (IQR and whiskers)
   should be interpreted relative to the per-EP sample counts printed in the figure
   legend and at runtime.
-- Cyclones with missing or incomplete LEC data from the Zenodo archive are excluded
-  from each EP independently.
+- All 3,820 corrected cyclones are included; no EP-specific missing-profile filter is
+  applied.
+- Stars locate the largest absolute median profile value. They are descriptive and do
+  not indicate statistical significance.
 
 ---
 
-## Figure S3 — C_K vertical profile and integrated subterms (EP1)
+## C_K subterm analysis (EP1, EP2, EP3)
 
-**Scientific purpose:** To identify the pressure level at which barotropic
-kinetic-energy conversion is strongest for EP1 cyclones, and to decompose the
-vertically integrated $C_K$ into its five physical subterms.
+**Scientific purpose:** To determine whether the Energy Patterns differ only in
+the amplitude of barotropic conversion or also in the physical mechanisms that
+compose it. The corrected analysis covers all 3,820 cyclones and all lifecycle
+phases; intensification is the reference phase for the between-pattern results.
 
 $C_K$ decomposes barotropic kinetic-energy conversion into five subterms (A–E):
 
@@ -753,10 +743,7 @@ Sign convention (authoritative: `paper.tex`):
 - $C_K < 0 \Rightarrow K_Z \to K_E$ (barotropic instability feeds the eddies)
 - $C_K > 0 \Rightarrow K_E \to K_Z$ (eddies export energy to the mean flow)
 
-EP1 cyclones show mean $C_K \approx -16.5$ W m⁻² — the strongest barotropic-instability
-pattern among the three EPs — with the dominant level at ~350 hPa.
-
-**Subterm mapping** (LorenzCycleToolkit `Ck_1`…`Ck_5` → paper labels A–E):
+**Subterm mapping** (LorenzCycleToolKit `Ck_1`…`Ck_5` → labels A–E):
 
 | Toolkit term | Paper label | Physical meaning |
 |---|---|---|
@@ -766,19 +753,36 @@ pattern among the three EPs — with the dominant level at ~350 hPa.
 | `Ck_4` | $C_K^{(D)}$ | Vertical shear of zonal wind |
 | `Ck_5` | $C_K^{(E)}$ | Vertical shear of meridional wind |
 
-**Data availability note:** Per-pressure-level files for the individual $C_K$
-subterms are not part of the local Zenodo archive. Panel (a) therefore shows the
-vertical profile of the *total* $C_K$ (from `Ck_level.csv`, EP1 cyclones,
-intensification phase, gravity-corrected). Panel (b) shows the vertically
-integrated subterms from `results/ck_analysis/ck_subterms_boxplot_input.csv`
-(EP1 cyclones, phase-mean).
+The complete corrected pressure-level product contains total $C_K$ and all five
+subterms for every cyclone. Vertical integration closes to round-off:
+$|\sum_i C_K^{(i)}-C_K|/|C_K| \le 3.13\times10^{-10}$, well below the
+$10^{-6}$ acceptance threshold.
+
+**Corrected intensification results:**
+
+| EP | mean $C_K$ | main negative contributions | main positive contribution | dominant negative subterm |
+|---|---:|---|---|---|
+| EP1 | −6.715 W m⁻² | B = −5.816; A = −3.814 | E = +1.996 | B in 60.0% of cyclones |
+| EP2 | +3.119 W m⁻² | weak ensemble means | E = +1.946 | D 32.7%, B 32.4%; 11.0% all positive |
+| EP3 | −0.087 W m⁻² | B = −0.439; A = −0.357 | E = +0.393 | B 32.5%, A 28.2%, D 23.5% |
+
+EP1 is therefore the clearest mean-flow-to-eddy regime, driven primarily by the
+two horizontal-shear terms A and B. EP2 reverses the total transfer because the
+positive terms, especially E, exceed its weak negative contributions. EP3 is a
+compensating regime: negative A/B and positive C/D/E nearly cancel. Thus the
+patterns differ in mechanism and vertical organisation, not merely amplitude.
+
+Pairwise rank tests confirm large EP1 contrasts for A and B against both EP2 and
+EP3 after Benjamini–Hochberg correction. Term E does not differ meaningfully
+between EP1 and EP2, but both differ strongly from EP3.
 
 **Caveats:**
-- Panel (a) and panel (b) come from different processing pipelines (Zenodo
-  per-level archive vs. locally computed integrated subterms) — they are
-  complementary, not directly reconcilable term-by-term.
-- Results are restricted to EP1; the same subterm decomposition has not been
-  run for EP2/EP3.
+- “Dominant” means the most negative subterm for an individual cyclone. It
+  identifies the strongest mean-flow-to-eddy contribution, not necessarily the
+  largest absolute contributor to a positive total $C_K$.
+- Cases in which all five subterms are positive are kept as a separate class.
+- Shares of an ensemble mean become unstable when mean total $C_K$ is near zero;
+  use the signed component means for EP3 rather than percentage shares.
 
 ---
 

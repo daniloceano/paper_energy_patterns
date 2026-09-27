@@ -119,6 +119,7 @@ def main():
     manifest_scripts = [
         ("scripts/web/build_site_manifest.py",         "build_site_manifest.py"),
         ("scripts/web/extract_cluster_site_data.py",   "extract_cluster_site_data.py"),
+        ("scripts/web/extract_vertical_structure_site_data.py", "extract_vertical_structure_site_data.py"),
         ("scripts/web/extract_composite_site_data.py", "extract_composite_site_data.py"),
         ("scripts/web/extract_ck_subterms_site_data.py", "extract_ck_subterms_site_data.py"),
         ("scripts/web/extract_cyclone_explorer_data.py", "extract_cyclone_explorer_data.py"),

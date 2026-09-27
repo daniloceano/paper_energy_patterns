@@ -1,47 +1,48 @@
 # Ck subterms — statistics across Energy Patterns
 
-Energy cache lineage: `data/energy_cache.parquet (LEGACY - superseded)`
+Energy cache lineage: `/p1-swell/danilocs/paper_energy_patterns/data/corrected/energy_cache_corrected.parquet`
 
 Sign convention: `C_K < 0` means K_Z -> K_E (the mean flow feeds the
-eddy). The dominant subterm is the most negative one.
+eddy). The dominant subterm is the most negative one; cases in which
+all five subterms are positive are reported separately.
 
 ## 1. Intensification-phase magnitudes
 
 | Energy Pattern | term | mean (W m-2) | median | share of mean C_K |
 |---|---|---|---|---|
-| EP1 | Ck_total | -6.092 | -4.605 | — |
-| EP1 | Ck_A | -3.764 | -2.471 | 61.8% |
-| EP1 | Ck_B | -5.420 | -4.231 | 89.0% |
-| EP1 | Ck_C | 0.353 | 0.295 | -5.8% |
-| EP1 | Ck_D | 0.646 | 0.392 | -10.6% |
-| EP1 | Ck_E | 2.093 | 1.639 | -34.3% |
-| EP2 | Ck_total | 2.042 | 1.190 | — |
-| EP2 | Ck_A | -0.324 | -0.332 | -15.9% |
-| EP2 | Ck_B | -0.318 | -0.689 | -15.6% |
-| EP2 | Ck_C | 0.490 | 0.411 | 24.0% |
-| EP2 | Ck_D | 0.254 | 0.116 | 12.5% |
-| EP2 | Ck_E | 1.939 | 1.620 | 95.0% |
-| EP3 | Ck_total | 0.549 | 0.304 | — |
-| EP3 | Ck_A | -0.093 | 0.009 | -16.8% |
-| EP3 | Ck_B | 0.040 | -0.008 | 7.2% |
-| EP3 | Ck_C | 0.197 | 0.131 | 36.0% |
-| EP3 | Ck_D | 0.061 | 0.001 | 11.1% |
-| EP3 | Ck_E | 0.343 | 0.282 | 62.5% |
-| EPALL | Ck_total | 0.114 | 0.239 | — |
-| EPALL | Ck_A | -0.566 | -0.176 | -497.3% |
-| EPALL | Ck_B | -0.667 | -0.207 | -586.1% |
-| EPALL | Ck_C | 0.280 | 0.205 | 245.9% |
-| EPALL | Ck_D | 0.171 | 0.058 | 150.3% |
-| EPALL | Ck_E | 0.895 | 0.539 | 787.2% |
+| EP1 | Ck_total | -6.715 | -4.520 | — |
+| EP1 | Ck_A | -3.814 | -3.032 | 56.8% |
+| EP1 | Ck_B | -5.816 | -4.234 | 86.6% |
+| EP1 | Ck_C | 0.386 | 0.328 | -5.8% |
+| EP1 | Ck_D | 0.532 | 0.415 | -7.9% |
+| EP1 | Ck_E | 1.996 | 1.625 | -29.7% |
+| EP2 | Ck_total | 3.119 | 2.729 | — |
+| EP2 | Ck_A | 0.042 | 0.109 | 1.4% |
+| EP2 | Ck_B | 0.497 | 0.355 | 15.9% |
+| EP2 | Ck_C | 0.486 | 0.391 | 15.6% |
+| EP2 | Ck_D | 0.148 | 0.062 | 4.7% |
+| EP2 | Ck_E | 1.946 | 1.645 | 62.4% |
+| EP3 | Ck_total | -0.087 | 0.121 | — |
+| EP3 | Ck_A | -0.357 | -0.138 | 410.2% |
+| EP3 | Ck_B | -0.439 | -0.172 | 504.3% |
+| EP3 | Ck_C | 0.190 | 0.134 | -217.9% |
+| EP3 | Ck_D | 0.126 | 0.061 | -145.0% |
+| EP3 | Ck_E | 0.393 | 0.299 | -451.6% |
+| EPALL | Ck_total | -0.316 | 0.096 | — |
+| EPALL | Ck_A | -0.763 | -0.282 | 241.5% |
+| EPALL | Ck_B | -1.000 | -0.414 | 316.3% |
+| EPALL | Ck_C | 0.285 | 0.202 | -90.1% |
+| EPALL | Ck_D | 0.189 | 0.094 | -59.9% |
+| EPALL | Ck_E | 0.973 | 0.588 | -307.8% |
 
 ## 2. Dominance during intensification
 
-| Energy Pattern | Ck_A | Ck_B | Ck_C | Ck_D | Ck_E |
-|---|---|---|---|---|---|
-| EP1 | 29.3% | 58.7% | 1.1% | 9.8% | 1.1% |
-| EP2 | 23.9% | 40.3% | 3.4% | 29.0% | 3.4% |
-| EP3 | 28.0% | 28.6% | 3.0% | 31.0% | 9.4% |
-| EPALL | 27.3% | 34.6% | 2.9% | 28.1% | 7.1% |
+| Energy Pattern | Ck_A | Ck_B | Ck_C | Ck_D | Ck_E | None (all positive) |
+|---|---|---|---|---|---|---|
+| EP1 | 32.3% | 60.0% | 0.2% | 4.4% | 1.6% | 1.5% |
+| EP2 | 20.3% | 32.4% | 0.5% | 32.7% | 3.0% | 11.0% |
+| EP3 | 28.2% | 32.5% | 0.5% | 23.5% | 8.4% | 6.9% |
+| EPALL | 27.0% | 36.4% | 0.5% | 22.8% | 6.2% | 7.0% |
 
 ## 3. Energy Pattern contrasts (intensification)
 
@@ -50,18 +51,18 @@ of the phase. Effect size is the rank-biserial correlation.
 
 | subterm | contrast | median left | median right | p (FDR) | effect | magnitude |
 |---|---|---|---|---|---|---|
-| Ck_A | EP1 vs EP2 | -2.471 | -0.332 | **5.73e-10** | -0.470 | medium |
-| Ck_A | EP1 vs EP3 | -2.471 | 0.009 | **6.22e-19** | -0.588 | large |
-| Ck_A | EP2 vs EP3 | -0.332 | 0.009 | 0.16 | -0.072 | negligible |
-| Ck_B | EP1 vs EP2 | -4.231 | -0.689 | **2e-12** | -0.533 | large |
-| Ck_B | EP1 vs EP3 | -4.231 | -0.008 | **2.54e-27** | -0.716 | large |
-| Ck_B | EP2 vs EP3 | -0.689 | -0.008 | 0.0602 | -0.098 | negligible |
-| Ck_C | EP1 vs EP2 | 0.295 | 0.411 | **0.0036** | -0.224 | small |
-| Ck_C | EP1 vs EP3 | 0.295 | 0.131 | **2.62e-06** | +0.313 | medium |
-| Ck_C | EP2 vs EP3 | 0.411 | 0.131 | **3.71e-25** | +0.527 | large |
-| Ck_D | EP1 vs EP2 | 0.392 | 0.116 | **0.003** | +0.230 | small |
-| Ck_D | EP1 vs EP3 | 0.392 | 0.001 | **9.85e-09** | +0.381 | medium |
-| Ck_D | EP2 vs EP3 | 0.116 | 0.001 | **0.00866** | +0.136 | small |
-| Ck_E | EP1 vs EP2 | 1.639 | 1.620 | 0.543 | +0.045 | negligible |
-| Ck_E | EP1 vs EP3 | 1.639 | 0.282 | **2.92e-29** | +0.744 | large |
-| Ck_E | EP2 vs EP3 | 1.620 | 0.282 | **4.98e-46** | +0.725 | large |
+| Ck_A | EP1 vs EP2 | -3.032 | 0.109 | **1.68e-74** | -0.578 | large |
+| Ck_A | EP1 vs EP3 | -3.032 | -0.138 | **1.89e-106** | -0.600 | large |
+| Ck_A | EP2 vs EP3 | 0.109 | -0.138 | **3.81e-05** | +0.095 | negligible |
+| Ck_B | EP1 vs EP2 | -4.234 | 0.355 | **5.1e-81** | -0.603 | large |
+| Ck_B | EP1 vs EP3 | -4.234 | -0.172 | **1.77e-127** | -0.658 | large |
+| Ck_B | EP2 vs EP3 | 0.355 | -0.172 | **1.67e-07** | +0.121 | small |
+| Ck_C | EP1 vs EP2 | 0.328 | 0.391 | **5.92e-06** | -0.144 | small |
+| Ck_C | EP1 vs EP3 | 0.328 | 0.134 | **2.46e-34** | +0.335 | medium |
+| Ck_C | EP2 vs EP3 | 0.391 | 0.134 | **6.48e-107** | +0.505 | large |
+| Ck_D | EP1 vs EP2 | 0.415 | 0.062 | **6.59e-14** | +0.238 | small |
+| Ck_D | EP1 vs EP3 | 0.415 | 0.061 | **1.13e-23** | +0.275 | small |
+| Ck_D | EP2 vs EP3 | 0.062 | 0.061 | 0.821 | -0.005 | negligible |
+| Ck_E | EP1 vs EP2 | 1.625 | 1.645 | 0.755 | +0.012 | negligible |
+| Ck_E | EP1 vs EP3 | 1.625 | 0.299 | **8.27e-133** | +0.672 | large |
+| Ck_E | EP2 vs EP3 | 1.645 | 0.299 | **5.15e-181** | +0.660 | large |

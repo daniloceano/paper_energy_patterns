@@ -33,6 +33,29 @@ interface DominanceEntry {
   description: string
 }
 
+interface StatisticEntry {
+  ep: string
+  term_key: string
+  term_label: string
+  n: number
+  mean: number
+  median: number
+  q25: number
+  q75: number
+}
+
+interface ContrastEntry {
+  subterm_key: string
+  subterm_label: string
+  contrast: string
+  median_left: number
+  median_right: number
+  p_fdr: number
+  significant: boolean
+  effect_size_r: number
+  effect_magnitude: string
+}
+
 interface CkSubtermsManifest {
   analysis: 'ck_subterms_corrected'
   title: string
@@ -48,6 +71,9 @@ interface CkSubtermsManifest {
   sign_convention: string
   subterms: SubtermInfo[]
   dominance: DominanceEntry[]
+  intensification_totals: StatisticEntry[]
+  intensification_statistics: StatisticEntry[]
+  contrasts: ContrastEntry[]
   figures: {
     vertical_profiles: string
     boxplots: string
@@ -55,10 +81,22 @@ interface CkSubtermsManifest {
   }
 }
 
+function signed(value: number, digits = 2) {
+  return `${value >= 0 ? '+' : '−'}${Math.abs(value).toFixed(digits)}`
+}
+
+function formatProbability(value: number) {
+  return value < 0.001 ? value.toExponential(2) : value.toFixed(3)
+}
+
 function loadManifest(): CkSubtermsManifest | null {
   try {
     const manifest = readManifest<CkSubtermsManifest>('ck_subterms_manifest.json')
-    return manifest.analysis === 'ck_subterms_corrected' && manifest.population
+    return manifest.analysis === 'ck_subterms_corrected' &&
+      manifest.population &&
+      Array.isArray(manifest.intensification_totals) &&
+      Array.isArray(manifest.intensification_statistics) &&
+      Array.isArray(manifest.contrasts)
       ? manifest
       : null
   } catch {
@@ -99,6 +137,16 @@ export default function CkSubtermsPage() {
     ep,
     rows: manifest.dominance.filter((entry) => entry.ep === ep),
   }))
+  const statistics = [...manifest.intensification_totals, ...manifest.intensification_statistics]
+  const statistic = (ep: string, term: string) => {
+    const entry = statistics.find((row) => row.ep === ep && row.term_key === term)
+    if (!entry) {
+      throw new Error(`Missing intensification statistic for ${ep} ${term}`)
+    }
+    return entry
+  }
+  const dominancePercentage = (ep: string, term: string) =>
+    manifest.dominance.find((entry) => entry.ep === ep && entry.subterm_key === term)?.percentage ?? 0
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -139,7 +187,7 @@ export default function CkSubtermsPage() {
         <MethodsPanel summary="How the corrected pressure-level terms are integrated, checked, and classified during cyclone intensification.">
           <FormulaBlock
             label="Barotropic conversion decomposition"
-            formula={String.raw`C_K = \sum_{i=1}^{5} C_K^{(i)} = \int_{p_b}^{p_t}\frac{1}{g}\left[\sum_{i=1}^{5}T^{(i)}\right]_{\lambda\phi}\,dp`}
+            formula={String.raw`C_K = \sum_{i=1}^{5} C_K^{(i)} = \int_{p_t}^{p_b}\frac{1}{g}\left[\sum_{i=1}^{5}T^{(i)}\right]_{\lambda\phi}\,dp`}
             terms={{
               'C_K < 0': 'the mean flow transfers kinetic energy to the eddy (K_Z → K_E)',
               'C_K > 0': 'the eddy transfers kinetic energy to the mean flow (K_E → K_Z)',
@@ -158,6 +206,44 @@ export default function CkSubtermsPage() {
             ))}
           </div>
         </MethodsPanel>
+
+        <section>
+          <h2 className="mb-4 text-lg font-bold text-slate-900">
+            Intensification-phase means
+          </h2>
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Pattern</th>
+                  <th className="px-4 py-3">Total C<sub>K</sub></th>
+                  {manifest.subterms.map((subterm) => (
+                    <th key={subterm.key} className="px-4 py-3">
+                      <InlineMath expr={subterm.symbol} />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {epEntries.map(([ep]) => (
+                  <tr key={ep}>
+                    <td className="px-4 py-3 font-semibold text-slate-900">{ep}</td>
+                    <td className="px-4 py-3">{signed(statistic(ep, 'Ck').mean)} W m⁻²</td>
+                    {manifest.subterms.map((subterm) => (
+                      <td key={subterm.key} className="px-4 py-3">
+                        {signed(statistic(ep, subterm.key).mean)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-slate-500">
+            Subterm cells are in W m⁻². Negative values feed the cyclone-scale eddy; positive
+            values return kinetic energy to the mean flow.
+          </p>
+        </section>
 
         <section>
           <h2 className="mb-4 text-lg font-bold text-slate-900">
@@ -188,6 +274,83 @@ export default function CkSubtermsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-lg font-bold text-slate-900">Physical interpretation</h2>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <div className="rounded-xl border border-red-200 bg-red-50/50 p-5">
+              <h3 className="font-bold text-red-800">EP1 — horizontal-shear supply</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                Total <InlineMath expr="C_K" /> is {signed(statistic('EP1', 'Ck').mean)} W m⁻².
+                Terms <InlineMath expr="C_K^{(B)}" /> ({signed(statistic('EP1', 'Ck_2').mean)})
+                and <InlineMath expr="C_K^{(A)}" /> ({signed(statistic('EP1', 'Ck_1').mean)})
+                provide the negative conversion. Term B is the strongest negative contribution
+                in {dominancePercentage('EP1', 'Ck_2').toFixed(1)}% of cyclones.
+              </p>
+            </div>
+            <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-5">
+              <h3 className="font-bold text-blue-800">EP2 — kinetic-energy export</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                Total <InlineMath expr="C_K" /> reverses to {signed(statistic('EP2', 'Ck').mean)}
+                W m⁻². The largest positive mean contribution is the vertical meridional-momentum
+                term <InlineMath expr="C_K^{(E)}" /> ({signed(statistic('EP2', 'Ck_5').mean)}
+                W m⁻²); {dominancePercentage('EP2', 'none').toFixed(1)}% of cyclones have all five
+                subterms positive.
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-5">
+              <h3 className="font-bold text-emerald-800">EP3 — opposing mechanisms</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-600">
+                The near-zero total ({signed(statistic('EP3', 'Ck').mean)} W m⁻²) is a
+                compensation: negative terms A and B ({signed(statistic('EP3', 'Ck_1').mean)} and{' '}
+                {signed(statistic('EP3', 'Ck_2').mean)} W m⁻²) are offset mainly by positive term E
+                ({signed(statistic('EP3', 'Ck_5').mean)} W m⁻²).
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-lg font-bold text-slate-900">
+            Between-pattern contrasts
+          </h2>
+          <p className="mb-4 text-sm leading-relaxed text-slate-600">
+            Pairwise Mann–Whitney tests use Benjamini–Hochberg correction across the 15
+            intensification-phase comparisons. The effect is the rank-biserial correlation.
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3">Subterm</th>
+                  <th className="px-4 py-3">Contrast</th>
+                  <th className="px-4 py-3">Medians</th>
+                  <th className="px-4 py-3">FDR p</th>
+                  <th className="px-4 py-3">Effect</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {manifest.contrasts.map((contrast) => (
+                  <tr key={`${contrast.subterm_key}-${contrast.contrast}`}>
+                    <td className="px-4 py-3 font-semibold text-slate-900">
+                      {contrast.subterm_label}
+                    </td>
+                    <td className="px-4 py-3">{contrast.contrast}</td>
+                    <td className="px-4 py-3">
+                      {signed(contrast.median_left, 3)} / {signed(contrast.median_right, 3)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {contrast.significant ? <strong>{formatProbability(contrast.p_fdr)}</strong> : formatProbability(contrast.p_fdr)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {signed(contrast.effect_size_r, 3)} ({contrast.effect_magnitude})
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -226,6 +389,15 @@ export default function CkSubtermsPage() {
             Values come exclusively from the complete corrected LEC rerun and its frozen phase
             windows. The page refuses partial products or a clustering manifest whose source cache
             is not marked as corrected.
+          </p>
+        </ResultSummaryCallout>
+
+        <ResultSummaryCallout type="result" title="Main result">
+          <p>
+            The Energy Patterns differ in barotropic mechanism, not only in amplitude. EP1 is
+            sustained by strong negative horizontal-shear terms A and B; EP2 is dominated in the
+            ensemble mean by positive vertical-momentum term E; and EP3 combines weaker opposing
+            contributions that nearly cancel in the column total.
           </p>
         </ResultSummaryCallout>
       </div>

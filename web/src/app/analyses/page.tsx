@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { BarChart3, Layers, TrendingDown, GitCompareArrows, Tornado } from 'lucide-react'
+import { BarChart3, Layers, TrendingDown, GitCompareArrows, Tornado, BetweenVerticalStart } from 'lucide-react'
 import AnalysisHero from '@/components/analysis/AnalysisHero'
 import AnalysisCardGrid from '@/components/analysis/AnalysisCardGrid'
 import Breadcrumbs from '@/components/layout/Breadcrumbs'
@@ -16,7 +16,7 @@ export default function AnalysesPage() {
       <AnalysisHero
         title="Analyses"
         badge="Research Pipeline"
-        description="Complementary analyses characterise the energetic patterns of South Atlantic cyclones. PCA-based clustering identifies three Energy Patterns from Lorenz Energy Cycle diagnostics; ERA5 composites reveal the atmospheric structure behind them; the barotropic conversion is decomposed into its subterms; the statistical dependence between dynamical fields and energy terms is quantified; and the cyclone phase space places each system's thermal structure against its energetics."
+        description="Complementary analyses characterise the energetic patterns of South Atlantic cyclones. PCA-based clustering identifies three Energy Patterns from Lorenz Energy Cycle diagnostics; corrected pressure-level profiles reveal their vertical energy pathways; ERA5 composites show the atmospheric structure behind them; the barotropic conversion is decomposed into its subterms; and field dependence and cyclone phase space connect energetics to dynamical and thermal structure."
       />
 
       <AnalysisCardGrid
@@ -35,6 +35,13 @@ export default function AnalysesPage() {
               'Storm-centred ERA5 composites comparing EP1 vs EP2 atmospheric structure across 9 diagnostic fields: EGR, PV, temperature advection, moisture flux, SLP, and more.',
             href: '/analyses/composites',
             icon: Layers,
+          },
+          {
+            title: 'Vertical Structure — Ca and Ck',
+            description:
+              'Corrected pressure-level distributions of baroclinic and barotropic conversion for all 3,820 cyclones, showing distinct vertical energy pathways in EP1, EP2, and EP3.',
+            href: '/analyses/vertical-structure',
+            icon: BetweenVerticalStart,
           },
           {
             title: 'Ck Subterms Analysis — Corrected All-Pattern Decomposition',

@@ -100,6 +100,7 @@ import argparse
 import logging
 import multiprocessing
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from scripts.ep_structure_analysis.timestep_selection import selected_timestep_indices
 from datetime import datetime
 from functools import partial
 from tqdm import tqdm
@@ -138,6 +139,7 @@ R_EARTH = mpconstants.earth_avg_radius         # pint.Quantity  6.3712e6 m
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data" / "era5_ep_structure"
 RESULTS_DIR = PROJECT_ROOT / "results" / "ep_structure"
+OUTPUT_DIR = DATA_DIR
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -175,6 +177,33 @@ CLIMATOLOGY_EGR_FILE    = DATA_DIR / "era5_climatology_egr.nc"   # 500+850 hPa; 
 # Module-level cache: path → xr.Dataset (or None if file absent).
 # Populated lazily on first access; shared across all cases in the same process.
 _CLIM_CACHE: dict = {}
+
+
+def configure_runtime_paths(data_dir, cases_dir, tracks_file, output_dir=None):
+    """Configure explicit input/output locations for local or remote runs.
+
+    The remote ERA5 archive is intentionally shared by isolated Git worktrees,
+    while case lists and generated outputs belong to the active worktree.  CLI
+    path configuration makes that topology explicit and avoids symlinks or
+    edits to the server's existing checkout.
+    """
+    global DATA_DIR, RESULTS_DIR, TRACKS_FILE, OUTPUT_DIR
+    global CLIMATOLOGY_FILE, CLIMATOLOGY_PV200_FILE, CLIMATOLOGY_PV850_FILE
+    global CLIMATOLOGY_MFD975_FILE, CLIMATOLOGY_SLP_FILE, CLIMATOLOGY_EGR_FILE
+    global _TRACKS_CACHE
+
+    DATA_DIR = Path(data_dir).resolve()
+    RESULTS_DIR = Path(cases_dir).resolve()
+    TRACKS_FILE = Path(tracks_file).resolve()
+    OUTPUT_DIR = Path(output_dir).resolve() if output_dir else DATA_DIR
+    CLIMATOLOGY_FILE = DATA_DIR / "era5_climatology_250hPa.nc"
+    CLIMATOLOGY_PV200_FILE = DATA_DIR / "era5_climatology_pv200.nc"
+    CLIMATOLOGY_PV850_FILE = DATA_DIR / "era5_climatology_pv850.nc"
+    CLIMATOLOGY_MFD975_FILE = DATA_DIR / "era5_climatology_mfd975.nc"
+    CLIMATOLOGY_SLP_FILE = DATA_DIR / "era5_climatology_slp.nc"
+    CLIMATOLOGY_EGR_FILE = DATA_DIR / "era5_climatology_egr.nc"
+    _TRACKS_CACHE = None
+    _CLIM_CACHE.clear()
 
 # Maps each computed field to the climatology file it requires.
 # Used by the per-EP summary to explain *why* a field is absent.
@@ -282,7 +311,6 @@ def get_cyclone_positions_for_case(track_id, era5_times):
     -------
     dict
         Mapping: time_index → (center_lat, center_lon) or None if not found.
-        Also includes 'central_idx' key for the central timestep index.
     """
     tracks = _load_tracks()
     track_data = tracks[tracks["track_id"] == int(track_id)].copy()
@@ -294,24 +322,18 @@ def get_cyclone_positions_for_case(track_id, era5_times):
     for t_idx, era5_time in enumerate(era5_times):
         era5_ts = pd.Timestamp(era5_time)
         
-        # Find nearest track time (within 3 hours tolerance)
+        # ERA5 files are audited against the hourly track before step 3.  Keep
+        # the same exact-time contract here instead of silently moving a storm
+        # centre to a neighbouring analysis time.
         time_diffs = (track_data["date"] - era5_ts).abs()
         min_diff = time_diffs.min()
         
-        if min_diff <= pd.Timedelta(hours=3):
+        if min_diff <= pd.Timedelta(minutes=1):
             nearest_idx = time_diffs.idxmin()
             nearest = track_data.loc[nearest_idx]
             positions[t_idx] = (float(nearest["lat vor"]), float(nearest["lon vor"]))
         else:
             positions[t_idx] = None
-    
-    # Compute central timestep index
-    n_times = len(era5_times)
-    if n_times > 0:
-        # For odd N: exact middle; for even N: N//2 (just after middle)
-        positions["central_idx"] = n_times // 2
-    else:
-        positions["central_idx"] = None
     
     return positions
 
@@ -1537,7 +1559,18 @@ def _get_case_start_time(meta):
         )
 
 
-def _process_single_case(track_id):
+def write_netcdf_atomic(dataset, output_path):
+    """Write a composite without exposing a partially written final file."""
+    output_path = Path(output_path)
+    candidate = output_path.with_suffix(output_path.suffix + ".partial")
+    try:
+        dataset.to_netcdf(candidate)
+        candidate.replace(output_path)
+    finally:
+        candidate.unlink(missing_ok=True)
+
+
+def _process_single_case(track_id, selected_times):
     """
     Process one cyclone case with STORM-CENTERED approach per timestep.
     
@@ -1548,7 +1581,7 @@ def _process_single_case(track_id):
       2. Extract a storm-centered subdomain around that position
       3. Compute diagnostics on the storm-centered grid
     
-    Canonical method (Apr 2026): central timesteps only — 1 per case.
+    Canonical method (Apr 2026): all 2-3 selected central timesteps per case.
 
     Parameters
     ----------
@@ -1588,10 +1621,12 @@ def _process_single_case(track_id):
         
         # Get cyclone positions for all timesteps
         positions = get_cyclone_positions_for_case(track_id, era5_times)
-        central_idx = positions.get("central_idx", n_times // 2)
-        
-        # Canonical method: central timestep only
-        timesteps_to_process = [central_idx]
+        # The case list is authoritative.  Legacy files can contain additional
+        # hours, so never infer the canonical selection from file contents.
+        required_times = [
+            value.strip() for value in str(selected_times).split(",") if value.strip()
+        ]
+        timesteps_to_process = selected_timestep_indices(era5_times, required_times)
         
         # Get case month for climatology
         case_start = _get_case_start_time(meta)
@@ -1629,7 +1664,7 @@ def _process_single_case(track_id):
         
         proc_metadata = {
             "n_timesteps_total": n_times,
-            "n_timesteps_requested": len(timesteps_to_process),
+            "n_timesteps_requested": len(required_times),
             "n_timesteps_used": len(results),
             "n_skipped_no_position": n_skipped_no_pos,
             "n_skipped_out_of_bounds": n_skipped_out_of_bounds,
@@ -1679,20 +1714,37 @@ def compute_composite(cases, ep_label, n_jobs=1):
     x = np.linspace(-half, half, n_pts)
     y = np.linspace(half, -half, n_pts)
 
-    track_ids = cases["track_id"].tolist()
+    required_columns = {"track_id", "selected_times"}
+    missing_columns = required_columns - set(cases.columns)
+    if missing_columns:
+        raise ValueError(
+            f"{ep_label} case list lacks required columns: {sorted(missing_columns)}"
+        )
+    case_tasks = list(
+        cases[["track_id", "selected_times"]].itertuples(index=False, name=None)
+    )
 
     # ── Process all cases (sequential or parallel) ────────────────────────
     if n_jobs <= 1:
         # Sequential — simple loop with tqdm progress bar
         raw_results = []
-        for tid in tqdm(track_ids, desc=f"   {ep_label}", leave=True):
-            raw_results.append(_process_single_case(tid))
+        for tid, selected_times in tqdm(case_tasks, desc=f"   {ep_label}", leave=True):
+            raw_results.append(_process_single_case(tid, selected_times))
     else:
         # Parallel — ProcessPoolExecutor with as_completed for live progress
         raw_results = []
-        with ProcessPoolExecutor(max_workers=n_jobs) as pool:
-            futures = {pool.submit(_process_single_case, tid): tid
-                       for tid in track_ids}
+        # Initialise paths explicitly in every child.  Linux usually inherits
+        # parent globals through ``fork``, whereas macOS/Windows use ``spawn``;
+        # relying on inheritance would make the CLI path options platform-dependent.
+        with ProcessPoolExecutor(
+            max_workers=n_jobs,
+            initializer=configure_runtime_paths,
+            initargs=(DATA_DIR, RESULTS_DIR, TRACKS_FILE, OUTPUT_DIR),
+        ) as pool:
+            futures = {
+                pool.submit(_process_single_case, tid, selected_times): tid
+                for tid, selected_times in case_tasks
+            }
             pbar = tqdm(total=len(futures), desc=f"   {ep_label}", leave=True)
             for future in as_completed(futures):
                 raw_results.append(future.result())
@@ -1921,8 +1973,8 @@ def compute_composite(cases, ep_label, n_jobs=1):
     ds_out.attrs["resolution_deg"] = RESOLUTION
     ds_out.attrs["composite_mode"] = "central_time"
     ds_out.attrs["composite_mode_description"] = (
-        "central_time: only the CENTRAL storm-centered timestep(s) of each cyclone "
-        "(2 if N even, 3 if N odd — canonical Apr 2026)"
+        "central_time: all selected CENTRAL storm-centered timesteps of each cyclone "
+        "(2 if the intensification phase length is even, 3 if odd — canonical Apr 2026)"
     )
     ds_out.attrs["methodology"] = (
         "STORM-CENTERED: Each timestep's domain is centered on the actual cyclone "
@@ -2059,8 +2111,31 @@ EPALL-relative anomalies (April 2026):
         help="Number of parallel workers for composite computation. "
              "Default: 1 (sequential). Recommended on remote server: 4-8.",
     )
+    parser.add_argument(
+        "--data-dir", type=Path, default=DATA_DIR,
+        help="Directory containing canonical per-cyclone ERA5 files and climatologies.",
+    )
+    parser.add_argument(
+        "--cases-dir", type=Path, default=RESULTS_DIR,
+        help="Directory containing ep1_cases.csv, ep2_cases.csv, and ep3_cases.csv.",
+    )
+    parser.add_argument(
+        "--tracks-file", type=Path, default=TRACKS_FILE,
+        help="Hourly cyclone-track CSV used for exact storm centring.",
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=None,
+        help="Composite output directory (default: --data-dir).",
+    )
     args = parser.parse_args()
     n_jobs = args.jobs if args.jobs >= 1 else 1
+    configure_runtime_paths(
+        args.data_dir,
+        args.cases_dir,
+        args.tracks_file,
+        args.output_dir,
+    )
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     log_file = setup_logging()
     logging.info(f"   Composite method: central timesteps (canonical Apr 2026)")
@@ -2124,13 +2199,13 @@ EPALL-relative anomalies (April 2026):
     mode_suffix = ""
     
     for ep, ds in ep_datasets.items():
-        out_path = DATA_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
-        ds.to_netcdf(out_path)
+        out_path = OUTPUT_DIR / f"precomputed_composites_{ep}{mode_suffix}.nc"
+        write_netcdf_atomic(ds, out_path)
         mb = out_path.stat().st_size / 1024**2
         logging.info(f"   ✓ Saved: {out_path.name} ({mb:.1f} MB)")
     
-    out_epall = DATA_DIR / f"precomputed_composites_epall{mode_suffix}.nc"
-    ds_epall.to_netcdf(out_epall)
+    out_epall = OUTPUT_DIR / f"precomputed_composites_epall{mode_suffix}.nc"
+    write_netcdf_atomic(ds_epall, out_epall)
     mb = out_epall.stat().st_size / 1024**2
     logging.info(f"   ✓ Saved: {out_epall.name} ({mb:.1f} MB)")
 

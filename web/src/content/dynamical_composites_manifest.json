@@ -30,16 +30,16 @@
       "rows": [
         "Row 1: (PV @ 200 hPa) \u2212 EPALL + EGR contours + (u, v)_250 \u2212 EPALL wind vectors",
         "Row 2: (PV @ 850 hPa) \u2212 EPALL + (T-adv) \u2212 EPALL contours + (u, v)_850 \u2212 EPALL wind + SLP",
-        "Row 3: AFC total (shading, no EPALL-relative version; climatological decomp by construction) + (u, v)_250 \u2212 EPALL wind + RK total sign-reversal hatching (total RK, not EPALL-relative \u2014 background-flow diagnostic) + (KE-adv) \u2212 EPALL contours"
+        "Row 3: AFC \u2212 EPALL (shading) + 250 hPa anomaly wind + total RK sign-reversal hatching + KE-adv \u2212 EPALL contours"
       ]
     }
   },
   "metadata": {
-    "n_ep1": 332,
-    "n_ep2": 775,
-    "n_ep3": 1623,
-    "n_epall": 2730,
+    "n_ep1": 421,
+    "n_ep2": 650,
+    "n_ep3": 1662,
+    "n_epall": 2733,
     "composite_method": "central_time",
-    "generated_at": "2026-04-11"
+    "generated_at": "2026-09-28"
   }
 }

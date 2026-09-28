@@ -14,16 +14,17 @@ This reduces ERA5 download volume by ~70-80% while maintaining scientific
 representativeness of the composite structure.
 
 Selection Criteria:
-- EP1: Cluster 0 (high energy conversions)
-- EP2: Cluster 2 (moderate conversions)
-- EP3: Cluster 1 (weak/background energetics)
+- EP labels are read from results/cluster/cluster_to_ep.json
+- EP1 is the strongest corrected conversion regime
+- EP2 is the intermediate corrected conversion regime
+- EP3 is the weakest/background corrected conversion regime
 - EPALL: Union of all three EPs
 
 After >= 24h filter:
-- EP1: ~332 cyclones (was 444, removed 112 short cases)
-- EP2: ~776 cyclones (was 979, removed 203 short cases)
-- EP3: ~1625 cyclones (was 2397, removed 772 short cases)
-- EPALL: ~2733 cyclones (was 3820, removed 1087 short cases)
+- EP1: 421 cyclones (from 548 corrected members)
+- EP2: 650 cyclones (from 860 corrected members)
+- EP3: 1,662 cyclones (from 2,412 corrected members)
+- EPALL: 2,733 cyclones (from 3,820 corrected members)
 
 Output:
 - results/ep_structure/ep{1,2,3,all}_cases.csv (eligible cases only)

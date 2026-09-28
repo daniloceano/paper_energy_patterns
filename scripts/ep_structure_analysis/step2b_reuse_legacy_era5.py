@@ -232,8 +232,11 @@ def check_legacy_file_compatibility(legacy_file: Path, required_times: list, tra
         # Check if all required times are present
         missing_times = []
         for req_time in required_times:
-            # Allow tolerance for timestamp matching (up to 3 hours for ERA5 resolution)
-            matches = [abs((at - req_time).total_seconds()) < 10800  # 3 hours
+            # Canonical composites use exact hourly ERA5 snapshots.  A broad
+            # three-hour tolerance previously allowed two or three requested
+            # hours to map to the same legacy timestep, silently duplicating a
+            # field.  Permit only encoding-level timestamp jitter.
+            matches = [abs((at - req_time).total_seconds()) <= 60
                       for at in available_times]
             if not any(matches):
                 missing_times.append(req_time)
@@ -370,8 +373,15 @@ def extract_central_timesteps(legacy_file: Path, required_times: list,
             time_diffs = [abs((at - req_time).total_seconds())
                          for at in available_times]
             closest_idx = time_diffs.index(min(time_diffs))
-            if time_diffs[closest_idx] < 10800:  # Within 3 hours
+            if time_diffs[closest_idx] <= 60:  # Exact hour, allowing encoding jitter
                 selected_indices.append(closest_idx)
+
+        if len(selected_indices) != len(required_times):
+            return False
+        if len(set(selected_indices)) != len(selected_indices):
+            # Never represent distinct requested hours with duplicate copies
+            # of one legacy snapshot.
+            return False
 
         # Extract subset
         ds_subset = ds.isel({time_dim: selected_indices})

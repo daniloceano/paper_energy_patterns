@@ -7,6 +7,7 @@ const REFRESHED_ANALYSES = [
   '/analyses/cluster',
   '/analyses/vertical-structure',
   '/analyses/ck-subterms',
+  '/analyses/composites',
 ]
 
 export default function AnalysisRefreshStatus() {

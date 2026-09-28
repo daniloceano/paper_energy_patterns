@@ -32,7 +32,7 @@ export default function AnalysesPage() {
           {
             title: 'Composite Analysis — EP Structure',
             description:
-              'Storm-centred ERA5 composites comparing EP1 vs EP2 atmospheric structure across 9 diagnostic fields: EGR, PV, temperature advection, moisture flux, SLP, and more.',
+              'Storm-centred ERA5 composites comparing EP1, EP2, EP3, and EPALL across 13 diagnostics, including EGR, PV, temperature advection, moisture, SLP, and geopotential height.',
             href: '/analyses/composites',
             icon: Layers,
           },

@@ -9,6 +9,7 @@ import MethodsPanel from '@/components/analysis/MethodsPanel'
 import FormulaBlock from '@/components/analysis/FormulaBlock'
 import StatsTable from '@/components/analysis/StatsTable'
 import { SimpleTerms, InThisStudy } from '@/components/analysis/Didactic'
+import population from '@/content/composite_population.json'
 
 export const metadata: Metadata = {
   title: 'Composite Analysis',
@@ -23,17 +24,22 @@ export default function CompositesPage() {
         title="Composite Analysis"
         subtitle="EP Structure — ERA5 Reanalysis"
         badge="EP1 / EP2 / EP3 / EPALL"
-        description={`Storm-centred ${DATASET_STATS.domainSize} composites of 10 diagnostic fields at key atmospheric levels, computed from ERA5 reanalysis at ${DATASET_STATS.era5Resolution} resolution. EP1, EP2, and EP3 composites are compared during the intensification phase alongside EPALL (all cyclones combined). EPALL-relative anomalies (EPx − EPALL) isolate what distinguishes each pattern from the climatological cyclone population.`}
+        description={`Storm-centred ${DATASET_STATS.domainSize} composites of ${DIAGNOSTIC_LIST.length} diagnostic fields at key atmospheric levels, computed from ERA5 reanalysis at ${DATASET_STATS.era5Resolution} resolution. EP1, EP2, and EP3 composites are compared during the intensification phase alongside EPALL (all cyclones combined). EPALL-relative anomalies (EPx − EPALL) isolate what distinguishes each pattern from the full cyclone population.`}
       />
 
       <div className="space-y-8">
-        <ResultSummaryCallout type="warning" title="Correction required before these results are final">
+        <ResultSummaryCallout type="result" title="Corrected Energy Pattern membership applied">
           <p>
-            The figures and numerical results on this page were generated with the previous
-            Energy Pattern membership (EP1 = 444, EP2 = 979, EP3 = 2,397; 2,733 cyclones
-            remained after the duration filter). The corrected membership is EP1 = 548,
-            EP2 = 860, and EP3 = 2,412. The ERA5 composite pipeline must therefore be rerun;
-            values below document the previous execution and must not yet be quoted as final.
+            These figures and numerical results use the corrected Energy Pattern membership:
+            EP1 = {population.before_filter.EP1.toLocaleString('en-US')}, EP2 ={' '}
+            {population.before_filter.EP2.toLocaleString('en-US')}, and EP3 ={' '}
+            {population.before_filter.EP3.toLocaleString('en-US')} before the duration filter.
+            After excluding intensification phases shorter than{' '}
+            {population.minimum_intensification_hours} h, the composites contain{' '}
+            {population.after_filter.EP1.toLocaleString('en-US')} EP1,{' '}
+            {population.after_filter.EP2.toLocaleString('en-US')} EP2, and{' '}
+            {population.after_filter.EP3.toLocaleString('en-US')} EP3 cyclones ({' '}
+            {population.after_filter.EPALL.toLocaleString('en-US')} in EPALL).
           </p>
         </ResultSummaryCallout>
 
@@ -59,8 +65,8 @@ export default function CompositesPage() {
               <strong> midpoint of its intensification phase</strong> — the most active
               moment of deepening. Where the intensification phase has an odd number of
               timesteps the three central steps are used, and where it is even, the two
-              central ones. The composite for a group is the arithmetic mean of that field
-              across all its cyclones.
+              central ones. The composite for a group is the arithmetic mean across all of
+              those selected, storm-centred fields.
             </p>
             <p className="mt-3 text-sm text-slate-600">
               The {DATASET_STATS.domainSize} domain is deliberately wider than the{' '}
@@ -85,8 +91,9 @@ export default function CompositesPage() {
               2 · Which cyclones enter the composites
             </h3>
             <p className="mt-2 text-sm text-slate-600">
-              Cyclones whose intensification phase lasted less than <strong>24 h</strong>{' '}
-              are excluded. Very short intensification phases place the central timestep
+              Cyclones whose intensification phase lasted less than{' '}
+              <strong>{population.minimum_intensification_hours} h</strong>{' '}
+              are excluded. Very short intensification phases place the central timesteps
               uncomfortably close to the incipient or mature stages, whose energetics — and
               therefore whose dynamical fields — behave differently, so including them
               would blur the very signal the composite is meant to isolate.
@@ -100,12 +107,12 @@ export default function CompositesPage() {
                   { key: 'after', label: 'After', align: 'right' },
                 ]}
                 rows={[
-                  { grp: 'EP1', before: '444', after: '332' },
-                  { grp: 'EP2', before: '979', after: '776' },
-                  { grp: 'EP3', before: '2,397', after: '1,625' },
-                  { grp: 'All (EPALL)', before: '3,820', after: '2,733' },
+                  { grp: 'EP1', before: population.before_filter.EP1.toLocaleString('en-US'), after: population.after_filter.EP1.toLocaleString('en-US') },
+                  { grp: 'EP2', before: population.before_filter.EP2.toLocaleString('en-US'), after: population.after_filter.EP2.toLocaleString('en-US') },
+                  { grp: 'EP3', before: population.before_filter.EP3.toLocaleString('en-US'), after: population.after_filter.EP3.toLocaleString('en-US') },
+                  { grp: 'All (EPALL)', before: population.before_filter.EPALL.toLocaleString('en-US'), after: population.after_filter.EPALL.toLocaleString('en-US') },
                 ]}
-                caption="This filtered population is also the one used by the LEC–field dependence analysis, so the two are directly comparable."
+                caption="This filtered population is the reference population for the corrected ERA5 composite analysis."
               />
             </div>
           </div>
@@ -139,8 +146,8 @@ export default function CompositesPage() {
                 label="EPALL-relative anomaly"
                 terms={{
                   "X'_EPALL": 'Departure of one Energy Pattern from the full cyclone population',
-                  'X̄_EPi': 'Composite mean of field X over the cyclones of EP i',
-                  'X̄_EPALL': 'Composite mean of the same field over all 2,733 cyclones',
+                  'X̄_EPi': 'Composite mean of field X over the selected central timesteps of EP i cyclones',
+                  'X̄_EPALL': `Composite mean of the same field over all ${population.after_filter.EPALL.toLocaleString('en-US')} eligible cyclones`,
                 }}
                 notes="Answers: what makes this Energy Pattern different from a typical cyclone? Because the reference is itself a cyclone composite, a zero anomaly does not mean 'no cyclone signal' — it means 'the same signal every cyclone has'."
               />
@@ -216,9 +223,10 @@ export default function CompositesPage() {
                 &ldquo;inside&rdquo; domain statistics.
               </li>
               <li>
-                <strong>Outer ring:</strong> The area between the full {DATASET_STATS.domainSize}{' '}
-                domain and the inner {DATASET_STATS.innerDomainSize}. Used for &ldquo;outside&rdquo;
-                domain statistics.
+                <strong>Full-domain context:</strong> Statistics labelled &ldquo;outside&rdquo; in the
+                current data schema are means over the complete {DATASET_STATS.domainSize}{' '}
+                domain, including the inner {DATASET_STATS.innerDomainSize}; they are not an
+                outer-ring-only mean.
               </li>
               <li>
                 <strong>Boundaries (N/S/E/W):</strong> The four edges of the inner{' '}

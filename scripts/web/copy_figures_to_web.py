@@ -17,6 +17,9 @@ The Next.js app serves web/public/ at the root URL, so:
 Usage:
   python scripts/web/copy_figures_to_web.py           # copy all needed figures
   python scripts/web/copy_figures_to_web.py --dry-run  # preview without copying
+  python scripts/web/copy_figures_to_web.py \
+    --tree ep_structure \
+    --only main/dynamical_composites_epall_relative.png
 
 Run this whenever figures are regenerated, then commit web/public/figures/:
   python scripts/web/copy_figures_to_web.py
@@ -28,6 +31,7 @@ Author: Danilo Couto de Souza
 """
 
 import argparse
+import filecmp
 import shutil
 from pathlib import Path
 
@@ -36,6 +40,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 FIGURES_SRC = REPO_ROOT / "figures"
 FIGURES_DST = REPO_ROOT / "web" / "public" / "figures"
 SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".svg", ".gif", ".webp"}
+
+
+def files_match(source: Path, destination: Path) -> bool:
+    """Compare bytes so same-size regenerated figures are not skipped."""
+    return destination.is_file() and filecmp.cmp(source, destination, shallow=False)
 
 # Figures the web site actually uses.
 # Keys are target paths relative to web/public/figures/.
@@ -107,8 +116,7 @@ def copy_figures(
             missing += 1
             continue
 
-        # Check if already up-to-date (same size + mtime)
-        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+        if files_match(src, dst):
             up_to_date += 1
             continue
 
@@ -140,7 +148,7 @@ def copy_cyclone_explorer_tree(dry_run: bool = False) -> tuple[int, int]:
 
         rel = src.relative_to(src_root)
         dst = dst_root / rel
-        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+        if files_match(src, dst):
             up_to_date += 1
             continue
 
@@ -179,7 +187,7 @@ def copy_ep_structure_tree(dry_run: bool = False) -> tuple[int, int]:
 
         rel = src.relative_to(src_root)
         dst = dst_root / rel
-        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+        if files_match(src, dst):
             up_to_date += 1
             continue
 
@@ -209,7 +217,7 @@ def copy_analysis_tree(name: str, dry_run: bool = False) -> tuple[int, int]:
         if not src.is_file() or src.suffix.lower() not in SUPPORTED_EXTENSIONS:
             continue
         dst = dst_root / src.relative_to(src_root)
-        if dst.exists() and dst.stat().st_size == src.stat().st_size:
+        if files_match(src, dst):
             up_to_date += 1
             continue
         if dry_run:
@@ -233,8 +241,18 @@ def main():
         metavar="PATH",
         help="Copy only this manifest target (repeat for multiple figures)",
     )
+    parser.add_argument(
+        "--tree",
+        action="append",
+        choices=("cyclone_explorer", "ep_structure", "ck_subterms_corrected", "lec_field_dependence"),
+        help=(
+            "Copy only this recursive analysis tree (repeat for multiple trees). "
+            "Use with --only to add individual manifest figures."
+        ),
+    )
     args = parser.parse_args()
     only = set(args.only) if args.only else None
+    selected_trees = set(args.tree) if args.tree else None
 
     if only is not None:
         unknown = only.difference(FIGURES_MANIFEST)
@@ -252,22 +270,38 @@ def main():
     if not args.dry_run:
         FIGURES_DST.mkdir(parents=True, exist_ok=True)
 
-    copied, missing, up_to_date = copy_figures(dry_run=args.dry_run, only=only)
+    # A tree-scoped run must not implicitly copy the complete top-level
+    # manifest.  An empty set selects no manifest entries, while --only may
+    # add the small number of publication figures associated with the tree.
+    manifest_selection = set() if selected_trees is not None and only is None else only
+    copied, missing, up_to_date = copy_figures(
+        dry_run=args.dry_run,
+        only=manifest_selection,
+    )
 
-    if only is None:
-        # Copy complete analysis trees only during a full site synchronization.
+    full_sync = selected_trees is None and only is None
+    if full_sync or "cyclone_explorer" in (selected_trees or set()):
         cx_copied, cx_uptodate = copy_cyclone_explorer_tree(dry_run=args.dry_run)
+    else:
+        cx_copied = cx_uptodate = 0
+
+    if full_sync or "ep_structure" in (selected_trees or set()):
         ep_copied, ep_uptodate = copy_ep_structure_tree(dry_run=args.dry_run)
+    else:
+        ep_copied = ep_uptodate = 0
+
+    if full_sync or "ck_subterms_corrected" in (selected_trees or set()):
         ck_copied, ck_uptodate = copy_analysis_tree(
             "ck_subterms_corrected", dry_run=args.dry_run
         )
+    else:
+        ck_copied = ck_uptodate = 0
+
+    if full_sync or "lec_field_dependence" in (selected_trees or set()):
         lfd_copied, lfd_uptodate = copy_analysis_tree(
             "lec_field_dependence", dry_run=args.dry_run
         )
     else:
-        cx_copied = cx_uptodate = 0
-        ep_copied = ep_uptodate = 0
-        ck_copied = ck_uptodate = 0
         lfd_copied = lfd_uptodate = 0
 
     total_copied = copied + cx_copied + ep_copied + ck_copied + lfd_copied

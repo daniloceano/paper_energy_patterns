@@ -24,11 +24,11 @@ This reduces ERA5 download volume by **~94%** (from 121,406 to 6,884 timesteps)
 while maintaining scientific representativeness of the composite structure.
 
 ### Final Sample Sizes
-After >= 24h filter:
-- **EP1**: 332 cyclones (was 444, removed 112 short cases = 25.2%)
-- **EP2**: 776 cyclones (was 979, removed 203 short cases = 20.7%)
-- **EP3**: 1,625 cyclones (was 2,397, removed 772 short cases = 32.2%)
-- **EPALL**: 2,733 cyclones (was 3,820, removed 1,087 short cases = 28.5%)
+After the >= 24h filter on the corrected clustering:
+- **EP1**: 421 cyclones (from 548; 127 short cases removed = 23.2%)
+- **EP2**: 650 cyclones (from 860; 210 short cases removed = 24.4%)
+- **EP3**: 1,662 cyclones (from 2,412; 750 short cases removed = 31.1%)
+- **EPALL**: 2,733 cyclones (from 3,820; 1,087 short cases removed = 28.5%)
 
 **Rationale:** Short intensification phases (< 24h) may represent rapidly
 transitioning systems or weakly defined intensification periods. Focusing on
@@ -36,10 +36,11 @@ transitioning systems or weakly defined intensification periods. Focusing on
 
 ## Cluster Consistency
 
-All cyclones come from the cluster assignments in `results/cluster/kmeans_clustered_data.csv`:
-- **EP1** = Cluster 0 (high energy conversions)
-- **EP2** = Cluster 2 (moderate conversions)
-- **EP3** = Cluster 1 (weak/background energetics)
+All cyclones come from `results/cluster/kmeans_clustered_data.csv`, and the
+cluster-to-EP association is read from `results/cluster/cluster_to_ep.json`.
+Cluster indices are not hardcoded because they are arbitrary after a rerun.
+The current corrected mapping is EP1 = cluster 2, EP2 = cluster 0, and EP3 =
+cluster 1.
 
 The duration filter is applied AFTER cluster assignment to maintain consistency
 with the energy pattern definitions while ensuring temporal robustness.
@@ -200,8 +201,10 @@ Operational shortcut to reuse ERA5 data from legacy analysis when available.
 
 **Purpose:** Avoid re-downloading data already obtained for EP1/EP2 in previous analysis.
 
-> **EP3 coverage: NONE.** The legacy analysis only covered EP1 and EP2.
-> `step2b` cannot reuse any EP3 cases. EP3 must always be downloaded via `step2_download_era5_parallel.py`.
+The legacy analysis originally covered the old EP1 and EP2 populations. Since
+corrected clustering can move a track to another EP, reuse eligibility is now
+decided per `track_id`, required timestamp and spatial domain—not by its current
+EP label.
 
 **Strategy:**
 - Checks if legacy ERA5 file exists for each eligible cyclone
@@ -214,14 +217,34 @@ Operational shortcut to reuse ERA5 data from legacy analysis when available.
 # Dry run (report only, no file operations)
 python scripts/ep_structure_analysis/step2b_reuse_legacy_era5.py --dry-run
 
-# Actual reuse (EP1 and EP2 only — EP3 will show 0% coverage)
+# Actual reuse of every compatible track, regardless of its current EP label
 python scripts/ep_structure_analysis/step2b_reuse_legacy_era5.py
 
 # Monitor reuse progress while step2b runs
 python scripts/ep_structure_analysis/step2c_monitor.py --mode reuse --watch
 
-# Then download missing/EP3 cases:
+# Then download any cases that remain missing or incompatible:
 python scripts/ep_structure_analysis/step2_download_era5_parallel.py --jobs 10
+```
+
+Before any download, audit the canonical archive against the current case
+lists. This catches missing central hours and insufficient storm-centred
+coverage that a variable/level inventory alone cannot detect:
+
+```bash
+python scripts/ep_structure_analysis/audit_era5_reuse.py
+```
+
+On `swell`, invalid cases can be replaced atomically with distinct healthy CDS
+credentials per worker. Credential values are kept out of logs and temporary
+worker homes are removed on exit:
+
+```bash
+python scripts/ep_structure_analysis/step2_download_era5_parallel.py \
+  --audit-csv results/ep_structure/era5_reuse_audit.csv \
+  --keys-file /p1-swell/danilocs/cds-keys \
+  --key-health-db /p1-swell/danilocs/lec_climatology_corrected_v2/state.sqlite3 \
+  --jobs 22
 ```
 
 **Note:** This step is NOT required for the canonical pipeline. It's purely a time-saving
@@ -245,6 +268,14 @@ Computes spatial composites for all diagnostic fields.
 **Execution:**
 ```bash
 python scripts/ep_structure_analysis/step3_precompute_composites.py --jobs 4
+
+# Isolated remote worktree using the shared canonical ERA5 archive
+python scripts/ep_structure_analysis/step3_precompute_composites.py \
+  --data-dir /p1-swell/danilocs/paper_energy_patterns/data/era5_ep_structure \
+  --cases-dir results/ep_structure \
+  --tracks-file /p1-swell/danilocs/paper_energy_patterns/data/corrected/tracks_with_energetics_corrected.csv \
+  --output-dir data/era5_ep_structure \
+  --jobs 16
 ```
 
 ### Step 4: Generate Figures (`step4_create_figures.py`)
@@ -301,6 +332,9 @@ Updates SCIENTIFIC_NOTES.md with composite statistics and generates PDF.
 **Execution:**
 ```bash
 python scripts/ep_structure_analysis/step5_update_scientific_notes.py
+
+# Code/site-only refresh: export structured statistics without changing notes/PDF
+python scripts/ep_structure_analysis/step5_update_scientific_notes.py --stats-only
 ```
 
 ### Step 6: Generate Cyclone Explorer Panels (`step6_generate_cyclone_explorer_panels.py`)
@@ -681,11 +715,11 @@ scp -i ~/Documents/Master/id_rsa.danilocs -C \
 ### Local execution (after transfer)
 
 ```bash
-# Step 4 – create figures (canonical central timestep method)
+# Step 4 – create figures (canonical central timesteps method)
 python scripts/ep_structure_analysis/step4_create_figures.py
 
-# Step 5 – update scientific notes with regional statistics
-python scripts/ep_structure_analysis/step5_update_scientific_notes.py
+# Step 5 – export regional statistics for the site; leave scientific notes unchanged
+python scripts/ep_structure_analysis/step5_update_scientific_notes.py --stats-only
 
 # Web export – extract data for composite figures
 python scripts/web/extract_composite_site_data.py

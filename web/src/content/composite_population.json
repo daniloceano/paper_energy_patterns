@@ -1,0 +1,15 @@
+{
+  "before_filter": {
+    "EP1": 548,
+    "EP2": 860,
+    "EP3": 2412,
+    "EPALL": 3820
+  },
+  "after_filter": {
+    "EP1": 421,
+    "EP2": 650,
+    "EP3": 1662,
+    "EPALL": 2733
+  },
+  "minimum_intensification_hours": 24
+}

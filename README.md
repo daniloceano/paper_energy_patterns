@@ -1,6 +1,8 @@
 # Energetic Patterns of Cyclones in the Southwestern Atlantic
 
-This repository organises all scripts, data, and results for the paper on energetic patterns of South Atlantic extratropical cyclones, based on Chapter 6 of the PhD thesis. Cyclones are classified into three Energy Patterns (EP1, EP2, EP3) via PCA-based K-Means clustering of Lorenz Energy Cycle diagnostics during the intensification phase. The **current scientific focus** is `scripts/ep_structure_analysis/`, which performs composite analysis of ERA5 reanalysis fields to characterise the atmospheric structure of EP1 (N=444) and EP2 (N=979) cyclones during intensification.
+This repository organises all scripts, data, and results for the paper on energetic patterns of South Atlantic extratropical cyclones, based on Chapter 6 of the PhD thesis. Cyclones are classified into three Energy Patterns (EP1, EP2, EP3) via PCA-based K-Means clustering of Lorenz Energy Cycle diagnostics during the intensification phase.
+
+**Next front: CPS.** Read [the CPS handoff](docs/CPS_HANDOFF.md) before running anything. It records the verified repository paths, Python environment, preserved inputs, cleanup archives, current populations, and the distinction between completed analyses and CPS results still awaiting review. The approved ERA5 composites and LEC–field results are in `main` and on the official site. Do not edit the manuscript without explicit user authorization.
 
 ---
 
@@ -29,26 +31,18 @@ bash setup_environment.sh
 conda activate paper_energy_patterns
 ```
 
-### 2. Preprocess Data (Optional, Run Once)
+### 2. Reuse the corrected data
 
-**For most analyses**: Skip this step - scripts load data directly from GitHub
+Current analyses consume `data/corrected/` through
+`scripts/utils/corrected_lec.py`. The corrected clustering contains 3,820
+cyclones; the ERA5 composite/LEC–field subset contains 2,733. Preserve
+`results/cluster/kmeans_clustered_data.csv` together with its tracked
+`cluster_to_ep.json` mapping. These inputs already exist on the workstation
+and server; a fresh clone alone does not include all scientific data.
 
-**Required only for**:
-- Clustering pipeline → Run `python scripts/preprocess_data/preprocess_data.py` (creates energy_cache.parquet)
-- Vertical analysis (S3) → Run `python scripts/preprocess_data/download_lec_from_zenodo.py`
-
-```bash
-# Quick: Just what's needed for clustering
-python scripts/preprocess_data/preprocess_data.py  # ~5 min, 6 MB
-
-# Full: Everything (if doing vertical/exploratory analyses)
-python scripts/preprocess_data/run_all.py  # ~15 min, ~1.3 GB
-```
-
-Expected outputs: 
-- `data/energy_cache.parquet` (required for clustering)
-- `data/tracks_SAt_filtered_with_energetics_processed.csv` (optional)
-- `data/temp_lec_zenodo/` (optional, for S3 figure)
+Do not rebuild current results from the legacy `data/energy_cache.parquet`
+or Zenodo LEC archive. See the [CPS handoff](docs/CPS_HANDOFF.md) for the
+existing data locations and the first checks for the next analysis.
 
 ### 3. Run Cluster Analysis (Energy Patterns)
 

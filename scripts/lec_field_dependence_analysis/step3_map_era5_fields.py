@@ -149,9 +149,8 @@ def main():
     logging.info("timesteps only. The features extracted in step4/step5 will")
     logging.info("represent the MEAN over these central timesteps.")
     logging.info("")
-    logging.info("The LEC means (step2) represent the FULL intensification")
-    logging.info("phase average. This temporal mismatch is documented in")
-    logging.info("SCIENTIFIC_NOTES.md as a known limitation.")
+    logging.info("The corrected LEC means (step2) use the exact same selected")
+    logging.info("2-3 central timesteps. The two inputs are temporally aligned.")
 
     # 4. Document fields of interest
     logging.info("\n--- Dynamic fields of interest ---")
@@ -189,8 +188,8 @@ def main():
         "",
         "Temporal representation:",
         "  ERA5 fields: central timesteps of intensification (2-3 per cyclone)",
-        "  LEC means: full intensification phase average",
-        "  Note: this temporal mismatch is a known limitation (see SCIENTIFIC_NOTES.md)",
+        "  LEC means: mean over the same selected 2-3 central timesteps",
+        "  Status: temporally aligned by the authoritative case manifest",
         "",
         "Dynamic fields (absolute):",
     ]

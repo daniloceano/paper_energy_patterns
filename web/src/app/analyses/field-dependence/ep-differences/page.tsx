@@ -77,7 +77,7 @@ export default function EpDifferencesPage() {
           <FigurePanel
             src={lfd('significance_heatmap_lec_terms.png')}
             alt="Significance heatmap — LEC terms"
-            caption="Pairwise significance for all 24 LEC terms. Nearly all contrasts are significant, confirming robust EP separation."
+            caption="All 24 LEC terms differ in the global test; 59 of the 72 pairwise contrasts remain significant after Holm correction."
             source="figures/lec_field_dependence/significance_heatmap_lec_terms.png"
           />
           <div className="grid gap-6 md:grid-cols-2">
@@ -109,7 +109,7 @@ export default function EpDifferencesPage() {
           <FigurePanel
             src={lfd('effect_size_heatmap_lec_terms.png')}
             alt="Effect size heatmap — LEC terms"
-            caption="Pairwise effect sizes for LEC terms. Ke, RKe, Ce, and Ca show the largest inter-EP differences."
+            caption="Pairwise effect sizes for LEC terms. The global ranking is led by Ke, Ce, Ae, and Ca."
             source="figures/lec_field_dependence/effect_size_heatmap_lec_terms.png"
           />
           <div className="grid gap-6 md:grid-cols-2">

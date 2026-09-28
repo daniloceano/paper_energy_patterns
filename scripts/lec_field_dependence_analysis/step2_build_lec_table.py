@@ -12,7 +12,7 @@ Temporal selection follows the canonical ep_structure methodology:
 
 This ensures temporal consistency between LEC values and the ERA5
 dynamic fields used in subsequent steps (which are extracted at the
-single central timestep of the intensification phase).
+same exact 2--3 central timesteps of the intensification phase).
 
 The result is a single table:
     track_id × LEC_term

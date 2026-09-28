@@ -347,15 +347,22 @@ def _dunn_test(groups: List[np.ndarray],
             z = (Ri - Rj) / se if se > 0 else 0.0
             p_val = float(2 * stats.norm.sf(abs(z)))
 
-            # Rank-biserial r = 1 − 2U/(n1*n2)
+            # Rank-biserial r for the named contrast (group i minus group j).
+            # SciPy returns U for the first sample, so positive values must mean
+            # that group i tends to exceed group j.
             U, _ = stats.mannwhitneyu(
                 clean[i], clean[j], alternative="two-sided")
-            r_rb = float(1 - 2 * U / (ni * nj))
+            r_rb = float(2 * U / (ni * nj) - 1)
 
-            diff_med = float(np.median(clean[i]) - np.median(clean[j]))
-            direction = _direction_str(clean[i], clean[j],
-                                       labels[i], labels[j],
-                                       use_median=True)
+            # Keep the reported direction on the same estimand as the signed
+            # rank-biserial effect.  A median comparison can point the other
+            # way for skewed or crossing distributions even when U is valid.
+            if r_rb > 0:
+                direction = f"{labels[i]} > {labels[j]}"
+            elif r_rb < 0:
+                direction = f"{labels[j]} > {labels[i]}"
+            else:
+                direction = "no rank dominance"
 
             raw_pvals.append(p_val)
             pair_results.append(dict(

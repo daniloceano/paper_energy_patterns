@@ -131,8 +131,8 @@ def load_corrected_lec(track_id: str) -> Optional[pd.DataFrame]:
       - Even N timesteps → 2 central (indices N//2-1, N//2)
       - N ≤ 3            → all timesteps
 
-    This ensures temporal consistency with the ERA5 dynamic fields, which
-    are extracted at the single central timestep of the intensification phase.
+    This ensures temporal consistency with the ERA5 dynamic fields, which are
+    averaged over the same exact 2--3 central intensification timesteps.
 
     Parameters
     ----------

@@ -1,6 +1,6 @@
 # SCIENTIFIC NOTES — LEC–Field Dependence Analysis
 
-*Internal laboratory report. Last updated: 2026-04-22. Reorganized as scientific report: 2026-04-22.*
+*Internal laboratory report. Last updated: 2026-09-28. Reorganized as scientific report: 2026-04-22.*
 *Authors: Danilo Couto de Souza. Contact: danilocs@usp.br*
 
 ---
@@ -12,7 +12,7 @@
 3. [Derived Fields and Feature Extraction](#3-derived-fields-and-feature-extraction)
 4. [Statistical Framework and Test Selection](#4-statistical-framework-and-test-selection)
 5. [Metrics Used and How to Interpret Them](#5-metrics-used-and-how-to-interpret-them)
-6. [Inter-EP Significance: Empirical Results](#6-inter-ep-significance-empirical-results-april-2026-run)
+6. [Inter-EP Significance: Empirical Results](#6-inter-ep-significance-empirical-results-september-2026-run)
 7. [LEC–Field Association Analysis](#7-lecfield-association-analysis)
 8. [Main Findings: Synthesis](#8-main-findings-synthesis)
 9. [Interpretation Guide for Pipeline Figures](#9-interpretation-guide-for-pipeline-figures)
@@ -132,7 +132,9 @@ same diagnostic functions as `ep_structure_analysis`:
 | `ke_adv_250` | 250 hPa | $-\mathbf{V} \cdot \nabla(\tfrac{1}{2}|\mathbf{V}|^2)$ |
 | `afc_250` | 250 hPa | $-\nabla \cdot (\mathbf{V}_a K)$ (Orlanski & Katzfey 1991) |
 
-ERA5 fields use the **single central timestep** of the intensification phase.
+ERA5 fields use the mean of the **exact 2--3 central timesteps** of the
+intensification phase recorded in the authoritative case manifest. Corrected
+LEC means use those same timestamps, so the two inputs are temporally aligned.
 
 Two versions: **absolute** (raw derived field) and **EPALL-relative anomaly** (cyclone
 field − EPALL composite mean).
@@ -141,9 +143,9 @@ field − EPALL composite mean).
 
 | EP | N | % of total |
 |----|---|--|
-| EP1 | 332 | 12% |
-| EP2 | 776 | 28% |
-| EP3 | 1,625 | 60% |
+| EP1 | 421 | 15% |
+| EP2 | 650 | 24% |
+| EP3 | 1,662 | 61% |
 | **Total** | **2,733** | 100% |
 
 Group imbalance (factor ~5 across EPs) is intrinsic to the clustering solution and is
@@ -246,7 +248,7 @@ a reference for writing the methods section of the paper.
 | All groups normal, unequal variance | Welch ANOVA | *F\** | *ω²* | Pairwise Welch *t* | Holm | Cohen's *d* | BH-FDR |
 | Any group non-normal | **Kruskal–Wallis** | *H* | **ε²** | **Dunn (1964)** | **Holm** | **rank-biserial *r*** | **BH-FDR** |
 
-**In the April 2026 run: 100% of variables (154/154) took the Kruskal–Wallis path.**
+**In the September 2026 corrected run: 100% of variables (154/154) took the Kruskal–Wallis path.**
 The ANOVA and Welch ANOVA branches are implemented and tested but were never activated.
 See Section 6 for the empirical statistical path summary.
 
@@ -333,21 +335,21 @@ a non-monotonic but structured relationship (e.g., a U-shaped pattern), while Sp
 would return ρ ≈ 0.
 
 **A critical observation in this dataset**: the PREDEP baseline ("floor") is not
-zero — it ranges from ~0.19 to ~0.31 even for variable pairs with near-zero Spearman ρ.
+zero — it ranges from ~0.20 to ~0.31 even for variable pairs with near-zero Spearman ρ.
 This is expected: the PREDEP estimator has finite-sample bias, particularly for
-the sample sizes here (EP1: 332, EP2: 776, EP3: 1,625).  The mean PREDEP across all
-pairs is ~0.56–0.61, substantially above zero.  **This means PREDEP values should not
+the sample sizes here (EP1: 421, EP2: 650, EP3: 1,662).  The mean PREDEP across all
+pairs is ~0.56–0.60, substantially above zero.  **This means PREDEP values should not
 be interpreted in isolation** — they are most informative when comparing values within
 the same EP and looking for relative ordering, or when compared against the Spearman ρ
 of the same pair.
 
-**Summary of PREDEP baseline statistics (April 2026 run):**
+**Summary of PREDEP baseline statistics (September 2026 corrected run, absolute fields):**
 
 | EP | N | Min PREDEP | Median PREDEP | Max PREDEP |
 |---|---|---|---|---|
-| EP1 | 332 | 0.196 | 0.574 | 0.712 |
-| EP2 | 776 | 0.189 | 0.579 | 0.706 |
-| EP3 | 1,625 | 0.308 | 0.621 | 0.746 |
+| EP1 | 421 | 0.303 | 0.589 | 0.709 |
+| EP2 | 650 | 0.198 | 0.582 | 0.708 |
+| EP3 | 1,662 | 0.306 | 0.624 | 0.732 |
 
 EP3 shows a higher minimum, consistent with a larger N reducing estimator variance and
 genuine structural co-variation in the higher-N group.
@@ -426,17 +428,16 @@ Bonferroni but appropriate for discovery-oriented analyses.
 EP1/EP3, EP2/EP3) within each variable.  Step-down procedure, controls familywise
 error rate.  More powerful than Bonferroni for small numbers of tests.
 
-**Practical note**: because all 154 variables passed the global KW test (p_raw
-extremely small, often < 10⁻⁵⁰), the BH-FDR correction had no effect in practice —
-the adjusted p-values remained significant.  The Holm correction on pairwise contrasts
-did suppress a modest number of weak pairwise effects.
+**Practical note**: 150 of 154 variables passed the FDR-adjusted global KW test.
+All 24 LEC terms were significant; four dynamical descriptors were not. The Holm
+correction on pairwise contrasts also suppressed weak pairwise effects.
 
 ---
 
-## 6. Inter-EP Significance: Empirical Results (April 2026 Run)
+## 6. Inter-EP Significance: Empirical Results (September 2026 Run)
 
 *Source data: `results/lec_field_dependence/step7b_diagnostic_table.csv`,
-`step7b_pairwise_table.csv`, `step7b_significance_report.txt` (generated 2026-04-22).*
+`step7b_pairwise_table.csv`, `step7b_significance_report.txt` (generated 2026-09-28).*
 
 ### 6.1 Statistical Path Actually Observed
 
@@ -454,7 +455,7 @@ what it was designed to do.**
 | Global effect size reported | **ε² (epsilon-squared)** |
 | Cross-variable correction | **Benjamini–Hochberg FDR** |
 
-**Explanation**: With EP1 n = 332, EP2 n = 776, EP3 n = 1,625, Shapiro–Wilk is highly
+**Explanation**: With EP1 n = 421, EP2 n = 650, EP3 n = 1,662, Shapiro–Wilk is highly
 powered and detected non-normality in every tested group.  LEC terms (especially
 conversion and residual terms) and ERA5-derived features (PV, advection) are
 intrinsically skewed or heavy-tailed.  The ANOVA and Welch ANOVA branches are correctly
@@ -469,56 +470,57 @@ biserial r), with Holm correction for pairwise tests and BH-FDR across variables
 | Block | Variables | Sig (BH-adj p < 0.05) | Not significant |
 |---|---|---|---|
 | LEC terms | 24 | **24 / 24** | 0 |
-| Absolute features | 65 | **59 / 65** | 6 |
-| Anomaly features | 65 | **60 / 65** | 5 |
+| Absolute features | 65 | **63 / 65** | 2 |
+| Anomaly features | 65 | **63 / 65** | 2 |
+
+The four non-significant rows are the absolute and anomaly forms of
+`pv_200__centre_value` and `ke_adv_250__border_west`.
 
 ### 6.3 Pairwise Contrast Summary
 
-| EP pair | Significant (out of 143 contrasted) | % |
+| EP pair | Significant (out of 150 contrasted) | % |
 |---|---|---|
-| EP1 vs EP2 | 99 | 69% |
-| EP1 vs EP3 | 114 | 80% |
-| **EP2 vs EP3** | **120** | **84%** |
+| EP1 vs EP2 | 97 | 65% |
+| EP1 vs EP3 | 117 | 78% |
+| **EP2 vs EP3** | **127** | **85%** |
 
 EP1 vs EP3 and EP2 vs EP3 show the most pervasive differences.  These contrasts pit
 the high-energy EP1/EP2 against the much larger, low-energy EP3 group, so strong
-differences are expected.  EP1 vs EP2 is the most subtle contrast (69% significant),
+differences are expected.  EP1 vs EP2 is the most subtle contrast (65% significant),
 reflecting that these two groups occupy overlapping but distinct energetic regimes.
 
 ### 6.4 LEC Terms: Which Differ Between EPs
 
-All 24 LEC terms are significant (BH-adj p < 0.05).  Table sorted by global ε².
-Bold marks contrasts with large pairwise effect |r| > 0.50.
+All 24 LEC terms are significant (BH-adj p < 0.05). The table is sorted by
+global ε²; pair-specific direction, Holm-adjusted p-values, and rank-biserial
+effect sizes remain in `step7b_pairwise_table.csv`.
 
-| Term | ε² | Effect class | Significant pairwise contrasts (Dunn–Holm) |
-|---|---|---|---|
-| $K_e$ | **0.396** | Large | EP2>EP1 (r=0.20); **EP1>EP3 (r=0.60)**; **EP2>EP3 (r=0.79)** |
-| $RK_e$ | 0.290 | Large | EP1>EP2 (r=0.15); **EP3>EP1 (r=0.50)**; **EP3>EP2 (r=0.68)** |
-| $C_e$ | 0.286 | Large | EP2>EP1 (r=0.25); EP1>EP3 (r=0.42); **EP2>EP3 (r=0.69)** |
-| $C_a$ | 0.278 | Large | **EP1>EP3 (r=0.58)**; **EP2>EP3 (r=0.64)** *(EP1 ≈ EP2)* |
-| $A_e$ | 0.276 | Large | EP2>EP1 (r=0.23); EP1>EP3 (r=0.47); **EP2>EP3 (r=0.66)** |
-| $RG_e$ | 0.178 | Large | EP1>EP3 (r=0.45); **EP2>EP3 (r=0.51)** *(EP1 ≈ EP2)* |
-| $G_e$ | 0.143 | Large | EP2>EP1 (r=0.22); EP1>EP3 (r=0.23); **EP2>EP3 (r=0.50)** |
-| $C_k$ | 0.108 | Medium | EP2>EP1 (r=0.20); **EP3>EP1 (r=0.54)**; EP3>EP2 (r=0.29) |
-| $RK_z$ | 0.103 | Medium | EP1>EP3 (r=0.36); EP2>EP3 (r=0.39) |
-| $BK_z$ | 0.081 | Medium | EP3>EP1 (r=0.27); EP3>EP2 (r=0.36); EP1>EP2 (r=0.08) |
-| $\partial K_e/\partial t$ | 0.073 | Medium | EP1>EP3 (r=0.36); EP2>EP3 (r=0.30) |
-| $B\Phi_Z$ | 0.072 | Medium | EP2>EP1 (r=0.32); EP2>EP3 (r=0.35) |
-| $BA_z$ | 0.069 | Medium | EP1>EP2 (r=0.25); EP1>EP3 (r=0.44); EP2>EP3 (r=0.21) |
-| $RG_z$ | 0.061 | Medium | EP3>EP1 (r=0.29); EP3>EP2 (r=0.29) |
-| $B\Phi_E$ | 0.057 | Small | EP2>EP1 (r=0.36); EP3>EP1 (r=0.09); EP2>EP3 (r=0.29) |
-| $BK_e$ | 0.046 | Small | EP2>EP1 (r=0.18); EP1>EP3 (r=0.09); EP2>EP3 (r=0.29) |
-| $A_z$ | 0.038 | Small | EP1>EP2 (r=0.33); EP1>EP3 (r=0.35) *(EP2 ≈ EP3)* |
-| $\partial A_e/\partial t$ | 0.034 | Small | EP1>EP2 (r=0.20); EP1>EP3 (r=0.34); EP2>EP3 (r=0.11) |
-| $C_z$ | 0.027 | Small | EP1>EP2 (r=0.15); EP3>EP2 (r=0.22) |
-| $K_z$ | 0.024 | Small | EP1>EP3 (r=0.16); EP2>EP3 (r=0.19) |
-| $G_z$ | 0.024 | Small | EP2>EP1 (r=0.13); EP3>EP1 (r=0.26); EP3>EP2 (r=0.13) |
-| $\partial A_z/\partial t$ | 0.015 | Small | EP1>EP2 (r=0.13); EP3>EP2 (r=0.17) |
-| $BA_e$ | 0.009 | Negligible | EP2>EP1 (r=0.17); EP3>EP1 (r=0.16) |
-| $\partial K_z/\partial t$ | 0.005 | Negligible | EP1>EP3 (r=0.09); EP2>EP3 (r=0.08) |
-
-Note: pairwise r values shown as absolute magnitude; direction stated explicitly in
-"direction" column of step7b_pairwise_table.csv.
+| Term | ε² | Effect class |
+|---|---|---|
+| $K_e$ | **0.333** | Large |
+| $C_e$ | **0.246** | Large |
+| $A_e$ | **0.233** | Large |
+| $C_a$ | **0.208** | Large |
+| $RK_e$ | **0.165** | Large |
+| $G_e$ | 0.128 | Medium |
+| $B\Phi_E$ | 0.079 | Medium |
+| $\partial K_e/\partial t$ | 0.074 | Medium |
+| $C_k$ | 0.071 | Medium |
+| $BA_z$ | 0.062 | Medium |
+| $BK_z$ | 0.062 | Medium |
+| $RK_z$ | 0.059 | Small |
+| $B\Phi_Z$ | 0.058 | Small |
+| $BK_e$ | 0.050 | Small |
+| $RG_e$ | 0.037 | Small |
+| $A_z$ | 0.034 | Small |
+| $C_z$ | 0.034 | Small |
+| $\partial A_e/\partial t$ | 0.033 | Small |
+| $K_z$ | 0.030 | Small |
+| $G_z$ | 0.022 | Small |
+| $BA_e$ | 0.014 | Small |
+| $\partial A_z/\partial t$ | 0.010 | Negligible |
+| $RG_z$ | 0.005 | Negligible |
+| $\partial K_z/\partial t$ | 0.004 | Negligible |
 
 **Physical summary of LEC inter-EP differences:**
 
@@ -620,51 +622,50 @@ already entirely captured by the deviation from the EPALL mean.
 
 ## 7. LEC–Field Association Analysis
 
-### 7.1 Status (April 2026 Run)
+### 7.1 Status (September 2026 Corrected Run)
 
-Steps 7 and 8 (PREDEP + Spearman association analysis) were rerun on **2026-04-22**
-with the canonical central-timestep LEC method and updated sector features.  Results
-below supersede the preliminary full-phase run.
+Steps 3b–9 were rerun on **2026-09-28** with the corrected EP membership,
+corrected hourly tracks, the exact 2–3 central intensification times, and the
+expanded AFC climatology. Results below supersede all April 2026 outputs.
 
-### 7.2 Top Associations by Spearman ρ: Canonical LEC Terms (April 2026 Run)
+### 7.2 Top Associations by Spearman ρ: Canonical LEC Terms (September 2026 Run)
 
 The table below shows the five strongest associations (by |Spearman ρ|) for each EP,
 restricted to the **canonical 7 LEC terms** (Ca, Ck, BAe, BKe, Ae, Ke, Ge) and using
 the **EPALL-relative anomaly** fields (which isolate EP-specific synoptic structure).
-The central-timestep LEC values and single-timestep ERA5 fields are used throughout.
+Both LEC values and ERA5 fields are averaged over the same exact 2–3 timestamps.
 
 | EP | LEC term | Field (anomaly) | Feature | ρ | PREDEP α |
 |----|----------|-----------------|---------|---|---------|
-| **EP1** | $G_e$ | PV 200 | `border_east` | +0.660 | 0.671 |
-| **EP1** | $G_e$ | PV 200 | `contrast_ew` | +0.653 | 0.662 |
-| **EP1** | $C_a$ | AdvT 850 | `sector_north` | −0.633 | 0.584 |
-| **EP1** | $A_e$ | AdvT 850 | `sector_north` | −0.622 | 0.548 |
-| **EP1** | $G_e$ | PV 200 | `sector_east` | +0.617 | 0.638 |
-| **EP2** | $A_e$ | AdvT 850 | `border_north` | −0.570 | 0.580 |
-| **EP2** | $G_e$ | PV 200 | `border_east` | +0.558 | 0.547 |
-| **EP2** | $A_e$ | PV 200 | `contrast_ew` | +0.555 | 0.680 |
-| **EP2** | $A_e$ | AdvT 850 | `sector_north` | −0.551 | 0.469 |
-| **EP2** | $G_e$ | PV 200 | `contrast_ew` | +0.548 | 0.683 |
-| **EP3** | $A_e$ | AdvT 850 | `sector_north` | −0.528 | 0.685 |
-| **EP3** | $C_a$ | AdvT 850 | `sector_west` | −0.503 | 0.653 |
-| **EP3** | $A_e$ | PV 200 | `border_west` | −0.498 | 0.669 |
-| **EP3** | $C_a$ | AdvT 850 | `sector_north` | −0.470 | 0.654 |
-| **EP3** | $C_a$ | AdvT 850 | `domain_mean` | −0.459 | 0.608 |
+| **EP1** | $C_a$ | AdvT 850 | `sector_north` | −0.646 | 0.685 |
+| **EP1** | $G_e$ | PV 200 | `border_east` | +0.630 | 0.709 |
+| **EP1** | $G_e$ | PV 200 | `contrast_ew` | +0.629 | 0.706 |
+| **EP1** | $A_e$ | AdvT 850 | `sector_north` | −0.618 | 0.671 |
+| **EP1** | $A_e$ | PV 200 | `contrast_ew` | +0.609 | 0.689 |
+| **EP2** | $A_e$ | AdvT 850 | `border_north` | −0.597 | 0.673 |
+| **EP2** | $A_e$ | PV 200 | `contrast_ew` | +0.594 | 0.656 |
+| **EP2** | $A_e$ | AdvT 850 | `sector_north` | −0.581 | 0.562 |
+| **EP2** | $G_e$ | PV 200 | `border_east` | +0.575 | 0.570 |
+| **EP2** | $G_e$ | PV 200 | `contrast_ew` | +0.574 | 0.656 |
+| **EP3** | $C_a$ | AdvT 850 | `sector_west` | −0.586 | 0.680 |
+| **EP3** | $A_e$ | AdvT 850 | `sector_north` | −0.558 | 0.654 |
+| **EP3** | $C_a$ | AdvT 850 | `sector_north` | −0.557 | 0.640 |
+| **EP3** | $C_a$ | AdvT 850 | `domain_mean` | −0.552 | 0.622 |
+| **EP3** | $A_e$ | PV 200 | `border_west` | −0.499 | 0.709 |
 
-**EP1 pattern**: Diabatic generation ($G_e$) is the most predictable canonical term
-from synoptic structure.  Its strongest predictor is the PV 200 eastern sector (and
-zonal contrast), consistent with EP1 being associated with a pronounced upper-level
-trough east of the surface cyclone.  The negative ρ between $C_a$ / $A_e$ and
+**EP1 pattern**: $C_a$ has the largest canonical rank correlation, while diabatic
+generation ($G_e$) remains strongly associated with the PV 200 eastern border and
+zonal contrast. The negative ρ between $C_a$ / $A_e$ and
 temperature advection in the northern sector is physically expected: stronger warm
 advection north of the cyclone (larger sector_north AdvT 850) → more efficient
 baroclinic energy conversion.  (Note: sector_north is defined as the northern half of
 the inner box, so positive AdvT there = warm advection ahead of the cyclone.)
 
-**EP2 pattern**: Similar physical story but weaker associations overall (|ρ| ≤ 0.570
-vs EP1 max 0.660).  PV 200 zonal contrast and AdvT 850 northern sector are again the
+**EP2 pattern**: Similar physical story but weaker associations overall (|ρ| ≤ 0.597
+vs EP1 max 0.646).  PV 200 zonal contrast and AdvT 850 northern sector are again the
 leading predictors.  EP2 appears to be a transitional regime between EP1 and EP3.
 
-**EP3 pattern**: Associations are weaker (|ρ| ≤ 0.528), consistent with EP3 being the
+**EP3 pattern**: Associations are weaker (|ρ| ≤ 0.586), consistent with EP3 being the
 weakest-energy, most heterogeneous group.  The temperature advection northern and
 western sectors dominate, as does the PV 200 western border — a signature different
 from EP1/EP2, where the *eastern* PV gradient dominated.
@@ -676,11 +677,11 @@ all features, absolute) are dominated by **KE advection at 250 hPa**:
 
 | EP | LEC term | Field | Feature | ρ | PREDEP α |
 |----|----------|-------|---------|---|---------|
-| EP3 | $BK_z$ | KE adv 250 | `domain_mean` | +0.833 | 0.746 |
-| EP1 | $BK_z$ | KE adv 250 | `domain_mean` | +0.827 | 0.707 |
-| EP1 | $RK_z$ | KE adv 250 | `domain_mean` | −0.802 | 0.712 |
-| EP3 | $K_z$ | KE adv 250 | `domain_abs_mean` | +0.780 | 0.713 |
-| EP2 | $BK_z$ | KE adv 250 | `domain_mean` | +0.764 | 0.688 |
+| EP3 | $BK_z$ | KE adv 250 | `domain_mean` | +0.833 | 0.637 |
+| EP1 | $BK_z$ | KE adv 250 | `domain_mean` | +0.826 | 0.632 |
+| EP1 | $RK_z$ | KE adv 250 | `domain_mean` | −0.796 | 0.613 |
+| EP2 | $BK_z$ | KE adv 250 | `domain_mean` | +0.784 | 0.708 |
+| EP3 | $K_z$ | KE adv 250 | `domain_abs_mean` | +0.779 | 0.732 |
 
 $BK_z$ (zonal kinetic energy boundary flux) and $RK_z$ (zonal KE residual) are both
 tightly related to the domain-mean KE advection at jet level — a boundary-flux
@@ -697,7 +698,7 @@ are grounded in the same physics but measured independently.
 PREDEP values (across all EP × field × feature combinations) show a persistent elevated
 floor, particularly for EP3.  A comparison with Spearman ρ reveals a characteristic
 pattern: PREDEP is often elevated even when Spearman ρ is near zero.  For example,
-`EP3 / BKz / adv_T_850 / sector_east` has PREDEP = 0.715 but ρ = +0.084, suggesting
+`EP3 / BKz / adv_T_850 / sector_east` has PREDEP = 0.717 but ρ = +0.076, suggesting
 the association has a non-monotonic or regime-based structure not captured by rank
 correlation.
 
@@ -726,29 +727,28 @@ cyclone-level associations.  The main differences are:
 
 ## 8. Main Findings: Synthesis
 
-This section summarises the principal results from the April 2026 run.  It is intended
+This section summarises the principal results from the September 2026 corrected run. It is intended
 as the first stop for new readers who want a top-level picture before diving into the
 detailed sections above.
 
-### 8.1 All Variables Differ Significantly Between Energy Patterns
+### 8.1 Nearly All Variables Differ Significantly Between Energy Patterns
 
 All 24 LEC terms show significant inter-EP differences (Kruskal–Wallis, BH-adjusted
 p < 0.05), with effect sizes ranging from negligible (ε² < 0.01 for $\partial K_z/\partial t$,
-$BA_e$) to very large (ε² = 0.40 for $K_e$).  The eddy energy conversion chain
+$RG_z$, and $\partial A_z/\partial t$) to large (ε² = 0.33 for $K_e$). The eddy energy conversion chain
 ($A_e$, $K_e$, $C_e$, $C_a$) dominates, confirming that the EP classification is
 fundamentally grounded in baroclinic/eddy energetics.
 
-For the ERA5-derived field features, 59/65 absolute and 60/65 anomaly features differ
-between EPs.  The six non-significant features all involve the domain-mean or
-domain-north intensity of PV 200 hPa or the northern KE advection — directions that
-lack systematic inter-EP structure.  What matters for PV 200 is the *east–west
-gradient*, not the overall intensity.
+For the ERA5-derived field features, 63/65 absolute and 63/65 anomaly features differ
+between EPs. The only non-significant descriptors in each field representation are
+the PV 200 centre value and the western-border KE advection. The PV 200 east–west
+contrast, by comparison, has one of the largest dynamical-feature effects (ε² = 0.123).
 
 ### 8.2 EP3 is the Defining Contrast
 
-In pairwise contrasts, EP3 drives most of the signal: 114 of 143 variables differ
-between EP1 and EP3, and 120 of 143 differ between EP2 and EP3.  EP1 vs EP2 is a
-much more subtle distinction (99/143 significant).  EP3 has:
+In pairwise contrasts, EP3 drives most of the signal: 117 of 150 globally significant
+variables differ between EP1 and EP3, and 127 of 150 differ between EP2 and EP3.
+EP1 vs EP2 is a more subtle distinction (97/150 significant). EP3 has:
 
 - Dramatically lower $K_e$ and $C_a$ (baroclinic conversion)
 - Distinctly higher $C_k$ (barotropic conversion), marking it as the barotropically
@@ -759,16 +759,16 @@ much more subtle distinction (99/143 significant).  EP3 has:
 
 For the **canonical** LEC terms and at the individual-cyclone level:
 
-- **Diabatic generation ($G_e$, EP1)**: most predictable from upper-level PV gradient
-  (east–west contrast and eastern border of PV 200) — strong association ρ ≈ +0.65.
+- **Diabatic generation ($G_e$, EP1)**: strongly associated with the upper-level PV
+  gradient (east–west contrast and eastern border of PV 200), with ρ ≈ +0.63.
   Consistent with the EP1 composite showing an upper-level trough east of the cyclone.
 
 - **Baroclinic conversion ($C_a$, $A_e$, EP1/EP2)**: most predictable from
-  temperature advection in the northern sector (ρ ≈ −0.63 for EP1).  Warm advection
+  temperature advection in the northern sector (ρ ≈ −0.65 for EP1). Warm advection
   north of the cyclone (positive sector_north AdvT 850) drives APE release — a
   textbook warm-conveyor-belt signature.
 
-- **EP3 associations**: weaker overall (|ρ| ≤ 0.53 for canonical terms), consistent
+- **EP3 associations**: weaker overall (|ρ| ≤ 0.59 for canonical terms), consistent
   with EP3 being the weakest-energy, most heterogeneous group.  The temperature
   advection western sector and PV 200 western border dominate — a structural signature
   distinct from EP1/EP2.
@@ -914,8 +914,8 @@ A p-value < 0.05 is a *necessary*, not *sufficient*, condition for scientific re
    analyses (PREDEP, Spearman) are not affected: they use EP only as a stratification,
    not as a predictor.
 
-5. **PREDEP estimator validity**: Bootstrap estimator requires adequate n.  EP1 (332)
-   is marginal; EP2 (776) and EP3 (1,625) are adequate.
+5. **PREDEP estimator validity**: Bootstrap estimator requires adequate n. EP1 (421)
+   remains the smallest group; EP2 (650) and EP3 (1,662) provide larger samples.
 
 ---
 
@@ -925,13 +925,13 @@ A p-value < 0.05 is a *necessary*, not *sufficient*, condition for scientific re
 
 1. **Large-sample Shapiro–Wilk over-rejection**: 100% of variables took the
    non-parametric path because Shapiro–Wilk rejected normality for every group.
-   At n = 332–1,625 this is expected even for nearly Gaussian distributions.
+   At n = 421–1,662 this is expected even for nearly Gaussian distributions.
    The KW + Dunn path is conservative but may miss distributional subtleties.
 
 2. **Unbalanced groups** (EP1:EP2:EP3 ≈ 1:2:5): rank-based tests handle this
    gracefully; pairwise contrasts involving EP1 have wider confidence intervals.
 
-3. **Multiple testing exposure**: 154 global tests + ~462 pairwise tests.  BH-FDR and
+3. **Multiple testing exposure**: 154 global tests + 450 pairwise tests.  BH-FDR and
    Holm corrections are applied.  Variables with ε² < 0.01 that survive correction
    likely reflect genuine but practically negligible signal.
 
@@ -944,8 +944,8 @@ A p-value < 0.05 is a *necessary*, not *sufficient*, condition for scientific re
 
 ### 11.2 Methodological Risks
 
-- **PREDEP floor**: confirmed in the April 2026 run (see Section 5.3 for statistics).
-  Minimum PREDEP ≈ 0.19–0.31 across EPs; mean ≈ 0.56–0.61.  Interpretation of raw
+- **PREDEP floor**: confirmed in the September 2026 run (see Section 5.3 for statistics).
+  Minimum PREDEP ≈ 0.20–0.31 across EPs; mean ≈ 0.56–0.60.  Interpretation of raw
   PREDEP values without reference to the EP-specific baseline is unreliable.
   Bootstrap confidence intervals for PREDEP are not yet computed.
 - **Ward linkage bin choice for PREDEP**: may be sub-optimal for multimodal LEC
@@ -957,7 +957,14 @@ A p-value < 0.05 is a *necessary*, not *sufficient*, condition for scientific re
 
 ## 12. Next Steps
 
-### Completed (as of 2026-04-22)
+### Completed (as of 2026-09-28)
+
+- [x] **Corrected-population full rerun** — steps 3b–9 now use EP1 = 421,
+  EP2 = 650, and EP3 = 1,662, with all 2,733 cases complete.
+- [x] **Exact temporal alignment** — LEC terms and all five ERA5 fields use the
+  same 2–3 central intensification timestamps for every cyclone.
+- [x] **Expanded AFC climatology** — the 1991–2020 250-hPa input now covers
+  80°S–5°S and 90°W–60°E; AFC is finite throughout every inner analysis box.
 
 - [x] **Rerun step 4 with updated sector features** — completed 2026-04-22.  Steps 5–9
   also rerun.  All results now use cardinal sector features.
@@ -1043,7 +1050,7 @@ flowchart TD
     P --> Q([BH-FDR across all variables in block])
 ```
 
-> **Empirically**: all 154 variables in the April 2026 run took the
+> **Empirically**: all 154 variables in the September 2026 corrected run took the
 > **Kruskal–Wallis → Dunn (Holm)** path.  ANOVA branches never activated.
 
 ---
@@ -1130,7 +1137,7 @@ FOR each block IN [lec_terms, absolute_features, anomaly_features]:
                     rank all N jointly
                     z_ij = (R̄_i − R̄_j) / σ_ij  [tie-corrected]
                     p_raw = 2×norm.sf(|z_ij|)
-                    r_rb = 1 − 2U/(n_i×n_j)      # rank-biserial r
+                    r_rb = 2U/(n_i×n_j) − 1      # U is for group i; positive means i > j
                     p_adj = holm(p_raw)
 
     store diagnostic & pairwise rows

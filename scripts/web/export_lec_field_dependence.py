@@ -12,6 +12,7 @@ Run from project root:
 import csv
 import json
 import shutil
+from collections import Counter
 from pathlib import Path
 
 # ── Paths ────────────────────────────────────────────────────────
@@ -25,6 +26,7 @@ FIGURES_DST = ROOT / "web" / "public" / "figures" / "lec_field_dependence"
 
 # Canonical LEC terms (used in the clustering)
 CANONICAL_TERMS = {"Ca", "Ck", "Ge", "BAe", "BKe", "Ae", "Ke"}
+CURRENT_EP_COUNTS = {1: 421, 2: 650, 3: 1662}
 
 # ── Helpers ──────────────────────────────────────────────────────
 
@@ -81,10 +83,41 @@ def format_display(field: str, feature: str) -> str:
     return f"{fl} — {ftl}"
 
 
+def validate_current_inputs() -> None:
+    """Refuse publication when corrected population/provenance is incomplete."""
+    eligible = read_csv(RESULTS / "step1_eligible_cases.csv")
+    counts = Counter(int(row["ep"]) for row in eligible)
+    if dict(sorted(counts.items())) != CURRENT_EP_COUNTS:
+        raise RuntimeError(
+            f"refusing to publish unexpected EP population: {dict(counts)}; "
+            f"expected {CURRENT_EP_COUNTS}"
+        )
+
+    expected_ids = {int(row["track_id"]) for row in eligible}
+    manifest = read_csv(RESULTS / "step3b_derived_field_manifest.csv")
+    manifest_ids = {int(row["track_id"]) for row in manifest}
+    used_times = {safe_int(row.get("n_timesteps_used")) for row in manifest}
+    if manifest_ids != expected_ids or not used_times <= {2, 3}:
+        raise RuntimeError(
+            "refusing to publish incomplete or temporally inconsistent derived fields"
+        )
+
+    for filename in (
+        "step4_features_absolute.csv",
+        "step5_features_anomaly.csv",
+        "step6_integrated_absolute.csv",
+        "step6_integrated_anomaly.csv",
+    ):
+        rows = read_csv(RESULTS / filename)
+        ids = {int(row["track_id"]) for row in rows}
+        if len(rows) != len(expected_ids) or ids != expected_ids:
+            raise RuntimeError(f"refusing to publish incomplete {filename}")
+
+
 # ── Export functions ─────────────────────────────────────────────
 
 def export_predep() -> list[dict]:
-    """Merge PREDEP outputs once, preferring the final per-EP files."""
+    """Merge PREDEP outputs once, preferring the current consolidated files."""
     rows = []
 
     def _read_file(chunk_file: Path, field_type: str):
@@ -111,16 +144,19 @@ def export_predep() -> list[dict]:
                 "is_canonical": r["lec_term"] in CANONICAL_TERMS,
             })
 
-    # A completed pipeline has final ep1/ep2/ep3 files as well as the chunks
-    # from which they were assembled. Reading both silently duplicated every
-    # clustered row in the website JSON. Prefer the final files and fall back
-    # to chunks only while a final merge is unavailable.
+    # The corrected pipeline writes one consolidated file for EP1/EP2/EP3.
+    # Older runs wrote one final file per EP and retained their chunks. Always
+    # prefer the consolidated output so a stale legacy file can never override
+    # the current rerun or silently duplicate website rows.
     for ftype in ("absolute", "anomaly"):
-        final_files = [
+        consolidated = RESULTS / f"step7_predep_{ftype}.csv"
+        legacy_final_files = [
             RESULTS / f"step7_predep_{ftype}_ep{ep}.csv" for ep in (1, 2, 3)
         ]
-        if all(path.is_file() for path in final_files):
-            for ep_file in final_files:
+        if consolidated.is_file():
+            _read_file(consolidated, ftype)
+        elif all(path.is_file() for path in legacy_final_files):
+            for ep_file in legacy_final_files:
                 _read_file(ep_file, ftype)
         else:
             for chunk_file in sorted(RESULTS.glob(f"step7_predep_{ftype}_chunk*.csv")):
@@ -310,12 +346,20 @@ def main():
             "refusing to publish LEC-field dependence from a legacy clustering"
         )
 
+    validate_current_inputs()
+
     CONTENT_DST.mkdir(parents=True, exist_ok=True)
 
     print("Exporting LEC field dependence data for web...")
 
     # 1. PREDEP data — written to both content/ (build-time) and public/data/ (client-fetch)
     predep = export_predep()
+    expected_predep_rows = 2 * 4 * 26 * 5 * 13
+    if len(predep) != expected_predep_rows:
+        raise RuntimeError(
+            f"refusing to publish {len(predep)} PREDEP rows; "
+            f"expected {expected_predep_rows} for EP1/EP2/EP3/EPALL"
+        )
     with open(CONTENT_DST / "lfd_predep.json", "w") as f:
         json.dump(predep, f)
     PUBLIC_DATA_DST.mkdir(parents=True, exist_ok=True)

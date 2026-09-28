@@ -1,806 +1,563 @@
-"""
-Step 3b: Derive ERA5 Dynamic Fields from Raw Per-Cyclone Data
+"""Derive per-cyclone ERA5 diagnostics for LEC--field dependence.
 
-⟵ Prerequisite: step 3 (ERA5 field mapping) must be complete.
-⟶ Outputs required by: step 4 (absolute features) and step 5 (anomaly features).
+For each cyclone, the five diagnostics are computed at the exact 2--3 central
+intensification timestamps selected by the EP-structure pipeline and averaged
+on the storm-relative grid. Raw ERA5 files are never modified. AFC is required
+and uses the canonical 250-hPa monthly climatology.
 
-Motivation
-----------
-The raw per-cyclone ERA5 files (*_era5.nc) contain instantaneous multi-level
-fields (u, v, t, z, q, msl) downloaded by the ep_structure_analysis pipeline.
-Steps 4 and 5 of this pipeline need higher-level dynamic diagnostics —
-pv_850, pv_200, adv_T_850, ke_adv_250, afc_250 — that are NOT stored in the
-raw files and must be derived.
+Remote example::
 
-This step fills that gap: it reads the raw ERA5 file for each cyclone, extracts
-the storm-centred subdomain at the canonical central timestep, computes the
-derived fields, and saves them to a separate derived NetCDF, leaving the raw
-data completely untouched.
-
-Scientific methodology
-----------------------
-The diagnostic computations are **not reimplemented here**.  They are imported
-directly from scripts/ep_structure_analysis/step3_precompute_composites.py,
-which carries the validated, project-canonical implementations:
-
-    compute_pv_at_level              — baroclinic PV via MetPy (3-level centred FD)
-    temperature_advection_850        — -V·∇T via MetPy (spherical geometry)
-    kinetic_energy_advection_250     — -V·∇(½|V|²) via MetPy
-    ageostrophic_flux_convergence_250 — -∇·(v_ag'φ'), requires era5_climatology_250hPa.nc
-
-Same pressure-level triples are used:
-    PV@200 hPa  → 175 / 200 / 225 hPa
-    PV@850 hPa  → 825 / 850 / 875 hPa
-    T_adv@850   → single level: 850 hPa
-    KE_adv@250  → single level: 250 hPa
-    AFC@250     → 250 hPa + 30-year monthly climatology (optional)
-
-Temporal representation
------------------------
-Like the composite step in ep_structure_analysis, this step uses only the
-CENTRAL timestep of each cyclone's intensification phase.  If the central
-timestep position is not found in the track data, it falls back to the first
-available timestep with a position match.
-
-Storage strategy
-----------------
-    Raw ERA5 files    : {era5_dir}/{track_id}_era5.nc          (NEVER modified)
-    Derived files     : {derived_dir}/{track_id}_era5_derived.nc (created here)
-
-The derived directory is independent of the raw ERA5 directory.  It defaults to
-{era5_dir}/derived/ but can be overridden with --derived-dir.
-
---- REMOTE EXECUTION REQUIRED ---
-
-Usage
------
-    # All cyclones, parallel chunks (recommended on HPC)
-    python step3b_derive_era5_fields.py --era5-dir /path/to/era5/
-
-    # Custom derived output directory
-    python step3b_derive_era5_fields.py \
-        --era5-dir /path/to/era5/ --derived-dir /path/to/derived/
-
-    # Parallel chunks (HPC mode — same pattern as steps 4/5)
-    python step3b_derive_era5_fields.py \
-        --era5-dir /path/to/era5/ --chunk 0 --n-chunks 16
-
-Output
-------
-    {derived_dir}/{track_id}_era5_derived.nc   — one file per cyclone
-    results/lec_field_dependence/step3b_derived_field_manifest.csv  — summary
-
-Fields in each derived NetCDF
-------------------------------
-    pv_850      Potential Vorticity @ 850 hPa   [K m² kg⁻¹ s⁻¹]
-    pv_200      Potential Vorticity @ 200 hPa   [K m² kg⁻¹ s⁻¹]
-    adv_T_850   Temperature Advection @ 850 hPa [K s⁻¹]
-    ke_adv_250  KE Advection @ 250 hPa          [W kg⁻¹]
-    afc_250     Ageostrophic Flux Convergence @ 250 hPa [W kg⁻¹]
-                (only when era5_climatology_250hPa.nc is available)
-
-Coordinates: latitude and longitude in the storm-centred domain (-15° to +15°).
-
-Author: Danilo Couto de Souza
-Date: April 2026
+    python -m scripts.lec_field_dependence_analysis.step3b_derive_era5_fields \
+        --era5-dir /path/to/era5_ep_structure \
+        --derived-dir /path/to/derived_corrected_2to3 \
+        --tracks-file /path/to/tracks_with_energetics_corrected.csv \
+        --workers 16
 """
 
-import sys
 import argparse
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-
+import hashlib
 import logging
+import sys
+import warnings
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from concurrent.futures import ProcessPoolExecutor, as_completed
-
 from metpy.units import units
 
-from scripts.lec_field_dependence_analysis.utils_io import (
-    RESULTS_DIR,
-    LOG_DIR,
-)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-# ---------------------------------------------------------------------------
-# Reuse validated physics functions from ep_structure_analysis — no
-# reimplementation of any diagnostic formula.
-# ---------------------------------------------------------------------------
-from scripts.ep_structure_analysis.step3_precompute_composites import (
-    compute_pv_at_level,
-    temperature_advection_850,
-    kinetic_energy_advection_250,
-    ageostrophic_flux_convergence_250,
-    get_cyclone_positions_for_case,
-    extract_subdomain,
-    _get_case_start_time,
-    _load_clim,
-    CLIMATOLOGY_FILE,
-    DOMAIN_SIZE,
-)
+from scripts.ep_structure_analysis import step3_precompute_composites as composite_step
+from scripts.ep_structure_analysis.timestep_selection import selected_timestep_indices
+from scripts.lec_field_dependence_analysis.utils_io import LOG_DIR, RESULTS_DIR
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+
 INPUT_MANIFEST = RESULTS_DIR / "step3_era5_field_manifest.csv"
-OUTPUT_MANIFEST = RESULTS_DIR / "step3b_derived_field_manifest.csv"
-
 ERA5_FILE_PATTERN = "{track_id}_era5.nc"
 DERIVED_FILE_PATTERN = "{track_id}_era5_derived.nc"
-
-# Variables that MUST be present in a raw ERA5 file to proceed
 REQUIRED_RAW_VARS = ["u", "v", "t", "z"]
-
-# Every derived file must have ALL of these to be considered valid
-REQUIRED_DERIVED_VARS = ["pv_850", "pv_200", "adv_T_850", "ke_adv_250"]
-
-# afc_250 is computed only when the climatology file is available
-OPTIONAL_DERIVED_VARS = ["afc_250"]
-
-# Required pressure levels in raw ERA5 files
-REQUIRED_LEVELS_FOR_PV200 = [175, 200, 225]
-REQUIRED_LEVELS_FOR_PV850 = [825, 850, 875]
-REQUIRED_LEVELS_FOR_ADV = [850]
-REQUIRED_LEVELS_FOR_KE = [250]
-REQUIRED_LEVELS_ALL = sorted(set(
-    REQUIRED_LEVELS_FOR_PV200 +
-    REQUIRED_LEVELS_FOR_PV850 +
-    REQUIRED_LEVELS_FOR_ADV +
-    REQUIRED_LEVELS_FOR_KE
-))
-
+REQUIRED_DERIVED_VARS = [
+    "pv_850", "pv_200", "adv_T_850", "ke_adv_250", "afc_250",
+]
+REQUIRED_LEVELS = [175, 200, 225, 250, 825, 850, 875]
+TEMPORAL_METHOD = "central_2_or_3_mean"
 N_WORKERS_DEFAULT = 4
 
 
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-
 def setup_logging(chunk_id=None):
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    """Log to the repository and stderr."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     suffix = f"_chunk{chunk_id}" if chunk_id is not None else ""
-    log_file = LOG_DIR / f"lec_field_step3b{suffix}_{ts}.log"
+    log_file = LOG_DIR / f"lec_field_step3b{suffix}_{timestamp}.log"
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s  %(levelname)-8s  %(message)s",
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler(),
-        ],
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler()],
     )
-    logging.info(f"Log file: {log_file}")
+    logging.info("Log file: %s", log_file)
 
 
-# ---------------------------------------------------------------------------
-# Helper: extract plain numpy array from any MetPy / xarray result
-# ---------------------------------------------------------------------------
-
-def _to_array(da) -> np.ndarray:
-    """
-    Extract a plain numpy ndarray from a MetPy pint-backed DataArray,
-    a regular xarray DataArray, a pint Quantity, or any array-like.
-    """
-    # MetPy pint-backed DataArray (most common case after our diagnostics)
-    if hasattr(da, "metpy") and hasattr(da.metpy, "unit_array"):
+def _to_array(value):
+    """Return a plain ndarray from xarray/MetPy/pint output."""
+    if hasattr(value, "metpy") and hasattr(value.metpy, "unit_array"):
         try:
-            return np.asarray(da.metpy.unit_array.magnitude)
+            return np.asarray(value.metpy.unit_array.magnitude)
         except Exception:
             pass
-    # Regular xarray DataArray
-    if hasattr(da, "values"):
-        val = da.values
-        if hasattr(val, "magnitude"):
-            return np.asarray(val.magnitude)
-        return np.asarray(val)
-    # pint Quantity
-    if hasattr(da, "magnitude"):
-        return np.asarray(da.magnitude)
-    return np.asarray(da)
+    if hasattr(value, "values"):
+        raw = value.values
+        return np.asarray(raw.magnitude if hasattr(raw, "magnitude") else raw)
+    if hasattr(value, "magnitude"):
+        return np.asarray(value.magnitude)
+    return np.asarray(value)
 
 
-# ---------------------------------------------------------------------------
-# Validation of a derived NetCDF file
-# ---------------------------------------------------------------------------
-
-def _validate_derived_nc(fpath: Path) -> tuple:
-    """
-    Validate a derived NetCDF file.
-
-    Returns
-    -------
-    (bool, str)
-        (is_valid, status_message)
-    """
-    if not fpath.exists():
+def _validate_derived_nc(
+    path, expected_selected_times=None, expected_climatology_sha256=None
+):
+    """Reject incomplete files and all legacy one-timestep products."""
+    if not path.exists():
         return False, "file_missing"
     try:
-        ds = xr.open_dataset(fpath)
-    except Exception as e:
-        return False, f"open_error: {e}"
-
-    missing = [v for v in REQUIRED_DERIVED_VARS if v not in ds.data_vars]
-    if missing:
+        ds = xr.open_dataset(path)
+    except Exception as exc:
+        return False, f"open_error: {exc}"
+    try:
+        missing = [name for name in REQUIRED_DERIVED_VARS if name not in ds]
+        if missing:
+            return False, f"missing_required_vars: {missing}"
+        if ds.attrs.get("temporal_method") != TEMPORAL_METHOD:
+            return False, "obsolete_or_missing_temporal_method"
+        stored_hash = str(ds.attrs.get("afc_climatology_sha256", ""))
+        if len(stored_hash) != 64:
+            return False, "missing_afc_climatology_provenance"
+        if (
+            expected_climatology_sha256 is not None
+            and stored_hash != expected_climatology_sha256
+        ):
+            return False, "afc_climatology_hash_mismatch"
+        try:
+            n_used = int(ds.attrs.get("n_timesteps_used", 0))
+        except (TypeError, ValueError):
+            return False, "invalid_n_timesteps_used"
+        if n_used not in (2, 3):
+            return False, f"invalid_n_timesteps_used: {n_used}"
+        selected = [
+            item.strip()
+            for item in str(ds.attrs.get("selected_times", "")).split(",")
+            if item.strip()
+        ]
+        if len(selected) != n_used:
+            return False, f"selected_times_count_mismatch: {len(selected)} != {n_used}"
+        if expected_selected_times is not None:
+            expected = [
+                item.strip() for item in str(expected_selected_times).split(",")
+                if item.strip()
+            ]
+            if [pd.Timestamp(item) for item in selected] != [
+                pd.Timestamp(item) for item in expected
+            ]:
+                return False, "selected_times_do_not_match_manifest"
+        shapes = {tuple(ds[name].shape) for name in REQUIRED_DERIVED_VARS}
+        if len(shapes) != 1 or len(next(iter(shapes))) != 2:
+            return False, f"inconsistent_or_non_2d_shapes: {sorted(shapes)}"
+        all_nan = [
+            name for name in REQUIRED_DERIVED_VARS
+            if np.all(np.isnan(ds[name].values))
+        ]
+        if all_nan:
+            return False, f"all_nan: {all_nan}"
+        return True, "ok"
+    finally:
         ds.close()
-        return False, f"missing_required_vars: {missing}"
-
-    all_nan = [
-        v for v in REQUIRED_DERIVED_VARS
-        if np.all(np.isnan(ds[v].values))
-    ]
-    if all_nan:
-        ds.close()
-        return False, f"all_nan: {all_nan}"
-
-    ds.close()
-    return True, "ok"
 
 
-# ---------------------------------------------------------------------------
-# Single-cyclone derivation
-# ---------------------------------------------------------------------------
+def _worker_init(
+    era5_dir, cases_dir, tracks_file, output_dir, afc_climatology
+):
+    """Configure canonical shared inputs inside every worker process."""
+    composite_step.configure_runtime_paths(
+        era5_dir, cases_dir, tracks_file, output_dir
+    )
+    composite_step.CLIMATOLOGY_FILE = Path(afc_climatology).resolve()
 
-def _derive_fields_for_cyclone(track_id: str, era5_dir: Path, derived_dir: Path) -> dict:
-    """
-    Derive all dynamic fields for one cyclone and save the result.
 
-    Returns
-    -------
-    dict
-        {
-            'track_id': str,
-            'status': 'ok' | <failure_reason>,
-            'output_path': str,
-            'has_afc': bool,
-        }
-    """
-    fname = ERA5_FILE_PATTERN.format(track_id=track_id)
-    fpath = era5_dir / fname
-    out_fname = DERIVED_FILE_PATTERN.format(track_id=track_id)
-    out_path = derived_dir / out_fname
+def _sha256(path):
+    """Compute a stable provenance digest without loading the file in memory."""
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
-    if not fpath.exists():
-        return {
-            "track_id": track_id,
-            "status": "file_not_found",
-            "output_path": "",
-            "has_afc": False,
-        }
+
+def _failure(track_id, status):
+    return {
+        "track_id": str(track_id),
+        "status": status,
+        "output_path": "",
+        "n_timesteps_used": 0,
+    }
+
+
+def _compute_fields(ds_centered, levels, pressure_coord, case_month, climatology):
+    """Compute the five canonical diagnostics for one storm-centred time."""
+    def level_index(target):
+        return int(np.argmin(np.abs(levels - target)))
+
+    def select(field, target):
+        return field.isel({pressure_coord: level_index(target)})
+
+    u = ds_centered["u"]
+    v = ds_centered["v"]
+    temperature = ds_centered["t"]
+    geopotential = ds_centered["z"]
+    u250 = select(u, 250) * units("m/s")
+    v250 = select(v, 250) * units("m/s")
+    z250 = select(geopotential, 250) * units("m**2/s**2")
+    u850 = select(u, 850) * units("m/s")
+    v850 = select(v, 850) * units("m/s")
+    t850 = select(temperature, 850) * units.kelvin
+
+    fields = {
+        "pv_850": composite_step.compute_pv_at_level(
+            select(u, 825) * units("m/s"), u850,
+            select(u, 875) * units("m/s"),
+            select(v, 825) * units("m/s"), v850,
+            select(v, 875) * units("m/s"),
+            select(temperature, 825) * units.kelvin, t850,
+            select(temperature, 875) * units.kelvin,
+            np.array([
+                levels[level_index(825)], levels[level_index(850)],
+                levels[level_index(875)],
+            ]) * 100.0,
+        ),
+        "pv_200": composite_step.compute_pv_at_level(
+            select(u, 175) * units("m/s"),
+            select(u, 200) * units("m/s"),
+            select(u, 225) * units("m/s"),
+            select(v, 175) * units("m/s"),
+            select(v, 200) * units("m/s"),
+            select(v, 225) * units("m/s"),
+            select(temperature, 175) * units.kelvin,
+            select(temperature, 200) * units.kelvin,
+            select(temperature, 225) * units.kelvin,
+            np.array([
+                levels[level_index(175)], levels[level_index(200)],
+                levels[level_index(225)],
+            ]) * 100.0,
+        ),
+        "adv_T_850": composite_step.temperature_advection_850(u850, v850, t850),
+        "ke_adv_250": composite_step.kinetic_energy_advection_250(u250, v250),
+    }
+    clim_subdomain = climatology.sel(month=case_month).interp(
+        latitude=u250.latitude.values,
+        longitude=u250.longitude.values,
+        method="linear",
+    )
+    fields["afc_250"] = composite_step.ageostrophic_flux_convergence_250(
+        u250,
+        v250,
+        z250,
+        clim_subdomain["u_clim"],
+        clim_subdomain["v_clim"],
+        clim_subdomain["z_clim"],
+    )
+    return {name: _to_array(value).squeeze() for name, value in fields.items()}
+
+
+def _derive_fields_for_cyclone(
+    track_id, selected_times, era5_dir, derived_dir, climatology_sha256
+):
+    """Compute and atomically save the 2--3-time mean for one cyclone."""
+    track_id = str(track_id)
+    input_path = era5_dir / ERA5_FILE_PATTERN.format(track_id=track_id)
+    output_path = derived_dir / DERIVED_FILE_PATTERN.format(track_id=track_id)
+    metadata_path = era5_dir / f"{track_id}_metadata.csv"
+    if not input_path.exists():
+        return _failure(track_id, "file_not_found")
+    if not metadata_path.exists():
+        return _failure(track_id, "metadata_file_not_found")
+    try:
+        ds = xr.open_dataset(input_path)
+    except Exception as exc:
+        return _failure(track_id, f"open_error: {exc}")
 
     try:
-        ds = xr.open_dataset(fpath)
-    except Exception as e:
-        return {
-            "track_id": track_id,
-            "status": f"open_error: {e}",
-            "output_path": "",
-            "has_afc": False,
-        }
+        missing_raw = [name for name in REQUIRED_RAW_VARS if name not in ds]
+        if missing_raw:
+            return _failure(track_id, f"missing_raw_vars: {missing_raw}")
+        pressure_coord = "pressure_level" if "pressure_level" in ds.coords else "level"
+        levels = ds[pressure_coord].values
+        for required_level in REQUIRED_LEVELS:
+            nearest = levels[np.argmin(np.abs(levels - required_level))]
+            if abs(float(nearest) - required_level) > 10.0:
+                return _failure(
+                    track_id,
+                    f"missing_pressure_level: {required_level} (nearest={nearest})",
+                )
 
-    # ── Validate required raw variables ──────────────────────────────────
-    missing_raw = [v for v in REQUIRED_RAW_VARS if v not in ds.data_vars]
-    if missing_raw:
-        ds.close()
-        return {
-            "track_id": track_id,
-            "status": f"missing_raw_vars: {missing_raw}",
-            "output_path": "",
-            "has_afc": False,
-        }
-
-    try:
-        # ── Pressure level coordinate ─────────────────────────────────────
-        pc = "pressure_level" if "pressure_level" in ds.coords else "level"
-        levels = ds[pc].values
-
-        # Validate critical pressure levels are present
-        for req_lev in REQUIRED_LEVELS_ALL:
-            if np.min(np.abs(levels - req_lev)) > 10.0:
-                ds.close()
-                return {
-                    "track_id": track_id,
-                    "status": f"missing_pressure_level: {req_lev} hPa not found (nearest: {levels[np.argmin(np.abs(levels - req_lev))]})",
-                    "output_path": "",
-                    "has_afc": False,
-                }
-
-        # ── Time coordinate ───────────────────────────────────────────────
-        tc = "valid_time" if "valid_time" in ds.dims else "time"
-        era5_times = ds[tc].values
-        n_times = len(era5_times)
-
-        if n_times == 0:
-            ds.close()
-            return {
-                "track_id": track_id,
-                "status": "no_timesteps",
-                "output_path": "",
-                "has_afc": False,
-            }
-
-        # ── Get cyclone position for the central timestep ─────────────────
-        positions = get_cyclone_positions_for_case(int(track_id), era5_times)
-        central_idx = positions.get("central_idx", n_times // 2)
-        pos = positions.get(central_idx)
-
-        if pos is None:
-            # Fall back to the first timestep that has a position match
-            for ti in range(n_times):
-                if positions.get(ti) is not None:
-                    central_idx = ti
-                    pos = positions.get(ti)
-                    break
-            if pos is None:
-                ds.close()
-                return {
-                    "track_id": track_id,
-                    "status": "no_valid_position",
-                    "output_path": "",
-                    "has_afc": False,
-                }
-
-        center_lat, center_lon = pos
-
-        # ── Extract storm-centred subdomain ───────────────────────────────
-        ds_t = ds.isel({tc: central_idx})
-        try:
-            ds_c = extract_subdomain(ds_t, center_lat, center_lon, DOMAIN_SIZE)
-        except Exception as e:
-            ds.close()
-            return {
-                "track_id": track_id,
-                "status": f"subdomain_error: {e}",
-                "output_path": "",
-                "has_afc": False,
-            }
-
-        # ── Determine case month for AFC climatology ──────────────────────
-        try:
-            meta_path = era5_dir / f"{track_id}_metadata.csv"
-            if meta_path.exists():
-                meta = pd.read_csv(meta_path).iloc[0]
-                case_month = _get_case_start_time(meta).month
-            else:
-                case_month = pd.Timestamp(era5_times[central_idx]).month
-        except Exception:
-            case_month = pd.Timestamp(era5_times[central_idx]).month
-
-        ds.close()
-
-        # ── Level helpers on the centred subdomain ────────────────────────
-        def _idx(target_hPa):
-            return int(np.argmin(np.abs(levels - target_hPa)))
-
-        def _sel(da, target_hPa):
-            return da.isel({pc: _idx(target_hPa)})
-
-        u_da = ds_c["u"]
-        v_da = ds_c["v"]
-        T_da = ds_c["t"]
-        z_da = ds_c["z"]
-
-        # Log subdomain info for the first cyclone to aid diagnostics
-        if not hasattr(_derive_fields_for_cyclone, "_logged_once"):
-            _derive_fields_for_cyclone._logged_once = True
-            logging.info(
-                f"   Subdomain info for {track_id}: dims={dict(ds_c.sizes)} "
-                f"lat=[{float(ds_c.latitude.min()):.2f},{float(ds_c.latitude.max()):.2f}] "
-                f"lon=[{float(ds_c.longitude.min()):.2f},{float(ds_c.longitude.max()):.2f}] "
-                f"levels={levels.tolist()} "
-                f"T_850_range=[{float((_sel(T_da,850)).min()):.1f},{float((_sel(T_da,850)).max()):.1f}]K "
-                f"u_850_range=[{float((_sel(u_da,850)).min()):.1f},{float((_sel(u_da,850)).max()):.1f}]m/s "
-                f"has_nan_u850={bool(np.any(np.isnan(_sel(u_da,850).values)))} "
-                f"has_nan_T850={bool(np.any(np.isnan(_sel(T_da,850).values)))}"
+        time_coord = "valid_time" if "valid_time" in ds.dims else "time"
+        era5_times = ds[time_coord].values
+        requested_times = [
+            value.strip() for value in str(selected_times).split(",") if value.strip()
+        ]
+        if len(requested_times) not in (2, 3):
+            return _failure(
+                track_id, f"invalid_selected_times_count: {len(requested_times)}"
             )
+        try:
+            selected_indices = selected_timestep_indices(era5_times, requested_times)
+        except ValueError as exc:
+            return _failure(track_id, f"selected_time_mapping_error: {exc}")
 
-        # ── PV @ 850 hPa ──────────────────────────────────────────────────
-        pv_850_arr = compute_pv_at_level(
-            _sel(u_da, 825) * units("m/s"),
-            _sel(u_da, 850) * units("m/s"),
-            _sel(u_da, 875) * units("m/s"),
-            _sel(v_da, 825) * units("m/s"),
-            _sel(v_da, 850) * units("m/s"),
-            _sel(v_da, 875) * units("m/s"),
-            _sel(T_da, 825) * units.kelvin,
-            _sel(T_da, 850) * units.kelvin,
-            _sel(T_da, 875) * units.kelvin,
-            np.array([
-                levels[_idx(825)],
-                levels[_idx(850)],
-                levels[_idx(875)],
-            ]) * 100.0,
+        metadata = pd.read_csv(metadata_path).iloc[0]
+        case_month = composite_step._get_case_start_time(metadata).month
+        positions = composite_step.get_cyclone_positions_for_case(
+            int(track_id), era5_times
         )
-
-        # ── PV @ 200 hPa ──────────────────────────────────────────────────
-        pv_200_arr = compute_pv_at_level(
-            _sel(u_da, 175) * units("m/s"),
-            _sel(u_da, 200) * units("m/s"),
-            _sel(u_da, 225) * units("m/s"),
-            _sel(v_da, 175) * units("m/s"),
-            _sel(v_da, 200) * units("m/s"),
-            _sel(v_da, 225) * units("m/s"),
-            _sel(T_da, 175) * units.kelvin,
-            _sel(T_da, 200) * units.kelvin,
-            _sel(T_da, 225) * units.kelvin,
-            np.array([
-                levels[_idx(175)],
-                levels[_idx(200)],
-                levels[_idx(225)],
-            ]) * 100.0,
-        )
-
-        # ── Temperature advection @ 850 hPa ──────────────────────────────
-        u_850 = _sel(u_da, 850) * units("m/s")
-        v_850 = _sel(v_da, 850) * units("m/s")
-        T_850 = _sel(T_da, 850) * units.kelvin
-        adv_T_850_da = temperature_advection_850(u_850, v_850, T_850)
-        adv_T_850_2d = _to_array(adv_T_850_da).squeeze()
-
-        # ── KE advection @ 250 hPa ────────────────────────────────────────
-        u_250 = _sel(u_da, 250) * units("m/s")
-        v_250 = _sel(v_da, 250) * units("m/s")
-        ke_adv_250_da = kinetic_energy_advection_250(u_250, v_250)
-        ke_adv_250_2d = _to_array(ke_adv_250_da).squeeze()
-
-        # ── AFC @ 250 hPa (requires climatology) ──────────────────────────
-        afc_2d = None
-        has_afc = False
-        z_250 = _sel(z_da, 250) * units("m**2/s**2")
-
-        ds_clim = _load_clim(
-            CLIMATOLOGY_FILE,
+        climatology = composite_step._load_clim(
+            composite_step.CLIMATOLOGY_FILE,
             "250 hPa (AFC)",
-            "AFC derivation skipped — climatology file absent.",
+            "AFC is required for LEC--field dependence.",
         )
-        if ds_clim is not None:
-            try:
-                case_lats = u_250.latitude.values
-                case_lons = u_250.longitude.values
-                clim_sub = ds_clim.sel(month=case_month).interp(
-                    latitude=case_lats,
-                    longitude=case_lons,
-                    method="linear",
+        if climatology is None:
+            return _failure(track_id, "required_afc_climatology_missing")
+
+        values_by_field = {name: [] for name in REQUIRED_DERIVED_VARS}
+        centers = []
+        expected_shape = None
+        for time_index in selected_indices:
+            position = positions.get(time_index)
+            if position is None:
+                return _failure(
+                    track_id, f"no_position_for_selected_timestep: {time_index}"
                 )
-                afc_da = ageostrophic_flux_convergence_250(
-                    u_250, v_250, z_250,
-                    clim_sub["u_clim"],
-                    clim_sub["v_clim"],
-                    clim_sub["z_clim"],
-                )
-                afc_2d = _to_array(afc_da).squeeze()
-                has_afc = True
-            except Exception as e_afc:
-                logging.warning(
-                    f"   {track_id}: AFC computation failed ({type(e_afc).__name__}: {e_afc})"
-                )
-
-        # ── Build output dataset ──────────────────────────────────────────
-        lat_out = ds_c["latitude"].values
-        lon_out = ds_c["longitude"].values
-        coords = {"latitude": lat_out, "longitude": lon_out}
-        dims = ["latitude", "longitude"]
-
-        pv_850_2d = np.asarray(pv_850_arr).squeeze()
-        pv_200_2d = np.asarray(pv_200_arr).squeeze()
-
-        data_vars = {
-            "pv_850": xr.DataArray(
-                pv_850_2d, coords=coords, dims=dims,
-                attrs={
-                    "long_name": "Potential Vorticity at 850 hPa",
-                    "units": "K m2 kg-1 s-1",
-                    "method": "MetPy baroclinic PV, centred FD over 825/850/875 hPa",
-                },
-            ),
-            "pv_200": xr.DataArray(
-                pv_200_2d, coords=coords, dims=dims,
-                attrs={
-                    "long_name": "Potential Vorticity at 200 hPa",
-                    "units": "K m2 kg-1 s-1",
-                    "method": "MetPy baroclinic PV, centred FD over 175/200/225 hPa",
-                },
-            ),
-            "adv_T_850": xr.DataArray(
-                adv_T_850_2d, coords=coords, dims=dims,
-                attrs={
-                    "long_name": "Temperature Advection at 850 hPa (-V.gradT)",
-                    "units": "K s-1",
-                    "sign_convention": "positive = warm advection",
-                },
-            ),
-            "ke_adv_250": xr.DataArray(
-                ke_adv_250_2d, coords=coords, dims=dims,
-                attrs={
-                    "long_name": "Kinetic Energy Advection at 250 hPa (-V.grad(KE))",
-                    "units": "W kg-1",
-                },
-            ),
-        }
-
-        if afc_2d is not None:
-            data_vars["afc_250"] = xr.DataArray(
-                afc_2d, coords=coords, dims=dims,
-                attrs={
-                    "long_name": "Ageostrophic Flux Convergence at 250 hPa",
-                    "units": "W kg-1",
-                    "method": "Orlanski & Katzfey (1991); reference: 30-yr monthly climatology",
-                },
+            center_lat, center_lon = position
+            available, message = composite_step.check_subdomain_available(
+                ds, center_lat, center_lon, composite_step.DOMAIN_SIZE
             )
+            if not available:
+                return _failure(
+                    track_id, f"subdomain_unavailable_at_{time_index}: {message}"
+                )
+            centered = composite_step.extract_subdomain(
+                ds.isel({time_coord: time_index}),
+                center_lat,
+                center_lon,
+                composite_step.DOMAIN_SIZE,
+            )
+            diagnostics = _compute_fields(
+                centered, levels, pressure_coord, case_month, climatology
+            )
+            for field_name, array in diagnostics.items():
+                if array.ndim != 2:
+                    raise ValueError(
+                        f"{field_name} at time index {time_index} is not 2-D: {array.shape}"
+                    )
+                if expected_shape is None:
+                    expected_shape = array.shape
+                elif array.shape != expected_shape:
+                    raise ValueError(
+                        f"inconsistent field shapes: {array.shape} != {expected_shape}"
+                    )
+                values_by_field[field_name].append(array)
+            centers.append((center_lat, center_lon))
 
-        ds_out = xr.Dataset(
-            data_vars,
+        # A few outer grid cells can be NaN at every selected time after
+        # spherical derivatives.  They are expected and retained as NaN.
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore", message="Mean of empty slice")
+            mean_fields = {
+                name: np.nanmean(np.stack(values, axis=0), axis=0)
+                for name, values in values_by_field.items()
+            }
+        ny, nx = expected_shape
+        coords = {
+            "y": ("y", np.arange(ny, dtype=np.int16), {
+                "long_name": "storm-relative south-to-north grid index"
+            }),
+            "x": ("x", np.arange(nx, dtype=np.int16), {
+                "long_name": "storm-relative west-to-east grid index"
+            }),
+        }
+        attributes = {
+            "pv_850": {"long_name": "Potential Vorticity at 850 hPa", "units": "K m2 kg-1 s-1"},
+            "pv_200": {"long_name": "Potential Vorticity at 200 hPa", "units": "K m2 kg-1 s-1"},
+            "adv_T_850": {"long_name": "Temperature Advection at 850 hPa (-V.gradT)", "units": "K s-1"},
+            "ke_adv_250": {"long_name": "Kinetic Energy Advection at 250 hPa (-V.grad(KE))", "units": "W kg-1"},
+            "afc_250": {"long_name": "Ageostrophic Flux Convergence at 250 hPa", "units": "W kg-1"},
+        }
+        output = xr.Dataset(
+            {
+                name: xr.DataArray(
+                    mean_fields[name], coords=coords, dims=("y", "x"),
+                    attrs=attributes[name],
+                )
+                for name in REQUIRED_DERIVED_VARS
+            },
             attrs={
-                "track_id": str(track_id),
-                "center_lat": float(center_lat),
-                "center_lon": float(center_lon),
-                "central_timestep_idx": int(central_idx),
+                "track_id": track_id,
+                "temporal_method": TEMPORAL_METHOD,
+                "n_timesteps_used": len(selected_indices),
+                "selected_times": ",".join(requested_times),
+                "selected_timestep_indices": ",".join(map(str, selected_indices)),
+                "center_lats": ",".join(f"{lat:.6f}" for lat, _ in centers),
+                "center_lons": ",".join(f"{lon:.6f}" for _, lon in centers),
                 "case_month": int(case_month),
-                "has_afc": str(has_afc),
+                "afc_climatology_path": str(composite_step.CLIMATOLOGY_FILE),
+                "afc_climatology_sha256": climatology_sha256,
+                "domain_size_degrees": float(composite_step.DOMAIN_SIZE),
                 "description": (
-                    "Derived dynamic fields for LEC-field dependence analysis. "
-                    "Computed from raw ERA5 per-cyclone data using the diagnostic "
-                    "functions from scripts/ep_structure_analysis/step3_precompute_composites.py."
+                    "Storm-relative diagnostic mean over the exact 2-3 central "
+                    "intensification times selected by step 1."
                 ),
                 "created_by": "step3b_derive_era5_fields.py",
                 "created_at": datetime.now().isoformat(),
             },
         )
+        composite_step.write_netcdf_atomic(output, output_path)
+    except Exception as exc:
+        return _failure(track_id, f"error: {type(exc).__name__}: {exc}")
+    finally:
+        ds.close()
 
-        ds_out.to_netcdf(out_path)
-
-        # ── Post-save validation ──────────────────────────────────────────
-        valid, valid_msg = _validate_derived_nc(out_path)
-        if not valid:
-            # Delete the invalid file so it doesn't mislead subsequent runs.
-            # Without this, a NaN-filled file left on disk would look valid
-            # to step 4 (file exists, variables present) and silently produce
-            # all-NaN features downstream.
-            try:
-                out_path.unlink()
-                logging.warning(
-                    f"   {track_id}: Deleted invalid derived file "
-                    f"({valid_msg}) — will recompute on next run."
-                )
-            except Exception as del_err:
-                logging.warning(
-                    f"   {track_id}: Could not delete invalid file "
-                    f"({del_err}); it will be retried on next run."
-                )
-            return {
-                "track_id": track_id,
-                "status": f"validation_failed: {valid_msg}",
-                "output_path": "",
-                "has_afc": False,
-            }
-
-        return {
-            "track_id": track_id,
-            "status": "ok",
-            "output_path": str(out_path),
-            "has_afc": has_afc,
-        }
-
-    except Exception as e:
-        return {
-            "track_id": track_id,
-            "status": f"error: {type(e).__name__}: {e}",
-            "output_path": "",
-            "has_afc": False,
-        }
+    valid, validation_message = _validate_derived_nc(
+        output_path, selected_times, climatology_sha256
+    )
+    if not valid:
+        output_path.unlink(missing_ok=True)
+        return _failure(track_id, f"validation_failed: {validation_message}")
+    return {
+        "track_id": track_id,
+        "status": "ok",
+        "output_path": str(output_path),
+        "n_timesteps_used": len(selected_indices),
+    }
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+def _manifest_rows(manifest):
+    """Yield stable strings for IDs and authoritative selected times."""
+    for row in manifest.itertuples(index=False):
+        yield str(row.track_id), str(row.selected_times)
+
 
 def main():
     parser = argparse.ArgumentParser(
-        description=(
-            "Derive ERA5 dynamic fields from raw per-cyclone data "
-            "(step 3b — required before steps 4 and 5)."
-        )
+        description="Derive exact 2--3-time ERA5 means for LEC--field dependence."
+    )
+    parser.add_argument("--era5-dir", type=Path, required=True)
+    parser.add_argument("--derived-dir", type=Path, default=None)
+    parser.add_argument(
+        "--tracks-file", type=Path, required=True,
+        help="Corrected hourly cyclone track table used for storm positions.",
     )
     parser.add_argument(
-        "--era5-dir", type=Path, required=True,
-        help="Directory containing raw per-cyclone ERA5 NetCDFs (*_era5.nc).",
+        "--afc-climatology", type=Path, required=True,
+        help="Expanded 250-hPa monthly climatology used to compute AFC.",
     )
-    parser.add_argument(
-        "--derived-dir", type=Path, default=None,
-        help=(
-            "Output directory for derived files (*_era5_derived.nc). "
-            "Default: {era5-dir}/derived/"
-        ),
-    )
-    parser.add_argument("--chunk", type=int, default=None, help="Chunk index (0-based).")
-    parser.add_argument("--n-chunks", type=int, default=None, help="Total number of chunks.")
-    parser.add_argument(
-        "--workers", type=int, default=N_WORKERS_DEFAULT,
-        help=f"Parallel workers (default: {N_WORKERS_DEFAULT}).",
-    )
+    parser.add_argument("--chunk", type=int, default=None)
+    parser.add_argument("--n-chunks", type=int, default=None)
+    parser.add_argument("--workers", type=int, default=N_WORKERS_DEFAULT)
     args = parser.parse_args()
 
+    if (args.chunk is None) != (args.n_chunks is None):
+        parser.error("--chunk and --n-chunks must be provided together")
+    if args.n_chunks is not None and not 0 <= args.chunk < args.n_chunks:
+        parser.error("--chunk must satisfy 0 <= chunk < n-chunks")
+    if args.workers < 1:
+        parser.error("--workers must be >= 1")
+
     era5_dir = args.era5_dir.resolve()
+    tracks_file = args.tracks_file.resolve()
+    afc_climatology = args.afc_climatology.resolve()
     derived_dir = (args.derived_dir or era5_dir / "derived").resolve()
     derived_dir.mkdir(parents=True, exist_ok=True)
-
-    chunk_suffix = f"_chunk{args.chunk}" if args.chunk is not None else ""
     setup_logging(args.chunk)
+    composite_step.configure_runtime_paths(
+        era5_dir, RESULTS_DIR, tracks_file, derived_dir
+    )
+    composite_step.CLIMATOLOGY_FILE = afc_climatology
 
     logging.info("=" * 70)
-    logging.info("STEP 3b: DERIVE ERA5 DYNAMIC FIELDS — LEC–FIELD DEPENDENCE")
+    logging.info("STEP 3b: DERIVE ERA5 DYNAMIC FIELDS -- LEC--FIELD DEPENDENCE")
     logging.info("=" * 70)
-    logging.info(f"ERA5 raw dir  : {era5_dir}")
-    logging.info(f"Derived dir   : {derived_dir}")
-    logging.info(f"Fields        : {REQUIRED_DERIVED_VARS + OPTIONAL_DERIVED_VARS}")
-    logging.info(f"Source funcs  : scripts/ep_structure_analysis/step3_precompute_composites.py")
+    logging.info("ERA5 raw dir : %s", era5_dir)
+    logging.info("Derived dir  : %s", derived_dir)
+    logging.info("Tracks file  : %s", tracks_file)
+    logging.info("AFC climate  : %s", afc_climatology)
+    logging.info("Temporal rule: %s", TEMPORAL_METHOD)
+    logging.info("Required fields: %s", REQUIRED_DERIVED_VARS)
 
-    # ── AFC climatology check ─────────────────────────────────────────────
-    if not CLIMATOLOGY_FILE.exists():
-        logging.warning(
-            f"\n⚠  CLIMATOLOGY NOT FOUND: {CLIMATOLOGY_FILE}\n"
-            f"   afc_250 will NOT be computed for any cyclone.\n"
-            f"   Downstream steps 4/5 will have NaN for all afc_250 features.\n"
-            f"   To compute afc_250, download the climatology:\n"
-            f"   python scripts/ep_structure_analysis/step2d_download_era5_monthly_means.py "
-            f"--groups 250hPa"
-        )
-    else:
-        logging.info(f"Climatology   : {CLIMATOLOGY_FILE} ✓ (afc_250 will be computed)")
-
-    # ── Load manifest ─────────────────────────────────────────────────────
-    if not INPUT_MANIFEST.exists():
+    if not era5_dir.is_dir():
+        logging.error("ERA5 directory not found: %s", era5_dir)
+        sys.exit(1)
+    if not tracks_file.is_file():
+        logging.error("Corrected tracks file not found: %s", tracks_file)
+        sys.exit(1)
+    if not afc_climatology.is_file():
         logging.error(
-            f"Manifest not found: {INPUT_MANIFEST}\n"
-            f"Run step 3 (step3_map_era5_fields.py) before step 3b."
+            "Required AFC climatology not found: %s", afc_climatology
         )
         sys.exit(1)
+    if not INPUT_MANIFEST.is_file():
+        logging.error("Step 3 manifest not found: %s", INPUT_MANIFEST)
+        sys.exit(1)
 
-    manifest = pd.read_csv(INPUT_MANIFEST)
-    if "era5_available" in manifest.columns:
-        n_avail = manifest["era5_available"].sum()
-        if n_avail == 0:
-            logging.warning(
-                f"Manifest has {len(manifest)} cases but ALL are marked era5_available=False "
-                f"(step 3 ran in dry-run mode). Proceeding — files will be checked individually."
-            )
-        else:
-            manifest = manifest[manifest["era5_available"]]
+    climatology_sha256 = _sha256(afc_climatology)
+    logging.info("AFC SHA256   : %s", climatology_sha256)
 
-    track_ids = manifest["track_id"].astype(str).tolist()
-    logging.info(f"\nTotal cases in manifest: {len(track_ids)}")
+    manifest = pd.read_csv(INPUT_MANIFEST, dtype={"track_id": str})
+    required_columns = {"track_id", "selected_times"}
+    missing_columns = required_columns - set(manifest.columns)
+    if missing_columns:
+        logging.error("Manifest missing required columns: %s", sorted(missing_columns))
+        sys.exit(1)
+    if "era5_available" in manifest:
+        available = manifest["era5_available"].astype(str).str.lower().isin({"true", "1"})
+        if available.any():
+            manifest = manifest[available].copy()
+    if args.n_chunks is not None:
+        manifest = np.array_split(manifest, args.n_chunks)[args.chunk]
+        logging.info("Chunk %s/%s: %s cases", args.chunk, args.n_chunks, len(manifest))
 
-    # ── Chunking ──────────────────────────────────────────────────────────
-    if args.chunk is not None and args.n_chunks is not None:
-        chunks = np.array_split(track_ids, args.n_chunks)
-        track_ids = list(chunks[args.chunk])
-        logging.info(f"Chunk {args.chunk}/{args.n_chunks}: {len(track_ids)} cases")
-
-    # ── Resume: skip already-derived and validated files ──────────────────
+    cases = list(_manifest_rows(manifest))
     pending = []
-    skipped_done = 0
-    for tid in track_ids:
-        out_path = derived_dir / DERIVED_FILE_PATTERN.format(track_id=tid)
-        valid, _msg = _validate_derived_nc(out_path)
-        if valid:
-            skipped_done += 1
-        else:
-            pending.append(tid)
-
-    if skipped_done:
-        logging.info(f"Already derived and valid: {skipped_done} (skipped)")
-    logging.info(f"To process: {len(pending)}")
-
-    if not pending:
-        logging.info("Nothing to process — all files are already derived and valid.")
-        # Still write the manifest so the monitor can confirm this chunk is done.
-        all_done_rows = [
-            {
-                "track_id": tid,
-                "status": "already_done",
-                "output_path": str(derived_dir / DERIVED_FILE_PATTERN.format(track_id=tid)),
-                "has_afc": "unknown",
-            }
-            for tid in track_ids
-        ]
-        pd.DataFrame(all_done_rows).to_csv(
-            RESULTS_DIR / f"step3b_derived_field_manifest{chunk_suffix}.csv",
-            index=False,
+    completed = []
+    for track_id, selected_times in cases:
+        path = derived_dir / DERIVED_FILE_PATTERN.format(track_id=track_id)
+        valid, _ = _validate_derived_nc(
+            path, selected_times, climatology_sha256
         )
-        logging.info(f"  Manifest: {RESULTS_DIR}/step3b_derived_field_manifest{chunk_suffix}.csv")
-        logging.info("\n✓ Step 3b complete.")
-        return
+        (completed if valid else pending).append((track_id, selected_times))
+    logging.info("Valid existing outputs: %s", len(completed))
+    logging.info("Cases to process: %s", len(pending))
 
-    # ── Derive fields ─────────────────────────────────────────────────────
-    logging.info(f"\nDeriving fields (workers={args.workers})...")
     results = []
-    if args.workers > 1:
-        with ProcessPoolExecutor(max_workers=args.workers) as executor:
+    if args.workers > 1 and pending:
+        with ProcessPoolExecutor(
+            max_workers=args.workers,
+            initializer=_worker_init,
+            initargs=(
+                era5_dir, RESULTS_DIR, tracks_file, derived_dir, afc_climatology,
+            ),
+        ) as executor:
             futures = {
                 executor.submit(
-                    _derive_fields_for_cyclone, tid, era5_dir, derived_dir
-                ): tid
-                for tid in pending
+                    _derive_fields_for_cyclone, track_id, selected_times,
+                    era5_dir, derived_dir, climatology_sha256,
+                ): track_id
+                for track_id, selected_times in pending
             }
-            for i, future in enumerate(as_completed(futures), 1):
-                r = future.result()
-                results.append(r)
-                if i % 50 == 0:
-                    n_ok_so_far = sum(1 for x in results if x["status"] == "ok")
-                    logging.info(
-                        f"   Progress: {i}/{len(pending)} — {n_ok_so_far} ok so far"
-                    )
+            for index, future in enumerate(as_completed(futures), 1):
+                results.append(future.result())
+                if index % 50 == 0:
+                    ok_count = sum(row["status"] == "ok" for row in results)
+                    logging.info("Progress %s/%s (%s ok)", index, len(pending), ok_count)
     else:
-        for i, tid in enumerate(pending, 1):
-            r = _derive_fields_for_cyclone(tid, era5_dir, derived_dir)
-            results.append(r)
-            if i % 50 == 0:
-                n_ok_so_far = sum(1 for x in results if x["status"] == "ok")
-                logging.info(
-                    f"   Progress: {i}/{len(pending)} — {n_ok_so_far} ok so far"
+        for index, (track_id, selected_times) in enumerate(pending, 1):
+            results.append(
+                _derive_fields_for_cyclone(
+                    track_id, selected_times, era5_dir, derived_dir,
+                    climatology_sha256,
                 )
+            )
+            if index % 50 == 0:
+                ok_count = sum(row["status"] == "ok" for row in results)
+                logging.info("Progress %s/%s (%s ok)", index, len(pending), ok_count)
 
-    # ── Summary ───────────────────────────────────────────────────────────
-    result_df = pd.DataFrame(results)
-    n_ok = (result_df["status"] == "ok").sum()
-    n_fail = len(result_df) - n_ok
-    n_with_afc = result_df["has_afc"].sum() if "has_afc" in result_df.columns else 0
-
-    logging.info(f"\n{'=' * 60}")
-    logging.info("STEP 3b SUMMARY")
-    logging.info(f"  Already done (skipped) : {skipped_done}")
-    logging.info(f"  Newly derived OK       : {n_ok}")
-    logging.info(f"  With AFC               : {n_with_afc}")
-    logging.info(f"  Failed                 : {n_fail}")
-
-    if n_fail > 0:
-        logging.info("\n  Failure breakdown:")
-        for status, count in result_df["status"].value_counts().items():
-            if status != "ok":
-                logging.warning(f"     {status}: {count}")
-
-    # CRITICAL: if every cyclone failed, something is fundamentally wrong
-    if n_ok == 0 and skipped_done == 0:
-        logging.error(
-            "\nCRITICAL: 0 cyclones produced valid derived files.\n"
-            "Likely causes:\n"
-            "  1. --era5-dir does not contain *_era5.nc files\n"
-            "  2. Raw files are missing required variables (u, v, t, z)\n"
-            "  3. Pressure levels are missing "
-            "(need 175/200/225/825/850/875/250 hPa in raw files)\n"
-            f"  Check: ls {era5_dir}/*.nc | head -5"
-        )
-        sys.exit(1)
-
-    # ── Save manifest ─────────────────────────────────────────────────────
-    # Include already-done cases in the manifest
-    already_done_rows = [
+    already_done = [
         {
-            "track_id": tid,
+            "track_id": track_id,
             "status": "already_done",
-            "output_path": str(derived_dir / DERIVED_FILE_PATTERN.format(track_id=tid)),
-            "has_afc": "unknown",
+            "output_path": str(derived_dir / DERIVED_FILE_PATTERN.format(track_id=track_id)),
+            "n_timesteps_used": len([
+                part for part in selected_times.split(",") if part.strip()
+            ]),
         }
-        for tid in track_ids
-        if tid not in result_df["track_id"].values
+        for track_id, selected_times in completed
     ]
+    final = pd.DataFrame(already_done + results)
+    chunk_suffix = f"_chunk{args.chunk}" if args.chunk is not None else ""
+    output_manifest = RESULTS_DIR / f"step3b_derived_field_manifest{chunk_suffix}.csv"
+    final.to_csv(output_manifest, index=False)
 
-    final_df = pd.concat(
-        [pd.DataFrame(already_done_rows), result_df], ignore_index=True
-    )
-    final_df.to_csv(
-        RESULTS_DIR / f"step3b_derived_field_manifest{chunk_suffix}.csv",
-        index=False,
-    )
-    logging.info(f"\n  Manifest: {RESULTS_DIR}/step3b_derived_field_manifest{chunk_suffix}.csv")
-    logging.info(f"  Derived dir: {derived_dir}")
-    logging.info("\n✓ Step 3b complete.")
-    logging.info(
-        "  → Next: run step 4 with "
-        f"--era5-dir {era5_dir} --derived-dir {derived_dir}"
-    )
+    new_ok = sum(row["status"] == "ok" for row in results)
+    failures = [row for row in results if row["status"] != "ok"]
+    logging.info("Already valid: %s", len(completed))
+    logging.info("Newly derived: %s", new_ok)
+    logging.info("Failed: %s", len(failures))
+    logging.info("Manifest: %s", output_manifest)
+    if failures:
+        for status, count in pd.Series(
+            [row["status"] for row in failures]
+        ).value_counts().items():
+            logging.error("%s: %s", status, count)
+        sys.exit(1)
+    logging.info("Step 3b complete: all %s cases valid.", len(cases))
 
 
 if __name__ == "__main__":

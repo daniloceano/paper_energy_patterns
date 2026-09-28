@@ -10,6 +10,7 @@ Includes both total-field statistics and EPALL-relative anomaly statistics.
 Usage:
     python step5_update_scientific_notes.py          # Update notes + generate PDF
     python step5_update_scientific_notes.py --no-pdf # Update notes only
+    python step5_update_scientific_notes.py --stats-only # Export web stats only
 
 Output:
     - SCIENTIFIC_NOTES.md (updated with statistics)
@@ -595,8 +596,16 @@ def generate_pdf():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Update scientific notes (canonical central timestep method)")
+    parser = argparse.ArgumentParser(description="Update scientific notes (canonical central timesteps method)")
     parser.add_argument("--no-pdf", action="store_true", help="Skip PDF generation")
+    parser.add_argument(
+        "--stats-only",
+        action="store_true",
+        help=(
+            "Write results/ep_structure/composite_stats.json without modifying "
+            "SCIENTIFIC_NOTES.md or generating its PDF. Use this for code/site-only refreshes."
+        ),
+    )
     args = parser.parse_args()
 
     print("=" * 60)
@@ -615,8 +624,11 @@ def main():
     print("\n2. Exporting structured stats to JSON (for web layer)...")
     export_stats_json(stats)
 
-    print("\n3. Populating SCIENTIFIC_NOTES.md...")
-    populate_notes(stats)
+    if not args.stats_only:
+        print("\n3. Populating SCIENTIFIC_NOTES.md...")
+        populate_notes(stats)
+    else:
+        print("\n3. Scientific notes unchanged (--stats-only)")
     
     # Print summary of key statistics
     print("\n   Key statistics computed:")
@@ -624,7 +636,9 @@ def main():
         if key.endswith('_N_CASES') or key.endswith('_MEAN'):
             print(f"   {key:40s} = {stats[key]}")
 
-    if not args.no_pdf:
+    if args.stats_only:
+        print("\n4. PDF generation skipped (--stats-only)")
+    elif not args.no_pdf:
         print("\n4. Generating PDF...")
         pdf_path = generate_pdf()
         if pdf_path and pdf_path.exists():

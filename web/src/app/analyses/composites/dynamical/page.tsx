@@ -4,6 +4,7 @@ import AnalysisHero from '@/components/analysis/AnalysisHero'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
 import FallbackImage from '@/components/analysis/FallbackImage'
 import { figureUrl } from '@/lib/utils'
+import { DATASET_STATS } from '@/lib/constants'
 import manifestData from '@/content/dynamical_composites_manifest.json'
 
 export const metadata: Metadata = {
@@ -23,7 +24,7 @@ export default function DynamicalCompositesPage() {
         title="Dynamical Composites"
         subtitle="Multi-Field EP1 / EP2 / EP3 / EPALL Overview"
         badge="Exploratory"
-        description={`Storm-centred 30°×30° composites of key dynamical fields at the intensification midpoint (central timestep). Three figure variants are presented: total fields, climatology-relative anomalies, and EPALL-relative anomalies. EP1 (N=${manifest.metadata.n_ep1}), EP2 (N=${manifest.metadata.n_ep2}), EP3 (N=${manifest.metadata.n_ep3}), EPALL (N=${manifest.metadata.n_epall}).`}
+        description={`Storm-centred 30°×30° composites of key dynamical fields over the two or three central intensification timesteps. Three figure variants are presented: total fields, climatology-relative anomalies, and EPALL-relative anomalies. EP1 (N=${manifest.metadata.n_ep1}), EP2 (N=${manifest.metadata.n_ep2}), EP3 (N=${manifest.metadata.n_ep3}), EPALL (N=${manifest.metadata.n_epall}).`}
       />
 
       <div className="space-y-10">
@@ -64,8 +65,9 @@ export default function DynamicalCompositesPage() {
           <div className="space-y-2 text-sm leading-relaxed">
             <p>
               <strong>Figure 1 (Total fields)</strong> shows raw composite values: what the
-              atmosphere looks like on average for each energy pattern at peak intensification.
-              EPALL is the reference population of all 2730 intensifying cyclones.
+              atmosphere looks like on average for each energy pattern in the central
+              intensification window. EPALL is the reference population of all{' '}
+              {manifest.metadata.n_epall} eligible cyclones.
             </p>
             <p>
               <strong>Figure 2 (Climatology-relative anomaly)</strong> removes the 1991–2020
@@ -78,9 +80,9 @@ export default function DynamicalCompositesPage() {
               reference instead of the climatology. Each field is computed as EPx − EPALL,
               so positive values mean &ldquo;more than a typical intensifying cyclone&rdquo;
               and negative values mean &ldquo;less than typical.&rdquo; EPALL is omitted as a
-              column (it is identically zero by construction). AFC has no EPALL-relative version
-              (its decomposition requires a climatological base state by construction;
-              Orlanski &amp; Katzfey 1991) — the total AFC is shown instead.
+              column (it is identically zero by construction). AFC is first computed from
+              perturbations relative to the monthly climatology and is then differenced against
+              the EPALL AFC composite, so both reference choices remain explicit.
             </p>
           </div>
         </ResultSummaryCallout>
@@ -175,14 +177,15 @@ export default function DynamicalCompositesPage() {
           <div className="overflow-hidden rounded-xl border border-amber-200 bg-white">
             <div className="border-b border-amber-100 bg-amber-50 px-4 py-3">
               <p className="text-xs text-amber-800">
-                <strong>Reference: EPALL composite</strong> (all 2730 intensifying cyclones).
+                <strong>Reference: EPALL composite</strong> (all {manifest.metadata.n_epall}{' '}
+                eligible cyclones).
                 Positive values indicate fields stronger than the typical intensifying cyclone;
                 negative values weaker than typical. This is distinct from the climatological
                 anomaly — here the reference is the cyclone population itself, not the
                 multi-year monthly mean state.
               </p>
               <p className="mt-2 text-xs text-slate-600">
-                <strong>Row 1</strong> — (PV@200) − EPALL + total EGR contours +
+                <strong>Row 1</strong> — (PV@200) − EPALL + (EGR) − EPALL contours +
                 (u, v)_250 − EPALL wind vectors. Reveals how upper-level PV structure
                 of each energy pattern differs from the typical cyclone.
               </p>
@@ -192,8 +195,7 @@ export default function DynamicalCompositesPage() {
                 environment relative to the full cyclone population.
               </p>
               <p className="mt-1 text-xs text-slate-600">
-                <strong>Row 3</strong> — AFC total (no EPALL-relative version; uses
-                climatological decomposition — Orlanski &amp; Katzfey 1991) +
+                <strong>Row 3</strong> — (AFC) − EPALL +
                 (u, v)_250 − EPALL wind + <strong>RK total sign-reversal hatching</strong>{' '}
                 (total composite, not EPALL-relative — RK = β − ∂²ū/∂y² is a background-flow
                 diagnostic; shown as total field only) + (KE-adv) − EPALL contours.
@@ -215,9 +217,9 @@ export default function DynamicalCompositesPage() {
         {/* Data source */}
         <ResultSummaryCallout type="info" title="Data source and method">
           <p className="text-sm leading-relaxed">
-            Composites are computed from ERA5 reanalysis at 0.25° resolution over the
-            1979–2023 period. Each case is centred on the intensification midpoint
-            (central timestep of the intensification phase). Pre-computed NetCDF files:
+            Composites are computed from ERA5 reanalysis at {DATASET_STATS.era5Resolution}{' '}
+            resolution over the {DATASET_STATS.period} period. Each case is centred at the
+            two or three central timesteps of the intensification phase. Pre-computed NetCDF files:
             <code className="ml-1">data/era5_ep_structure/precomputed_composites_ep*.nc</code>.
             Figures generated by{' '}
             <code>scripts/ep_structure_analysis/step4b_create_dynamical_composites.py</code>.

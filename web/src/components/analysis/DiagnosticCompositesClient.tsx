@@ -7,6 +7,7 @@ import { figureUrl } from '@/lib/client-utils'
 import { DATASET_STATS } from '@/lib/constants'
 import type { Diagnostic } from '@/lib/types'
 import ResultSummaryCallout from '@/components/analysis/ResultSummaryCallout'
+import population from '@/content/composite_population.json'
 
 // --- Manifest types ---
 interface FigureEntry {
@@ -204,7 +205,8 @@ function DiagnosticCompositesContent({
             <h3 className="mb-2 text-sm font-semibold text-slate-700">
               EPALL-Relative Anomaly
               <span className="ml-2 text-xs font-normal text-slate-400">
-                EPx − EPALL &nbsp;·&nbsp; reference = all 2730 intensifying cyclones
+                EPx − EPALL &nbsp;·&nbsp; reference = all{' '}
+                {population.after_filter.EPALL.toLocaleString('en-US')} eligible cyclones
               </span>
             </h3>
             {hasAnomFigure ? (
@@ -257,7 +259,7 @@ function DiagnosticCompositesContent({
               Mean composite values inside/outside {DATASET_STATS.innerDomainSize} domain [{diag.unit}]
             </h4>
             <p className="mt-0.5 text-xs text-slate-400">
-              Total field · intensification midpoint · central-timestep composites
+              Total field · intensification midpoint · 2–3 central-timestep composites
             </p>
           </div>
           <div className="overflow-x-auto">
@@ -329,7 +331,7 @@ function DiagnosticCompositesContent({
                 Mean flux along each boundary of the {DATASET_STATS.innerDomainSize} domain [{diag.unit}]
               </h4>
               <p className="mt-0.5 text-xs text-slate-400">
-                Total field + climatology-relative anomaly (X&prime; = X − X̄<sub>clim</sub>, 1991–2020) · central-timestep composites
+                Total field + climatology-relative anomaly (X&prime; = X − X̄<sub>clim</sub>, 1991–2020) · 2–3 central-timestep composites
               </p>
             </div>
             <div className="overflow-x-auto">

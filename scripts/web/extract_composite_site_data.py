@@ -33,6 +33,7 @@ Outputs:
     web/src/content/composite_domain_stats.json
     web/src/content/composite_boundary_fluxes.json
     web/src/content/composite_figures_manifest.json
+    web/src/content/composite_population.json
 
 Manifest schema (composite_figures_manifest.json):
   {
@@ -48,6 +49,7 @@ Manifest schema (composite_figures_manifest.json):
 """
 
 import argparse
+import csv
 import json
 from pathlib import Path
 
@@ -59,6 +61,7 @@ RESULTS_DIR = REPO_ROOT / "results" / "ep_structure"
 # regardless of whether copy_figures_to_web.py has been run yet.
 FIGURES_DIR = REPO_ROOT / "figures" / "ep_structure"
 WEB_CONTENT = REPO_ROOT / "web" / "src" / "content"
+CLUSTER_MAPPING = REPO_ROOT / "results" / "cluster" / "cluster_to_ep.json"
 
 # Mapping from web diagnostic id to step4 figure filenames.
 # Must match DIAGNOSTIC_FIGURE_SLUGS in web/src/lib/constants.ts.
@@ -187,6 +190,22 @@ def load_domain_stats():
     return data.get("domain_stats", []), data.get("boundary_fluxes", [])
 
 
+def build_population_summary():
+    """Read pre-filter EP counts and post-filter case counts from their sources."""
+    mapping = json.loads(CLUSTER_MAPPING.read_text())
+    before = {f"EP{ep}": int(mapping["ep_counts"][str(ep)]) for ep in (1, 2, 3)}
+    after = {}
+    for ep in (1, 2, 3):
+        case_path = RESULTS_DIR / f"ep{ep}_cases.csv"
+        with case_path.open(newline="") as stream:
+            after[f"EP{ep}"] = sum(1 for _ in csv.DictReader(stream))
+    return {
+        "before_filter": {**before, "EPALL": int(mapping["n_cyclones"])},
+        "after_filter": {**after, "EPALL": sum(after.values())},
+        "minimum_intensification_hours": 24,
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description="Extract composite data for web (canonical method)")
     args = parser.parse_args()
@@ -227,6 +246,10 @@ def main():
     fluxes_path.write_text(json.dumps(boundary_fluxes, indent=2))
     print(f"   ✓ {fluxes_path.relative_to(REPO_ROOT)}")
 
+    population_path = WEB_CONTENT / "composite_population.json"
+    population_path.write_text(json.dumps(build_population_summary(), indent=2) + "\n")
+    print(f"   ✓ {population_path.relative_to(REPO_ROOT)}")
+
     print("\n" + "=" * 60)
     print("✓ DONE — web manifests updated")
     print("=" * 60)
@@ -234,4 +257,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

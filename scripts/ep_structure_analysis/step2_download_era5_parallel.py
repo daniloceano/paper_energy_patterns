@@ -16,7 +16,7 @@ Targeted Pressure Levels (hPa):
                      + temperature advection at 850 hPa
                      + EGR lower bound
 
-Total: 8 levels
+Total: 9 levels
 
 Domain: 30° × 30° centred on cyclone track centre during intensification.
 
@@ -31,6 +31,13 @@ Date: February 2026
 import sys
 from pathlib import Path
 import argparse
+import atexit
+import contextlib
+import os
+import re
+import shutil
+import sqlite3
+import tempfile
 
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 
@@ -58,6 +65,15 @@ LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 MAX_PARALLEL_JOBS = 10  # Conservative CDS API limit
+CDS_URL = "https://cds.climate.copernicus.eu/api"
+DEFAULT_KEYS_FILE = Path("/p1-swell/danilocs/cds-keys")
+DEFAULT_KEY_HEALTH_DB = Path(
+    "/p1-swell/danilocs/lec_climatology_corrected_v2/state.sqlite3"
+)
+
+_WORKER_KEY_ID = "default"
+_WORKER_KEY_VALUE = ""
+_WORKER_CREDENTIAL_HOME: Path | None = None
 
 # Variables
 PRESSURE_VARS = [
@@ -110,7 +126,119 @@ def _print_only(msg):
 # VALIDATION
 # ============================================================================
 
-def validate_netcdf_file(nc_file, expected_pvars, expected_svars, expected_levels):
+
+def load_cds_credentials(keys_file: Path, health_db: Path | None = None) -> list[tuple[str, str]]:
+    """Load CDS tokens without exposing them and optionally keep only healthy keys.
+
+    The server inventory format is ``<token> - <human label>``.  Only the first
+    whitespace-delimited field is a credential.  Returned identifiers are
+    synthetic (``key-001`` etc.) and are safe to write to logs.
+    """
+    lines = [line.strip() for line in keys_file.read_text().splitlines()]
+    tokens = [
+        line.split(maxsplit=1)[0]
+        for line in lines
+        if line and not line.startswith("#")
+    ]
+    if not tokens:
+        raise RuntimeError(f"no CDS credentials found in {keys_file}")
+    if len(tokens) != len(set(tokens)):
+        raise RuntimeError("duplicate CDS credentials in inventory")
+    if any(not re.fullmatch(r"[A-Za-z0-9_-]{32,}", token) for token in tokens):
+        raise RuntimeError("unexpected CDS credential inventory format")
+
+    credentials = [(f"key-{index:03d}", token) for index, token in enumerate(tokens, 1)]
+    if health_db is None:
+        return credentials
+    if not health_db.is_file():
+        raise FileNotFoundError(f"CDS key-health database not found: {health_db}")
+
+    with sqlite3.connect(health_db) as connection:
+        healthy = {
+            str(row[0])
+            for row in connection.execute(
+                "SELECT key_id FROM key_health WHERE last_status = 'healthy'"
+            )
+        }
+    selected = [item for item in credentials if item[0] in healthy]
+    if not selected:
+        raise RuntimeError("key-health database contains no healthy CDS credentials")
+    return selected
+
+
+def _cleanup_worker_credentials() -> None:
+    global _WORKER_CREDENTIAL_HOME
+    if _WORKER_CREDENTIAL_HOME is not None:
+        shutil.rmtree(_WORKER_CREDENTIAL_HOME, ignore_errors=True)
+        _WORKER_CREDENTIAL_HOME = None
+
+
+def _init_cds_worker(credentials_queue, credentials_root: str) -> None:
+    """Give one long-lived download worker exactly one isolated CDS token."""
+    global _WORKER_KEY_ID, _WORKER_KEY_VALUE, _WORKER_CREDENTIAL_HOME
+    key_id, key_value = credentials_queue.get()
+    root = Path(credentials_root)
+    root.mkdir(parents=True, exist_ok=True)
+    os.chmod(root, 0o700)
+    home = Path(tempfile.mkdtemp(prefix=f"{key_id}-", dir=root))
+    os.chmod(home, 0o700)
+    rc_path = home / ".cdsapirc"
+    descriptor = os.open(rc_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(descriptor, "w") as stream:
+        stream.write(f"url: {CDS_URL}\nkey: {key_value}\n")
+    os.environ["HOME"] = str(home)
+    _WORKER_KEY_ID = key_id
+    _WORKER_KEY_VALUE = key_value
+    _WORKER_CREDENTIAL_HOME = home
+    atexit.register(_cleanup_worker_credentials)
+
+
+@contextlib.contextmanager
+def cds_worker_pool(
+    n_jobs: int,
+    credentials: list[tuple[str, str]] | None,
+    credentials_root: Path,
+):
+    """Create a pool whose workers use distinct CDS credentials."""
+    if not credentials:
+        with mp.Pool(processes=n_jobs) as pool:
+            yield pool
+        return
+
+    queue = mp.Queue()
+    for credential in credentials[:n_jobs]:
+        queue.put(credential)
+    pool = mp.Pool(
+        processes=n_jobs,
+        initializer=_init_cds_worker,
+        initargs=(queue, str(credentials_root)),
+    )
+    try:
+        yield pool
+    finally:
+        pool.close()
+        pool.join()
+        queue.close()
+        # multiprocessing workers do not reliably execute Python atexit hooks
+        # when the pool shuts down.  Remove the dedicated credential root from
+        # the parent after every pool so no temporary .cdsapirc survives.
+        shutil.rmtree(credentials_root, ignore_errors=True)
+
+
+def safe_error(exc: Exception) -> str:
+    """Return an error message with the active credential removed."""
+    message = f"{type(exc).__name__}: {exc}"
+    if _WORKER_KEY_VALUE:
+        message = message.replace(_WORKER_KEY_VALUE, "<redacted>")
+    return message
+
+def validate_netcdf_file(
+    nc_file,
+    expected_pvars,
+    expected_svars,
+    expected_levels,
+    expected_times=None,
+):
     """
     Validate NetCDF file integrity and completeness.
 
@@ -162,6 +290,17 @@ def validate_netcdf_file(nc_file, expected_pvars, expected_svars, expected_level
             tc = "valid_time" if "valid_time" in ds.coords else "time"
             if tc in ds.coords and len(ds[tc]) == 0:
                 issues.append("No time steps found")
+            elif expected_times is not None and len(expected_times) > 0:
+                available = pd.DatetimeIndex(pd.to_datetime(ds[tc].values))
+                missing_times = []
+                for expected in pd.DatetimeIndex(pd.to_datetime(expected_times)):
+                    if len(available) == 0 or np.abs(available - expected).min() > pd.Timedelta(minutes=1):
+                        missing_times.append(expected)
+                if missing_times:
+                    issues.append(
+                        "Missing required times: "
+                        + ", ".join(item.isoformat() for item in missing_times)
+                    )
 
     except Exception as e:
         issues.append(f"Failed to open/read: {e}")
@@ -189,7 +328,11 @@ def check_existing_files(cases, ep_label):
             continue
 
         valid, issues, mv, ml = validate_netcdf_file(
-            nc_file, expected_pvars, expected_svars, PRESSURE_LEVELS
+            nc_file,
+            expected_pvars,
+            expected_svars,
+            PRESSURE_LEVELS,
+            expected_times=parse_selected_times(row["selected_times"]),
         )
 
         if valid:
@@ -275,6 +418,19 @@ def compute_domain_bounds(track_id, selected_times_str):
     }
 
 
+def drop_cds_auxiliary_coordinates(ds: xr.Dataset) -> xr.Dataset:
+    """Remove scalar CDS bookkeeping coordinates before product merging.
+
+    Recent pressure- and single-level responses can expose ``expver`` and
+    ``number`` with different coordinate/data-variable roles.  They do not
+    describe the meteorological grid, but their inconsistent roles make
+    ``xarray.merge`` fail.  Removing only these known bookkeeping fields keeps
+    the scientific coordinates and variables unchanged.
+    """
+    removable = [name for name in ("expver", "number") if name in ds.variables]
+    return ds.drop_vars(removable) if removable else ds
+
+
 # ============================================================================
 # DOWNLOAD / PATCH
 # ============================================================================
@@ -299,10 +455,14 @@ def download_era5_for_case(track_id, selected_times_str, domain):
     days = sorted(set(f"{t.day:02d}" for t in selected_times))
     times = sorted(set(t.strftime("%H:%M") for t in selected_times))
 
-    c = cdsapi.Client()
+    c = cdsapi.Client(timeout=600, retry_max=3, quiet=True)
 
-    pf = DATA_DIR / f"{track_id}_era5_pressure.nc"
-    sf = DATA_DIR / f"{track_id}_era5_single.nc"
+    partial_dir = DATA_DIR / ".partial" / f"{track_id}-{os.getpid()}"
+    partial_dir.mkdir(parents=True, exist_ok=True)
+    pf = partial_dir / f"{track_id}_era5_pressure.nc"
+    sf = partial_dir / f"{track_id}_era5_single.nc"
+    candidate = partial_dir / f"{track_id}_era5.nc"
+    metadata_candidate = partial_dir / f"{track_id}_metadata.csv"
     of = DATA_DIR / f"{track_id}_era5.nc"
 
     try:
@@ -340,14 +500,40 @@ def download_era5_for_case(track_id, selected_times_str, domain):
         )
 
         logging.info("      -> merging...")
-        ds_p = xr.open_dataset(pf)
-        ds_s = xr.open_dataset(sf)
-        ds_m = xr.merge([ds_p, ds_s])
-        ds_m.to_netcdf(of)
-        ds_p.close()
-        ds_s.close()
-        pf.unlink()
-        sf.unlink()
+        with xr.open_dataset(pf) as ds_p, xr.open_dataset(sf) as ds_s:
+            ds_m = xr.merge(
+                [
+                    drop_cds_auxiliary_coordinates(ds_p),
+                    drop_cds_auxiliary_coordinates(ds_s),
+                ],
+                compat="override",
+                join="exact",
+            ).load()
+
+        time_coord = "valid_time" if "valid_time" in ds_m.coords else "time"
+        wanted_times = pd.DatetimeIndex(selected_times)
+        available_times = pd.DatetimeIndex(pd.to_datetime(ds_m[time_coord].values))
+        selected_indices = []
+        for wanted in wanted_times:
+            offsets = np.abs(available_times - wanted)
+            if len(offsets) == 0 or offsets.min() > pd.Timedelta(minutes=1):
+                raise ValueError(f"CDS response lacks required time {wanted.isoformat()}")
+            selected_indices.append(int(offsets.argmin()))
+        if len(set(selected_indices)) != len(selected_indices):
+            raise ValueError("CDS response maps multiple required times to one timestep")
+        ds_m = ds_m.isel({time_coord: selected_indices})
+        ds_m.to_netcdf(candidate)
+        ds_m.close()
+
+        valid, issues, _, _ = validate_netcdf_file(
+            candidate,
+            list(NCVAR_PRESSURE.values()),
+            list(NCVAR_SINGLE.values()),
+            PRESSURE_LEVELS,
+            expected_times=selected_times,
+        )
+        if not valid:
+            raise ValueError("downloaded candidate failed validation: " + "; ".join(issues))
 
         logging.info(f"      ✓ {of}")
 
@@ -368,15 +554,17 @@ def download_era5_for_case(track_id, selected_times_str, domain):
             "pressure_levels_hPa": PRESSURE_LEVELS,
             "methodology": "Canonical April 2026 - central timesteps only",
         }
-        mf = DATA_DIR / f"{track_id}_metadata.csv"
-        pd.DataFrame([meta]).to_csv(mf, index=False)
+        pd.DataFrame([meta]).to_csv(metadata_candidate, index=False)
+
+        # Replace the old file only after the complete candidate validates.
+        candidate.replace(of)
+        metadata_candidate.replace(DATA_DIR / f"{track_id}_metadata.csv")
+        shutil.rmtree(partial_dir, ignore_errors=True)
         return True
 
     except Exception as e:
-        logging.error(f"      ❌ {track_id}: {e}")
-        for f in [pf, sf, of]:
-            if f.exists():
-                f.unlink()
+        logging.error(f"      ❌ {track_id} [{_WORKER_KEY_ID}]: {safe_error(e)}")
+        shutil.rmtree(partial_dir, ignore_errors=True)
         return False
 
 
@@ -394,7 +582,7 @@ def patch_era5_file(track_id, selected_times_str, domain, missing_vars, missing_
     days = sorted(set(f"{t.day:02d}" for t in selected_times))
     times = sorted(set(t.strftime("%H:%M") for t in selected_times))
 
-    c = cdsapi.Client()
+    c = cdsapi.Client(timeout=600, retry_max=3, quiet=True)
 
     var_rev = {v: k for k, v in NCVAR_PRESSURE.items()}
 
@@ -476,7 +664,7 @@ def patch_era5_file(track_id, selected_times_str, domain, missing_vars, missing_
         return True
 
     except Exception as e:
-        logging.error(f"      ❌ Patch failed {track_id}: {e}")
+        logging.error(f"      ❌ Patch failed {track_id} [{_WORKER_KEY_ID}]: {safe_error(e)}")
         if backup.exists():
             backup.rename(original)
         for f in temp_files:
@@ -526,7 +714,14 @@ def _patch_wrapper(args):
 # PROCESS ONE EP GROUP
 # ============================================================================
 
-def process_ep_group(ep_label, cases, n_jobs):
+def process_ep_group(
+    ep_label,
+    cases,
+    n_jobs,
+    credentials=None,
+    credentials_root=None,
+    force_download_ids=None,
+):
     """Validate, patch and download for one EP group. Returns (n_valid, n_failed)."""
     _print_only(f"\n{'─'*60}")
     _print_only(f"  {ep_label}: {len(cases)} cyclones")
@@ -536,7 +731,12 @@ def process_ep_group(ep_label, cases, n_jobs):
     logging.info(f"  Processing {ep_label} ({len(cases)} cases)")
     logging.info(f"{'='*60}")
 
-    to_download, to_patch, valid, invalid = check_existing_files(cases, ep_label)
+    force_download_ids = set(force_download_ids or ())
+    credentials_root = credentials_root or DATA_DIR / ".cds_credentials"
+    forced = cases[cases["track_id"].astype(str).isin(force_download_ids)]
+    ordinary = cases[~cases["track_id"].astype(str).isin(force_download_ids)]
+    to_download, to_patch, valid, invalid = check_existing_files(ordinary, ep_label)
+    to_download.extend((index, row) for index, row in forced.iterrows())
 
     _print_only(f"  ✓ Complete: {len(valid)}  |  🔧 Patch: {len(to_patch)}  |  ⬇ Download: {len(to_download)}")
     logging.info(f"  Complete={len(valid)}, Patch={len(to_patch)}, Download={len(to_download)}")
@@ -554,7 +754,7 @@ def process_ep_group(ep_label, cases, n_jobs):
         _print_only(f"  Patching {len(to_patch)} incomplete files...")
         logging.info(f"  Patching {len(to_patch)} files...")
         args_list = [(i, r, mv, ml, len(to_patch)) for i, r, mv, ml in to_patch]
-        with mp.Pool(processes=n_jobs) as pool:
+        with cds_worker_pool(n_jobs, credentials, credentials_root) as pool:
             for tid, ok in tqdm(
                 pool.imap_unordered(_patch_wrapper, args_list),
                 total=len(to_patch),
@@ -571,7 +771,7 @@ def process_ep_group(ep_label, cases, n_jobs):
         _print_only(f"  Downloading {len(to_download)} files...")
         logging.info(f"  Downloading {len(to_download)} files...")
         args_list = [(i, r, len(to_download)) for i, r in to_download]
-        with mp.Pool(processes=n_jobs) as pool:
+        with cds_worker_pool(n_jobs, credentials, credentials_root) as pool:
             for tid, ok in tqdm(
                 pool.imap_unordered(_download_wrapper, args_list),
                 total=len(to_download),
@@ -644,11 +844,46 @@ def print_completeness_report(all_cases):
 # ============================================================================
 
 def main():
+    global DATA_DIR
     parser = argparse.ArgumentParser(description="Download ERA5 data for EP structure analysis")
     parser.add_argument("--jobs", type=int, default=None,
                         help=f"Parallel CDS jobs (default: {MAX_PARALLEL_JOBS})")
     parser.add_argument("--log-file", type=str, default=None)
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=DATA_DIR,
+        help="Canonical ERA5 archive to validate and update",
+    )
+    parser.add_argument(
+        "--keys-file",
+        type=Path,
+        default=None,
+        help=(
+            "Multi-key CDS inventory. Each worker receives one isolated key; "
+            f"server default: {DEFAULT_KEYS_FILE}"
+        ),
+    )
+    parser.add_argument(
+        "--key-health-db",
+        type=Path,
+        default=None,
+        help=(
+            "Optional key-health SQLite database; only keys marked healthy are used. "
+            f"Server default: {DEFAULT_KEY_HEALTH_DB}"
+        ),
+    )
+    parser.add_argument(
+        "--audit-csv",
+        type=Path,
+        default=None,
+        help=(
+            "Output from audit_era5_reuse.py. Only rows whose status is not "
+            "'reusable' are downloaded, and their old files remain until replacement validates."
+        ),
+    )
     args = parser.parse_args()
+    DATA_DIR = args.data_dir.resolve()
 
     # Logging setup
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -689,9 +924,33 @@ def main():
         msg = f"❌ Case files not found: {', '.join([str(f) for f in missing_files])}. Run step1 first."
         _print_only(msg)
         logging.error(msg)
-        return
+        return 1
 
     all_cases = pd.concat([ep_cases[ep] for ep in ALL_EPS], ignore_index=True)
+
+    force_download_ids = set()
+    if args.audit_csv is not None:
+        audit = pd.read_csv(args.audit_csv, dtype={"track_id": str})
+        required_columns = {"track_id", "status"}
+        missing_columns = required_columns - set(audit.columns)
+        if missing_columns:
+            raise ValueError(
+                f"audit CSV lacks columns: {sorted(missing_columns)}"
+            )
+        force_download_ids = set(
+            audit.loc[audit["status"] != "reusable", "track_id"].astype(str)
+        )
+        if not force_download_ids:
+            _print_only("\n  ✓ Audit reports every case reusable; nothing to download.")
+            return 0
+        _print_only(
+            f"\n  Audit repair set: {len(force_download_ids)} cases require replacement"
+        )
+        ep_cases = {
+            ep: frame[frame["track_id"].astype(str).isin(force_download_ids)].copy()
+            for ep, frame in ep_cases.items()
+        }
+        all_cases = pd.concat([ep_cases[ep] for ep in ALL_EPS], ignore_index=True)
 
     _print_only(f"\n  EP1: {len(ep_cases[1])} cases  |  EP2: {len(ep_cases[2])} cases  |  EP3: {len(ep_cases[3])} cases  |  Total: {len(all_cases)}")
     _print_only(f"  Methodology: CANONICAL (Central timesteps only, April 2026)")
@@ -700,9 +959,21 @@ def main():
 
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
+    credentials = None
+    if args.keys_file is not None:
+        credentials = load_cds_credentials(args.keys_file, args.key_health_db)
+        _print_only(
+            f"  CDS credentials: {len(credentials)} healthy keys loaded; values are never logged"
+        )
+
     n_jobs = args.jobs if args.jobs is not None else MAX_PARALLEL_JOBS
-    if n_jobs > 4:
-        _print_only(f"  ⚠️  {n_jobs} jobs may exceed CDS limits (recommended: 2-4)")
+    if credentials:
+        n_jobs = min(n_jobs, len(credentials))
+    if n_jobs > 22:
+        _print_only("  ⚠️  Capping parallel CDS jobs at 22 (validated server limit)")
+        n_jobs = 22
+    elif n_jobs > 4 and not credentials:
+        _print_only(f"  ⚠️  {n_jobs} jobs share the default CDS account")
     _print_only(f"  Parallel jobs: {n_jobs}")
 
     t0 = time.time()
@@ -711,7 +982,14 @@ def main():
     ep_results = {}
     for ep_num in ALL_EPS:
         ep_label = get_ep_label(ep_num)
-        n_ok, n_fail = process_ep_group(ep_label, ep_cases[ep_num], n_jobs)
+        n_ok, n_fail = process_ep_group(
+            ep_label,
+            ep_cases[ep_num],
+            n_jobs,
+            credentials=credentials,
+            credentials_root=DATA_DIR / ".cds_credentials",
+            force_download_ids=force_download_ids,
+        )
         ep_results[ep_num] = (n_ok, n_fail)
 
     elapsed = time.time() - t0
@@ -745,7 +1023,8 @@ def main():
         _print_only(f"\n  ⚠️  {total_fail} failed — re-run to retry (or use --jobs 2)")
 
     _print_only(f"\n  Log: {log_file}")
+    return 1 if total_fail else 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -56,8 +56,10 @@ EPALL_COMPOSITE = ERA5_EP_DIR / "precomputed_composites_epall.nc"
 N_WORKERS = 8
 
 # Variables that MUST be in the derived file
-REQUIRED_DERIVED_VARS = ["pv_850", "pv_200", "adv_T_850", "ke_adv_250"]
-OPTIONAL_DERIVED_VARS = ["afc_250"]
+REQUIRED_DERIVED_VARS = [
+    "pv_850", "pv_200", "adv_T_850", "ke_adv_250", "afc_250",
+]
+TEMPORAL_METHOD = "central_2_or_3_mean"
 
 # Global reference: EPALL composite fields (loaded once per process)
 _EPALL_FIELDS = {}
@@ -74,7 +76,10 @@ def _load_epall_composite():
         if var_name in ds.data_vars:
             _EPALL_FIELDS[field_key] = ds[var_name].values
         else:
-            logging.warning(f"   {var_name} not found in EPALL composite")
+            ds.close()
+            raise RuntimeError(
+                f"Required field {var_name} not found in EPALL composite {EPALL_COMPOSITE}"
+            )
     ds.close()
     logging.info(f"   Loaded {len(_EPALL_FIELDS)} EPALL fields")
 
@@ -134,13 +139,34 @@ def extract_anomaly_features_one_cyclone(track_id: str, derived_dir: Path) -> di
             ),
         }
 
+    if (
+        ds.attrs.get("temporal_method") != TEMPORAL_METHOD
+        or int(ds.attrs.get("n_timesteps_used", 0)) not in (2, 3)
+    ):
+        ds.close()
+        return {
+            "track_id": track_id,
+            "_status": "invalid_temporal_provenance",
+            "_note": "Re-run step 3b with the authoritative 2-3 selected times.",
+        }
+
+    invalid_fields = [
+        v for v in REQUIRED_DERIVED_VARS
+        if ds[v].ndim != 2 or np.all(np.isnan(ds[v].values))
+    ]
+    if invalid_fields:
+        ds.close()
+        return {
+            "track_id": track_id,
+            "_status": f"invalid_required_fields: {invalid_fields}",
+        }
+
     row = {"track_id": track_id, "_status": "ok"}
 
     for field_key, var_name in DYNAMIC_FIELDS_ABSOLUTE.items():
         anom_key = f"{field_key}_anom_epall"
 
         if var_name not in ds.data_vars:
-            # Optional field absent (e.g. afc_250 without climatology)
             for feat_name in get_feature_names():
                 row[f"{anom_key}__{feat_name}"] = np.nan
             continue

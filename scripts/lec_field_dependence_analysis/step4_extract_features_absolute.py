@@ -59,15 +59,11 @@ OUTPUT_BASE = RESULTS_DIR / "step4_features_absolute"
 DERIVED_FILE_PATTERN = "{track_id}_era5_derived.nc"
 N_WORKERS = 8  # For parallel feature extraction within a chunk
 
-# Variables that MUST be present in the derived file for a result to be valid
-REQUIRED_DERIVED_VARS = ["pv_850", "pv_200", "adv_T_850", "ke_adv_250"]
-# afc_250 is expected but may be absent if climatology was missing during derivation
-OPTIONAL_DERIVED_VARS = ["afc_250"]
-
-# Variables that MUST be present in the derived file for a result to be valid
-REQUIRED_DERIVED_VARS = ["pv_850", "pv_200", "adv_T_850", "ke_adv_250"]
-# afc_250 is expected but may be absent if climatology was missing during derivation
-OPTIONAL_DERIVED_VARS = ["afc_250"]
+# All five diagnostics are required. AFC is never silently replaced by NaN.
+REQUIRED_DERIVED_VARS = [
+    "pv_850", "pv_200", "adv_T_850", "ke_adv_250", "afc_250",
+]
+TEMPORAL_METHOD = "central_2_or_3_mean"
 
 
 def setup_logging(chunk_id=None):
@@ -133,14 +129,30 @@ def extract_features_one_cyclone(track_id: str, derived_dir: Path) -> dict:
             ),
         }
 
-    # ── Warn about optional variables ─────────────────────────────────────
-    missing_optional = [
-        v for v in OPTIONAL_DERIVED_VARS if v not in ds.data_vars
-    ]
+    if (
+        ds.attrs.get("temporal_method") != TEMPORAL_METHOD
+        or int(ds.attrs.get("n_timesteps_used", 0)) not in (2, 3)
+    ):
+        ds.close()
+        return {
+            "track_id": track_id,
+            "_status": "invalid_temporal_provenance",
+            "_note": "Re-run step 3b with the authoritative 2-3 selected times.",
+        }
 
+    invalid_fields = [
+        v for v in REQUIRED_DERIVED_VARS
+        if ds[v].ndim != 2 or np.all(np.isnan(ds[v].values))
+    ]
+    if invalid_fields:
+        ds.close()
+        return {
+            "track_id": track_id,
+            "_status": f"invalid_required_fields: {invalid_fields}",
+        }
+
+    # ── Warn about optional variables ─────────────────────────────────────
     row = {"track_id": track_id, "_status": "ok"}
-    if missing_optional:
-        row["_note"] = f"optional vars absent (no climatology): {missing_optional}"
 
     for field_key, var_name in DYNAMIC_FIELDS_ABSOLUTE.items():
         if var_name not in ds.data_vars:
@@ -149,7 +161,6 @@ def extract_features_one_cyclone(track_id: str, derived_dir: Path) -> dict:
                 for feat_name in get_feature_names():
                     row[f"{field_key}__{feat_name}"] = np.nan
             else:
-                # Optional field absent (e.g. afc_250 without climatology)
                 for feat_name in get_feature_names():
                     row[f"{field_key}__{feat_name}"] = np.nan
             continue

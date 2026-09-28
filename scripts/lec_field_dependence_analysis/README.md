@@ -35,9 +35,9 @@ Cyclones from all three Energy Patterns that pass the ≥ 24h intensification du
 
 | EP | N (ep_structure) | Description |
 |----|-----------------|-------------|
-| EP1 | 332 | High energy conversions |
-| EP2 | 776 | Moderate conversions |
-| EP3 | 1,625 | Weak/background energetics |
+| EP1 | 421 | High energy conversions |
+| EP2 | 650 | Moderate conversions |
+| EP3 | 1,662 | Weak/background energetics |
 
 Final eligible count may be smaller after intersection with LEC data availability.
 
@@ -98,9 +98,25 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 ### Steps that require remote/HPC
 
 > **⚠️ Step 3b must run before steps 4 and 5.** It derives the dynamic diagnostic fields
-> (`pv_850`, `pv_200`, `adv_T_850`, `ke_adv_250`, `afc_250`) from the raw ERA5 per-cyclone
+> (`pv_850`, `pv_200`, `adv_T_850`, `ke_adv_250`, `afc_250`) at the exact 2--3
+> selected central times from the raw ERA5 per-cyclone
 > NetCDFs. Steps 4 and 5 read from the derived files and will **fail explicitly** if the
 > derived directory is missing or empty.
+
+The AFC calculation also requires a 1991–2020 monthly 250-hPa climatology that
+covers the full storm-centred domain (80°S–5°S, 90°W–60°E). The repository's
+older regional climatology is too narrow for cyclones near its western and
+eastern limits. Build the expanded input once with the dedicated, restartable
+downloader; it validates every monthly file and writes the final climatology
+atomically without replacing the older input:
+
+```bash
+python scripts/lec_field_dependence_analysis/download_afc_climatology.py \
+  --output-dir /path/to/afc_climatology_expanded \
+  --keys-file /path/to/cds-keys \
+  --key-health-db /path/to/cds_key_health.sqlite3 \
+  --jobs 12
+```
 
 | Step | Script | Description | Input | Output |
 |------|--------|-------------|-------|--------|
@@ -108,10 +124,10 @@ Extracted from a 15°×15° inner box centred on the cyclone within the storm-ce
 | 4 | `step4_extract_features_absolute.py` | Extract scalar features from absolute derived fields | `*_era5_derived.nc` (from step 3b) | `step4_features_absolute.csv` |
 | 5 | `step5_extract_features_anomaly.py` | Extract features from EPALL-relative anomalies | `*_era5_derived.nc` + EPALL composite | `step5_features_anomaly.csv` |
 | 6 | `step6_integrate_tables.py` | Merge cases + LEC + features | Steps 1-5 | `step6_integrated_*.csv` |
-| 7 | `step7_compute_predep.py` | Compute PREDEP for all combinations | Step 6 | `step7_predep_*.csv` |
+| 7 | `step7_compute_predep.py` | Compute PREDEP for EP1–EP3 and pooled EPALL | Step 6 | `step7_predep_*.csv` |
 | 7b | `step7b_ep_significance_tests.py` | Statistical significance between EPs | Steps 1-2 (LEC) + Step 6 (features) | `step7b_diagnostic_table.csv`, `step7b_pairwise_table.csv` |
-| 8 | `step8_synthesis_figures.py` | PREDEP heatmaps, rankings, comparisons | Step 7 | `figures/lec_field_dependence/` |
-| 8b | `step8b_significance_figures.py` | Significance heatmaps, volcano plots, rankings | Step 7b | `figures/lec_field_dependence/` |
+| 8 | `step8_synthesis_figures.py` + diagnostics | PREDEP/Pearson/Spearman heatmaps, rankings, comparisons, scatter diagnostics | Step 7 | `figures/lec_field_dependence/` |
+| 8b | `step8b_significance_figures.py` + discrete effects | Significance heatmaps, volcano plots, rankings, continuous/discrete effect maps | Step 7b | `figures/lec_field_dependence/` |
 | 9 | `step9_update_docs.py` | Generate pipeline status report | All | `step9_pipeline_status.txt` |
 
 ---
@@ -143,33 +159,53 @@ Use the provided orchestrator to run steps 3b–9 in one shot.  Steps 1–3 must
 conda activate paper_energy_patterns
 
 # Full pipeline — 16 parallel chunks per step, 4 workers per chunk, detached
-bash run_pipeline.sh --era5-dir /path/to/era5/ --background
+bash run_pipeline.sh --era5-dir /path/to/era5/ \
+  --tracks-file /path/to/tracks_with_energetics_corrected.csv \
+  --afc-climatology /path/to/era5_climatology_250hPa_expanded.nc --background
 
 # Custom derived-dir (default: {era5-dir}/derived/)
-bash run_pipeline.sh --era5-dir /data/era5/ --derived-dir /scratch/derived/ --background
+bash run_pipeline.sh --era5-dir /data/era5/ --derived-dir /scratch/derived/ \
+  --tracks-file /data/tracks_with_energetics_corrected.csv \
+  --afc-climatology /data/era5_climatology_250hPa_expanded.nc --background
 
 # Clean previous outputs first, then run
-bash run_pipeline.sh --era5-dir /data/era5/ --clean --background
+bash run_pipeline.sh --era5-dir /data/era5/ \
+  --tracks-file /data/tracks_with_energetics_corrected.csv \
+  --afc-climatology /data/era5_climatology_250hPa_expanded.nc \
+  --clean --background
 
 # With custom parallelism
-bash run_pipeline.sh --era5-dir /data/era5/ --n-chunks 32 --workers 8 --background
+bash run_pipeline.sh --era5-dir /data/era5/ \
+  --tracks-file /data/tracks_with_energetics_corrected.csv \
+  --afc-climatology /data/era5_climatology_250hPa_expanded.nc \
+  --n-chunks 32 --workers 8 --background
 
 # Resume an interrupted run (skip steps with existing outputs)
-bash run_pipeline.sh --era5-dir /data/era5/ --skip-done --background
+bash run_pipeline.sh --era5-dir /data/era5/ \
+  --tracks-file /data/tracks_with_energetics_corrected.csv \
+  --afc-climatology /data/era5_climatology_250hPa_expanded.nc \
+  --skip-done --background
 
 # Run only specific steps
-bash run_pipeline.sh --era5-dir /data/era5/ --only 7,7b,8,8b --background
+bash run_pipeline.sh --era5-dir /data/era5/ \
+  --tracks-file /data/tracks_with_energetics_corrected.csv \
+  --afc-climatology /data/era5_climatology_250hPa_expanded.nc \
+  --only 7,7b,8,8b --background
 ```
 
 **Pipeline execution model:** steps run **sequentially** (each step finishes before
 the next starts).  Within each heavy step (4, 5, 7) up to `--n-chunks` parallel
-background jobs run simultaneously — this is the in-step parallelism.
+background jobs run simultaneously — this is the in-step parallelism. Numerical
+libraries are limited to one thread per worker, so `--n-chunks` and `--workers`
+control the real concurrency without nested BLAS/OpenMP oversubscription.
 
 Options summary:
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | `--era5-dir PATH` | — | **Required.** Directory with per-cyclone ERA5 files |
+| `--tracks-file PATH` | — | **Required.** Corrected hourly tracks used for exact storm positions |
+| `--afc-climatology PATH` | — | **Required.** Expanded 1991–2020 monthly 250-hPa climatology used by AFC |
 | `--background` | off | Detach under nohup (survives SSH disconnect) |
 | `--clean` | off | Wipe previous results + logs before running |
 | `--dry-run` | off | With `--clean`: preview deletions, don't delete |

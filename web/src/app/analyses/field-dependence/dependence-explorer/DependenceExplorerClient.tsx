@@ -219,7 +219,10 @@ export default function DependenceExplorerClient({ topAssociations }: Props) {
   const topList = scope === 'canonical' ? topAssociations.canonical : topAssociations.all
   // For EPALL (ep=0) the top-associations JSON from step8 will include ep=0.
   // If data hasn't been recomputed yet, EPALL shows empty (no crash).
-  const topForEp = useMemo(() => topList.filter((t) => t.ep === selectedEp), [topList, selectedEp])
+  const topForEp = useMemo(
+    () => topList.filter((t) => t.ep === selectedEp && t.field_type === fieldType),
+    [topList, selectedEp, fieldType],
+  )
 
   // ── Load scatter data on demand ───────────────────────
   const loadScatter = useCallback(async () => {
@@ -859,5 +862,4 @@ function MetricCard({
     </div>
   )
 }
-
 

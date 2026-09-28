@@ -7,13 +7,17 @@
 #  Steps 1–3 MUST already have been run locally before using this script.
 #
 #  Usage:
-#    bash run_pipeline.sh --era5-dir /data/era5/
-#    bash run_pipeline.sh --era5-dir /data/era5/ --background          # nohup mode
-#    bash run_pipeline.sh --era5-dir /data/era5/ --n-chunks 20 --workers 4
-#    bash run_pipeline.sh --era5-dir /data/era5/ --skip-done
-#    bash run_pipeline.sh --era5-dir /data/era5/ --only 3b,4,5,6
-#    bash run_pipeline.sh --era5-dir /data/era5/ --clean                # wipe results+logs first
-#    bash run_pipeline.sh --era5-dir /data/era5/ --clean --dry-run      # preview what would be deleted
+#    bash run_pipeline.sh --era5-dir /data/era5/ \
+#      --tracks-file /data/tracks_corrected.csv \
+#      --afc-climatology /data/era5_climatology_250hPa_expanded.nc
+#
+#  Add any of the following controls to that base command:
+#    --background          # nohup mode
+#    --n-chunks 20 --workers 4
+#    --skip-done
+#    --only 3b,4,5,6
+#    --clean               # wipe results+logs first
+#    --clean --dry-run     # preview what would be deleted
 #
 #  Pipeline execution model:
 #    Steps run SEQUENTIALLY.  The next step only starts after the previous one
@@ -25,6 +29,9 @@
 #    --derived-dir PATH    Path for derived per-cyclone field files (*_era5_derived.nc)
 #                          (default: {era5-dir}/derived/)
 #                          Produced by step 3b; consumed by steps 4 and 5.
+#    --tracks-file PATH     Corrected hourly cyclone track table [REQUIRED]
+#                          Used for exact storm positions at selected times.
+#    --afc-climatology PATH Expanded 250-hPa monthly climatology [REQUIRED]
 #    --background          Re-exec under nohup (survives SSH disconnect).
 #                          Prints PID + log path and exits immediately.
 #    --clean               Delete all previous results and pipeline logs before
@@ -63,6 +70,15 @@
 set -uo pipefail
 ORIG_ARGS=("$@")   # Saved before parsing — used by --background re-exec
 
+# Each heavy step already parallelises explicitly. Prevent BLAS/OpenMP from
+# spawning another thread pool inside every worker, which otherwise multiplies
+# the requested process count and can saturate the shared server.
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
+export VECLIB_MAXIMUM_THREADS="${VECLIB_MAXIMUM_THREADS:-1}"
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PIPELINE_DIR="$SCRIPT_DIR"
@@ -72,6 +88,8 @@ PIPELINE_DIR="$SCRIPT_DIR"
 # ---------------------------------------------------------------------------
 ERA5_DIR=""
 DERIVED_DIR=""
+TRACKS_FILE=""
+AFC_CLIMATOLOGY=""
 N_CHUNKS=16
 N_WORKERS=4
 CONDA_ENV="paper_energy_patterns"
@@ -89,6 +107,8 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --era5-dir)         ERA5_DIR="$2";     shift 2 ;;
         --derived-dir)      DERIVED_DIR="$2"; shift 2 ;;
+        --tracks-file)      TRACKS_FILE="$2"; shift 2 ;;
+        --afc-climatology)  AFC_CLIMATOLOGY="$2"; shift 2 ;;
         --n-chunks)         N_CHUNKS="$2";     shift 2 ;;
         --workers)          N_WORKERS="$2";    shift 2 ;;
         --conda-env)        CONDA_ENV="$2";    shift 2 ;;
@@ -109,6 +129,26 @@ done
 if [[ -z "$ERA5_DIR" ]]; then
     echo "ERROR: --era5-dir is required." >&2
     echo "Run: bash run_pipeline.sh --help" >&2
+    exit 1
+fi
+
+if [[ -z "$TRACKS_FILE" ]]; then
+    echo "ERROR: --tracks-file is required." >&2
+    exit 1
+fi
+
+if [[ ! -f "$TRACKS_FILE" ]]; then
+    echo "ERROR: Corrected tracks file not found: $TRACKS_FILE" >&2
+    exit 1
+fi
+
+if [[ -z "$AFC_CLIMATOLOGY" ]]; then
+    echo "ERROR: --afc-climatology is required." >&2
+    exit 1
+fi
+
+if [[ ! -f "$AFC_CLIMATOLOGY" ]]; then
+    echo "ERROR: Expanded AFC climatology not found: $AFC_CLIMATOLOGY" >&2
     exit 1
 fi
 
@@ -415,6 +455,8 @@ if should_run 3b; then
     else
         CMD="$PYTHON $PIPELINE_DIR/step3b_derive_era5_fields.py \
             --era5-dir $ERA5_DIR --derived-dir $DERIVED_DIR \
+            --tracks-file $TRACKS_FILE \
+            --afc-climatology $AFC_CLIMATOLOGY \
             --chunk {CHUNK} --n-chunks $N_CHUNKS --workers $N_WORKERS"
         run_chunks "step3b" $N_CHUNKS "$CMD"
     fi
@@ -487,7 +529,7 @@ if should_run 6 || should_run 4 || should_run 5; then
 fi
 
 # ---------------------------------------------------------------------------
-# Step 7 — Compute PREDEP (absolute first, then anomaly — sequential)
+# Step 7 — Compute PREDEP for EP1–EP3 and the pooled EPALL population
 # ---------------------------------------------------------------------------
 if should_run 7; then
     _skip_abs="$RESULTS_DIR/step7_predep_absolute.csv"
@@ -511,6 +553,17 @@ if should_run 7; then
     else
         run_chunks "step7_anomaly" $N_CHUNKS "$CMD_ANOM"
     fi
+
+    for field_type in absolute anomaly; do
+        _epall_output="$RESULTS_DIR/step7_predep_${field_type}_epall.csv"
+        if $SKIP_DONE && [[ -s "$_epall_output" ]]; then
+            _log "SKIP   [step7-${field_type}-epall]  output already exists"
+        else
+            run_single "step7_${field_type}_epall" \
+                "$PYTHON $PIPELINE_DIR/step7_compute_predep.py \
+                --field-type $field_type --ep 0 --workers $N_WORKERS"
+        fi
+    done
 fi
 
 # ---------------------------------------------------------------------------
@@ -531,6 +584,10 @@ fi
 if should_run 8; then
     run_single "step8" \
         "$PYTHON $PIPELINE_DIR/step8_synthesis_figures.py"
+    run_single "diag_correlation_heatmaps" \
+        "$PYTHON $PIPELINE_DIR/diag_correlation_heatmaps.py"
+    run_single "diag_scatterplots" \
+        "$PYTHON $PIPELINE_DIR/diag_scatterplots.py"
 fi
 
 # ---------------------------------------------------------------------------
@@ -539,6 +596,8 @@ fi
 if should_run 8b; then
     run_single "step8b" \
         "$PYTHON $PIPELINE_DIR/step8b_significance_figures.py"
+    run_single "step8b_discrete" \
+        "$PYTHON $PIPELINE_DIR/step8b_effect_heatmap_discrete.py"
 fi
 
 # ---------------------------------------------------------------------------

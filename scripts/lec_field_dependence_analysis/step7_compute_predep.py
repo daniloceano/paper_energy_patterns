@@ -37,14 +37,28 @@ Usage:
 Output:
   results/lec_field_dependence/step7_predep_absolute.csv
   results/lec_field_dependence/step7_predep_anomaly.csv
+  results/lec_field_dependence/step7_predep_{absolute,anomaly}_epall.csv
+    (when invoked with --ep 0)
 
 Author: Danilo Couto de Souza
 Date: April 2026
 """
 
+import os
 import sys
 import argparse
 from pathlib import Path
+
+# PREDEP parallelises with processes below. Limit numerical libraries to one
+# thread per process so --workers means what it says on shared HPC systems.
+for _thread_var in (
+    "OMP_NUM_THREADS",
+    "OPENBLAS_NUM_THREADS",
+    "MKL_NUM_THREADS",
+    "NUMEXPR_NUM_THREADS",
+    "VECLIB_MAXIMUM_THREADS",
+):
+    os.environ.setdefault(_thread_var, "1")
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 

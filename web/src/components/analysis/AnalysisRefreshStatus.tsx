@@ -8,6 +8,7 @@ const REFRESHED_ANALYSES = [
   '/analyses/vertical-structure',
   '/analyses/ck-subterms',
   '/analyses/composites',
+  '/analyses/field-dependence',
 ]
 
 export default function AnalysisRefreshStatus() {

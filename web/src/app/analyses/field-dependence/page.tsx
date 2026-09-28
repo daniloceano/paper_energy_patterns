@@ -28,31 +28,32 @@ export default function FieldDependencePage() {
       />
 
       <div className="mb-8 space-y-4">
-        <ResultSummaryCallout type="warning" title="Correction required before these results are final">
+        <ResultSummaryCallout type="result" title="Corrected analysis complete">
           <p>
-            This analysis was run on the previous ERA5-composite population and obsolete
-            Energy Pattern membership. It must be rebuilt after the corrected composites.
-            The statistics and figures below remain visible as a record of the previous run,
-            but they must not yet be quoted as current results.
+            The pipeline now uses the corrected Energy Pattern membership and the same
+            2–3 central intensification times used by the ERA5 composites. All 2,733
+            eligible cyclones have valid absolute and EPALL-relative features for the five
+            dynamical fields.
           </p>
         </ResultSummaryCallout>
 
-        <ResultSummaryCallout type="warning" title="Previous-run finding — pending correction">
+        <ResultSummaryCallout type="result" title="Main corrected findings">
           <p>
             All 24 LEC terms differ significantly across EP1, EP2, and EP3.
-            The strongest predictive associations (PREDEP &gt; 0.70) are found in EP3
-            for barotropic conversion (BKz) predicted by upper-level kinetic energy
-            advection and ageostrophic flux convergence. Canonical LEC terms used in
-            the cluster analysis (Ca, Ck, Ge, BAe, BKe, Ae, Ke) show moderate-to-strong
-            predictability from all five dynamical fields.
+            Of the 130 dynamical descriptors, 126 remain significant after FDR correction;
+            the four exceptions are the absolute and anomaly versions of PV 200 centre
+            value and KE-advection 250 western border. The strongest PREDEP association is
+            found in EP3 between Kz and the domain-mean magnitude of 250-hPa kinetic-energy
+            advection (0.732). Strong canonical associations include Ae and Ca with western
+            AFC, and Ck with eastern-sector 850-hPa temperature advection.
           </p>
         </ResultSummaryCallout>
 
         <ResultSummaryCallout type="info" title="Analysis Framework">
           <ul className="list-inside list-disc space-y-1 text-sm">
             <li>
-              <strong>2,733 cyclones</strong> (EP1 = 330, EP2 = 776, EP3 = 1,625) during
-              the intensification phase, sampled at central timesteps.
+              <strong>2,733 cyclones</strong> (EP1 = 421, EP2 = 650, EP3 = 1,662) during
+              the intensification phase, sampled at their exact 2–3 central timesteps.
             </li>
             <li>
               <strong>5 dynamical fields</strong>: PV at 850 and 200 hPa, temperature
@@ -60,7 +61,7 @@ export default function FieldDependencePage() {
             </li>
             <li>
               <strong>13 spatial features</strong> per field: domain mean, centre value,
-              4 borders, 2 contrasts, 4 quadrants, and absolute domain mean.
+              4 borders, 2 contrasts, 4 sectors, and absolute domain mean.
             </li>
             <li>
               <strong>Direction</strong>: LEC term = response (Y), dynamical
@@ -100,8 +101,8 @@ export default function FieldDependencePage() {
             global test and post-hoc comparison based on that variable&apos;s own
             distributional properties, rather than assuming one test fits everything.
             The population here is the {(2733).toLocaleString()} cyclones that survive
-            the ≥ 24 h intensification filter used for the composites (EP1 = 332,
-            EP2 = 776, EP3 = 1,625); the{' '}
+            the ≥ 24 h intensification filter used for the composites (EP1 = 421,
+            EP2 = 650, EP3 = 1,662); the{' '}
             <Link href="/analyses/cps" className="text-indigo-600 hover:underline">
               Cyclone Phase Space
             </Link>{' '}
@@ -259,9 +260,10 @@ export default function FieldDependencePage() {
           <InThisStudy>
             <p>
               For <em>C</em><sub>k</sub>, the post-hoc contrasts are what allow the
-              result to be stated as &quot;EP1 has significantly stronger barotropic
-              conversion than both EP2 and EP3&quot; rather than the vague &quot;the
-              EPs differ in <em>C</em><sub>k</sub>&quot;. The pairwise effect-size
+              corrected result to be stated as &quot;EP2 has higher barotropic conversion
+              than EP3, which in turn is higher than EP1&quot; rather than the vague
+              &quot;the EPs differ in <em>C</em><sub>k</sub>&quot;. All three pairwise
+              contrasts are significant after Holm correction. The pairwise effect-size
               heatmaps on the{' '}
               <Link href="/analyses/field-dependence/ep-differences" className="text-indigo-600 hover:underline">
                 EP Differences
@@ -283,7 +285,7 @@ export default function FieldDependencePage() {
             sampled. An effect size answers the quantitative question — how big is that
             difference? — and is designed <em>not</em> to grow simply because the sample
             is large. Because the EP samples entering these tests are large and uneven
-            (EP1 = 332, EP2 = 776, EP3 = 1,625 cyclones), both numbers are reported for
+            (EP1 = 421, EP2 = 650, EP3 = 1,662 cyclones), both numbers are reported for
             every global and pairwise comparison, and the effect size carries the
             interpretive weight.
           </p>
@@ -331,15 +333,15 @@ export default function FieldDependencePage() {
           </p>
           <div className="mt-3">
             <FormulaBlock
-              formula="r_{rb} = 1 - \frac{2U}{n_i\,n_j}"
+              formula="r_{rb} = \frac{2U}{n_i\,n_j} - 1"
               label="Rank-biserial correlation — pairwise effect size"
               terms={{
                 'r_rb': 'Rank-biserial correlation for the contrast EP i vs EP j (dimensionless, −1 to +1)',
-                'U': 'Mann–Whitney U statistic — the number of cyclone pairs (one from each EP) in which the EP j member has the larger value',
+                'U': 'Mann–Whitney U statistic for EP i — the number of cross-EP pairs in which the EP i member has the larger value (ties count one half)',
                 'n_i, n_j': 'Number of cyclones in EP i and EP j',
                 'n_i × n_j': 'Total number of cross-EP cyclone pairs that can be formed',
               }}
-              notes="Range −1 to +1. r_rb = +1: every cyclone in EP i exceeds every cyclone in EP j (complete separation). r_rb = 0: the two EPs overlap so thoroughly that a cyclone from either is equally likely to be the larger. r_rb = −1: the reverse of +1."
+              notes="Range −1 to +1. r_rb = +1: every cyclone in EP i exceeds every cyclone in EP j (complete separation). r_rb = 0: a cyclone from either group is equally likely to be larger. r_rb = −1: every cyclone in EP j exceeds every cyclone in EP i."
             />
           </div>
           <SimpleTerms>
@@ -356,10 +358,11 @@ export default function FieldDependencePage() {
           </SimpleTerms>
           <InThisStudy>
             <p>
-              The sign carries the physics. A positive EP1×EP2 contrast for{' '}
-              <em>C</em><sub>k</sub> means EP1 cyclones convert kinetic energy
-              barotropically more strongly than EP2 cyclones — the signature that
-              defines EP1. The discrete colour bins on the effect-size heatmaps use
+              The direction carries the physics and is reported explicitly beside each
+              contrast. For <em>C</em><sub>k</sub>, the corrected ordering is EP2 &gt;
+              EP3 &gt; EP1; the signed rank-biserial effect should therefore be read
+              together with the named contrast, not as an unsigned magnitude. The
+              discrete colour bins on the effect-size heatmaps use
               exactly the thresholds below, with grey reserved for |r<sub>rb</sub>| &lt;
               0.10 so that negligible effects are visually separated from meaningful
               ones even when they are statistically significant.
@@ -424,7 +427,7 @@ export default function FieldDependencePage() {
               is not. Suppose EP1 and EP3 differ in mean <em>A</em><sub>e</sub> by an
               amount so small it would never change how you interpret a synoptic chart.
               With 40 cyclones per group that difference is invisible to the test
-              (<em>p</em> ≈ 0.4). With 332 and 1,625 cyclones — the actual EP1 and EP3
+              (<em>p</em> ≈ 0.4). With 421 and 1,662 cyclones — the actual EP1 and EP3
               sample sizes in this analysis — the very same difference can return{' '}
               <em>p</em> &lt; 0.001. Nothing about the atmosphere changed; only the
               statistical power did. This is why a small <em>p</em> paired with a

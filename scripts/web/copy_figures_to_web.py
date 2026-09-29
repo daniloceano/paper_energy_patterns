@@ -79,7 +79,7 @@ FIGURES_MANIFEST = {
     "main/pairwise_effectsize_composite_scalars.png":  "main/pairwise_effectsize_composite_scalars.png",
 
     # --- CPS analysis (cyclone phase space) ---
-    # The 745-figure case gallery under figures/cps_analysis/cases/ is NOT copied:
+    # The sampled case gallery under figures/cps_analysis/cases/ is NOT copied:
     # it is a validation aid for the authors, not site content.
     "cps/fig0_cps_reference.png":                       "cps_analysis/fig0_cps_reference.png",
     "cps/fig1_phase_composition.png":                   "cps_analysis/fig1_phase_composition.png",
@@ -90,6 +90,15 @@ FIGURES_MANIFEST = {
     "cps/fig6_phase_space_by_ep_single_state_sc.png":   "cps_analysis/fig6_phase_space_by_ep_single_state_sc.png",
     "cps/fig7_transition_trajectories.png":             "cps_analysis/fig7_transition_trajectories.png",
     "cps/fig8_ep_relative_subtropical.png":             "cps_analysis/fig8_ep_relative_subtropical.png",
+    "cps/fig9_genesis_density_identified_anomaly.png":  "cps_analysis/fig9_genesis_density_identified_anomaly.png",
+    "cps/fig9_genesis_density_identified_absolute.png": "cps_analysis/fig9_genesis_density_identified_absolute.png",
+    "cps/fig9_genesis_density_characteristics_anomaly.png":  "cps_analysis/fig9_genesis_density_characteristics_anomaly.png",
+    "cps/fig9_genesis_density_characteristics_absolute.png": "cps_analysis/fig9_genesis_density_characteristics_absolute.png",
+    "cps/fig10_track_density_identified_anomaly.png":  "cps_analysis/fig10_track_density_identified_anomaly.png",
+    "cps/fig10_track_density_identified_absolute.png": "cps_analysis/fig10_track_density_identified_absolute.png",
+    "cps/fig10_track_density_characteristics_anomaly.png":  "cps_analysis/fig10_track_density_characteristics_anomaly.png",
+    "cps/fig10_track_density_characteristics_absolute.png": "cps_analysis/fig10_track_density_characteristics_absolute.png",
+    "cps/fig11_cps_coverage_diagnostics.png":           "cps_analysis/fig11_cps_coverage_diagnostics.png",
 
     # NOTE: EP Structure composite figures are copied via copy_ep_structure_tree()
     # (canonical figures now have clean naming without mode suffixes)

@@ -47,7 +47,7 @@ dropped it for the South Atlantic) and Gozzo et al.'s manual rejection step by
 visual inspection of geopotential-height-anomaly and 925-hPa temperature fields.
 
 Inputs:
-    results/cps_analysis/cps_timesteps.csv          (step 1)
+    results/cps_analysis/cps_timesteps.csv          (step 1; includes coverage)
 
 Outputs:
     results/cps_analysis/cps_timesteps_classified.csv
@@ -81,6 +81,7 @@ from scripts.cps_analysis.cps_criteria import (
     class_mask,
     describe_criterion,
 )
+from scripts.cps_analysis.cps_coverage import COVERAGE_THRESHOLD
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 RESULTS_DIR = PROJECT_ROOT / "results" / "cps_analysis" / "sensitivity"
@@ -266,7 +267,13 @@ def main():
         return 1
 
     df = pd.read_csv(IN_FILE, parse_dates=["datetime"])
-    print(f"\nLoaded {len(df):,} timesteps for {df['track_id'].nunique():,} cyclones")
+    if "analysis_included" not in df:
+        raise ValueError("cps_timesteps.csv lacks the step-1 coverage audit fields")
+    n_before = df["track_id"].nunique()
+    df = df[df["analysis_included"].astype(bool)].copy()
+    print(f"\nLoaded {len(df):,} timesteps for {df['track_id'].nunique():,} cyclones "
+          f"eligible at >= {COVERAGE_THRESHOLD:.0%} full-life coverage "
+          f"({n_before - df['track_id'].nunique():,} CPS-file cases excluded)")
 
     classifiable = df[["B", "VTL", "VTU"]].notna().all(axis=1)
     print(f"  classifiable: {classifiable.sum():,} ({classifiable.mean():.1%})")
@@ -350,6 +357,7 @@ def main():
         fh.write("CPS classification criteria applied in this analysis\n")
         fh.write("=" * 60 + "\n\n")
         fh.write(f"Persistence requirement : >= {MIN_PERSISTENCE_HOURS:.0f} consecutive hours\n")
+        fh.write(f"Coverage requirement    : >= {COVERAGE_THRESHOLD:.0%} of complete track duration\n")
         fh.write(f"Genesis latitude band   : {GENESIS_LAT_BAND[0]} to {GENESIS_LAT_BAND[1]} deg\n")
         fh.write(f"Max onset from genesis  : <= {MAX_ONSET_HOURS:.0f} h (strict rule only)\n")
         fh.write("Precedence              : " + " > ".join(CLASS_PRECEDENCE) + "\n\n")

@@ -27,6 +27,8 @@ python scripts/cps_analysis/sensitivity/run_sensitivity.py
 ```
 
 Requires `results/cps_analysis/cps_timesteps.csv` from step 1 of the canonical pipeline.
+The suite uses only cyclones with `analysis_included = True`, i.e. at least 75% usable CPS
+coverage over the complete hourly track duration, and uses the corrected current EP labels.
 
 ---
 
@@ -35,8 +37,8 @@ Requires `results/cps_analysis/cps_timesteps.csv` from step 1 of the canonical p
 Each of these findings is the reason for a specific choice in the canonical analysis.
 
 **1. Persistence alone does not exclude warm seclusions.** Under `type_persistent`
-(≥ 36 h) the tropical class still held 16 cyclones, at a median latitude of **−57.7°** with
-**93% of timesteps in the mature/decay phases** and a median onset of **75 h after
+(≥ 36 h) the tropical class still held 16 cyclones, at a median latitude of **−57.8°** with
+**88% of timesteps in the mature/decay phases** and a median onset of **75 h after
 genesis**. A Shapiro–Keyser seclusion is a real, sustained structure — it passes a
 persistence filter comfortably.
 → *Canonical consequence: the tropical-transition test.*
@@ -49,7 +51,7 @@ finally implemented.*
 
 **3. The threshold choice is not the dominant uncertainty for the tropical class, but it is
 for the subtropical one.** Subtropical counts range over a factor of 6–8 between threshold
-sets at every level of strictness (131–796 persistent, 13–104 strict). Tropical counts
+sets at every level of strictness (129–775 persistent, 13–101 strict). Tropical counts
 collapse to 0–1 regardless.
 → *Canonical consequence: one threshold set is fixed and stated (de Souza et al. 2026);
 the sensitivity spread is reported rather than hidden.*
@@ -67,14 +69,15 @@ extratropical cyclone.
 → *Canonical consequence: the phase of the tropical run is recorded as a diagnostic, never
 used as a gate.*
 
-**6. Secondary intensification does not discriminate.** Only 14.0% of cyclones with a
-tropical timestep show a secondary life-cycle labelling, *below* the 18.5% population
+**6. Secondary intensification does not discriminate.** Only 14.1% of cyclones with a
+tropical timestep show a secondary life-cycle labelling, *below* the 18.1% population
 baseline.
 → *Canonical consequence: not used.*
 
-**7. Raw timestep sequences oscillate.** 158 distinct class sequences; the commonest
-non-pure one is EC → SC → EC (775 cyclones); 24.2% of the population shows ≥ 4
-alternations. A "genesis as X, later Y" rule has no defined answer for these.
+**7. Raw timestep sequences oscillate.** There are 1,595 distinct class sequences; the
+commonest non-pure one is EC → unclassified → EC (420 cyclones), and 44.3% of the
+population shows at least four changes of raw timestep label. A "genesis as X, later Y"
+rule has no defined answer for these.
 → *Canonical consequence: states are persistence-gated before any sequence is built.*
 
 **8. External validation.** Of thirteen documented named cyclones, only two are actually
@@ -85,7 +88,7 @@ Guará, Iba, Catarina — nearest track 1,634 km away) or postdate it (Raoni 202
 → *Canonical consequence: the population is an extratropical catalogue; its counts describe
 thermal structure within it, not a basin climatology.*
 
-**9. Two-sided B.** The two-sided subtropical bound (−25 < B < 25) retains 97.1% of
-subtropical timesteps; the 2.9% it removes sit at a median latitude of −45.8° and are
-decay-dominated.
+**9. Two-sided B.** The two-sided subtropical bound (−25 < B < 25) retains 97.2% of
+subtropical timesteps; the 2.8% it removes sit at a median latitude of −46.2° and are
+predominantly late-life-cycle (56.5% mature or decay).
 → *Canonical consequence: two-sided bound adopted, matching de Souza et al. (2026).*

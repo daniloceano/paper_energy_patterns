@@ -8,7 +8,9 @@ sensitivity section. The canonical classification lives in
 `scripts/cps_analysis/step2_classify_phases.py` and downstream.
 
 Requires `results/cps_analysis/cps_timesteps.csv` from step 1 of the canonical
-pipeline.
+pipeline. Step 1's official >=75% full-life coverage flag is applied before all
+sensitivity classifications; 100% and >=90% comparisons are reported by the
+separate canonical coverage diagnostic.
 
 Run:
     python scripts/cps_analysis/sensitivity/run_sensitivity.py

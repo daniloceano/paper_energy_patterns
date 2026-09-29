@@ -174,7 +174,8 @@ Guishard et al. (2009): *"attain gales in the
 20°–40°N latitude band to reduce the possibility of tropical and extratropical systems
 being introduced into the dataset"*. Gozzo et al. (2014), criterion 1: *"The SC forms
 between 20° and 40°S."* Applied to the cyclone, since it is a statement about
-cyclogenesis. It rejects 395 of the 804 persistent hybrid runs in this catalogue.
+cyclogenesis. In the coverage-eligible population it rejects 386 of 784 persistent hybrid
+runs.
 
 **(iii) Onset within 24 h of genesis — the anti-warm-seclusion criterion.**
 *Recorded as `pure_genesis`, deliberately not a gate.* It is a filter on the TYPE OF
@@ -222,7 +223,7 @@ $z_{ij} = (O_{ij} - E_{ij}) / \sqrt{E_{ij}}$ identifying which cells drive any d
 from independence ($|z| > 2$ flagged). Cochran's condition (expected counts $\ge 5$) is
 checked and violations are reported explicitly.
 
-Because the EP populations are very unequal (441 / 978 / 2,393), **counts are always
+Because the official EP populations are very unequal (482 / 767 / 2,141), **counts are always
 reported alongside within-EP percentages**; only the percentages are comparable across EPs.
 
 Genesis-region stratification is used as a confounding control (see Results).
@@ -238,9 +239,8 @@ The standard error uses the hypothesised $p$, not the observed $\hat p$, which i
 distinguishes it from the textbook Wald interval $\hat p \pm z\sqrt{\hat p(1-\hat p)/n}$.
 The interval is asymmetric and its centre is pulled slightly toward $1/2$. Wald is not
 used because it fails in exactly the regime this analysis lives in: for the sparse classes
-(`TC` with 2 members, `SD` with 47) it returns lower limits below zero, which is not a
-possible frequency. Example, at $k/n = 2/441$: Wald gives $[-0.17\%,\,1.08\%]$, Wilson
-gives $[0.12\%,\,1.64\%]$.
+(`TC` with 2 members, `SD` with 22) it can return lower limits below zero, which is not a
+possible frequency.
 
 **Contrast on a single class — Fisher exact.** Each EP is tested against the **other two
 pooled**, a $2\times2$ table. Conditioning on all four margins, the count in the focal cell
@@ -250,17 +250,13 @@ $$P(X=a)=\frac{\binom{K}{a}\binom{M-K}{N-a}}{\binom{M}{N}}$$
 
 with $M$ the total, $K$ the class total and $N$ the EP size; the two-sided $p$ sums every
 table whose probability does not exceed the observed one. The effect size reported is the
-sample odds ratio $ad/bc$. For the well-populated outcomes (`SC`, `ST`) the chi-square test
-would also be valid — the smallest expected count over the nine $2\times2$ tables is 30
-(EP1 × `ST`), comfortably above Cochran's threshold, and it returns a very similar $p$
-($4.4\times10^{-4}$ against Fisher's $5.5\times10^{-4}$ on the EP2 × `ST` contrast) — so
-Fisher is a consistency choice, not a necessity; it becomes necessary for the sparse
-classes, where Cochran's condition fails. Using one test throughout removes any question of
-the test having been chosen after seeing the result.
+sample odds ratio $ad/bc$. Fisher is used consistently for every focal contrast, including
+the sparse cells where Cochran's condition fails, so the test is not selected after seeing
+the result.
 
 **Ratios against EPALL are descriptive, not inferential.** Where a frequency is expressed
-relative to the pooled population, EPALL is the union EP1 + EP2 + EP3 = 3,812 — not the
-6,776 of the catalogue, since only clustered cyclones carry an Energy Pattern. Each EP is
+relative to the pooled population, EPALL is the coverage-eligible union
+EP1 + EP2 + EP3 = 3,390 — not the 6,789-track catalogue. Each EP is
 therefore **nested in its own denominator**, and the ratio cannot be read as an independent
 comparison or given a $p$-value. The interval drawn on such a ratio is the Wilson interval
 of the numerator divided by the EPALL point estimate, i.e. it carries the sampling
@@ -299,8 +295,9 @@ genesis-region label. Genesis-region boxes:
 | SE-BR | 38°S – 23°S | 52°W – 37°W |
 
 **Energy Patterns** — `results/cluster/kmeans_clustered_data.csv`, K-Means ($k=3$) on the
-PCA of LEC diagnostics; 3,820 cyclones. Mapping (`scripts/utils/ep_mapping.py`):
-cluster 0 → EP1 (444), cluster 2 → EP2 (979), cluster 1 → EP3 (2,397).
+corrected PCA of LEC diagnostics; 3,820 cyclones. Mapping
+(`scripts/utils/ep_mapping.py`): cluster 2 → EP1 (548), cluster 0 → EP2 (860),
+cluster 1 → EP3 (2,412).
 
 **Derived variables**
 
@@ -312,8 +309,9 @@ cluster 0 → EP1 (444), cluster 2 → EP2 (979), cluster 1 → EP3 (2,397).
 | `SIZE` | km | equivalent radius of the area with 925-hPa wind $\ge 17$ m s⁻¹ |
 | `over_ocean` | bool | Natural Earth 110 m land polygons |
 
-**Sampling.** CPS is 3-hourly; tracks are hourly. Positions matched for **100%** of CPS
-timesteps.
+**Sampling.** CPS is 3-hourly; tracks are hourly. Every CPS timestamp in all 6,776 source
+files matched its reference trajectory exactly, with unique, strictly increasing time axes;
+the normal cadence is 3 h with an optional terminal 2 h interval.
 
 ---
 
@@ -323,11 +321,20 @@ timesteps.
 
 The 6,776 per-cyclone CSVs are concatenated; the GrADS sentinel `-999000000` is masked;
 $B$ is formed as `B_left - B_right`, which applies the Southern Hemisphere factor $h=-1$;
-track metadata and EP labels are joined.
+track metadata and corrected EP labels are joined. Coverage is then computed against all
+6,789 reference trajectories, including the 13 without a CPS file.
 
-**Sign-convention verification.** Over 188,573 classifiable timesteps the population shows
-median $B = +25.6$ m (64.4% with $B > 10$ m), median $-V_T^L = -112.7$, median
-$-V_T^U = -192.3$ (only 2.5% positive). A predominantly frontal, cold-core population is
+**Full-life coverage.** The denominator is the complete hourly-track duration from genesis
+to track end. The numerator is the sum of CPS interval durations whose **ending** timestamp
+has finite $B$, $-V_T^L$ and $-V_T^U$. The genesis sentinel contributes zero duration;
+hours before the first CPS timestamp, after the last CPS timestamp, and intervals ending in
+unusable values are uncovered. This duration-based definition, rather than a row-count
+fraction, is the official gate: coverage $\ge 75\%$ is included; lower coverage is excluded;
+zero usable duration is `no_data`, never `undetermined`.
+
+**Sign-convention verification.** Over 178,651 classifiable timesteps in the official
+population, median $B = +25.3$ m (72.5% with $B > 10$ m), median $-V_T^L = -111.3$,
+and median $-V_T^U = -191.2$ (only 2.9% positive). A predominantly frontal, cold-core population is
 exactly what an extratropical track catalogue should produce, confirming the sign handling.
 
 **Implementation check against Hart (2003).** The calculator uses `LEVS_VTL = [900, 850,
@@ -378,7 +385,7 @@ columns like-for-like, but it changes what those columns mean. **Under `type_pro
 `type_strict` the "extratropical" count is NOT a count of extratropical cyclones in the
 basin** — it is the count of cyclones that are extratropical *and* form between 20°S and
 40°S *and* over ocean. Since the ARG genesis box spans 39–55°S, most of the basin's
-extratropical population is excluded by construction (2,787 → 1,056 → 862). Only the
+extratropical population is excluded by construction (2,607 → 991 → 810). Only the
 within-EP *ratios* under a fixed rule are interpretable across EPs; the absolute
 extratropical counts under the geographic rules are not a climatology.
 
@@ -393,8 +400,9 @@ One threshold set, one scheme. Thresholds follow **de Souza et al. (2026)**, ver
 > (Gozzo et al., 2014, 2017; de Jesus et al., 2022; Cardoso et al., 2022)."
 
 Note the **two-sided** $B$ bound for the subtropical class, consistent with the two-sided
-symmetry definition of Evans and Hart (2003). It retains 97.1% of subtropical timesteps
-here; the 2.9% removed sit at a median latitude of −45.8° and are decay-dominated.
+symmetry definition of Evans and Hart (2003). It retains 97.2% of one-sided GOZZO14
+subtropical timesteps here; the 2.8% removed sit at a median latitude of −46.2° and are
+predominantly late-life-cycle (56.5% mature or decay).
 
 **Persistence gate.** A class counts as a *state* of the cyclone only when held for
 **≥ 36 consecutive hours** (Guishard et al. 2009, Gozzo et al. 2014). This is what makes
@@ -482,17 +490,17 @@ sampling cadence. This is the same estimator, bandwidth and grid as the manuscri
 figure, shared through `cps_density.py` so the two cannot drift apart.
 
 **Two readings of the same field.** Absolute density carries the sample size — with EP1 at
-441 cyclones and EP3 at 2,393, an EP1 panel is faint because EP1 is rare, not because its
+482 cyclones and EP3 at 2,141, an EP1 panel is faint because EP1 is rare, not because its
 cyclones form somewhere else. To separate the two, the EP panels are also drawn as the
 min-max normalised anomaly $\tilde{\rho}_{\text{EP}} - \tilde{\rho}_{\text{EPALL}}$, where
 $\tilde{\rho}$ scales the positive values of each field onto $[0,1]$. That comparison is of
 **shape** only and says nothing about how many cyclones produced it; the absolute mode is
 kept alongside precisely so the two questions are never conflated.
 
-**Denominator.** EPALL is the union EP1 ∪ EP2 ∪ EP3 = **3,812** cyclones, not the 6,776 of
-the catalogue — the same choice as step 8, and required here because the EP panels are read
-against EPALL. The class counts in this section are therefore smaller than those in C1
-(e.g. `SC` 134 rather than 182).
+**Denominator.** EPALL is the coverage-eligible union EP1 ∪ EP2 ∪ EP3 = **3,390** cyclones,
+not the 6,789-track catalogue — the same choice as step 8, and required here because the EP
+panels are read against EPALL. The class counts in this section are therefore smaller than
+those in C1 (e.g. `SC` 128 rather than 173).
 
 **Whole life means whole life.** The track maps use every position of a cyclone of the given
 class, not only the positions holding that structure. A single-state `SC` cyclone is
@@ -502,8 +510,9 @@ held" is a different one, and it is what the phase-space figures answer.
 
 **Minimum sample.** A panel with fewer than **10 cyclones** is drawn as raw positions with no
 density field. The gate is on cyclones rather than positions because the 3-hourly positions of
-one cyclone are not independent samples: `SC`/EP1 has 3 cyclones but 119 positions, and a KDE
-over those 119 would draw a smooth field out of a single trajectory.
+one cyclone are not independent samples: `SC`/EP1 has 6 cyclones but 288 whole-track
+positions, and a KDE over those positions would draw a smooth field out of only six
+trajectories.
 
 ---
 
@@ -540,7 +549,7 @@ over those 119 would draw a smooth field out of a single trajectory.
    has already developed — the measured onset is biased low and a seclusion could pass the
    24-h test. Conversely, if a pre-existing disturbance is tracked early, the onset is
    biased high. Both would blur the early/late separation rather than create it, so the
-   very clean separation actually observed (median 45 h for EP3 vs 81–96 h for EP1/EP2)
+   very clean separation actually observed (median 51 h for EP3 vs 81–86 h for EP1/EP2)
    is unlikely to be a tracking artefact.
 
 8. **The `period` labels (incipient / intensification / mature / decay) are taken as
@@ -552,23 +561,24 @@ over those 119 would draw a smooth field out of a single trajectory.
 
 ## Canonical Results
 
-Population: **6,776 cyclones**, genesis years 1979–2020 (42 years); **3,812** carry an
-Energy Pattern label.
+Population: **6,789 reference tracks**, genesis years 1979–2020 (42 years). There are
+**6,776 CPS files**; **6,157 cyclones** pass the official $\ge75\%$ coverage gate, of which
+**3,390** carry a corrected Energy Pattern label (EP1 482 / EP2 767 / EP3 2,141).
 
 ### C1. Phase-class composition
 
 | Class | n | % | |
 |---|---|---|---|
-| `EC` | 2,926 | 43.2% | extratropical throughout |
-| `SC` | 182 | 2.7% | subtropical throughout |
+| `EC` | 2,754 | 44.7% | extratropical throughout |
+| `SC` | 173 | 2.8% | subtropical throughout |
 | `TC` | 2 | 0.0% | tropical throughout |
-| `ST` | 60 | 0.9% | subtropical transition (EC → SC) |
-| `SD` | 22 | 0.3% | subtropical decay (SC → EC) |
+| `ST` | 58 | 0.9% | subtropical transition (EC → SC) |
+| `SD` | 22 | 0.4% | subtropical decay (SC → EC) |
 | `TT` / `ET` | 0 | 0.0% | — |
-| `EC_like` | 2,398 | 35.4% | extratropical characteristics, not sustained 36 h |
-| `SC_like` | 548 | 8.1% | **hybrid characteristics, not sustained 36 h** |
+| `EC_like` | 2,095 | 34.0% | extratropical characteristics, not sustained 36 h |
+| `SC_like` | 493 | 8.0% | **hybrid characteristics, not sustained 36 h** |
 | `TC_like` | 2 | 0.0% | warm-core characteristics, not sustained 36 h |
-| `undetermined` | 636 | 9.4% | no dominant structure |
+| `undetermined` | 558 | 9.1% | sufficient CPS coverage, no dominant structure |
 
 Separately, the tropical-transition test rejected **12 warm seclusions** and 2
 indeterminate warm cores.
@@ -631,8 +641,8 @@ of genesis (the Guishard/Gozzo window):
 
 | first persistent state | cyclones | of which in place within 24 h |
 |---|---|---|
-| EC | 2,955 | 2,439 (82.5%) |
-| SC | 462 | 209 (45.2%) |
+| EC | 2,810 | 2,290 (81.5%) |
+| SC | 197 | 114 (57.9%) |
 | TC | 2 | 0 (0.0%) |
 
 **(ii) Dominance** — how much of its own classifiable life a cyclone actually spends in its
@@ -640,8 +650,8 @@ own class:
 
 | class | median share | ≥50% | ≥70% | ≥90% | class is dominant |
 |---|---|---|---|---|---|
-| `EC` (2,926) | 0.84 | 2,612 | 1,965 | 1,196 | 2,786 (95%) |
-| `SC` (182) | 0.74 | 166 | 103 | 45 | 175 (96%) |
+| `EC` (2,754) | 0.83 | 2,444 | 1,820 | 1,095 | 2,614 (95%) |
+| `SC` (173) | 0.74 | 157 | 97 | 41 | 166 (96%) |
 | `TC` (2) | 0.34 | 0 | 0 | 0 | 1 (50%) |
 
 The intuition that a "subtropical cyclone" should spend most of its life subtropical is
@@ -650,9 +660,9 @@ median share of two thirds — and **not supported for `TC`**, where the label r
 single 36-h run in a cyclone that is subtropical for most of its life. That is one more
 reason to treat the two `TC` cyclones as candidates rather than identifications.
 
-For the whole population the pure-`SC` composition is 63.5% subtropical / 22.7%
-extratropical / 12.2% unclassified / 1.5% tropical, against 22.8% / 63.1% / 12.5% / 1.7%
-for the full catalogue — near mirror images. This is why
+Among classifiable timesteps, the pure-`SC` composition is 69.8% subtropical / 19.1%
+extratropical / 10.1% unclassified / 1.0% tropical, against 23.1% / 62.7% / 12.4% / 1.7%
+for the full eligible population — near mirror images. This is why
 `fig6_phase_space_by_ep_single_state_sc.png` shows the density of the **subtropical-classified timesteps
 only**, with the rest as grey context: plotting all their timesteps reproduces something
 close to the whole-population cloud and hides the classification.
@@ -661,13 +671,16 @@ Columns `genesis_state`, `genesis_onset_h`, `pure_genesis`, `dominant_class` and
 `frac_EC` / `frac_SC` / `frac_TC` carry all of this per cyclone in
 `phase_classification.csv` and `cyclone_lists_by_class.csv`.
 
-### C3. The indeterminate class is mostly a lifetime effect
+### C3. Indeterminate is distinct from insufficient coverage
 
-Median lifetime by class: indeterminate **42 h**, `EC` 99 h, `SC` 114 h, `TC` 129 h,
-`SD` 183 h, `ST` 186 h. **73% of indeterminate cyclones live under 72 h.** A cyclone
-shorter than ~39 h cannot hold any state for 36 consecutive hours once the unclassifiable
-genesis timestep is accounted for, so the label is mechanical rather than physical for most
-of them. Step 3 reports the split into *too short* and *structurally ambiguous*.
+Median CPS-record lifetime by class: `EC_like` **60 h**, `SC_like` 84 h,
+indeterminate 99 h, `SC` 105 h, `EC` 111 h, `TC` 119 h, `TC_like` 179 h, `ST` 183 h and
+`SD` 187 h. A record shorter than 39 h cannot hold a state for 36 consecutive hours once
+the unclassifiable genesis timestep is accounted for. Step 3 finds 92 short records among
+the characteristic plus indeterminate classes in the EP-labelled population; most of the
+558 indeterminate cases are therefore structurally ambiguous rather than merely short.
+All 558 nevertheless pass the coverage gate; missing or unusable CPS is represented by
+`no_data` only in the all-track audit, never by `undetermined` in the official population.
 
 ### C4. Energy Pattern × phase class
 
@@ -676,37 +689,37 @@ between them, are recorded at the end of this section.
 
 | | `EC` | `SC` | `TC` | `ST` | `SD` | `EC_like` | `SC_like` | undet. |
 |---|---|---|---|---|---|---|---|---|
-| **EP1** (441) | 59.4% | **0.7%** | 0.0% | 1.1% | 0.0% | 21.3% | 8.8% | 8.6% |
-| **EP2** (978) | 55.9% | **1.9%** | 0.0% | 1.9% | 0.3% | 19.3% | 7.4% | 13.1% |
-| **EP3** (2,393) | 55.6% | **4.7%** | 0.0% | 1.2% | 0.5% | 21.1% | 7.6% | 9.3% |
+| **EP1** (482) | 62.7% | **1.2%** | 0.0% | 1.0% | 0.2% | 17.8% | 8.5% | 8.5% |
+| **EP2** (767) | 56.8% | **1.8%** | 0.0% | 1.8% | 0.3% | 18.1% | 7.4% | 13.6% |
+| **EP3** (2,141) | 59.1% | **5.0%** | 0.0% | 1.5% | 0.5% | 16.9% | 7.6% | 9.3% |
 
-$\chi^2 = 48.96$, dof = 16, $p = 3.4\times10^{-5}$, Cramér's V = 0.080 (Cochran's condition
+$\chi^2 = 46.08$, dof = 16, $p = 9.45\times10^{-5}$, Cramér's V = 0.082 (Cochran's condition
 violated — 8 of 27 expected counts below 5; the table-wide test is indicative only). Cells
-with $|z| > 2$: **EP3 × `SC` at $z = +3.0$**, **EP1 × `SC` at $z = -3.2$**, EP2 × `SC` at
-$z = -2.6$, EP2 × undetermined at $z = +2.9$.
+with $|z| > 2$: **EP3 × `SC` at $z = +3.0$**, **EP1 × `SC` at $z = -2.9$**, EP2 × `SC` at
+$z = -2.8$, EP2 × undetermined at $z = +3.0$.
 
 **The signal is in `SC`, and it is monotonic in the energetics.** Fisher exact, each EP
 against the other two pooled, Holm-corrected over the nine contrasts of C4/fig8:
 
 | | `SC` rate | ×EPALL | OR | p | Holm |
 |---|---|---|---|---|---|
-| **EP1** | **3/441 (0.68%)** | **0.19** | 0.18 | $1.1\times10^{-4}$ | ✓ |
-| **EP2** | **19/978 (1.94%)** | **0.55** | 0.48 | $1.7\times10^{-3}$ | ✓ |
-| **EP3** | **112/2,393 (4.68%)** | **1.33** | 3.62 | $<10^{-5}$ | ✓ |
+| **EP1** | **6/482 (1.24%)** | **0.33** | 0.29 | $6.93\times10^{-4}$ | ✓ |
+| **EP2** | **14/767 (1.83%)** | **0.48** | 0.41 | $7.73\times10^{-4}$ | ✓ |
+| **EP3** | **108/2,141 (5.04%)** | **1.34** | 3.26 | $1.04\times10^{-7}$ | ✓ |
 
 All three survive correction — the only place in this analysis where that happens.
 
-**`ST` carries no significant signal.** EP1 0.82×, EP2 1.40×, EP3 0.87×; the largest
-contrast is EP2 at $p = 0.11$, nowhere near significance after correction.
+**`ST` carries no significant signal.** EP1 0.69×, EP2 1.21×, EP3 0.99×; all raw
+$p$-values are at least 0.40 and none survives correction.
 
 **Interpretation.** The ordering follows the LEC signature directly: **the weaker a
 cyclone's baroclinic energetics, the more likely it is to be subtropical.** EP3, the
-weak/background pattern, holds 4.7% subtropical against 0.7% for EP1, the high-conversion
-exporting pattern — a factor of **7**. That is what a diabatically driven, convectively
+weak/background pattern, holds 5.0% subtropical against 1.2% for EP1, the high-conversion
+exporting pattern — a factor of **4.1**. That is what a diabatically driven, convectively
 maintained system should look like in an energy-cycle framework: it does not run on
 baroclinic conversion, so it appears in the cluster that has little of it.
 
-`SC or ST` reproduces the same ordering (EP1 0.37×, EP3 1.20×, both surviving Holm).
+`SC or ST` reproduces the same ordering (EP1 0.43×, EP3 1.24×, both surviving Holm).
 
 **The reversal, and why it is the guards.** Before the subtropical guards the headline was
 the opposite: `SC` was flat (ratios 0.93–1.04, nothing significant) and `ST` carried the
@@ -724,15 +737,14 @@ systems that become hybrid"* — survives only in its first half. The second hal
 withdrawn.
 
 **Expressed against the pooled population** (`fig8_ep_relative_subtropical.png`), with
-EPALL = EP1 + EP2 + EP3 = 3,812 — not the 6,776 of the catalogue, since only the clustered
-cyclones carry an Energy Pattern:
+EPALL = EP1 + EP2 + EP3 = 3,390 — the corrected, coverage-eligible EP population:
 
 | | `SC` rate | ×EPALL | `ST` rate | ×EPALL | `SC` or `ST` | ×EPALL |
 |---|---|---|---|---|---|---|
-| EPALL | 3.52% | 1.00 | 1.39% | 1.00 | 4.91% | 1.00 |
-| EP1 | 0.68% | **0.19** | 1.13% | 0.82 | 1.81% | **0.37** |
-| EP2 | 1.94% | **0.55** | 1.94% | 1.40 | 3.89% | 0.79 |
-| EP3 | 4.68% | **1.33** | 1.21% | 0.87 | 5.89% | **1.20** |
+| EPALL | 3.78% | 1.00 | 1.50% | 1.00 | 5.28% | 1.00 |
+| EP1 | 1.24% | **0.33** | 1.04% | 0.69 | 2.28% | **0.43** |
+| EP2 | 1.83% | **0.48** | 1.83% | 1.21 | 3.65% | 0.69 |
+| EP3 | 5.04% | **1.34** | 1.49% | 0.99 | 6.54% | **1.24** |
 
 The ratio is a **descriptive effect size only**: each EP is nested in EPALL, so it is not
 an independent comparison. Inference stays with the EP-versus-other-two Fisher contrast.
@@ -749,7 +761,7 @@ holds no tropical cyclone to transition from or to. The two transitions that occ
 
 | | n | cold core / tilted | hybrid | symmetric warm core | unclassified |
 |---|---|---|---|---|---|
-| `ST` (EC → SC) | 60 | 52.5% | 39.4% | 0.73% | 7.37% |
+| `ST` (EC → SC) | 58 | 52.24% | 39.58% | 0.76% | 7.42% |
 | `SD` (SC → EC) | 22 | 47.88% | 42.52% | 0.3% | 9.31% |
 
 (percentages of each class's timesteps by per-timestep structure)
@@ -766,25 +778,28 @@ its own.
 
 ### C6. Region control
 
-The `ST` association survives genesis-region stratification (step 3 output), so it is not
-an artefact of EP2's more equatorward genesis distribution (median −37.9° vs −42.1° for EP1
-and −44.0° for EP3).
+The `SC` enrichment is geographically concentrated rather than uniform: within LA-PLATA
+the rates are 1.0% / 3.4% / 9.3% for EP1–EP3, and within SE-BR they are
+5.8% / 3.2% / 17.4%. `ST` has no global EP signal. The stratification therefore supports
+the EP3–`SC` association in the two subtropical sectors while warning against a basin-wide
+causal reading.
 
 ### C7. Where each type forms and where it lives
 
 **[PRELIMINARY]** — read off the step-9 maps; no test has been applied to any of the
-contrasts below. Counts are over the 3,812-cyclone clustered population (see Step 9).
+contrasts below. Counts are over the 3,390-cyclone corrected, coverage-eligible EP
+population (see Step 9).
 
 **The classes separate geographically, and by more than the guards impose.** Median genesis
 position, with peak density from the EPALL panels:
 
 | class | n | median genesis | genesis peak <br> [events/10⁶ km²/yr] | whole-life peak <br> [cyclone days/10⁶ km²/yr] | genesis region |
 |---|---|---|---|---|---|
-| `EC` | 2,140 | 42.8°S, 61.1°W | 20.0 | 16.3 | 60% ARG |
-| `SC` | 134 | 28.5°S, 48.0°W | 1.26 | 4.56 | 63% SE-BR, 34% LA-PLATA |
-| `ST` | 53 | 31.5°S, 54.1°W | 0.41 | 0.63 | 49% SE-BR, 45% LA-PLATA |
+| `EC` | 2,003 | 42.8°S, 61.1°W | 18.61 | 15.23 | 60% ARG |
+| `SC` | 128 | 28.8°S, 48.1°W | 1.19 | 4.23 | 63% SE-BR, 34% LA-PLATA |
+| `ST` | 51 | 31.5°S, 55.9°W | 0.41 | 0.61 | 47% SE-BR, 47% LA-PLATA |
 | `SD` | 14 | 26.1°S, 48.3°W | 0.25 | 0.58 | 86% SE-BR |
-| `SC_like` | 294 | **45.8°S, 62.5°W** | 3.49 | 4.04 | mid-latitude |
+| `SC_like` | 261 | **46.3°S, 62.4°W** | 3.24 | 3.70 | mid-latitude |
 
 The `SC` genesis band at 20–40°S is imposed by the guards, so its position is not an
 independent result; **its longitude and its narrowness are**. The subtropical genesis maximum
@@ -792,24 +807,68 @@ sits offshore of southeastern Brazil, and `ST` — which is *not* subject to a g
 guard — lands in the same sector, ~3° poleward and ~6° west, i.e. on the extratropical side
 of the same corridor. That is the geography the transition name already implies.
 
-**`SC` is confined; `ST` is not.** 99.8% of `SC` positions fall inside the map frame
-(80°W–60°E, 70°S–15°S) against 90.8% for `ST` and 94.2% for `EC` — and `SC` is the only class
-whose whole-life peak (4.56) is **larger** than its genesis peak (1.26). A subtropical cyclone
+**`SC` is confined; `ST` is not.** 99.7% of `SC` positions fall inside the map frame
+(80°W–60°E, 70°S–15°S) against 91.2% for `ST` and 94.3% for `EC` — and `SC` is the only class
+whose whole-life peak (4.23) is **larger** than its genesis peak (1.19). A subtropical cyclone
 stays in the box it was born in and spends its life there; an `ST` cyclone is a mid-latitude
 system that keeps travelling after acquiring the structure, and its residence-time field is
 smeared along the storm track to beyond 60°E.
 
 **`SC_like` is a different population, not a weaker `SC`.** Its median genesis is at
-**45.8°S**, 17° poleward of `SC`, and its density fields are those of the `EC` population.
-Whatever the hybrid characteristics of those 294 cyclones represent, it is not an unresolved
+**46.3°S**, 17.5° poleward of `SC`, and its density fields are those of the `EC` population.
+Whatever the hybrid characteristics of those 261 cyclones represent, it is not an unresolved
 subtropical class — which is the geographic form of the argument for keeping the `*_like`
 names distinct (C1, C-xi).
 
 **By Energy Pattern, the anomalies are of shape, not of rate.** Within `EC` the EP2 panel is
 enhanced over the LA-PLATA/SE-BR sector and EP3 is enhanced poleward of 40°S, the same
 contrast the medians give (C6). Within `SC` only EP2 and EP3 have enough cyclones to draw at
-all (19 and 112); EP1 has **three**, which is the C4 result — EP1 barely produces subtropical
+all (14 and 108); EP1 has **six**, which is the C4 result — EP1 rarely produces subtropical
 cyclones — arriving as an empty panel rather than as a statistic.
+
+### C8. CPS coverage diagnostic (separate from the CPS × EP result)
+
+Of the 6,789 reference tracks, 6,776 have a CPS file. Exactly 2,790/6,776 files are complete
+(41.17%) and 3,986/6,776 are incomplete (58.83%); 15 files have no usable CPS interval.
+Together with the 13 absent files, `no_data` contains 28 cyclones. The official duration
+gate includes 6,157/6,789 cyclones (90.69%): 2,790 complete and 3,367 eligible incomplete.
+It excludes 632 (9.31%): 604 with usable coverage below 75% plus the 28 `no_data` cases.
+
+Among incomplete CPS files, including the 15 zero-coverage files, coverage has mean 0.874,
+standard deviation 0.230, minimum 0, quartiles 0.923/0.972/0.986 and maximum 0.997. The
+requested bins contain 206 / 232 / 194 / 181 / 3,186 / 2,790 cyclones for
+<25% / 25–<50% / 50–<75% / 75–<90% / 90–<100% / 100%, respectively. Complete tables by
+bin, EP and diagnostic class are in `coverage_by_bin*.csv`, `coverage_by_ep.csv` and
+`coverage_by_class.csv`; every percentage carries its denominator.
+
+There is no detectable class or EP concentration between the 2,790 complete and 3,367
+eligible-incomplete cyclones: phase class $\chi^2=1.87$, $p=0.985$, bias-corrected
+Cramér's V = 0; EP $\chi^2=0.576$, $p=0.750$, V = 0. Inclusion is likewise similar across
+the corrected EP populations: 88.0% for EP1, 89.2% for EP2 and 88.8% for EP3.
+
+The principal EP result is stable to stricter coverage thresholds. `SC` rates for
+EP1/EP2/EP3 are 1.43%/1.19%/4.76% at 100%, 1.27%/1.85%/4.90% at $\ge90\%$, and
+1.24%/1.83%/5.04% at the official $\ge75\%$ threshold. Corresponding sample sizes are
+210/337/966, 472/755/2,103 and 482/767/2,141. The coverage diagnostic does not alter the
+methodology; it only quantifies the selection.
+
+### C9. Attribution of the rerun changes
+
+The pre-rerun audit found 314 of the 3,812 CPS-linked cyclones with a changed EP assignment:
+13 moved out of old EP1, 207 out of old EP2 and 94 out of old EP3. The historical
+old→corrected transition matrix was 428/12/1 from old EP1; 99/771/108 from old EP2; and
+18/76/2,299 from old EP3. The regenerated audit now compares every one of the 3,820
+corrected EP IDs directly with `phase_classification_all.csv` and reports zero mismatches;
+the 314 reassigned systems are therefore represented by their corrected label in every
+downstream product.
+
+The two effects can be separated numerically. Changing only the EP association, before the
+coverage gate, changes the CPS-linked denominators from 441/978/2,393 to 545/859/2,408 and
+the `SC` rates from 3/441 (0.68%), 19/978 (1.94%), 112/2,393 (4.68%) to 7/545 (1.28%),
+14/859 (1.63%), 113/2,408 (4.69%). Applying the coverage gate then yields the official
+482/767/2,141 denominators and 6/482 (1.24%), 14/767 (1.83%), 108/2,141 (5.04%). Thus the
+large denominator redistribution is caused by the corrected clustering; the coverage gate
+mainly trims the sample and removes six otherwise classified `SC` cyclones (1/0/5 by EP).
 
 ---
 
@@ -823,13 +882,13 @@ documented South Atlantic tropical system. The two `TC` cyclones (19911137, 1998
 shallow warm cores ($-V_T^U$ 16–28) and have not been inspected. Do not report them as
 identified tropical cyclones.
 
-C-ii. **Half the population is `indeterminate`**, and for 73% of them that is a lifetime
-effect rather than a structural statement (median 42 h against a 36 h persistence gate).
-Report the split, not the aggregate.
+C-ii. **`undetermined` is not missing data.** It contains 558/6,157 eligible cyclones
+(9.1%) that have sufficient CPS coverage but no dominant persistent structure. The 28
+systems with zero usable coverage or no CPS file are recorded separately as `no_data`.
 
-C-iii. **The EP × phase-class chi-square is not trustworthy table-wide** (4 of 18 expected
-counts below 5). The `ST` contrast, tested with Fisher's exact test, is the defensible
-result; the table-wide V = 0.052 is indicative only.
+C-iii. **The EP × phase-class chi-square is indicative table-wide** because 8 of 27
+expected counts are below 5. The focal Fisher contrasts and Holm correction support the
+`SC` result; no `ST` contrast is significant.
 
 C-iv. **`SD` is not an established term.** "Subtropical decay" for SC → EC is named in this
 work. `ST`, `TT` and `ET` all carry published definitions; `SD` does not.
@@ -842,7 +901,7 @@ percentage in the tables. The sensitivity suite quantifies the dependence.
 `sensitivity/SCIENTIFIC_NOTES.md`)
 
 C-vi. **The tropical class is warm-seclusion contamination under any rule short of the full
-protocol** — median latitude −57.7°, 93% of timesteps in mature/decay, median onset 75 h
+protocol** — median latitude −57.8°, 88% of timesteps in mature/decay, median onset 75 h
 after genesis. The canonical tropical-transition test exists to remove it.
 
 C-vii. **The catalogue cannot contain South Atlantic tropical cyclones.** Catarina, Anita,
@@ -855,9 +914,9 @@ sets tested, at every level of strictness. Any subtropical number must be quoted
 threshold set attached.
 
 C-ix. **The 500-km CPS radius may not represent the small, shallow SE-BR systems well** — a
-caveat Conrado et al. (2024) raise about their own work — and **13 cyclones (0.2%) have no
-CPS series**, mostly 2009, so the EP populations here are 441/978/2,393 rather than the
-canonical 444/979/2,397.
+caveat Conrado et al. (2024) raise about their own work. Separately, 13 tracks have no CPS
+file, 15 files have no usable interval and 604 cyclones have usable coverage below 75%; the
+coverage gate and `no_data` distinction make those losses explicit.
 
 C-xi. **The subtropical classes are guarded; before 2026-08-10 they were not.** The
 warm-seclusion filter originally ran only inside `if r["code"] != "TC": continue`, so a
@@ -883,19 +942,20 @@ re-energises the system, so peak intensity follows the structure, whereas a mech
 secluded warm core is the terminal stage and the peak has already passed. Runs beginning
 more than `SC_MAX_HOURS_PAST_PEAK` = 12 h after the vorticity peak are rejected.
 
-Of the 804 persistent hybrid runs: **271 accepted, 395 rejected as `genesis_out_of_band`,
-138 rejected as `warm_seclusion`.** Per-run verdicts and `run_code` are in
+Of the 784 persistent hybrid runs in the eligible population: **260 accepted, 386 rejected
+as `genesis_out_of_band`, 138 rejected as `warm_seclusion`.** Per-run verdicts and
+`run_code` are in
 `phase_states.csv`, so every rejection remains inspectable.
 
-| class | unguarded | guarded |
+| class | historical unguarded, pre-coverage | guarded and coverage-eligible |
 |---|---|---|
-| `SC` | 409 | **182** |
-| `ST` | 298 | **60** |
+| `SC` | 409 | **173** |
+| `ST` | 298 | **58** |
 | `SD` | 47 | **22** |
-| `SC_like` | 372 | 548 |
+| `SC_like` | 372 | 493 |
 
 **This is the change that made the analysis agree with the literature.** Cyclones with an
-accepted subtropical state: 264 over 42 years = **6.3 per year**, against Gozzo et al.'s
+accepted subtropical state: 253 over 42 years = **6.0 per year**, against Gozzo et al.'s
 **7.2 per year**. Unguarded the same quantity was 18.0 per year — two and a half times the
 published rate.
 
@@ -928,24 +988,24 @@ running mean changes the class counts.
 
 C-xii. **The density maps of the rare classes rest on very few cyclones, and a KDE hides
 that.** A Gaussian kernel of ~318 km draws a smooth, confident-looking field from any sample
-whatever. `SD`/EPALL is 14 cyclones, `ST`/EP2 and `SC`/EP2 are 19 each; the fields are drawn
+whatever. `SD`/EPALL is 14 cyclones, and `ST`/EP2 and `SC`/EP2 are 14 each; the fields are drawn
 because they clear the 10-cyclone floor, not because they are stable. Two consequences: read
 the anomaly panels of the rare classes as suggestive only — no confidence interval is
 attached to any of them — and remember that the whole-life maps count 3-hourly positions of
 the same trajectory, so their effective sample is the cyclone count in the panel corner and
 not the position count. The `SC`/EP1, `ST`/EP1 and `SD`/EP2 panels are shown as raw points
-for exactly this reason; the difference between 3 cyclones and 19 is one of degree.
+for exactly this reason; the difference between 6 cyclones and 14 is one of degree.
 
 ---
 
 ## Next Steps
 
 1. **Visually validate the canonical classes case by case.** Step 7 draws a sampled
-   gallery — one cyclone per class × year × region, 628 individual CPS diagrams under
+   gallery — one cyclone per class × year × region, 618 individual CPS diagrams under
    `figures/cps_analysis/cases/<CLASS>/` — and the full track_id lists are in
    `results/cps_analysis/cyclone_lists_by_class.{csv,txt}`. Priority order: the 2 `TC`
    cyclones, the 138 subtropical runs rejected as warm seclusions, the 22 `SD`, then a
-   sample of the 182 `SC`. This is
+   sample of the 173 `SC`. This is
    the step Gozzo et al. performed manually and we have not.
 
 2. **Add the gale criterion.** `SIZE` (equivalent radius of 925-hPa winds >= 17 m/s) is
@@ -964,7 +1024,8 @@ for exactly this reason; the difference between 3 cyclones and 19 is one of degr
    EP1/EP2 are enriched in them. A dedicated seclusion diagnostic (rather than treating
    them as tropical contamination) would be a second paper-scale result.
 
-5. **Generate the remaining 13 CPS series** (2009) to close the population.
+5. **Retain the 13 absent CPS series as `no_data`.** Regenerating them would require a
+   separate ERA5 acquisition/reprocessing task and is outside this rerun.
 
 6. **Sensitivity to the CPS radius**, if the ERA5 subsets are ever regenerated: recompute
    with 300 km for the shallow SE-BR systems.
@@ -1074,3 +1135,12 @@ sets once the Guishard/Gozzo 24-h onset criterion is applied; (ii) the EP associ
 reverses with strictness - EP2 leads in warm cores *acquired* late in the life cycle, EP3
 leads by ~10x in structures present *from genesis* (Fisher OR 9.81, p = 1.8e-10),
 identifying EP3 as the host of the genuinely subtropical population.
+
+### 2026-09-29 - Coverage-gated rerun with corrected EP mapping
+
+The current analysis of record uses 6,157 cyclones with at least 75% duration-weighted CPS
+coverage and the corrected Energy Pattern association. The complete all-track audit retains
+all 6,789 reference tracks, separates 28 `no_data` cases from 604 insufficient-coverage
+cases, and verifies all 3,820 corrected EP IDs with zero mapping mismatches. The official
+EP sample is 482/767/2,141; `SC` occurs in 6/14/108 cases (1.24%/1.83%/5.04%). The rerun
+also regenerates the sensitivity suite only from coverage-eligible tracks.

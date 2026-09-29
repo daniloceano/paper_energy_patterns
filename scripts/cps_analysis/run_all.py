@@ -25,6 +25,7 @@ STEPS = [
     ("make_reference_diagram.py", "Reference diagram of the class regions"),
     ("step1_build_cps_database.py", "Consolidate per-cyclone CPS CSVs"),
     ("step2_classify_phases.py", "Persistence-gated phase classification"),
+    ("step2b_coverage_diagnostics.py", "Full-life CPS coverage diagnostics"),
     ("step3_ep_phases.py", "Energy Pattern x phase class"),
     ("step4_phase_figures.py", "Figures"),
     ("step5_phase_space_figures.py", "Phase-space diagrams by Energy Pattern"),

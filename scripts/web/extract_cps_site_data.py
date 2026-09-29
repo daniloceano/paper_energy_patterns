@@ -12,6 +12,9 @@ change to a threshold propagates to the site the same way it propagates to the
 figures.
 
 Inputs (all produced by scripts/cps_analysis/):
+    results/cps_analysis/cps_coverage.csv
+    results/cps_analysis/coverage_diagnostics.json
+    results/cps_analysis/coverage_*.csv
     results/cps_analysis/phase_classification.csv
     results/cps_analysis/phase_states.csv
     results/cps_analysis/ep_relative_frequency.csv
@@ -35,7 +38,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.append(str(REPO_ROOT))
 
 import pandas as pd
+import numpy as np
+from scipy.stats import chi2_contingency
 
+from scripts.cps_analysis.cps_coverage import COVERAGE_THRESHOLD
 from scripts.cps_analysis.cps_criteria import (
     CANONICAL,
     CANONICAL_SOURCE,
@@ -78,6 +84,15 @@ FIGURES = {
     "single_state_sc":  f"{FIG_DIR}/fig6_phase_space_by_ep_single_state_sc.png",
     "trajectories":     f"{FIG_DIR}/fig7_transition_trajectories.png",
     "ep_relative":      f"{FIG_DIR}/fig8_ep_relative_subtropical.png",
+    "genesis_identified_anomaly": f"{FIG_DIR}/fig9_genesis_density_identified_anomaly.png",
+    "genesis_identified_absolute": f"{FIG_DIR}/fig9_genesis_density_identified_absolute.png",
+    "genesis_characteristics_anomaly": f"{FIG_DIR}/fig9_genesis_density_characteristics_anomaly.png",
+    "genesis_characteristics_absolute": f"{FIG_DIR}/fig9_genesis_density_characteristics_absolute.png",
+    "track_identified_anomaly": f"{FIG_DIR}/fig10_track_density_identified_anomaly.png",
+    "track_identified_absolute": f"{FIG_DIR}/fig10_track_density_identified_absolute.png",
+    "track_characteristics_anomaly": f"{FIG_DIR}/fig10_track_density_characteristics_anomaly.png",
+    "track_characteristics_absolute": f"{FIG_DIR}/fig10_track_density_characteristics_absolute.png",
+    "coverage":         f"{FIG_DIR}/fig11_cps_coverage_diagnostics.png",
 }
 
 # Human-readable label for every class code the classifier can emit.
@@ -112,12 +127,74 @@ def criteria_block() -> dict:
         "min_dominance": MIN_DOMINANCE,
         "tt_max_poleward_lat": TT_MAX_POLEWARD_LAT,
         "tt_min_ocean_fraction": TT_MIN_OCEAN_FRACTION,
+        "coverage_threshold": COVERAGE_THRESHOLD,
+    }
+
+
+def json_records(frame: pd.DataFrame) -> list[dict]:
+    """Return JSON-safe records (no numpy scalars or NaN literals)."""
+    records = []
+    for row in frame.to_dict(orient="records"):
+        clean = {}
+        for key, value in row.items():
+            if pd.isna(value):
+                clean[key] = None
+            elif isinstance(value, (np.integer,)):
+                clean[key] = int(value)
+            elif isinstance(value, (np.floating,)):
+                clean[key] = float(value)
+            elif isinstance(value, (np.bool_,)):
+                clean[key] = bool(value)
+            else:
+                clean[key] = value
+        records.append(clean)
+    return records
+
+
+def ep_phase_statistics(path: Path) -> dict:
+    """Derive the global EP x phase-class test directly from its crosstab."""
+    observed = pd.read_csv(path, index_col=0)
+    observed = observed.loc[observed.sum(axis=1) > 0, observed.sum(axis=0) > 0]
+    chi2, p_value, dof, expected = chi2_contingency(observed, correction=False)
+    residuals = (observed.to_numpy() - expected) / np.sqrt(expected)
+    n = int(observed.to_numpy().sum())
+    cramers_v = float(np.sqrt(chi2 / (n * (min(observed.shape) - 1))))
+    drivers = []
+    for i, ep_label in enumerate(observed.index):
+        for j, phase_class in enumerate(observed.columns):
+            value = float(residuals[i, j])
+            if abs(value) > 2:
+                drivers.append({
+                    "ep": ep_label,
+                    "phase_class": phase_class,
+                    "observed": int(observed.iloc[i, j]),
+                    "expected": round(float(expected[i, j]), 1),
+                    "standardized_residual": round(value, 1),
+                })
+    drivers.sort(key=lambda row: abs(row["standardized_residual"]), reverse=True)
+    n_lt5 = int((expected < 5).sum())
+    return {
+        "chi2": round(float(chi2), 2),
+        "dof": int(dof),
+        "p_value": float(p_value),
+        "cramers_v": round(cramers_v, 3),
+        "n": n,
+        "expected_lt5": n_lt5,
+        "expected_cells": int(expected.size),
+        "cochran_violated": bool(n_lt5 / expected.size > 0.2),
+        "drivers": drivers,
     }
 
 
 def main() -> int:
-    for f in ("phase_classification.csv", "phase_states.csv",
-              "ep_relative_frequency.csv"):
+    required = (
+        "cps_coverage.csv", "coverage_diagnostics.json", "coverage_by_bin.csv",
+        "coverage_by_ep.csv", "coverage_complete_vs_incomplete.csv",
+        "coverage_bias_tests.csv", "coverage_threshold_sensitivity.csv",
+        "phase_classification.csv", "phase_states.csv", "ep_phase_crosstab.csv",
+        "ep_relative_frequency.csv",
+    )
+    for f in required:
         if not (RESULTS / f).exists():
             print(f"Missing {RESULTS / f}. Run the CPS pipeline first.")
             return 1
@@ -125,6 +202,13 @@ def main() -> int:
     cy = pd.read_csv(RESULTS / "phase_classification.csv")
     states = pd.read_csv(RESULTS / "phase_states.csv")
     rel = pd.read_csv(RESULTS / "ep_relative_frequency.csv")
+    coverage = pd.read_csv(RESULTS / "cps_coverage.csv")
+    coverage_summary = json.loads((RESULTS / "coverage_diagnostics.json").read_text())
+    coverage_bins = pd.read_csv(RESULTS / "coverage_by_bin.csv")
+    coverage_ep = pd.read_csv(RESULTS / "coverage_by_ep.csv")
+    coverage_comparison = pd.read_csv(RESULTS / "coverage_complete_vs_incomplete.csv")
+    coverage_tests = pd.read_csv(RESULTS / "coverage_bias_tests.csv")
+    coverage_sensitivity = pd.read_csv(RESULTS / "coverage_threshold_sensitivity.csv")
 
     ep = cy[cy["ep"].notna()].copy()
     ep["ep"] = ep["ep"].astype(int)
@@ -160,17 +244,13 @@ def main() -> int:
         gallery_n = len(idx)
         gallery_classes = int(idx["phase_class"].nunique())
 
-    # Genesis years bound the record. Take them from the actual first timestep,
-    # NOT from the track_id prefix: one track is numbered 2021xxxx but has its
-    # genesis on 2020-12-30, and using the prefix reports the record as ending a
-    # year later than it does.
-    ts = pd.read_csv(RESULTS / "phase_timesteps.csv", parse_dates=["datetime"],
-                     usecols=["track_id", "datetime"])
-    genesis = ts.groupby("track_id")["datetime"].min()
+    # The coverage table already carries the complete reference-track bounds;
+    # no fragile dependency on the large phase_timesteps.csv is needed here.
+    genesis = pd.to_datetime(cy["track_start"])
 
     manifest = {
         "title": "Cyclone Phase Space — thermal structure of the Energy Patterns",
-        "generated_from": "scripts/cps_analysis/ (canonical pipeline, steps 1–8)",
+        "generated_from": "scripts/cps_analysis/ (canonical pipeline, steps 1–9)",
         "provenance": {
             "cps_computed_by": "Andres Rodriguez (IAG-USP)",
             "note": ("The per-cyclone CPS parameters were computed by a collaborator "
@@ -180,8 +260,11 @@ def main() -> int:
             "calculator": "scripts/cps_analysis/cps_calculator_era5tocsv.py",
         },
         "population": {
-            "catalogue": int(len(cy)),
-            "with_cps": int(len(cy)),
+            "catalogue": int(len(coverage)),
+            "with_cps": int(coverage["has_cps_file"].sum()),
+            "included": int(len(cy)),
+            "excluded": int(len(coverage) - len(cy)),
+            "no_data": int((coverage["coverage_status"] == "no_data").sum()),
             "ep_labelled": int(len(ep)),
             "by_ep": {get_ep_label(e): int((ep["ep"] == e).sum()) for e in ALL_EPS},
             "genesis_year_min": int(genesis.dt.year.min()),
@@ -205,6 +288,17 @@ def main() -> int:
             "require_genesis_band": SC_REQUIRE_GENESIS_BAND,
             "min_ocean_fraction": SC_MIN_OCEAN_FRACTION,
             "max_hours_past_peak": SC_MAX_HOURS_PAST_PEAK,
+        },
+        "coverage": {
+            **coverage_summary,
+            "bins": json_records(coverage_bins),
+            "by_ep": json_records(coverage_ep),
+            "complete_vs_incomplete": json_records(coverage_comparison),
+            "bias_tests": json_records(coverage_tests),
+            "threshold_sensitivity": json_records(coverage_sensitivity),
+        },
+        "statistics": {
+            "ep_phase": ep_phase_statistics(RESULTS / "ep_phase_crosstab.csv"),
         },
         "ep_relative": [
             {
@@ -230,10 +324,11 @@ def main() -> int:
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     with open(OUT, "w") as fh:
-        json.dump(manifest, fh, indent=2)
+        json.dump(manifest, fh, indent=2, allow_nan=False)
 
     print(f"Wrote {OUT.relative_to(REPO_ROOT)}")
-    print(f"  population {manifest['population']['catalogue']:,} "
+    print(f"  population {manifest['population']['included']:,} eligible of "
+          f"{manifest['population']['catalogue']:,} catalogue cyclones "
           f"({manifest['population']['ep_labelled']:,} with an EP)")
     print(f"  {len([c for c in classes if c['n'] > 0])} populated classes, "
           f"{gallery_n} gallery figures")

@@ -104,10 +104,14 @@ headline numbers of the analysis are in **Canonical Results** above.*
 
 Two independent external anchors, at opposite ends of the strictness scale.
 
+All results in this section use the **6,157 coverage-eligible cyclones**
+(`analysis_included = True`, at least 75% usable CPS coverage over the complete track) and
+the corrected current EP labels.
+
 **Relaxed protocol.** Applying the geographic protocol without the onset criterion
 (`type_protocol`: subtropical thresholds, ≥ 36 consecutive hours, over ocean, genesis
-20°–40°S) to the whole 6,776-cyclone population gives **389 subtropical cyclones over
-1979–2020 = 9.3 per year = 5.7% of the population**.
+20°–40°S) gives **379 subtropical cyclones over 1979–2020 = 9.0 per year = 6.2% of
+the eligible population**.
 
 Gozzo et al. (2014), for 1979–2011 with ERA-Interim, report *"a total of 238 (233)
 subtropical cyclogeneses [...] corresponding to 3.7% (4.2%) of the total cyclogeneses"*,
@@ -115,11 +119,11 @@ a mean of $7.2 \pm 2.8$ per year. Their climatology is deliberately **broad** �
 dropped the gale-force wind threshold and the upper-closed-low requirement to capture
 shallow coastal systems.
 
-**Strict protocol.** Adding the onset criterion (`type_strict`) gives **104 subtropical
-cyclones = 2.5 per year = 1.5% of the population** with the GOZZO14 thresholds. Applying
+**Strict protocol.** Adding the onset criterion (`type_strict`) gives **101 subtropical
+cyclones = 2.4 per year = 1.6% of the eligible population** with the GOZZO14 thresholds. Applying
 the strict protocol with the **GUISHARD09 thresholds** — the set of the same lineage as the
 strict-end climatologies, before Gozzo et al. relaxed the $-V_T^L$ bound — gives
-**74 cyclones = 1.8 per year**.
+**71 cyclones = 1.7 per year**.
 
 Evans and Braun (2012), the first South Atlantic subtropical climatology and the strict
 end of the literature, report **1.2 SCs per year** (as quoted by Gozzo et al. 2014).
@@ -131,8 +135,8 @@ The comparisons bracket the literature at both ends and in the right order:
 
 | Our result | Literature |
 |---|---|
-| 9.3/yr — GOZZO14 thresholds, relaxed protocol | Gozzo et al. (2014), broad criteria: **7.2/yr** |
-| 1.8/yr — GUISHARD09 thresholds, strict protocol | Evans and Braun (2012), South Atlantic, strict: **1.2/yr** |
+| 9.0/yr — GOZZO14 thresholds, relaxed protocol | Gozzo et al. (2014), broad criteria: **7.2/yr** |
+| 1.7/yr — GUISHARD09 thresholds, strict protocol | Evans and Braun (2012), South Atlantic, strict: **1.2/yr** |
 
 **Both ends validate the whole chain** — Andres's calculator, the sign conventions, the
 classification code and the protocol implementation. The agreement is of the right order
@@ -141,24 +145,24 @@ level differs (850-hPa vorticity here vs 925-hPa in Gozzo et al.), and we omit b
 gale requirement and Gozzo et al.'s manual visual rejection — all of which push our counts
 upward relative to theirs, which is the direction observed.
 
-The seasonality validates independently too: over the whole population the subtropical
-class peaks in **austral summer (DJF 34.5%, MAM 24.1%, SON 21.7%, JJA 19.6%)**, matching
+The seasonality validates independently too: over the eligible population the subtropical
+class peaks in **austral summer (DJF 34.3%, MAM 23.7%, SON 21.9%, JJA 20.0%)**, matching
 Gozzo et al. (2014): *"most of the SCs develop during austral summer (December–February)"*.
 
-Whole-population counts under each rule (GOZZO14 thresholds):
+Coverage-eligible counts under each rule (GOZZO14 thresholds):
 
 | Rule | Tropical | Subtropical | Extratropical | Unclassified |
 |---|---|---|---|---|
-| `type_any` | 767 | 2,948 | 3,040 | 21 |
-| `type_persistent` | 16 | 796 | 2,787 | 3,177 |
-| `type_protocol` | 8 | 389 | 1,056 | 5,323 |
-| **`type_strict`** | **0** | **104** | **862** | **5,810** |
+| `type_any` | 738 | 2,754 | 2,665 | 0 |
+| `type_persistent` | 16 | 775 | 2,607 | 2,759 |
+| `type_protocol` | 8 | 379 | 991 | 4,779 |
+| **`type_strict`** | **0** | **101** | **810** | **5,246** |
 
 ### S2. The tropical class is warm seclusions — resolved, not merely flagged — **[IMPORTANT]**
 
 Three independent lines of evidence, all pointing the same way.
 
-**(a) Latitude.** Tropical-classified timesteps have a median latitude of **−57.7°**, with
+**(a) Latitude.** Tropical-classified timesteps have a median latitude of **−57.8°**, with
 98% poleward of 35°S.
 
 **(b) Life-cycle phase.** The class is overwhelmingly a late-life-cycle phenomenon
@@ -166,14 +170,14 @@ Three independent lines of evidence, all pointing the same way.
 
 | Class | incipient | intensification | mature | decay | residual |
 |---|---|---|---|---|---|
-| tropical | 0.2% | 5.8% | **27.0%** | **65.8%** | 1.2% |
-| subtropical | 3.3% | 21.2% | 13.5% | 59.7% | 2.3% |
-| extratropical | 8.2% | 44.9% | 8.0% | 36.4% | 2.5% |
-| *(all timesteps)* | *7.1%* | *37.4%* | *9.7%* | *43.4%* | *2.4%* |
+| tropical | 0.1% | 5.5% | **25.1%** | **63.2%** | 1.2% |
+| subtropical | 2.9% | 19.3% | 12.6% | 57.9% | 2.3% |
+| extratropical | 7.2% | 41.6% | 7.6% | 35.5% | 2.5% |
+| *(all timesteps)* | *6.2%* | *34.5%* | *9.2%* | *42.4%* | *2.4%* |
 
-**93% of tropical timesteps fall in mature + decay**, against a 53% baseline, and the
-mature share is 2.8× enriched. The class is essentially absent from the incipient phase
-(0.2% vs 7.1%).
+**88% of tropical timesteps fall in mature + decay**, against a 52% baseline, and the
+mature share is 2.7× enriched. The class is essentially absent from the incipient phase
+(0.1% vs 6.2%).
 
 **(c) Onset relative to genesis.** The tropical class first appears a median of **75 h
 after genesis, at 58% through the life cycle**, and only 5.1% of cases reach it within
@@ -192,8 +196,8 @@ This is the Shapiro–Keyser warm seclusion, exactly as Hart (2003) describes it
 | C01 | South Atlantic (via Conrado et al.) | 16 | **0** |
 | GOZZO14 | South Atlantic | 16 | **0** |
 | C03 | South Atlantic, relaxed tropical | 40 | **0** |
-| YANASE14 | global | 38 | **1** |
-| CAVICCHIA19 | Australian ECLs | 33 | **1** |
+| YANASE14 | global | 37 | **1** |
+| CAVICCHIA19 | Australian ECLs | 32 | **1** |
 | GUISHARD09 | North Atlantic | 16 | **0** |
 
 **The tropical class collapses to 0–1 cyclones under every threshold set, including the
@@ -211,58 +215,59 @@ therefore the *correct* answer for this population, not a failure of the method.
 **Which tropical threshold set to use.** The choice matters far less than the protocol.
 C03's relaxed bound ($-V_T^U > -50$) is the better-justified one physically — Reboita
 et al. (2024) show South Atlantic tropical systems with moderately warm upper cores, and
-it more than doubles the tropical count under the permissive rules (1,334 vs 767 under
+it increases the tropical count under the permissive rules (1,273 vs 738 under
 `type_any`). But under the strict rule C03 and C01 both give zero. **The relaxed tropical
 threshold changes how much seclusion contamination is admitted, not how many tropical
 cyclones are found.**
 
 ### S3. EP × thermal type — the association reverses with strictness — **[IMPORTANT]**
 
-**Under the permissive rules, EP2 leads.** GOZZO14 `type_any` (n = 3,812;
-$\chi^2 = 79.7$, dof = 6, $p = 4.2\times10^{-15}$, Cramér's V = 0.102):
+**Under the permissive rules, EP2 leads.** GOZZO14 `type_any` (n = 3,390;
+$\chi^2 = 46.23$, dof = 4, $p = 2.21\times10^{-9}$, Cramér's V = 0.083):
 
 | | Tropical | Subtropical | Extratropical |
 |---|---|---|---|
-| **EP1** (n=441) | 39 (**8.8%**) | 245 (55.6%) | 156 (35.4%) |
-| **EP2** (n=978) | 241 (**24.6%**) | 490 (50.1%) | 244 (24.9%) |
-| **EP3** (n=2,393) | 359 (**15.0%**) | 1,210 (50.6%) | 818 (34.2%) |
+| **EP1** (n=482) | 63 (**13.1%**) | 281 (58.3%) | 138 (28.6%) |
+| **EP2** (n=767) | 195 (**25.4%**) | 397 (51.8%) | 175 (22.8%) |
+| **EP3** (n=2,141) | 356 (**16.6%**) | 1,133 (52.9%) | 652 (30.5%) |
 
-`EP2 × tropical` $z = +6.0$, `EP1 × tropical` $z = -4.1$. The ordering EP2 > EP3 > EP1
+`EP2 × tropical` $z = +4.8$, `EP1 × tropical` $z = -2.6$. The ordering EP2 > EP3 > EP1
 survives stratification by genesis region (see §4).
 
 **Under the strict rule, the ordering inverts.** GOZZO14 `type_strict`:
 
 | | Subtropical | Extratropical | Unclassified |
 |---|---|---|---|
-| **EP1** | 1 (**0.2%**) | 94 (21.3%) | 346 (78.5%) |
-| **EP2** | 4 (**0.4%**) | 224 (22.9%) | 750 (76.7%) |
-| **EP3** | 59 (**2.5%**) | 320 (13.4%) | 2,014 (84.2%) |
+| **EP1** | 1 (**0.2%**) | 98 (20.3%) | 383 (79.5%) |
+| **EP2** | 3 (**0.4%**) | 194 (25.3%) | 570 (74.3%) |
+| **EP3** | 58 (**2.7%**) | 301 (14.1%) | 1,782 (83.2%) |
 
-`EP3 × subtropical` $z = +3.0$, `EP2 × subtropical` $z = -3.1$.
+Here $\chi^2=73.67$, dof = 4, $p=3.81\times10^{-15}$ and Cramér's V = 0.104;
+`EP3 × subtropical` has $z = +3.0$ and `EP2 × subtropical` $z = -2.9$.
 
 The strict rule gates on genesis latitude, and the EPs draw unequally from the 20°–40°S
-band (EP1 44%, EP2 53%, EP3 38% of their populations), so the raw comparison mixes the
+band (EP1 40.9%, EP2 54.4%, EP3 37.8% of their populations), so the raw comparison mixes the
 structural signal with the geographic gate. **Conditioning on cyclones that pass the gate**
 removes it:
 
 | | strict subtropical / in band | rate |
 |---|---|---|
-| **EP1** | 1 / 193 | 0.52% |
-| **EP2** | 4 / 518 | 0.77% |
-| **EP3** | 59 / 908 | **6.50%** |
+| **EP1** | 1 / 197 | 0.51% |
+| **EP2** | 3 / 417 | 0.72% |
+| **EP3** | 58 / 810 | **7.16%** |
 
-EP3 vs EP1+EP2 pooled: **odds ratio 9.81, Fisher exact $p = 1.8\times10^{-10}$.**
+EP3 vs EP1+EP2 pooled: **odds ratio 11.76, Fisher exact $p = 7.81\times10^{-11}$.**
 
 **The mechanism is the onset timing.** Among cyclones in the band that reach a persistent
 hybrid spell at all:
 
 | | n | median onset | within 24 h |
 |---|---|---|---|
-| **EP1** | 19 | 96 h | 5.3% |
-| **EP2** | 100 | 81 h | 4.0% |
-| **EP3** | 188 | **45 h** | **31.4%** |
+| **EP1** | 26 | 86 h | 3.8% |
+| **EP2** | 81 | 81 h | 3.7% |
+| **EP3** | 193 | **51 h** | **30.1%** |
 
-**EP1 and EP2 acquire hybrid structure late (~80–96 h after genesis); EP3 acquires it
+**EP1 and EP2 acquire hybrid structure late (~81–86 h after genesis); EP3 acquires it
 early.** So the two results are not in conflict — they describe different things:
 
 - **EP2 more often *acquires* a warm core**, but does so mid-to-late in the life cycle,
@@ -285,53 +290,53 @@ and is strongest in SE-BR (`type_any`, GOZZO14, % tropical):
 
 | Region | n | EP1 | EP2 | EP3 | $\chi^2$ | $p$ | V |
 |---|---|---|---|---|---|---|---|
-| ARG | 2,254 | 9.3% | **23.4%** | 16.7% | 64.6 | $5\times10^{-12}$ | 0.120 |
-| LA-PLATA | 811 | 11.1% | **27.9%** | 13.9% | 29.8 | $4\times10^{-5}$ | 0.135 |
-| SE-BR | 747 | 4.7% | **23.2%** | 10.4% | 53.5 | $9\times10^{-10}$ | 0.189 |
+| ARG | 2,021 | 13.0% | **22.0%** | 18.7% | 39.9 | $4.45\times10^{-8}$ | 0.099 |
+| LA-PLATA | 716 | 17.3% | **29.2%** | 15.4% | 18.3 | $1.09\times10^{-3}$ | 0.113 |
+| SE-BR | 653 | 8.1% | **27.8%** | 11.0% | 45.3 | $3.39\times10^{-9}$ | 0.186 |
 
 It is therefore not explained by EP2's more equatorward genesis distribution (median
 genesis latitude −37.9°S, vs −42.1° for EP1 and −44.0° for EP3).
 
 **Threshold set.** The strict-rule reversal reproduces under the cross-basin sets — e.g.
-YANASE14 `type_strict` subtropical: EP1 = 2, EP2 = 4, EP3 = 31.
+YANASE14 `type_strict` subtropical: EP1 = 3, EP2 = 3, EP3 = 30.
 
 ### S5. Distributions
 
 **Subtropical cyclones are longer-lived, more intense and larger** than extratropical ones
 (`type_persistent`, EP-labelled population; Kruskal–Wallis across types, all
-$p < 10^{-37}$):
+$p \le 3.34\times10^{-24}$):
 
 | | n | lifetime | max \|vorticity\| [10⁻⁵ s⁻¹] | max gale radius | longest hybrid spell |
 |---|---|---|---|---|---|
-| extratropical | 2,008 | 105 h | 7.4 | 874 km | 3 h |
-| subtropical | 628 | **148 h** | **8.5** | **918 km** | **48 h** |
-| unclassified | 1,163 | 72 h | 6.4 | 762 km | 6 h |
+| extratropical | 1,862 | 102 h | 7.3 | 879 km | 3 h |
+| subtropical | 614 | **147 h** | **8.5** | **919 km** | **48 h** |
+| unclassified | 901 | 66 h | 6.0 | 800 km | 9 h |
 
-extratropical vs subtropical: lifetime $p = 3\times10^{-49}$ (rank-biserial $r = +0.39$),
-vorticity $p = 1.6\times10^{-13}$ ($r = +0.20$).
+extratropical vs subtropical: lifetime $p = 2.02\times10^{-54}$ (rank-biserial
+$r = +0.417$), vorticity $p = 2.83\times10^{-15}$ ($r = +0.212$).
 
 **Seasonality differs sharply between EPs** (subtropical class, % of each EP's subtropical
 cyclones by season of genesis):
 
 | | DJF | MAM | JJA | SON | n |
 |---|---|---|---|---|---|
-| **EP1** | 11.7% | 30.0% | **41.7%** | 16.7% | 60 |
-| **EP2** | 23.9% | 26.6% | 19.1% | **30.3%** | 188 |
-| **EP3** | **40.5%** | 22.9% | 17.6% | 18.9% | 380 |
+| **EP1** | 14.3% | 31.2% | **33.8%** | 20.8% | 77 |
+| **EP2** | 22.3% | 25.9% | 22.3% | **29.5%** | 139 |
+| **EP3** | **39.7%** | 22.4% | 17.6% | 20.4% | 398 |
 
 EP3's subtropical cyclones peak in austral summer — the season Gozzo et al. (2014)
 identify for South Atlantic subtropical cyclogenesis — while EP1's peak in winter. This is
 consistent with §3: EP3 holds the genuinely subtropical population, EP1 the
 baroclinic-then-seclusion one, which follows the winter storm track. **[PRELIMINARY]** —
-EP1's n = 60 makes its seasonal percentages noisy.
+EP1's n = 77 makes its seasonal percentages noisy.
 
-**Interannual.** Subtropical 19.0 ± 4.6 per year (range 11–33), extratropical 66.4 ± 10.1,
+**Interannual.** Subtropical 18.5 ± 4.7 per year (range 10–33), extratropical 62.1 ± 10.1,
 under `type_persistent`. No visually obvious trend in the 5-year running means.
 
 **Persistence.** EP2's advantage in hybrid persistence is concentrated below ~40 h and
 vanishes beyond ~45 h: EP2 more often *reaches* hybrid structure but does not *sustain* it
 longer than EP3 once it gets there (median longest hybrid spell among subtropical
-cyclones: EP1 48 h, EP2 45 h, EP3 49.5 h).
+cyclones: EP1 45 h, EP2 45 h, EP3 51 h).
 
 ### S6. Validation against documented named cyclones
 

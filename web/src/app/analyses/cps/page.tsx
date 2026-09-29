@@ -13,13 +13,13 @@ import { SimpleTerms, InThisStudy, TestFlow } from '@/components/analysis/Didact
 export const metadata: Metadata = {
   title: 'Cyclone Phase Space — Thermal Structure of the Energy Patterns',
   description:
-    'Hart (2003) cyclone phase space applied to 6,776 South Atlantic cyclones, classified into extratropical, subtropical and tropical structure under a 36 h persistence gate, and cross-referenced against the Energy Patterns.',
+    'Hart (2003) cyclone phase space applied to South Atlantic cyclones under explicit full-life coverage and persistence gates, cross-referenced against the corrected Energy Patterns.',
 }
 
 type Manifest = typeof manifestData
 const manifest = manifestData as Manifest
 
-// The nine CPS figures are committed to web/public/figures/cps/ (5 MB total).
+// The CPS figures are committed to web/public/figures/cps/.
 // Serve them with an absolute path so they always come from the static public/
 // directory, regardless of whether NEXT_PUBLIC_SUPABASE_FIGURES_URL is set on
 // Vercel — the same approach used by the EP Differences page. The manifest
@@ -47,8 +47,14 @@ export default function CpsPage() {
   const crit = manifest.criteria
   const named = manifest.classes.filter((c) => c.kind === 'single_state' || c.kind === 'transition')
   const scRows = relFor('SC')
+  const stRows = relFor('ST')
   const ep3 = scRows.find((r) => r.ep === 'EP3')
   const ep1 = scRows.find((r) => r.ep === 'EP1')
+  const epStats = manifest.statistics.ep_phase
+  const coverage = manifest.coverage
+  const coveragePop = coverage.population
+  const classCoverageTest = coverage.bias_tests.find((r) => r.dimension === 'phase_class')
+  const epCoverageTest = coverage.bias_tests.find((r) => r.dimension === 'ep')
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
@@ -57,17 +63,18 @@ export default function CpsPage() {
         title="Cyclone Phase Space"
         subtitle="Thermal structure of the Energy Patterns"
         badge="CPS · Hart (2003)"
-        description={`Every one of the ${pop.catalogue.toLocaleString()} tracked cyclones is placed in the Hart (2003) cyclone phase space at ${pop.timestep_hours}-hourly resolution and classified as extratropical, subtropical or tropical, subject to a ${crit.persistence_hours} h persistence requirement. The resulting classes are cross-referenced against the three Energy Patterns to ask whether a cyclone's energetics relate to its thermal structure. Genesis ${pop.genesis_first} to ${pop.genesis_last}.`}
+        description={`Of ${pop.catalogue.toLocaleString()} tracked cyclones, ${pop.with_cps.toLocaleString()} have an original CPS file and ${pop.included.toLocaleString()} meet the ≥${Math.round(crit.coverage_threshold * 100)}% full-life coverage rule. Those eligible series are classified at ${pop.timestep_hours}-hourly resolution under a ${crit.persistence_hours} h persistence requirement and cross-referenced against the corrected Energy Patterns. Eligible-track genesis ${pop.genesis_first} to ${pop.genesis_last}.`}
       />
 
       <div className="space-y-12">
-        <ResultSummaryCallout type="warning" title="EP comparison rerun required">
+        <ResultSummaryCallout type="info" title="Corrected EP membership and coverage filter applied">
           <p>
-            The cyclone phase-space diagnostics have been computed, but the EP cross-tabs,
-            frequencies, statistical contrasts, and maps on this page still use the previous
-            Energy Pattern membership. Thirteen catalogue cyclones also lack a complete CPS
-            series. The EP-dependent results below are therefore provisional until the
-            membership is rebuilt and the missing cases are resolved or explicitly excluded.
+            Every table and figure below was regenerated with the corrected Energy Pattern
+            membership and the official ≥{Math.round(crit.coverage_threshold * 100)}% full-life
+            CPS coverage rule. The scientific CPS × EP denominator is{' '}
+            <strong>{pop.ep_labelled.toLocaleString()}</strong> eligible, EP-labelled cyclones;
+            coverage diagnostics remain separate and retain all {pop.catalogue.toLocaleString()}{' '}
+            catalogue trajectories for audit.
           </p>
         </ResultSummaryCallout>
 
@@ -199,8 +206,10 @@ export default function CpsPage() {
               rank-based tests above do not apply. The population also differs from
               the LEC–field dependence analysis: because no ≥ 24 h intensification
               filter is needed here, all{' '}
-              <strong>3,812 EP-labelled cyclones</strong> are used (EP1 = 441, EP2 = 978,
-              EP3 = 2,393). Note that the pooled reference &quot;EPALL&quot; in this track
+              <strong>{pop.ep_labelled.toLocaleString()} eligible EP-labelled cyclones</strong>{' '}
+              are used (EP1 = {pop.by_ep.EP1.toLocaleString()}, EP2 ={' '}
+              {pop.by_ep.EP2.toLocaleString()}, EP3 = {pop.by_ep.EP3.toLocaleString()}).
+              Note that the pooled reference &quot;EPALL&quot; in this analysis
               means the union EP1 + EP2 + EP3, not the full catalogue — only clustered
               cyclones carry an Energy Pattern, so the reference must be the same
               population the EPs partition. The logic of the chain, however, is identical
@@ -238,7 +247,7 @@ export default function CpsPage() {
                   'E_ij': 'Expected count in that cell if EP and phase class were independent',
                   'R_i': 'Row total — all cyclones in EP i',
                   'C_j': 'Column total — all cyclones of phase class j',
-                  'n': 'Grand total of EP-labelled classified cyclones (n = 3,812)',
+                  'n': `Grand total of eligible EP-labelled classified cyclones (n = ${pop.ep_labelled.toLocaleString()})`,
                 }}
                 notes="Compared against a χ² distribution with (rows − 1)(columns − 1) degrees of freedom. χ² ≈ 0 means observed counts match the independence expectation; large χ² means at least one cell is over- or under-populated relative to chance."
               />
@@ -250,8 +259,9 @@ export default function CpsPage() {
               result; cells with |<em>z</em>| &gt; 2 are flagged. And{' '}
               <strong>Cochran&apos;s condition</strong> is checked — the χ² approximation
               becomes unreliable when more than 20% of cells have an expected count below
-              5. In the full EP × phase-class table, 7 of 27 cells fall below that
-              threshold, so the condition is violated and reported as such; this is
+              5. In the full EP × phase-class table, {epStats.expected_lt5} of{' '}
+              {epStats.expected_cells} cells fall below that threshold, so the condition is{' '}
+              {epStats.cochran_violated ? 'violated' : 'satisfied'} and reported as such; this is
               precisely why the inferential claims rest on the exact test below rather
               than on χ² alone.
             </p>
@@ -271,14 +281,17 @@ export default function CpsPage() {
             </div>
             <InThisStudy>
               <p>
-                The full EP × phase-class table gives χ² = 39.69 on 16 degrees of freedom,{' '}
-                <em>p</em> = 8.6 × 10⁻⁴ — highly significant — but Cramér&apos;s{' '}
-                <em>V</em> = 0.072, a weak association. This is the clearest example on
+                The full EP × phase-class table gives χ² = {epStats.chi2.toFixed(2)} on{' '}
+                {epStats.dof} degrees of freedom, <em>p</em> = {pFormat(epStats.p_value)},
+                but Cramér&apos;s <em>V</em> = {epStats.cramers_v.toFixed(3)}, a weak association.
+                This is the clearest example on
                 this site of why both numbers must be read together: Energy Pattern and
                 thermal phase class are genuinely, non-randomly related, yet EP membership
                 explains only a small part of which phase class a cyclone ends up in. The
-                standardised residuals then point to where that modest association lives —
-                most strongly EP2 × ST (92 observed vs 67.5 expected, <em>z</em> = +3.0).
+                largest standardised residual is {epStats.drivers[0]?.ep} ×{' '}
+                {epStats.drivers[0]?.phase_class} ({epStats.drivers[0]?.observed} observed vs{' '}
+                {epStats.drivers[0]?.expected} expected, <em>z</em> ={' '}
+                {epStats.drivers[0]?.standardized_residual}).
               </p>
             </InThisStudy>
 
@@ -293,7 +306,8 @@ export default function CpsPage() {
               <em>exact</em> probability of the observed table from the hypergeometric
               distribution instead of relying on a large-sample approximation, so it stays
               valid precisely where χ² fails — with small cell counts, which is the
-              situation here (only 24 EP1 cyclones undergo subtropical transition).{' '}
+              situation here ({stRows.find((r) => r.ep === 'EP1')?.k} EP1 cyclones undergo
+              subtropical transition).{' '}
               <strong>Why against the other two pooled:</strong> comparing an EP against
               EPALL would be invalid, because each EP is nested inside EPALL — the
               comparison would partly compare the group with itself. Contrasting EP1
@@ -335,14 +349,11 @@ export default function CpsPage() {
             </SimpleTerms>
             <InThisStudy>
               <p>
-                Of the nine contrasts, only <strong>EP2 × ST</strong> survives Holm
-                correction: 9.41% of EP2 cyclones undergo subtropical transition versus
-                6.03% of the others, OR = 1.62, raw <em>p</em> = 5.5 × 10⁻⁴, Holm-adjusted{' '}
-                <em>p</em> = 5.0 × 10⁻³. The EP3 depletion in ST is nominally significant
-                (raw <em>p</em> = 0.017) but does <em>not</em> survive correction
-                (Holm <em>p</em> = 0.139), and is therefore not reported as an established
-                result — a concrete illustration of what multiple-comparison correction
-              buys.
+                Of the nine contrasts, all three <strong>SC contrasts</strong> survive Holm
+                correction. SC rises from {ep1?.rate_pct}% in EP1 to {ep3?.rate_pct}% in
+                EP3, while none of the three ST contrasts survives. Multiple-comparison
+                correction therefore supports the monotonic single-state subtropical signal,
+                not a transition enrichment.
                 Because EP2 forms further equatorward than EP1 and EP3, and hybrid
                 structure is itself a subtropical-latitude phenomenon, the association is
                 additionally re-tested within each genesis region (ARG, LA-PLATA, SE-BR);
@@ -386,6 +397,110 @@ export default function CpsPage() {
             signal was warm-seclusion contamination.
           </p>
         </ResultSummaryCallout>
+
+        {/* ---------------- Coverage diagnostic ---------------- */}
+        <section>
+          <h2 className="mb-3 text-lg font-bold text-slate-900">
+            CPS full-life coverage diagnostic
+          </h2>
+          <p className="mb-4 text-sm leading-relaxed text-slate-600">
+            This diagnostic is deliberately separate from the CPS × EP result. The coverage
+            denominator is the {coverage.definition.denominator}; the numerator is the{' '}
+            {coverage.definition.numerator}. {coverage.definition.edge_treatment}. The official
+            cutoff remains <strong>≥{Math.round(coverage.definition.official_threshold * 100)}%</strong>.
+          </p>
+
+          <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              ['CPS files', coveragePop.with_cps_file, `${coveragePop.catalogue.toLocaleString()} catalogue tracks`],
+              ['Complete', coveragePop.complete, `${coveragePop.complete_pct_of_with_cps.toFixed(1)}% of CPS files`],
+              ['Included ≥75%', coveragePop.included_ge75, `${coveragePop.included_pct_of_catalogue.toFixed(1)}% of catalogue`],
+              ['No usable data', coveragePop.no_data_catalogue, `${coveragePop.no_usable_with_cps} files + ${coveragePop.without_cps_file} absent files`],
+            ].map(([label, value, note]) => (
+              <div key={String(label)} className="rounded-xl border border-slate-200 bg-white p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</p>
+                <p className="mt-2 text-2xl font-bold text-slate-900">
+                  {Number(value).toLocaleString()}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">{note}</p>
+              </div>
+            ))}
+          </div>
+
+          <FigurePanel
+            src={fig('coverage')}
+            alt="Diagnostic of CPS coverage over the complete cyclone lifetime"
+            caption={`Coverage is duration weighted against the complete hourly trajectory. The red line is the official ${Math.round(coverage.definition.official_threshold * 100)}% cutoff. Panels compare catalogue status, eligibility by corrected EP, and phase-class composition between complete and eligible-incomplete series.`}
+            source="scripts/cps_analysis/step2b_coverage_diagnostics.py"
+          />
+
+          <div className="mt-5">
+            <StatsTable
+              title="Coverage strata — whole catalogue"
+              columns={[
+                { key: 'bin', label: 'coverage' },
+                { key: 'n', label: 'N', align: 'right' },
+                { key: 'included', label: 'included', align: 'right' },
+                { key: 'identified', label: 'identified', align: 'right' },
+                { key: 'undetermined', label: 'undetermined', align: 'right' },
+                { key: 'noData', label: 'no_data', align: 'right' },
+              ]}
+              rows={coverage.bins.map((r) => ({
+                bin: r.coverage_bin,
+                n: r.n_catalogue.toLocaleString(),
+                included: r.n_included_official.toLocaleString(),
+                identified: `${r.n_identified} (${r.pct_identified.toFixed(1)}%)`,
+                undetermined: `${r.n_undetermined} (${r.pct_undetermined.toFixed(1)}%)`,
+                noData: `${r.n_no_data} (${r.pct_no_data.toFixed(1)}%)`,
+              }))}
+              caption="Identified means a named persistent class or transition (EC, SC, TC, ST, SD, TT or ET). Every percentage uses the N in the same row; diagnostic classes below 75% are not admitted to the canonical analysis."
+            />
+          </div>
+
+          <div className="mt-5">
+            <StatsTable
+              title="Coverage eligibility by corrected Energy Pattern"
+              columns={[
+                { key: 'ep', label: 'EP' },
+                { key: 'n', label: 'N', align: 'right' },
+                { key: 'complete', label: 'complete', align: 'right' },
+                { key: 'included', label: 'included ≥75%', align: 'right' },
+                { key: 'noData', label: 'no_data', align: 'right' },
+              ]}
+              rows={coverage.by_ep.map((r) => ({
+                ep: r.ep,
+                n: r.n_total.toLocaleString(),
+                complete: `${r.n_complete} (${r.pct_complete.toFixed(1)}%)`,
+                included: `${r.n_included} (${r.pct_included.toFixed(1)}%)`,
+                noData: `${r.n_no_data} (${r.pct_no_data.toFixed(1)}%)`,
+              }))}
+              caption={`Complete versus eligible-incomplete composition shows no detectable concentration by CPS class (p = ${classCoverageTest ? pFormat(classCoverageTest.p_value) : 'n/a'}) or EP (p = ${epCoverageTest ? pFormat(epCoverageTest.p_value) : 'n/a'}); the corresponding bias-corrected Cramér's V values are ${classCoverageTest?.cramers_v.toFixed(3)} and ${epCoverageTest?.cramers_v.toFixed(3)}.`}
+            />
+          </div>
+
+          <div className="mt-5">
+            <StatsTable
+              title="Coverage-threshold sensitivity — EP-labelled population"
+              columns={[
+                { key: 'threshold', label: 'coverage' },
+                { key: 'ep', label: 'population' },
+                { key: 'n', label: 'N', align: 'right' },
+                { key: 'sc', label: 'SC', align: 'right' },
+                { key: 'st', label: 'ST', align: 'right' },
+                { key: 'identified', label: 'identified', align: 'right' },
+              ]}
+              rows={coverage.threshold_sensitivity.map((r) => ({
+                threshold: r.threshold_label,
+                ep: r.ep,
+                n: r.n.toLocaleString(),
+                sc: `${r.n_SC} (${r.pct_SC.toFixed(2)}%)`,
+                st: `${r.n_ST} (${r.pct_ST.toFixed(2)}%)`,
+                identified: `${r.pct_identified.toFixed(1)}%`,
+              }))}
+              caption="The ≥75% rows are the official result. The 100% and ≥90% rows are diagnostics only; the EP3 enrichment in SC and the lack of a monotonic ST pattern are stable across all three thresholds."
+            />
+          </div>
+        </section>
 
         {/* ---------------- Provenance ---------------- */}
         <section>
@@ -464,6 +579,14 @@ export default function CpsPage() {
               class specification is resolved by precedence: {crit.precedence.join(' > ')}.
             </p>
             <p>
+              <strong>Coverage gate.</strong> A cyclone enters the phase-class analysis only
+              when usable CPS intervals cover at least{' '}
+              {Math.round(crit.coverage_threshold * 100)}% of its complete reference-track
+              duration. Series below the cutoff are excluded; zero-usable cases are{' '}
+              <code className="rounded bg-slate-100 px-1">no_data</code>, never{' '}
+              <code className="rounded bg-slate-100 px-1">undetermined</code>.
+            </p>
+            <p>
               <strong>Persistence gate.</strong> A cyclone is only <em>identified</em> as a
               class when it holds that structure for <strong>{crit.persistence_hours} consecutive
               hours</strong> — Guishard et al. (2009), &ldquo;more than one diurnal cycle&rdquo;,
@@ -517,7 +640,7 @@ export default function CpsPage() {
         {/* ---------------- Class composition ---------------- */}
         <section>
           <h2 className="mb-4 text-lg font-bold text-slate-900">
-            Classification of the {pop.catalogue.toLocaleString()} cyclones
+            Classification of the {pop.included.toLocaleString()} coverage-eligible cyclones
           </h2>
 
           <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -624,6 +747,45 @@ export default function CpsPage() {
           </div>
         </section>
 
+        {/* ---------------- Spatial density ---------------- */}
+        <section>
+          <h2 className="mb-4 text-lg font-bold text-slate-900">
+            Where the updated CPS classes occur
+          </h2>
+          <p className="mb-4 text-sm leading-relaxed text-slate-600">
+            Density anomalies compare each corrected EP with the pooled EP-labelled population
+            using the same {pop.ep_labelled.toLocaleString()}-cyclone denominator as the
+            frequency analysis. Identified persistent classes and non-persistent characteristic
+            classes are shown separately so the latter are not mistaken for cyclone types.
+          </p>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <FigurePanel
+              src={fig('genesis_identified_anomaly')}
+              alt="Genesis-density anomalies by identified CPS class and corrected Energy Pattern"
+              caption="Genesis-density anomalies for the identified persistent classes."
+              source="scripts/cps_analysis/step9_density_maps.py"
+            />
+            <FigurePanel
+              src={fig('track_identified_anomaly')}
+              alt="Track-density anomalies by identified CPS class and corrected Energy Pattern"
+              caption="Track-density anomalies for the identified persistent classes."
+              source="scripts/cps_analysis/step9_density_maps.py"
+            />
+            <FigurePanel
+              src={fig('genesis_characteristics_anomaly')}
+              alt="Genesis-density anomalies by CPS characteristic class and corrected Energy Pattern"
+              caption="Genesis-density anomalies for *_like and undetermined classes."
+              source="scripts/cps_analysis/step9_density_maps.py"
+            />
+            <FigurePanel
+              src={fig('track_characteristics_anomaly')}
+              alt="Track-density anomalies by CPS characteristic class and corrected Energy Pattern"
+              caption="Track-density anomalies for *_like and undetermined classes. Absolute-density counterparts are generated and published with the same manifest."
+              source="scripts/cps_analysis/step9_density_maps.py"
+            />
+          </div>
+        </section>
+
         {/* ---------------- Transitions ---------------- */}
         <section>
           <h2 className="mb-4 text-lg font-bold text-slate-900">What a transition looks like</h2>
@@ -684,13 +846,19 @@ export default function CpsPage() {
               </li>
               <li>
                 <strong>Multiple comparisons matter here.</strong> Nine contrasts were tested.
-                Only EP2 × ST survives Holm correction; the other two nominally significant
-                results do not.
+                The three SC contrasts survive Holm correction; no ST contrast does.
               </li>
               <li>
                 <strong>The 500 km CPS radius may not represent small, shallow systems well</strong>{' '}
-                — a caveat Conrado et al. (2024) raise about their own work — and 13 cyclones
-                (0.2%) have no CPS series at all.
+                — a caveat Conrado et al. (2024) raise about their own work — and{' '}
+                {coveragePop.without_cps_file} cyclones have no CPS file at all.
+              </li>
+              <li>
+                <strong>Incomplete CPS is audited, not reconstructed.</strong>{' '}
+                {coveragePop.excluded_catalogue.toLocaleString()} catalogue trajectories are
+                excluded from the canonical type analysis by the coverage rule, including{' '}
+                {coveragePop.no_data_catalogue} explicit <code>no_data</code> cases. No ERA5
+                values or missing CPS segments were imputed.
               </li>
             </ul>
           </ResultSummaryCallout>
@@ -708,11 +876,9 @@ export default function CpsPage() {
               completed. It lives in the repository rather than on this site.
             </p>
             <p className="mt-2">
-              Two independent checks against the literature do pass: the relaxed protocol gives
-              9.3 subtropical cyclones per year against Gozzo et al.&apos;s 7.2, and the strict
-              Guishard threshold set gives 1.8 per year against Evans and Braun&apos;s 1.2, with
-              the DJF maximum reproduced in both. The named South Atlantic subtropical cyclones
-              Bapo and Cari are both classified subtropical.
+              The named South Atlantic subtropical cyclones Bapo and Cari remain classified
+              subtropical in the coverage-filtered sensitivity run. The documented-case report,
+              threshold-set comparisons and every coverage stratum are retained as audit outputs.
             </p>
           </div>
         </section>
@@ -723,7 +889,7 @@ export default function CpsPage() {
             <li>
               <strong>Pipeline:</strong>{' '}
               <code className="rounded bg-slate-100 px-1">scripts/cps_analysis/</code> — reference
-              diagram plus steps 1–8, run by{' '}
+              diagram plus steps 1–9 and the separate step 2b coverage diagnostic, run by{' '}
               <code className="rounded bg-slate-100 px-1">run_all.py</code>
             </li>
             <li>
@@ -741,6 +907,11 @@ export default function CpsPage() {
             <li>
               <strong>Per-cyclone lists:</strong>{' '}
               <code className="rounded bg-slate-100 px-1">results/cps_analysis/cyclone_lists_by_class.csv</code>
+            </li>
+            <li>
+              <strong>Coverage audit:</strong>{' '}
+              <code className="rounded bg-slate-100 px-1">results/cps_analysis/cps_coverage.csv</code>{' '}
+              and the <code className="rounded bg-slate-100 px-1">coverage_*</code> diagnostic tables
             </li>
             <li>
               <strong>This page:</strong> every number is read from{' '}

@@ -16,7 +16,7 @@ results, caveats); `sensitivity/SCIENTIFIC_NOTES.md` is the exploratory record.
 
 | | Canonical | Sensitivity |
 |---|---|---|
-| Scripts | `step1..step8` in this folder | `sensitivity/` |
+| Scripts | `make_reference_diagram.py`, `step1..step9` and `step2b` in this folder | `sensitivity/` |
 | Thresholds | **one set** (de Souza et al. 2026) | six sets × four identification rules |
 | Outputs | `results/cps_analysis/`, `figures/cps_analysis/` | the `sensitivity/` subfolder of each |
 | Status | **the analysis of record** | reference only; motivates the canonical design |
@@ -58,6 +58,15 @@ extratropical/tropical from Wood et al. (2023) and subtropical from Gozzo et al.
 **≥ 36 consecutive hours** (Guishard et al. 2009; Gozzo et al. 2014). Without this gate the
 raw labels oscillate — 158 distinct sequences, the commonest non-pure one being EC→SC→EC —
 and a "genesis as X, later Y" rule has no defined answer.
+
+**Coverage gate.** The canonical type analysis includes a cyclone only when usable CPS
+intervals cover **at least 75% of its complete hourly-track duration**. The denominator is
+`track_end - track_start`. The numerator is the sum of the durations between consecutive CPS
+timestamps whose ending timestep has finite `B`, `VTL` and `VTU`; time before the first CPS
+timestamp, after the last one and intervals ending in an invalid timestep are uncovered. This
+duration-weighted definition handles one/two-hour edge offsets and the occasional final two-hour
+interval correctly. Below 75% a series is excluded; zero usable timesteps are `no_data`, never
+`undetermined`. `cps_coverage.py` is the shared implementation and step 2b is the separate audit.
 
 **Classes.**
 
@@ -118,24 +127,30 @@ Two design points, both forced by the sensitivity evidence:
 
 ## Results at a glance
 
-Whole population (6,776 cyclones, genesis 1979–2020):
+Coverage-eligible population (6,157 cyclones, genesis 1979–2020):
 
 | Class | n | % |
 |---|---|---|
-| `EC` single-state extratropical | 2,926 | 43.2% |
-| `SC` single-state subtropical | 182 | 2.7% |
+| `EC` single-state extratropical | 2,754 | 44.7% |
+| `SC` single-state subtropical | 173 | 2.8% |
 | `TC` single-state tropical | 2 | 0.0% |
-| `ST` subtropical transition | 60 | 0.9% |
-| `SD` subtropical decay | 22 | 0.3% |
-| `EC_like`  | 2,398 | 35.4% |
-| `SC_like`  | 548 | 8.1% |
+| `ST` subtropical transition | 58 | 0.9% |
+| `SD` subtropical decay | 22 | 0.4% |
+| `EC_like`  | 2,095 | 34.0% |
+| `SC_like`  | 493 | 8.0% |
 | `TC_like`  | 2 | 0.0% |
-| `undetermined`  | 636 | 9.4% |
+| `undetermined`  | 558 | 9.1% |
 | `TT` / `ET` | 0 | 0.0% |
 
-Of the 804 persistent hybrid runs, **271 were accepted**; **395** were rejected as `genesis_out_of_band` (Gozzo criterion 1 / ocean) and **138** as `warm_seclusion` (intensity-peak guard). The tropical guard additionally rejected 12 warm seclusions and 2 indeterminate warm cores. Every rejection keeps its `run_code` and verdict in `phase_states.csv`.
+Of the 784 persistent hybrid runs in eligible series, **260 were accepted**; **386** were
+rejected as `genesis_out_of_band` (Gozzo criterion 1 / ocean) and **138** as
+`warm_seclusion` (intensity-peak guard). The tropical guard additionally rejected 12 warm
+seclusions and 2 indeterminate warm cores. Every rejection keeps its `run_code` and verdict
+in `phase_states.csv`; the pre-filter audit remains in `phase_states_all.csv`.
 
-**Validation.** 264 cyclones reach an accepted subtropical state over 42 years = **6.3 per year**, against Gozzo et al. (2014) **7.2 per year**. Without the guards the same quantity is 18.0 per year.
+**Validation.** 253 eligible cyclones reach an accepted subtropical state over 42 years =
+**6.0 per year**, against Gozzo et al. (2014) **7.2 per year**. Without the guards the
+coverage-filtered sensitivity population gives about 18.5 persistent hybrid systems per year.
 
 The `*_like` classes keep the 36-h literature threshold intact for the named classes while
 still saying what a cyclone showed: `SC_like` means *hybrid characteristics, not sustained*,
@@ -152,7 +167,7 @@ and Guará would be `SD` in this scheme, Lexi `ST`, exactly as they describe the
 Two quantities are therefore reported separately instead of being folded into one label:
 
 - **genesis type** — `genesis_state`, `genesis_onset_h`, `pure_genesis` (first persistent
-  state in place within 24 h). SC genesis: 206 cyclones, 118 of them within 24 h.
+  state in place within 24 h). SC genesis: 197 cyclones, 114 of them within 24 h.
 - **dominance** — `dominant_class`, `frac_EC`/`frac_SC`/`frac_TC`. The `SC` class spends a
   median 0.74 of its life subtropical and SC is its dominant class in 96% of cases; the two
   `TC` cyclones spend a median of only 0.34 tropical, one more reason to treat them as
@@ -167,13 +182,13 @@ rest as grey context.
 
 | | `SC` rate | ×EPALL | OR vs rest | p | survives Holm |
 |---|---|---|---|---|---|
-| EP1 (high conversions, exports) | 0.68% | 0.19 | 0.18 | 1.1×10⁻⁴ | ✓ |
-| EP2 (moderate, imports) | 1.94% | 0.55 | 0.48 | 1.7×10⁻³ | ✓ |
-| EP3 (weak / background) | 4.68% | 1.33 | 3.62 | <10⁻⁵ | ✓ |
+| EP1 (high conversions, exports) | 1.24% | 0.33 | 0.29 | 6.9×10⁻⁴ | ✓ |
+| EP2 (moderate, imports) | 1.83% | 0.48 | 0.41 | 7.7×10⁻⁴ | ✓ |
+| EP3 (weak / background) | 5.04% | 1.34 | 3.26 | 1.0×10⁻⁷ | ✓ |
 
-A factor of **7** between EP3 and EP1, and all three contrasts survive Holm correction over
+A factor of **4** between EP3 and EP1, and all three contrasts survive Holm correction over
 the nine tested. `ST` carries **no** significant signal after the guards (largest contrast
-EP2, p = 0.11).
+EP2, p = 0.40).
 
 Before the subtropical guards this result was the opposite — `SC` flat, `ST` carrying an
 EP2 enrichment. Same data, same thresholds; the difference is the guards, and the reading is
@@ -194,6 +209,7 @@ Step by step:
 python scripts/cps_analysis/make_reference_diagram.py     # schematic, no data
 python scripts/cps_analysis/step1_build_cps_database.py   # shared by both
 python scripts/cps_analysis/step2_classify_phases.py
+python scripts/cps_analysis/step2b_coverage_diagnostics.py
 python scripts/cps_analysis/step3_ep_phases.py
 python scripts/cps_analysis/step4_phase_figures.py
 python scripts/cps_analysis/step5_phase_space_figures.py
@@ -261,7 +277,7 @@ fig10_track_density_characteristics_{anomaly,absolute}.png
 
 Three things to keep in mind when reading them:
 
-- **EPALL here is EP1 ∪ EP2 ∪ EP3 = 3,812 cyclones**, not the 6,776 of the catalogue — the same
+- **EPALL here is EP1 ∪ EP2 ∪ EP3 = 3,390 eligible cyclones**, not the 6,789 of the full catalogue — the same
   denominator as `step8`, and required because the EP columns are read against it. `--epall
   catalogue` switches to the full catalogue at the cost of that consistency.
 - **Whole life means whole life.** The `fig10` maps use every position of a cyclone of that
@@ -270,8 +286,8 @@ Three things to keep in mind when reading them:
   denominator for a residence-time map — the structure-resolved question is what `fig6` answers.
 - **A panel with fewer than 10 cyclones gets its raw positions as points and no density field.**
   The gate is on cyclone count, not position count: the 3-hourly positions of one cyclone are
-  not independent samples. `SC`/EP1 (3 cyclones), `ST`/EP1 (5) and `SD`/EP2 (3) are drawn this
-  way, and `SD`/EP1 is empty.
+  not independent samples. In the refreshed population `SC`/EP1 and `ST`/EP1 have 6 and 5
+  cyclones; `SD`/EP1 and `SD`/EP2 have 1 and 2.
 
 Domains differ by kind: genesis uses the manuscript frame (75°W–20°W, 55°S–20°S); the tracks
 run far east and south of the genesis boxes, so `fig10` uses 80°W–60°E, 70°S–15°S, which holds
@@ -285,7 +301,7 @@ KDE was estimated at all.
 ### The case gallery
 
 `step7` draws one cyclone per **(phase class × year of genesis × genesis region)**,
-sampled at random with a fixed seed — 628 figures spanning every class, every year and
+sampled at random with a fixed seed — 618 figures spanning every class, every year and
 every region in which that class occurs. Each is a single-cyclone CPS diagram in the
 case-study convention: trajectory line, one marker per 3-hourly timestep coloured by the
 structure it holds, endpoints A and Z, dates labelled.
@@ -301,11 +317,11 @@ figures/cps_analysis/cases/SC_like/cps_SC_like_1979_ARG_19791045.png
 
 | class | figures | | class | figures |
 |---|---|---|---|---|
-| `EC` | 126 | | `SD` | 40 |
-| `EC_like` | 124 | | `ST` | 105 |
-| `SC` | 120 | | `TC` | 2 |
-| `SC_like` | 105 | | `TC_like` | 2 |
-| `undetermined` | 116 | | | |
+| `EC` | 126 | | `SD` | 19 |
+| `EC_like` | 126 | | `ST` | 42 |
+| `SC` | 74 | | `TC` | 2 |
+| `SC_like` | 109 | | `TC_like` | 2 |
+| `undetermined` | 118 | | | |
 
 Restrict to some classes, or reshuffle the draw:
 
@@ -319,7 +335,7 @@ for each combination is recorded in `results/cps_analysis/case_diagram_index.csv
 
 **On `ET` and `TT` being empty.** Both are zero by construction of the catalogue, which
 contains no tropical cyclone to transition from or to. The two transitions that do occur are
-`ST` (EC → SC, 60) and `SD` (SC → EC, 22) — the latter is what the earlier draft scheme
+`ST` (EC → SC, 58) and `SD` (SC → EC, 22) — the latter is what the earlier draft scheme
 called `ET`. `step6` plots both.
 
 ### Bringing the outputs home
@@ -330,8 +346,8 @@ newer and never deleting anything:
 
 ```bash
 bash scripts/cps_analysis/sync_from_remote.sh --dry-run   # see what would come
-bash scripts/cps_analysis/sync_from_remote.sh             # ~20 MB: tables + fig0–fig10
-bash scripts/cps_analysis/sync_from_remote.sh --cases     # + the 628-figure gallery
+bash scripts/cps_analysis/sync_from_remote.sh             # tables + fig0–fig11
+bash scripts/cps_analysis/sync_from_remote.sh --cases     # + the 618-figure gallery
 bash scripts/cps_analysis/sync_from_remote.sh --inputs    # + csv_output/, as a backup
 ```
 
@@ -359,16 +375,15 @@ python scripts/cps_analysis/cps_calculator_era5tocsv.py \
 
 ## Data
 
-**Population.** 6,776 cyclones with a CPS series, of which **3,812** carry an EP label
-(the clustering covers 3,820; 8 have no CPS file). Genesis years **1979–2020 (42 years)**;
-the last track runs into 7 January 2021.
+**Population.** The reference catalogue has 6,789 tracks. There are 6,776 original CPS files;
+6,157 series meet the 75% full-life coverage gate. Of those, **3,390** carry a corrected EP
+label: EP1=482, EP2=767, EP3=2,141. Genesis years are **1979–2020 (42 years)**.
 
 **Cadence.** CPS is 3-hourly; the underlying tracks are hourly.
 
-**Missing genesis step.** The calculator emits the GrADS sentinel `-999000000` at the first
-timestep of every cyclone — storm motion, hence `B`, is undefined without a previous
-position. The genesis state is therefore never observed directly; everything is evaluated
-from +3 h.
+**Missing values.** The calculator emits the GrADS sentinel `-999000000` at the first CPS
+timestep. In 755 files it also emitted a terminal invalid block. Coverage is therefore
+computed from interval durations against the complete trajectory, not from CSV row counts.
 
 **Sign convention.** `B = B_left - B_right`, which applies Hart's Southern Hemisphere factor
 `h = -1`. `VTL`/`VTU` hold Hart's signed `-V_T^L` / `-V_T^U`, so positive means warm core.
@@ -382,6 +397,7 @@ cps_analysis/
 ├── README.md                       this file
 ├── SCIENTIFIC_NOTES.md             methods, provenance, results, caveats
 ├── cps_criteria.py                 all thresholds (canonical + sensitivity sets)
+├── cps_coverage.py                 shared full-life coverage definition and validation
 ├── cps_plotting.py                 shared region shading for every CPS diagram
 ├── cps_density.py                  shared spherical KDE + map panels (step 9)
 ├── make_reference_diagram.py       the schematic of the class regions (no data)
@@ -389,6 +405,7 @@ cps_analysis/
 ├── cps_plots_csv_gris.py           [A. Rodriguez] per-cyclone CPS diagram
 ├── step1_build_cps_database.py     consolidate + join metadata   (shared)
 ├── step2_classify_phases.py        CANONICAL phase classification
+├── step2b_coverage_diagnostics.py  separate completeness/bias/sensitivity audit
 ├── step3_ep_phases.py              CANONICAL EP × phase class
 ├── step4_phase_figures.py          CANONICAL figures
 ├── step5_phase_space_figures.py    2x4 CPS diagrams, EPALL + EP1/EP2/EP3
@@ -409,6 +426,10 @@ cps_analysis/
 ```
 results/cps_analysis/
 ├── cps_timesteps.csv               consolidated timestep database (step 1, shared)
+├── cps_coverage.csv                one row per catalogue track, full-life coverage audit
+├── phase_timesteps_all.csv         timestep classification before the coverage filter
+├── phase_states_all.csv            persistent-state audit before the coverage filter
+├── phase_classification_all.csv    whole-catalogue audit; no_data explicit
 ├── phase_timesteps.csv             + canonical per-timestep class
 ├── phase_states.csv                one row per persistent state, with the TT verdict
 ├── phase_classification.csv        one row per cyclone
@@ -421,6 +442,7 @@ results/cps_analysis/
 ├── cyclone_lists_by_class.txt      the same grouped by class, track_ids only
 ├── case_diagram_index.csv          which cyclone was drawn for each combination
 ├── density_map_samples.csv         per-panel counts and peak density (step 9)
+├── coverage_*.csv/json/txt         completeness strata, bias and 100/90/75 sensitivity
 └── sensitivity/                    outputs of the sensitivity tests
 
 figures/cps_analysis/
@@ -439,6 +461,7 @@ figures/cps_analysis/
 ├── fig10_track_density_<set>_<mode>.png    whole-life density, type × EP
 │                                   set  = identified | characteristics
 │                                   mode = anomaly | absolute
+├── fig11_cps_coverage_diagnostics.png       separate full-life coverage audit
 ├── cases/                          one sampled case per class × year × region
 │   ├── EC/  EC_like/  SC/  SC_like/  SD/  ST/  TC/  TC_like/  undetermined/
 │   └── e.g. TC/cps_TC_1998_LA-PLATA_19980144.png
@@ -453,13 +476,15 @@ as are all `results/` CSVs and `figures/` PNGs.
 ## Status
 
 - CPS parameters computed for 6,776 / 6,789 cyclones (99.8%); **13 missing**, mostly 2009.
+- Full-life coverage audit complete: 2,790 complete; 3,367 eligible incomplete; 604 below
+  75% with usable data; 28 `no_data`; 6,157 included in the canonical analysis.
 - Canonical pipeline (reference diagram + steps 1–9) complete and reproducible from
   `csv_output/` alone.
 - Sensitivity suite complete and preserved under `sensitivity/`.
 - Externally checked against documented named cyclones: **Bapo (2015) and Cari (2015) are
   both classified subtropical**. Most other named systems form outside the catalogue's
   genesis boxes; Raoni, Yakecan, Akará and Biguá postdate it.
-- **Open**: the 2 accepted tropical runs (19911137, 19980144) and the 182 single-state SC cyclones
+- **Open**: the 2 accepted tropical runs (19911137, 19980144) and the 173 single-state SC cyclones
   have not been inspected case by case.
 
 ## Environment

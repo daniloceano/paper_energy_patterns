@@ -1,6 +1,6 @@
 """
-Step 2 (CANONICAL): classify each cyclone into a pure phase class or a phase
-transition, using persistence-gated states.
+Step 2 (CANONICAL): classify each coverage-eligible cyclone into a phase class
+or transition, using persistence-gated states.
 
 This is the analysis of record. The exploratory runs that established the
 methodology - six threshold sets crossed with four identification rules, the
@@ -50,8 +50,12 @@ in which the storm evolves FROM A TROPICAL CYCLONE to a baroclinic system"):
 
 Inputs:
     results/cps_analysis/cps_timesteps.csv          (step 1)
+    results/cps_analysis/cps_coverage.csv           (step 1)
 
 Outputs:
+    results/cps_analysis/phase_timesteps_all.csv    audit, before coverage filter
+    results/cps_analysis/phase_states_all.csv       audit, before coverage filter
+    results/cps_analysis/phase_classification_all.csv audit, whole catalogue
     results/cps_analysis/phase_timesteps.csv
     results/cps_analysis/phase_states.csv           one row per persistent state
     results/cps_analysis/phase_classification.csv   one row per cyclone
@@ -78,6 +82,11 @@ import numpy as np
 import pandas as pd
 
 from scripts.utils.ep_mapping import ALL_EPS, get_ep_label
+from scripts.cps_analysis.cps_coverage import (
+    COVERAGE_THRESHOLD,
+    INSUFFICIENT_COVERAGE,
+    NO_DATA,
+)
 from scripts.cps_analysis.cps_criteria import (
     CANONICAL,
     CANONICAL_SOURCE,
@@ -108,7 +117,11 @@ from scripts.cps_analysis.cps_criteria import (
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULTS_DIR = PROJECT_ROOT / "results" / "cps_analysis"
 IN_FILE = RESULTS_DIR / "cps_timesteps.csv"
+COVERAGE_FILE = RESULTS_DIR / "cps_coverage.csv"
 
+OUT_TIMESTEPS_ALL = RESULTS_DIR / "phase_timesteps_all.csv"
+OUT_STATES_ALL = RESULTS_DIR / "phase_states_all.csv"
+OUT_CLASS_ALL = RESULTS_DIR / "phase_classification_all.csv"
 OUT_TIMESTEPS = RESULTS_DIR / "phase_timesteps.csv"
 OUT_STATES = RESULTS_DIR / "phase_states.csv"
 OUT_CLASS = RESULTS_DIR / "phase_classification.csv"
@@ -410,12 +423,20 @@ def main(jobs: int = 1):
     print("STEP 2 (CANONICAL): phase classification")
     print("=" * 70)
 
-    if not IN_FILE.exists():
-        print(f"Missing {IN_FILE}. Run step 1 first.")
+    if not IN_FILE.exists() or not COVERAGE_FILE.exists():
+        print(f"Missing {IN_FILE} or {COVERAGE_FILE}. Run step 1 first.")
         return 1
 
     df = pd.read_csv(IN_FILE, parse_dates=["datetime"])
-    print(f"\nLoaded {len(df):,} timesteps for {df['track_id'].nunique():,} cyclones")
+    coverage = pd.read_csv(
+        COVERAGE_FILE,
+        parse_dates=["track_start", "track_end", "cps_start", "cps_end"],
+    )
+    if coverage["track_id"].duplicated().any():
+        raise ValueError("cps_coverage.csv contains duplicate track IDs")
+    print(f"\nLoaded {len(df):,} timesteps for {df['track_id'].nunique():,} CPS files")
+    print(f"Coverage audit spans {len(coverage):,} catalogue cyclones; "
+          f"official inclusion requires >= {COVERAGE_THRESHOLD:.0%} of full-life hours")
     print(f"Thresholds: {CANONICAL_SOURCE}")
     for cls in CANONICAL_PRECEDENCE:
         terms = ", ".join(describe_interval(iv, p) for p, iv in CANONICAL[cls].items())
@@ -447,8 +468,8 @@ def main(jobs: int = 1):
         n = int(counts.get(cls, 0))
         print(f"  {cls:<14s} {n:8,d}  ({n / total:5.1%})")
 
-    df.to_csv(OUT_TIMESTEPS, index=False)
-    print(f"\nWrote {OUT_TIMESTEPS.relative_to(PROJECT_ROOT)}")
+    df.to_csv(OUT_TIMESTEPS_ALL, index=False)
+    print(f"\nWrote {OUT_TIMESTEPS_ALL.relative_to(PROJECT_ROOT)} (pre-filter audit)")
 
     # --- per-cyclone classification ---
     # Parallel over cyclones: each is independent, and the ordering is restored
@@ -464,11 +485,7 @@ def main(jobs: int = 1):
 
     rows, state_rows = [], []
     for (tid, g), (out, kept, rejected) in zip(groups, results):
-        rows.append({"track_id": tid, "ep": g["ep"].iloc[0],
-                     "region": g["region"].iloc[0],
-                     "genesis_lat": g["genesis_lat"].iloc[0],
-                     "genesis_lon": g["genesis_lon"].iloc[0],
-                     "year": g["datetime"].iloc[0].year, **out})
+        rows.append({"track_id": tid, **out})
         for r in kept + rejected:
             state_rows.append({
                 "track_id": tid, "ep": g["ep"].iloc[0],
@@ -490,16 +507,71 @@ def main(jobs: int = 1):
                 "phase_at_onset": r.get("phase_at_onset", ""),
             })
 
-    cyclones = pd.DataFrame(rows)
-    states = pd.DataFrame(state_rows).sort_values(["track_id", "start"])
+    classified = pd.DataFrame(rows).rename(columns={"phase_class": "diagnostic_phase_class"})
+    cyclones_all = coverage.merge(classified, on="track_id", how="left", validate="one_to_one")
+    cyclones_all["year"] = cyclones_all["track_start"].dt.year
+
+    # `diagnostic_phase_class` records what the available CPS values imply and
+    # is used only by the completeness audit. The official `phase_class` is
+    # withheld below 75%; zero-usable cases are explicitly no_data.
+    no_data = cyclones_all["n_usable_timesteps"].eq(0)
+    cyclones_all.loc[no_data, "diagnostic_phase_class"] = NO_DATA
+    cyclones_all["phase_class"] = cyclones_all["diagnostic_phase_class"]
+    cyclones_all.loc[
+        ~cyclones_all["analysis_included"].astype(bool) & ~no_data, "phase_class"
+    ] = INSUFFICIENT_COVERAGE
+    cyclones_all.loc[no_data, "phase_class"] = NO_DATA
+
+    bool_cols = ["pure_genesis", "has_TT", "has_ET", "has_ST", "has_SD"]
+    count_cols = [
+        "n_persistent_states", "n_transitions", "n_warm_seclusions",
+        "n_indeterminate_warm", "n_out_of_band", "n_rejected_SC",
+        "hours_EC", "hours_SC", "hours_TC",
+    ]
+    text_cols = [
+        "antecedent_characteristics", "genesis_state", "dominant_class",
+        "state_sequence", "transitions",
+    ]
+    for col in bool_cols:
+        cyclones_all[col] = cyclones_all[col].eq(True)
+    for col in count_cols:
+        cyclones_all[col] = cyclones_all[col].fillna(0)
+    for col in text_cols:
+        cyclones_all[col] = cyclones_all[col].fillna("")
+
+    states_all = pd.DataFrame(state_rows)
+    if len(states_all):
+        states_all = states_all.merge(
+            coverage[["track_id", "coverage_fraction", "coverage_status", "analysis_included"]],
+            on="track_id", how="left", validate="many_to_one",
+        ).sort_values(["track_id", "start"])
+    else:
+        states_all = pd.DataFrame(columns=["track_id", "analysis_included"])
+
+    eligible_ids = set(
+        cyclones_all.loc[cyclones_all["analysis_included"].astype(bool), "track_id"]
+    )
+    cyclones = cyclones_all[cyclones_all["track_id"].isin(eligible_ids)].copy()
+    states = states_all[states_all["track_id"].isin(eligible_ids)].copy()
+    df_official = df[df["track_id"].isin(eligible_ids)].copy()
+
+    cyclones_all.to_csv(OUT_CLASS_ALL, index=False)
+    states_all.to_csv(OUT_STATES_ALL, index=False)
+    df_official.to_csv(OUT_TIMESTEPS, index=False)
     cyclones.to_csv(OUT_CLASS, index=False)
     states.to_csv(OUT_STATES, index=False)
+    print(f"Wrote {OUT_CLASS_ALL.relative_to(PROJECT_ROOT)}  "
+          f"({len(cyclones_all):,} catalogue cyclones; audit)")
+    print(f"Wrote {OUT_STATES_ALL.relative_to(PROJECT_ROOT)}  "
+          f"({len(states_all):,} pre-filter persistent states; audit)")
+    print(f"Wrote {OUT_TIMESTEPS.relative_to(PROJECT_ROOT)}  "
+          f"({df_official['track_id'].nunique():,} eligible cyclones)")
     print(f"Wrote {OUT_CLASS.relative_to(PROJECT_ROOT)}  ({len(cyclones):,} cyclones)")
     print(f"Wrote {OUT_STATES.relative_to(PROJECT_ROOT)}  ({len(states):,} persistent states)")
 
     # --- summary ---
     print("\n" + "-" * 70)
-    print("PHASE CLASSIFICATION — whole population")
+    print(f"PHASE CLASSIFICATION — coverage-eligible population (>= {COVERAGE_THRESHOLD:.0%})")
     print("-" * 70)
     order = (list(SINGLE_STATE_CLASSES) + TRANSITION_PRECEDENCE
              + list(CHARACTERISTIC_CLASSES) + [UNDETERMINED])
@@ -569,6 +641,11 @@ def main(jobs: int = 1):
             fh.write(f"  {cls:<14s} {terms}\n")
         fh.write(f"\nPersistence gate : >= {MIN_PERSISTENCE_HOURS:.0f} consecutive hours\n")
         fh.write("Timestep precedence: " + " > ".join(CANONICAL_PRECEDENCE) + "\n")
+        fh.write(f"Coverage gate    : >= {COVERAGE_THRESHOLD:.0%} of complete track duration\n")
+        fh.write("Coverage numerator: sum of CPS intervals ending in a timestep with "
+                 "finite B, VTL and VTU\n")
+        fh.write("Coverage denominator: full hourly-track duration (track end - genesis)\n")
+        fh.write("Cases below the gate are excluded; zero usable timesteps are no_data\n")
         fh.write("\nTropical-transition test on each persistent tropical run:\n")
         fh.write(f"  run median latitude equatorward of {TT_MAX_POLEWARD_LAT:.0f} deg "
                  f"AND >= {TT_MIN_OCEAN_FRACTION:.0%} over ocean -> accept\n")
@@ -590,9 +667,8 @@ def main(jobs: int = 1):
     # One row per cyclone, sorted by class then date, carrying enough context to
     # go and look a case up: when and where it formed, what its state sequence
     # was, and how long it held each state.
-    genesis = df.groupby("track_id")["datetime"].min()
     lists = cyclones.copy()
-    lists["genesis_time"] = lists["track_id"].map(genesis)
+    lists["genesis_time"] = lists["track_start"]
     lists["ep"] = lists["ep"].map(
         lambda e: get_ep_label(int(e)) if pd.notna(e) else "")
     cols = ["phase_class", "track_id", "ep", "region", "genesis_time",

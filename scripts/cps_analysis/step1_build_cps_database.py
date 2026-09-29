@@ -18,13 +18,13 @@ so for our basin  B = B_left - B_right, which is what is computed here. The
 resulting population is dominated by B > 0 (asymmetric/frontal), as expected for
 an extratropical cyclone track set — this is the sanity check printed at the end.
 
-Missing values
---------------
-The calculator emits the GrADS sentinel -999000000 for the FIRST timestep of
-every cyclone (storm motion, hence B, is undefined without a previous position;
-VTL/VTU are also suppressed there). Those become NaN. As a consequence the
-genesis timestep is never classifiable — cyclogenesis-time statistics of the
-kind reported by Conrado et al. (2024) cannot be reproduced from this database.
+Missing values and coverage
+---------------------------
+The calculator emits the GrADS sentinel -999000000 for the first CPS timestep;
+some files also contain a trailing block of sentinels. Those become NaN. CPS
+coverage is measured in hours against the complete hourly trajectory, not as a
+fraction of rows present in the CPS CSV. See ``cps_coverage.py`` for the exact
+duration-based definition and temporal-alignment validation.
 
 Inputs:
     scripts/cps_analysis/csv_output/CPS_<track_id>.csv   (A. Rodriguez, 2026)
@@ -33,6 +33,7 @@ Inputs:
 
 Output:
     results/cps_analysis/cps_timesteps.csv
+    results/cps_analysis/cps_coverage.csv
 
 Run:
     python scripts/cps_analysis/step1_build_cps_database.py
@@ -51,6 +52,14 @@ import pandas as pd
 from tqdm import tqdm
 
 from scripts.utils.load_data import load_tracks
+from scripts.cps_analysis.cps_coverage import (
+    COMPLETE,
+    COVERAGE_THRESHOLD,
+    ELIGIBLE_INCOMPLETE,
+    INSUFFICIENT_COVERAGE,
+    NO_DATA,
+    validate_and_measure_coverage,
+)
 from scripts.utils.ep_mapping import (
     CLUSTER_TO_EP,
     ALL_EPS,
@@ -63,6 +72,7 @@ CSV_DIR = Path(__file__).resolve().parent / "csv_output"
 CLUSTER_FILE = PROJECT_ROOT / "results" / "cluster" / "kmeans_clustered_data.csv"
 OUT_DIR = PROJECT_ROOT / "results" / "cps_analysis"
 OUT_FILE = OUT_DIR / "cps_timesteps.csv"
+OUT_COVERAGE = OUT_DIR / "cps_coverage.csv"
 
 # GrADS undefined sentinel written by the calculator. Anything at or below
 # -999 is treated as missing (the raw value is -999000000).
@@ -162,12 +172,30 @@ def main():
     print(f"  {n_ep:,} of {n_total:,} cyclones carry an EP label "
           f"({n_total - n_ep:,} outside the clustered subset)")
 
+    # --- Full-life CPS coverage and hard temporal-alignment checks ------------
+    print("\nValidating CPS timestamps against complete hourly trajectories ...")
+    first_meta = (
+        tracks.sort_values(["track_id", "date"])
+        .groupby("track_id", as_index=False)
+        .first()
+        .rename(columns={"lat vor": "genesis_lat", "lon vor": "genesis_lon"})
+    )
+    meta_cols = ["track_id", "genesis_lat", "genesis_lon"]
+    if "region" in first_meta:
+        meta_cols.append("region")
+    metadata = first_meta[meta_cols].merge(
+        clustered[["track_id", "ep"]], on="track_id", how="left", validate="one_to_one"
+    )
+    merged, coverage = validate_and_measure_coverage(merged, tracks, metadata)
+
     merged = merged.sort_values(["track_id", "datetime"]).reset_index(drop=True)
     merged.to_csv(OUT_FILE, index=False)
+    coverage.to_csv(OUT_COVERAGE, index=False)
     print(f"\nWrote {OUT_FILE.relative_to(PROJECT_ROOT)}  ({len(merged):,} rows)")
+    print(f"Wrote {OUT_COVERAGE.relative_to(PROJECT_ROOT)}  ({len(coverage):,} cyclones)")
 
     # --- Sanity checks --------------------------------------------------------
-    valid = merged[["B", "VTL", "VTU"]].notna().all(axis=1)
+    valid = merged["cps_usable"]
     print("\n" + "-" * 70)
     print("SANITY CHECKS")
     print("-" * 70)
@@ -175,6 +203,17 @@ def main():
           f"({valid.mean():.1%})")
     print(f"  first-step sentinels    : {merged.groupby('track_id').head(1)['B'].isna().sum():,} "
           f"(expected {merged['track_id'].nunique():,})")
+    print("\n  Full-life CPS coverage (duration weighted):")
+    for status in [COMPLETE, ELIGIBLE_INCOMPLETE, INSUFFICIENT_COVERAGE, NO_DATA]:
+        n = int((coverage["coverage_status"] == status).sum())
+        print(f"    {status:<24s}: {n:5,d} / {len(coverage):,} ({n / len(coverage):5.1%})")
+    n_files = int(coverage["has_cps_file"].sum())
+    n_included = int(coverage["analysis_included"].sum())
+    print(f"    CPS files present       : {n_files:5,d}")
+    print(f"    included at >= {COVERAGE_THRESHOLD:.0%}   : {n_included:5,d}")
+    print(f"    excluded from catalogue : {len(coverage) - n_included:5,d}")
+    print("    temporal alignment      : PASS (all CPS timestamps lie on their track;")
+    print("                              unique/increasing; 3 h cadence, optional final 2 h)")
 
     print("\n  Sign convention (Southern Hemisphere, expect a cold-core, frontal population):")
     print(f"    median B   = {merged['B'].median():8.1f} m     "

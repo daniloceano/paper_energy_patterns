@@ -258,9 +258,10 @@ ALL_CLASSES: List[str] = CLASS_PRECEDENCE + [UNCLASSIFIED]
 # following de Souza et al. (2026) and consistent with the two-sided symmetry
 # definition of Evans and Hart (2003) ("If -10 m < B < 10 m, the system is
 # classified as symmetric"). Gozzo et al. (2014) write it one-sided ("B < 25 m").
-# The two-sided form retains 97.1% of subtropical timesteps in this population;
-# the 2.9% it removes sit at a median latitude of -45.8 deg and are dominated by
-# the decay phase, i.e. exactly the contamination the class should exclude.
+# In the coverage-eligible population, the two-sided form retains 97.2% of
+# one-sided GOZZO14 subtropical timesteps. The 2.8% removed have median latitude
+# -46.2 deg and are predominantly late-life-cycle (56.5% mature or decay), i.e.
+# the contamination the class should exclude.
 
 CANONICAL: Dict[str, ClassSpec] = {
     "tropical":      {"B": (None, 10.0), "VTL": (0.0, None), "VTU": (0.0, None)},

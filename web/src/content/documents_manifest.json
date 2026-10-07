@@ -31,6 +31,18 @@
   },
   {
     "filename": "SCIENTIFIC_NOTES.md",
+    "path": "scripts/cps_analysis/SCIENTIFIC_NOTES.md",
+    "type": "markdown",
+    "parent_dir": "scripts/cps_analysis"
+  },
+  {
+    "filename": "SCIENTIFIC_NOTES.md",
+    "path": "scripts/cps_analysis/sensitivity/SCIENTIFIC_NOTES.md",
+    "type": "markdown",
+    "parent_dir": "scripts/cps_analysis/sensitivity"
+  },
+  {
+    "filename": "SCIENTIFIC_NOTES.md",
     "path": "scripts/ep_structure_analysis/SCIENTIFIC_NOTES.md",
     "type": "markdown",
     "parent_dir": "scripts/ep_structure_analysis"
@@ -40,6 +52,18 @@
     "path": "scripts/ep_structure_analysis_legacy/SCIENTIFIC_NOTES.md",
     "type": "markdown",
     "parent_dir": "scripts/ep_structure_analysis_legacy"
+  },
+  {
+    "filename": "SCIENTIFIC_NOTES.md",
+    "path": "scripts/explosive_cyclones_analysis/SCIENTIFIC_NOTES.md",
+    "type": "markdown",
+    "parent_dir": "scripts/explosive_cyclones_analysis"
+  },
+  {
+    "filename": "SCIENTIFIC_NOTES.md",
+    "path": "scripts/lec_field_dependence_analysis/SCIENTIFIC_NOTES.md",
+    "type": "markdown",
+    "parent_dir": "scripts/lec_field_dependence_analysis"
   },
   {
     "filename": "SCIENTIFIC_NOTES.md",

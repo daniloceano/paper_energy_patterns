@@ -560,7 +560,7 @@ def process_one_cyclone(task):
         n_times = len(ds[tc])
 
         # Load local tracks file (per-timestep cyclone positions)
-        tracks_file = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.csv"
+        tracks_file = PROJECT_ROOT / "data" / "corrected" / "tracks_with_energetics_corrected.csv"
         if not tracks_file.exists():
             # fallback: use fixed center for all timesteps (maintain previous behavior)
             tracks_df = None

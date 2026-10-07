@@ -26,7 +26,7 @@ DATA_DIR = PROJECT_ROOT / "data" / "era5_ep_structure"
 RESULTS_DIR = PROJECT_ROOT / "results" / "ep_structure"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-TRACKS_FILE = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.csv"
+TRACKS_FILE = PROJECT_ROOT / "data" / "corrected" / "tracks_with_energetics_corrected.csv"
 
 # Threshold (degrees) to consider cyclone centered
 CENTERING_DEG_THRESHOLD = 2.0  # degrees (~220 km)

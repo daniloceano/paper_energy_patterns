@@ -7,13 +7,14 @@ the corrected climatology maintained in
 3,820/3,820 validated cyclones on 2026-09-09.
 
 **Policy.** The corrected rerun is the only scientific truth for this article.
-The legacy artefacts survive for exactly one purpose — the *before* side of
-the comparison in the independent rerun repository — and must not feed any
-other result, table or figure. Anything else that reads them is a defect.
+The legacy artefacts were removed from this repository in October 2026. Their
+*before* comparison survives only in the independent rerun repository and must
+not feed any result, table or figure here. Anything else that reads them is a
+defect.
 
 ---
 
-## 1. The legacy artefacts
+## 1. Removed legacy artefacts
 
 | Artefact | What it holds | Verdict |
 |---|---|---|
@@ -108,109 +109,52 @@ That rule reproduces the article mapping exactly when applied to the legacy
 centroids, so the convention is unchanged — only its provenance is. The file also
 records which energy cache the clustering consumed, so
 `ep_mapping.assert_corrected_clustering()` can refuse to build an article result
-on a legacy clustering. The file currently on disk is stamped
-`data/energy_cache.parquet (LEGACY - superseded)` and will be overwritten by
-`step4_apply_kmeans.py` on the next run.
+on a legacy clustering. The file currently on disk is stamped with
+`data/corrected/energy_cache_corrected.parquet`; the old cache and its mapping
+were removed.
 
 ---
 
-## 6. Work remaining, by script
+## 6. Migration completed
 
-### Done
+The October 2026 refresh rebuilt and validated the corrected cache, PCA and
+clustering, Energy Pattern mapping, ERA5 structure products, LEC–field
+dependence, vertical structure, and Ck decomposition. The current populations
+are EP1 = 548, EP2 = 860, and EP3 = 2,412 (3,820 total).
 
-| Script | Change |
-|---|---|
-| `scripts/utils/corrected_lec.py` | **New.** Single access point; owns the conventions of §3. |
-| `scripts/utils/ep_mapping.py` | Mapping derived from centroids, lineage-stamped, lazily resolved. |
-| `lec-climatology-rerun`: `build_corrected_tracks.py` | **External builder.** |
-| `lec-climatology-rerun`: `build_corrected_vertical_levels.py` | **External builder.** |
-| `scripts/cluster_analysis_energy_patterns/step1_normalize_and_pca.py` | Defaults to the corrected cache; legacy is no longer a fallback. |
-| `scripts/cluster_analysis_energy_patterns/step4_apply_kmeans.py` | Writes `cluster_to_ep.json` with the cache lineage. |
-| `scripts/ck_subterms_analysis/` | Rewritten for all EPs; side run deprecated. |
+All 13 publication figures in `figures/main/` were regenerated on `swell`.
+The Ck table contains 15,280 cyclone-phase rows for all 3,820 cyclones and its
+worst relative closure residual is 3.127e-10. Website figures and JSON products
+were then rebuilt from the same corrected outputs.
 
-### To do — blocking the article
+The active scripts that need local track positions now read
+`data/corrected/tracks_with_energetics_corrected.csv`. Legacy acquisition and
+comparison scripts remain only as provenance and must not be used to regenerate
+article outputs.
 
-| Script | Reads | Required change |
-|---|---|---|
-| `main/figure_vertical_levels.py` | `temp_lec_zenodo/{Ca,Ck}_level.csv`, hardcoded `-Ca` and `/9.8` | Read `vertical_phase_means_corrected.parquet` via `corrected_lec`; **delete both hacks** (§3). |
-| `main/figure_ck_subterms_vertical_profiles.py` | `results/ck_analysis/`, `ep1_cases.csv`, `temp_lec_zenodo` | Repoint to `results/ck_subterms_corrected/`; can now show all EPs, not EP1 alone. |
-| `ep_structure_analysis/step1_select_ep_tracks.py` | `temp_lec_zenodo/*/periods.csv`, `kmeans_clustered_data.csv` | Read windows from `<run-root>/phase_windows/`; rerun after re-clustering. |
-| `ep_structure_analysis/step2*`–`step6*` | `ep{1,2,3,all}_cases.csv` | Rerun after step 1; ERA5 composites can be reused where the case lists are unchanged, but the *populations will change* with the new clustering. |
-| `lec_field_dependence_analysis/utils_io.py` (`load_lec_from_zenodo`) | `temp_lec_zenodo` | Replace with a corrected reader; it is the single LEC entry point of that pipeline. |
-| `lec_field_dependence_analysis/step1`, `step2`, `step6`, `step7`, `step7b` | the above | Rerun once `utils_io` is repointed. |
-| `main/09`, `S2`, `S4` | `results/lec_field_dependence/` | Rerun after the PREDEP pipeline. |
-| `cluster_analysis_energy_patterns/step2`–`step5` | `results/cluster/` | Rerun; no code change. |
-| `main/01`, `06`, `07`, `S1` | `results/cluster/` | Rerun after re-clustering. |
-| `main/02`, `03`, `04` | Composed PNGs from `figures/exploratory/` and `figures/cluster/` | Regenerate the upstream panels first (`cluster/step5_plot_energy_patterns.py`, `exploratory/figure_three_intense_cyclones_individual_zoom.py`, `exploratory/density_diagrams_with_ge.py`), which all read legacy energetics. |
-| `explosive_cyclones_analysis/step1`, `step4` | `CLUSTER_TO_EP`, `EP_COUNTS` | Now resolve from `cluster_to_ep.json`; rerun after re-clustering. `step1` compares counts against `EP_COUNTS` — that check becomes a tautology and should be dropped or re-aimed. |
-| `cps_analysis/step1_build_cps_database.py` | `CLUSTER_TO_EP` | Rerun after re-clustering. |
-| `web/extract_ck_subterms_site_data.py` | `results/ck_analysis/` | Repoint to `results/ck_subterms_corrected/`. |
-| `web/extract_cluster_site_data.py`, `prepare_site.py` | `results/cluster/`, figures | Rerun last, after every figure is regenerated. |
-
-### Safe — positions only, no LEC
-
-`ep_structure_analysis/step3_precompute_composites.py`, `step6_generate_cyclone_explorer_panels.py`,
-`audit_storm_centering.py`, `diagnose_step3_failures.py`, `cps_analysis/export_cps_for_monitor.py`
-and `web/generate_hotfix_manifest.py` read the legacy tracks CSV **for positions
-only**. Those columns are identical in the corrected file. Repointing them is
-tidiness, not correctness — but doing so removes the last reasons for the legacy
-file to exist.
-
-### Intentionally left on legacy
-
-| Script | Why |
-|---|---|
-| `lec-climatology-rerun/scripts/lec_rerun_comparison/*` | The legacy side *is* the subject: it quantifies what the correction changed. |
-| `scripts/preprocess_data/*` | Documents how the legacy inputs were obtained; it is the provenance record. |
-| `scripts/ep_structure_analysis_legacy/*`, `*_BACKUP.py` | Already marked legacy. |
-| `scripts/exploratory/*` | Not in the paper. Anything promoted to a figure must be repointed first. |
-
----
-
-## 7. Order of operations after the completed rerun
-
-The rerun and the corrected phase-mean cache are complete. Further derived
-products can be rebuilt from the independent checkout before continuing the
-article pipeline:
+For a future refresh, run the corrected builders in `lec-climatology-rerun`,
+then the cluster and downstream analysis pipelines, followed by:
 
 ```bash
-RUN=/p1-swell/danilocs/lec_climatology_corrected_v2
-RERUN=/p1-swell/danilocs/lec-climatology-rerun
-PAPER=/p1-swell/danilocs/paper_energy_patterns
-E=paper_energy_patterns
-
-# 1. optional derived products not yet built
-cd "$RERUN"
-conda run -n $E python -m scripts.lec_climatology_rerun.build_corrected_tracks \
-  --run-root "$RUN" --output "$PAPER/data/corrected/tracks_with_energetics_corrected.csv"
-conda run -n $E python -m scripts.lec_climatology_rerun.build_corrected_vertical_levels \
-  --run-root "$RUN" --output "$PAPER/data/corrected/vertical_phase_means_corrected.parquet"
-
-# 2. Energy Patterns (rewrites cluster_to_ep.json with a corrected lineage)
-cd "$PAPER"
-conda run -n $E python scripts/cluster_analysis_energy_patterns/run_all.py
-
-# 3. analyses that depend on the Energy Patterns
-conda run -n $E python scripts/ck_subterms_analysis/run_all.py
-conda run -n $E python scripts/ep_structure_analysis/step1_select_ep_tracks.py
-# ... then the ep_structure and lec_field_dependence pipelines
-
-# 4. figures, then the website
-conda run -n $E python scripts/main/run_all.py
-conda run -n $E python scripts/web/prepare_site.py
+python scripts/main/run_all.py
+python scripts/web/prepare_site.py --skip-science --no-commit --no-upload
 ```
+
+The protected `docs/energy_patterns_clim_dyn/` tree is an Overleaf backup and
+is never a destination for this workflow.
 
 ---
 
-## 8. Open scientific questions raised by the migration
+## 7. Manuscript checks that remain in Overleaf
 
-1. **Population size.** The rerun targets the same 3,820 cyclones, but the
-   corrected terms change the PCA input, so the k-means partition — and hence
-   every EP count in the manuscript — will move. The gap statistic should be
-   re-run rather than assuming `k = 3` (`step3_optimal_k_analysis.py`).
-2. **Vertical extent.** Code and archived output use 10–1000 hPa; the manuscript
+The computations and repository figures are current. These interpretation and
+wording checks belong in the canonical Overleaf project, not its protected local
+backup:
+
+1. **Vertical extent.** Code and corrected output use 10–1000 hPa; the manuscript
    says 100–1000 hPa. Resolve in the text, not by trimming data.
-3. **Ck subterm dominance.** See §4 — the earlier EP1 percentages are provisional.
-4. **`Ca` sign.** Any manuscript statement about the vertical `Ca` structure was
+2. **Ck subterm dominance.** Replace any old EP1-only percentages with the
+   corrected all-pattern statistics in `results/ck_subterms_corrected/`.
+3. **`Ca` sign.** Any manuscript statement about the vertical `Ca` structure was
    made through the legacy sign flip and needs re-reading against corrected
    profiles.

@@ -33,7 +33,7 @@ FIGURES_DIR = PROJECT_ROOT / "figures" / "cyclone_explorer"
 HOTFIX_SELECTION_FILE = RESULTS_DIR / "hotfix_subset_selection.csv"
 
 # Track data
-TRACKS_FILE = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.csv"
+TRACKS_FILE = PROJECT_ROOT / "data" / "corrected" / "tracks_with_energetics_corrected.csv"
 
 from scripts.utils.load_data import load_tracks
 

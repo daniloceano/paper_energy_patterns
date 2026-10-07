@@ -51,7 +51,7 @@ PROJECT_ROOT   = Path(__file__).resolve().parents[2]
 DATA_DIR       = PROJECT_ROOT / "data" / "era5_ep_structure"
 LEGACY_DIR     = PROJECT_ROOT / "data" / "era5_ep_structure_legacy"
 RESULTS_DIR    = PROJECT_ROOT / "results" / "ep_structure"
-TRACKS_FILE    = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.csv"
+TRACKS_FILE    = PROJECT_ROOT / "data" / "corrected" / "tracks_with_energetics_corrected.csv"
 
 DOMAIN_SIZE    = 30.0  # degrees
 HALF           = DOMAIN_SIZE / 2.0

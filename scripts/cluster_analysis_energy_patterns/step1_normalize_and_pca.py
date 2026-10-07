@@ -11,9 +11,10 @@ This approach captures correlations between phases and energy terms, providing
 a more holistic view of cyclone energetics compared to phase-separated PCAs.
 
 Prerequisites:
-    - Energy cache file must exist (data/energy_cache.parquet)
-    - If cache is missing or corrupted, run first:
-      python scripts/analysis/preprocess_data.py
+    - Corrected energy cache must exist at
+      data/corrected/energy_cache_corrected.parquet
+    - Rebuild missing corrected products from the completed
+      lec-climatology-rerun workflow; never recreate the legacy cache.
 """
 
 from __future__ import annotations
@@ -47,10 +48,10 @@ warnings.filterwarnings('ignore')
 #
 # The corrected LEC climatology (external lec-climatology-rerun, toolkit 2.0.0)
 # is the only scientific truth for this article. The legacy
-# data/energy_cache.parquet carries the superseded equations and is kept solely
-# as the "before" side of the external rerun comparison — pointing this pipeline
-# at it would silently reintroduce the corrected errors into every Energy
-# Pattern, so it is no longer the default and is not an accepted fallback.
+# data/energy_cache.parquet carried the superseded equations and has been
+# removed. Pointing this pipeline at a legacy copy would silently reintroduce
+# the corrected errors into every Energy Pattern, so it is not an accepted
+# fallback.
 CACHE_FILE = Path(
     os.environ.get(
         "PAPER_ENERGY_CACHE",

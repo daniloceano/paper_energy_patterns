@@ -1,6 +1,6 @@
 # Ck subterms — build report
 
-Source profiles: `/Users/danilocoutodesouza/Documents/Programs_and_scripts/paper_energy_patterns/data/corrected/vertical_phase_means_corrected.parquet`
+Source profiles: `/p1-swell/danilocs/paper_energy_patterns/data/corrected/vertical_phase_means_corrected.parquet`
 Energy cache lineage: `/p1-swell/danilocs/paper_energy_patterns/data/corrected/energy_cache_corrected.parquet`
 
 ## Coverage

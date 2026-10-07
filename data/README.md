@@ -1,13 +1,15 @@
 # Data Directory
 
-This directory contains cached/processed data files. Input data is accessed remotely from **GitHub** and **Zenodo**.
+This directory contains the compact, corrected products used by current
+analyses. The legacy pre-correction caches and extracted archives were removed
+in October 2026. Do not restore them as inputs to article results.
 
 ---
 
 ## 📡 Remote Data Sources (Primary)
 
-> **Corrected LEC rerun (2026):** Production freezes the 3,820 IDs selected
-> from tracked `energy_cache.parquet`, uses the complete Zenodo track extract,
+> **Corrected LEC rerun (2026):** Production freezes the 3,820 article IDs,
+> uses the complete Zenodo track extract only as historical source material,
 > and records hashes/commits. EP1/EPALL structure files are downstream subsets.
 > The completed rerun workflow and provenance are maintained in
 > [`lec-climatology-rerun`](https://github.com/daniloceano/lec-climatology-rerun).
@@ -37,7 +39,7 @@ This directory contains cached/processed data files. Input data is accessed remo
 - **Access Function**: `load_energy_by_cyclone(track_id)` or `load_all_energy_data(track_ids)`
 - **Structure**: Individual CSV files per cyclone (`{track_id}_averages.csv`)
 - **Load Time**: ~4-5 minutes (batch, 50 parallel workers)
-- **Used By**: Preprocessing pipeline → generates `energy_cache.parquet`
+- **Status**: historical pre-correction source; not used by current analyses
 
 **Energy Variables** (18+ terms, W m⁻²):
 - **Reservoirs**: Az, Ae, Kz, Ke
@@ -54,8 +56,8 @@ This directory contains cached/processed data files. Input data is accessed remo
 
 - **Size**: ~63 MB (~180 MB uncompressed)
 - **Download Script**: `scripts/preprocess_data/extract_tracks_from_zenodo.py`
-- **Local Cache**: `tracks_SAt_filtered_with_energetics_processed.csv` (66 MB)
-- **Used By**: Exploratory scripts for individual cyclone deep-dives
+- **Former local cache**: `tracks_SAt_filtered_with_energetics_processed.csv`
+- **Status**: removed because its LEC columns are superseded
 - **Format**: Long-form CSV (1-hourly tracks, 3-hourly energy)
 
 **Citation**: de Souza, D., & Gramcianinov, C. (2026). Southwestern Atlantic Cyclone Tracks and Semi-Lagrangian Lorenz Energy Cycle (LEC) diagnostics (1979–2020) [Data set]. Zenodo.
@@ -67,8 +69,8 @@ This directory contains cached/processed data files. Input data is accessed remo
 
 - **Size**: ~634 MB (compressed), ~1.2 GB (extracted)
 - **Download Script**: `scripts/preprocess_data/download_lec_from_zenodo.py`
-- **Extract Location**: `temp_lec_zenodo/LEC_Results_energetic-patterns/`
-- **Used By**: Vertical structure analysis (S3 figure), Ck subterms analysis
+- **Former extract location**: `temp_lec_zenodo/LEC_Results_energetic-patterns/`
+- **Status**: removed; corrected consolidated vertical products replace it
 
 **Per-Cyclone Directory Structure**:
 ```
@@ -84,29 +86,34 @@ This directory contains cached/processed data files. Input data is accessed remo
 
 ---
 
-## 💾 Local Cached/Processed Files (This Directory)
+## 💾 Current local corrected products
 
-### `energy_cache.parquet` (6 MB)
+### `corrected/energy_cache_corrected.parquet`
 
-**Created By**: `scripts/preprocess_data/preprocess_data.py`  
-**Load Function**: `load_cache()` from same script  
-**Load Time**: <1 second  
-**Used By**: All clustering pipeline scripts
+**Created By**: the independent `lec-climatology-rerun` workflow
 
-**Content**: Phase-averaged energy data for all cyclones
-- **Records**: 25,000 phase rows before complete-lifecycle filtering
-- **Columns**: track_id, period, phase, + all 18 energy terms
-- **Format**: Parquet with Snappy compression (10:1 ratio)
-- **Filtering**: Complete lifecycle cyclones only (4-phase sequence)
+**Load Function**: `scripts/utils/corrected_lec.py`
 
-### `tracks_SAt_filtered_with_energetics_processed.csv` (66 MB)
+**Used By**: all current clustering and Energy Pattern pipelines
 
-**Created By**: `scripts/preprocess_data/extract_tracks_from_zenodo.py`  
-**Source**: Zenodo DOI 10.5281/zenodo.18133432  
-**Purpose**: Local cache for faster repeated access  
-**Used By**: Exploratory individual cyclone scripts
+**Content**: corrected phase-averaged LEC data for 3,820 complete-lifecycle
+cyclones and all four canonical phases.
+
+### `corrected/tracks_with_energetics_corrected.csv`
+
+**Created By**: the independent corrected rerun workflow
+
+**Purpose**: local track positions and corrected three-hourly LEC values
+
+**Used By**: active structure, CPS-export, and diagnostic scripts
 
 **Columns**: track_id, date, lon/lat vor, vor42, Kz, Ke, Ck, Ca, BAe, BKe, Ge
+
+### `corrected/vertical_phase_means_corrected.parquet`
+
+Corrected pressure-level phase means for all 3,820 cyclones. This compact
+product replaces the removed 1.2 GB extracted legacy archive for all current
+vertical-structure and Ck-subterm analyses.
 
 ### `era5_ep_structure/` Directory
 
@@ -128,20 +135,12 @@ This directory contains cached/processed data files. Input data is accessed remo
 **Created By**: `scripts/ck_subterms_analysis/`  
 **Content**: Ck subterm decomposition and vertical breakdowns
 
-### `temp_lec_zenodo/` Directory
-
-**Source**: Zenodo LEC archive (DOI 10.5281/zenodo.18243447)  
-**Size**: ~1.2 GB extracted  
-**Purpose**: Temporary storage for LEC results with vertical resolution
-
----
-
 ## 📊 Data Usage Summary
 
 | Script Category | Primary Data Source | Load Method |
 |----------------|---------------------|-------------|
 | **Main figures** (01, 05, 06) | GitHub tracks | `load_tracks()` |
-| **Clustering pipeline** | energy_cache.parquet | `load_cache()` |
+| **Clustering pipeline** | `corrected/energy_cache_corrected.parquet` | corrected cache reader |
 | **EP structure analysis** (07) | era5_ep_structure/ composites | `xr.open_dataset()` |
 | **Vertical analysis** (S3) | temp_lec_zenodo/ | Direct CSV reads |
 | **Exploratory scripts** | Zenodo cached tracks | Local CSV |

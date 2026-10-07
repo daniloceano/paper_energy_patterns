@@ -144,7 +144,7 @@ LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # Tracks file for per-timestep cyclone positions
-TRACKS_FILE = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.csv"
+TRACKS_FILE = PROJECT_ROOT / "data" / "corrected" / "tracks_with_energetics_corrected.csv"
 
 DOMAIN_SIZE = 30.0    # degrees (30° × 30°)
 RESOLUTION = 0.25     # degrees

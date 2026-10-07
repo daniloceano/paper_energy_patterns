@@ -31,7 +31,7 @@ than silent.
 Inputs:
     results/cps_analysis/phase_timesteps.csv
     results/cps_analysis/phase_classification.csv
-    data/tracks_SAt_filtered_with_energetics_processed.csv   (join verification)
+    data/corrected/tracks_with_energetics_corrected.csv   (join verification)
 
 Outputs (in the monitor repo, data/raw/ — gitignored there):
     cps_parameters_SAt.csv
@@ -73,7 +73,7 @@ from scripts.cps_analysis.cps_criteria import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 RESULTS = PROJECT_ROOT / "results" / "cps_analysis"
-TRACKS = PROJECT_ROOT / "data" / "tracks_SAt_filtered_with_energetics_processed.csv"
+TRACKS = PROJECT_ROOT / "data" / "corrected" / "tracks_with_energetics_corrected.csv"
 DEFAULT_DEST = Path("/p1-swell/danilocs/cyclone_monitor_south_atlantic/data/raw")
 
 NO_CPS = "no_cps_data"

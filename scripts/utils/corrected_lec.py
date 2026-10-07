@@ -7,9 +7,9 @@ Every downstream analysis of this paper must read its energetics through this
 module. The corrected rerun (maintained in the independent
 ``lec-climatology-rerun`` repository, LorenzCycleToolKit 2.0.0, pinned commit
 ``d38cda7e``) is the only scientific truth for the article. The legacy Zenodo
-archive and ``data/energy_cache.parquet`` are kept solely as the *before* side
-of that repository's comparison and must never feed a result, table, or figure
-again.
+archive and ``data/energy_cache.parquet`` were removed from this repository;
+their *before* comparison is retained only in the independent rerun repository.
+They must never feed a result, table, or figure again.
 
 Why a shared module
 -------------------

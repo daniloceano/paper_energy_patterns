@@ -45,9 +45,11 @@ cyclones; the ERA5 composite/LEC–field subset contains 2,733. Preserve
 `cluster_to_ep.json` mapping. These inputs already exist on the workstation
 and server; a fresh clone alone does not include all scientific data.
 
-Do not rebuild current results from the legacy `data/energy_cache.parquet`
-or Zenodo LEC archive. See the [CPS handoff](docs/CPS_HANDOFF.md) for the
-existing data locations and the first checks for the next analysis.
+The legacy `data/energy_cache.parquet`, mixed corrected/legacy track CSV, and
+extracted Zenodo LEC archive have been removed from this repository. Do not
+restore or rebuild current results from them. See the
+[legacy retirement record](docs/legacy_data_retirement.md) and the
+[CPS handoff](docs/CPS_HANDOFF.md).
 
 ### 3. Run Cluster Analysis (Energy Patterns)
 
@@ -72,7 +74,7 @@ Outputs publication-ready figures to `figures/main/`.
 ```
 .
 ├── data/                                   # Input and processed data
-│   ├── energy_cache.parquet               # Preprocessed energy data (generated)
+│   ├── corrected/                         # Canonical corrected consolidated products
 │   ├── era5_ep_structure/                 # ERA5 composites for ep_structure_analysis
 │   │   ├── precomputed_composites_ep1.nc
 │   │   └── precomputed_composites_ep2.nc
@@ -126,27 +128,30 @@ See `scripts/README.md` for detailed information on each subdirectory.
 - **Used By**: Main figures (01, 05, 06, S2)
 - **No download needed**: Scripts fetch directly from GitHub
 
-### Zenodo Archives (Preprocessing Only)
+### Zenodo Archives (historical provenance only)
 
 #### 1. Complete Tracks with Energetics
 - **DOI**: [10.5281/zenodo.18133432](https://doi.org/10.5281/zenodo.18133432)
 - **Description**: Integrated tracks + energy time series (1-hourly tracks, 3-hourly energy)
 - **Access**: `scripts/preprocess_data/extract_tracks_from_zenodo.py`
-- **Output**: `data/tracks_SAt_filtered_with_energetics_processed.csv` (66 MB)
-- **Used By**: Exploratory individual cyclone scripts
+- **Former output**: `data/tracks_SAt_filtered_with_energetics_processed.csv`
+- **Status**: removed because it mixed valid positions with superseded LEC terms
 
 #### 2. LEC Results with Vertical Resolution
 - **DOI**: [10.5281/zenodo.18243447](https://zenodo.org/records/18243447)
 - **Description**: Complete LEC results with 32 vertical levels (1000-100 hPa, 3-hourly)
 - **Access**: `scripts/preprocess_data/download_lec_from_zenodo.py`
-- **Output**: `data/temp_lec_zenodo/` (1.2 GB)
-- **Used By**: S3 figure (vertical structure), Ck subterms analysis
+- **Former output**: `data/temp_lec_zenodo/` (1.2 GB)
+- **Status**: removed; current vertical products come from the corrected rerun
 
-### Local Cache (Generated)
+### Current local consolidated products
 
-- **energy_cache.parquet** (6 MB): Phase-averaged energy data for clustering
-  - Created by: `scripts/preprocess_data/preprocess_data.py`
-  - Essential for clustering pipeline
+- **data/corrected/energy_cache_corrected.parquet**: corrected phase-averaged
+  LEC data for clustering (3,820 cyclones)
+- **data/corrected/tracks_with_energetics_corrected.csv**: valid track positions
+  with corrected LEC values
+- **data/corrected/vertical_phase_means_corrected.parquet**: corrected vertical
+  phase means used by the vertical-structure and Ck-subterm figures
   
 - **era5_ep_structure/** (400+ MB): ERA5 composites for EP1/EP2
   - Created by: `scripts/ep_structure_analysis/` pipeline

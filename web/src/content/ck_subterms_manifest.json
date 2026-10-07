@@ -219,7 +219,7 @@
       "term_key": "Ck",
       "term_label": "Ck_total",
       "n": 548,
-      "mean": -6.715054027729438,
+      "mean": -6.715054027729439,
       "median": -4.520204358224533,
       "q25": -10.331938681736396,
       "q75": -0.953613827715142
@@ -239,7 +239,7 @@
       "term_key": "Ck",
       "term_label": "Ck_total",
       "n": 2412,
-      "mean": -0.0871213003389409,
+      "mean": -0.08712130033894092,
       "median": 0.12136344675142349,
       "q25": -1.584509908641072,
       "q75": 1.7473494256970272
@@ -301,7 +301,7 @@
       "term_key": "Ck_1",
       "term_label": "Ck_A",
       "n": 860,
-      "mean": 0.042167626921778584,
+      "mean": 0.042167626921778605,
       "median": 0.1085717266424972,
       "q25": -1.6458360656339923,
       "q75": 1.545127456908133
@@ -311,7 +311,7 @@
       "term_key": "Ck_2",
       "term_label": "Ck_B",
       "n": 860,
-      "mean": 0.49717094827637626,
+      "mean": 0.49717094827637637,
       "median": 0.355263881502786,
       "q25": -2.5622240149801185,
       "q75": 3.1245735962677825
@@ -351,7 +351,7 @@
       "term_key": "Ck_1",
       "term_label": "Ck_A",
       "n": 2412,
-      "mean": -0.35738129133878727,
+      "mean": -0.35738129133878715,
       "median": -0.1383343766596393,
       "q25": -1.1090416900425477,
       "q75": 0.61043812788091
@@ -391,7 +391,7 @@
       "term_key": "Ck_5",
       "term_label": "Ck_E",
       "n": 2412,
-      "mean": 0.39342955100799415,
+      "mean": 0.3934295510079942,
       "median": 0.2993786539802762,
       "q25": -0.0100234179885605,
       "q75": 0.7371765548146216
@@ -415,7 +415,7 @@
       "contrast": "EP1 vs EP3",
       "median_left": -3.0321285703326843,
       "median_right": -0.1383343766596393,
-      "p_fdr": 1.888434261655173e-106,
+      "p_fdr": 1.8884342616551735e-106,
       "significant": true,
       "effect_size_r": -0.6002075994722252,
       "effect_magnitude": "large"
@@ -426,7 +426,7 @@
       "contrast": "EP2 vs EP3",
       "median_left": 0.1085717266424972,
       "median_right": -0.1383343766596393,
-      "p_fdr": 3.812463210953856e-05,
+      "p_fdr": 3.812463210953858e-05,
       "significant": true,
       "effect_size_r": 0.09520806818620087,
       "effect_magnitude": "negligible"
@@ -437,7 +437,7 @@
       "contrast": "EP1 vs EP2",
       "median_left": -4.234360129223299,
       "median_right": 0.355263881502786,
-      "p_fdr": 5.098289593208576e-81,
+      "p_fdr": 5.098289593208577e-81,
       "significant": true,
       "effect_size_r": -0.6033143778645391,
       "effect_magnitude": "large"
@@ -448,7 +448,7 @@
       "contrast": "EP1 vs EP3",
       "median_left": -4.234360129223299,
       "median_right": -0.171601465097525,
-      "p_fdr": 1.7744293048783276e-127,
+      "p_fdr": 1.774429304878328e-127,
       "significant": true,
       "effect_size_r": -0.6581659827383762,
       "effect_magnitude": "large"
@@ -459,7 +459,7 @@
       "contrast": "EP2 vs EP3",
       "median_left": 0.355263881502786,
       "median_right": -0.171601465097525,
-      "p_fdr": 1.6722130983343145e-07,
+      "p_fdr": 1.672213098334315e-07,
       "significant": true,
       "effect_size_r": 0.12130915191484437,
       "effect_magnitude": "small"
@@ -481,7 +481,7 @@
       "contrast": "EP1 vs EP3",
       "median_left": 0.3282452550929277,
       "median_right": 0.1341341911758619,
-      "p_fdr": 2.46348907586117e-34,
+      "p_fdr": 2.463489075861171e-34,
       "significant": true,
       "effect_size_r": 0.33529130503201743,
       "effect_magnitude": "medium"
@@ -514,7 +514,7 @@
       "contrast": "EP1 vs EP3",
       "median_left": 0.4153915635443892,
       "median_right": 0.061353403209378404,
-      "p_fdr": 1.1275036182953093e-23,
+      "p_fdr": 1.1275036182953095e-23,
       "significant": true,
       "effect_size_r": 0.27545211896720767,
       "effect_magnitude": "small"
@@ -547,7 +547,7 @@
       "contrast": "EP1 vs EP3",
       "median_left": 1.6251249910170067,
       "median_right": 0.2993786539802762,
-      "p_fdr": 8.265772071357485e-133,
+      "p_fdr": 8.265772071357487e-133,
       "significant": true,
       "effect_size_r": 0.6723771652685477,
       "effect_magnitude": "large"

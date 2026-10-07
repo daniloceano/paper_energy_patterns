@@ -22,15 +22,15 @@
         "n_clusters": "3",
         "n_samples": "3820",
         "n_features_used": "15",
-        "inertia": "73190.76535059507",
+        "inertia": "73746.94972824845",
         "n_init": "100",
         "random_state": "42",
-        "cluster_0_size": "444",
-        "cluster_0_percentage": "11.62303664921466",
-        "cluster_1_size": "2397",
-        "cluster_1_percentage": "62.74869109947644",
-        "cluster_2_size": "979",
-        "cluster_2_percentage": "25.628272251308896"
+        "cluster_0_size": "860",
+        "cluster_0_percentage": "22.5130890052356",
+        "cluster_1_size": "2412",
+        "cluster_1_percentage": "63.141361256544506",
+        "cluster_2_size": "548",
+        "cluster_2_percentage": "14.345549738219896"
       }
     ]
   }

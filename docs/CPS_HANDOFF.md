@@ -21,9 +21,12 @@ Prepared on 2026-09-28. This is an operational handoff, not a new CPS analysis.
 
 1. Work incrementally on code, computational results, and a dedicated CPS site
    section. Present each completed increment for approval.
-2. The manuscript in `docs/energy_patterns_clim_dyn` may be read but must not
-   be edited without explicit authorization. Overleaf remains canonical for
-   manuscript text; GitHub is canonical for code and computational results.
+2. `docs/energy_patterns_clim_dyn/` is only an occasional, read-only backup of
+   the Overleaf project. Agents must never modify, regenerate, compile,
+   synchronize, rename, delete, or copy files into that directory. Overleaf is
+   the sole manuscript workspace and canonical source; Danilo updates the
+   repository backup manually. GitHub remains canonical for code and
+   computational results.
 3. Leave new CPS changes local for review. Do not infer permission for new
    commits, push, merge, or publication from the completed cleanup authorization.
 4. End each task with context, a PASS/FAIL verification verdict, changed files

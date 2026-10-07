@@ -2,7 +2,12 @@
 
 This repository organises all scripts, data, and results for the paper on energetic patterns of South Atlantic extratropical cyclones, based on Chapter 6 of the PhD thesis. Cyclones are classified into three Energy Patterns (EP1, EP2, EP3) via PCA-based K-Means clustering of Lorenz Energy Cycle diagnostics during the intensification phase.
 
-**Next front: CPS.** Read [the CPS handoff](docs/CPS_HANDOFF.md) before running anything. It records the verified repository paths, Python environment, preserved inputs, cleanup archives, current populations, and the distinction between completed analyses and CPS results still awaiting review. The approved ERA5 composites and LEC–field results are in `main` and on the official site. Do not edit the manuscript without explicit user authorization.
+**Next front: CPS.** Read [the CPS handoff](docs/CPS_HANDOFF.md) before running anything. It records the verified repository paths, Python environment, preserved inputs, cleanup archives, current populations, and the distinction between completed analyses and CPS results still awaiting review. The approved ERA5 composites and LEC–field results are in `main` and on the official site.
+
+> **Protected Overleaf backup:** `docs/energy_patterns_clim_dyn/` is only an occasional,
+> read-only backup of the manuscript maintained in Overleaf. Overleaf is the canonical
+> working copy. Agents must never modify, regenerate, compile, synchronize, or copy files
+> into that directory; Danilo updates the backup manually.
 
 ---
 
